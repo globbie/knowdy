@@ -132,6 +132,7 @@ struct kndTaskContext {
     size_t depth;
     size_t max_depth;
     bool use_numid;
+    bool use_alias;
 
     // TODO: subscription channel
     // to push any commits

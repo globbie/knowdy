@@ -59,9 +59,10 @@ void knd_proc_inst_str(struct kndProcInst *self, size_t depth)
 }
 
 static int proc_arg_inst_export_GSL(struct kndProcArgInst *self,
-                                    struct kndOutput *out,
+                                    struct kndTask *task,
                                     size_t depth)
 {
+    struct kndOutput *out = task->out;
     struct kndClass *c;
     int err;
     
@@ -70,10 +71,17 @@ static int proc_arg_inst_export_GSL(struct kndProcArgInst *self,
                       self->arg->name_size, self->arg->name);                     RET_ERR();
     if (self->class_inst) {
         c = self->class_inst->blueprint;
-        err = out->writef(out, "%*s{class %.*s",
-                          (depth + 1) * KND_OFFSET_SIZE, "",
-                          c->name_size, c->name);                     RET_ERR();
-        err = out->writec(out, '}');
+
+        if (task->ctx->use_alias) {
+            err = out->writef(out, "%*s%.*s",
+                              depth * KND_OFFSET_SIZE, "",
+                              self->class_inst->alias_size, self->class_inst->alias);  RET_ERR();
+        } else {
+            err = out->writef(out, "%*s{class %.*s",
+                              (depth + 1) * KND_OFFSET_SIZE, "",
+                              c->name_size, c->name);                     RET_ERR();
+            err = out->writec(out, '}');
+        }
     } else {
         err = out->writef(out, "%*s%.*s",
                           depth * KND_OFFSET_SIZE, "",
@@ -97,14 +105,16 @@ int knd_proc_inst_export_GSL(struct kndProcInst *self,
     }
     err = out->write(out, self->name, self->name_size);                       RET_ERR();
 
-    if (self->alias_size) {
-        err = out->write(out, "{_as ", strlen("{_as "));                  RET_ERR();
-        err = out->write(out, self->alias, self->alias_size);             RET_ERR();
-        err = out->writec(out, '}');                                      RET_ERR();
+    if (task->ctx->use_alias) {
+        if (self->alias_size) {
+            err = out->write(out, "{_as ", strlen("{_as "));                  RET_ERR();
+            err = out->write(out, self->alias, self->alias_size);             RET_ERR();
+            err = out->writec(out, '}');                                      RET_ERR();
+        }
     }
 
     for (arg = self->args; arg; arg = arg->next) {
-        proc_arg_inst_export_GSL(arg, out, depth + 2);
+        proc_arg_inst_export_GSL(arg, task, depth + 2);
     }
 
     if (is_list_item) {

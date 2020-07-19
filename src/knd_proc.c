@@ -290,10 +290,10 @@ int knd_proc_get_arg(struct kndProc *self,
     int err;
 
     if (DEBUG_PROC_LEVEL_2) {
-        knd_log("\n.. \"%.*s\" proc (repo: %.*s) to select arg \"%.*s\" arg_idx:%p",
+        knd_log("\n.. \"%.*s\" proc (repo: %.*s) to select arg \"%.*s\"",
                 self->name_size, self->name,
                 self->entry->repo->name_size, self->entry->repo->name,
-                name_size, name, arg_idx);
+                name_size, name);
     }
 
     ref = knd_shared_dict_get(arg_name_idx, name, name_size);
@@ -315,15 +315,14 @@ int knd_proc_get_arg(struct kndProc *self,
             knd_log("== arg %.*s is used in proc: %.*s",
                     name_size, name, ref->proc->name_size, ref->proc->name);
         }
-
         if (ref->proc == self) break;
 
         err = knd_proc_is_base(ref->proc, self);
         if (!err) break;
     }
     if (!arg) return knd_NO_MATCH;
-    
-    err = arg_idx->get(arg_idx, arg->id, arg->id_size, (void**)&ref);            RET_ERR();
+
+    err = arg_idx->get(arg_idx, arg->id, arg->id_size, (void**)&ref);
     if (err) return knd_NO_MATCH;
 
     *result = ref;

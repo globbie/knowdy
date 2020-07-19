@@ -32,7 +32,8 @@ static int export_inner_GSL(struct kndClassInst *self,
 
 int knd_class_inst_export_GSL(struct kndClassInst *self,
                               bool is_list_item,
-                              struct kndTask *task)
+                              struct kndTask *task,
+                              size_t unused_var(depth))
 {
     struct kndAttrInst *attr_inst;
     struct kndOutput *out = task->out;
@@ -58,6 +59,12 @@ int knd_class_inst_export_GSL(struct kndClassInst *self,
         err = out->write(out, "{_id ", strlen("{_id "));             RET_ERR();
         err = out->write(out, self->entry->id,
                          self->entry->id_size);                      RET_ERR();
+        err = out->writec(out, '}');                                 RET_ERR();
+    }
+    if (task->ctx->use_alias) {
+        err = out->write(out, "{_as ", strlen("{_as "));             RET_ERR();
+        err = out->write(out, self->alias,
+                         self->alias_size);                   RET_ERR();
         err = out->writec(out, '}');                                 RET_ERR();
     }
 

@@ -130,20 +130,25 @@ gsl_err_t knd_parse_gloss_array(void *obj,
 static gsl_err_t check_class_name(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx      = obj;
-    struct kndClassVar *self      = ctx->class_var;
     struct kndRepo *repo          = ctx->repo;
+    struct kndClassEntry *entry = NULL;
 
-    if (DEBUG_GSL_LEVEL_2)
-        knd_log(".. repo \"%.*s\" to check a class name: \"%.*s\"",
-                repo->name_size, repo->name, name_size, name);
+    if (DEBUG_GSL_LEVEL_TMP)
+        knd_log(".. repo \"%.*s\" to check a class name: \"%.*s\" (size:%zu)",
+                repo->name_size, repo->name, name_size, name, name_size);
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    self->entry = knd_shared_dict_get(repo->class_name_idx, name, name_size);
-    if (!self->entry) {
+    entry = knd_shared_dict_get(repo->class_name_idx, name, name_size);
+    if (!entry) {
         return make_gsl_err_external(knd_NO_MATCH);
     }
+    if (ctx->class_var)
+        ctx->class_var->entry = entry;
+    if (ctx->class)
+        ctx->class->entry = entry;
+
     return make_gsl_err(gsl_OK);
 }
 
@@ -210,7 +215,8 @@ gsl_err_t knd_read_class_var(struct kndClassVar *self,
     struct LocalContext ctx = {
         .task = task,
         .repo = task->repo,
-        .class_var = self
+        .class_var = self,
+        .class = NULL
     };
 
     struct gslTaskSpec specs[] = {
@@ -1028,7 +1034,8 @@ int knd_class_read_GSL(const char *rec,
     struct LocalContext ctx = {
         .task = task,
         .repo = task->repo,
-        .class = c
+        .class = c,
+        .class_var = NULL
     };
 
     struct gslTaskSpec specs[] = {
