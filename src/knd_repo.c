@@ -1724,7 +1724,8 @@ int knd_confirm_commit(struct kndRepo *self, struct kndTask *task)
         break;
     default:
         /* delegate commit confirmation to a Writer */
-        err = export_commit_GSL(self, commit, task);                                  RET_ERR();
+        err = export_commit_GSL(self, commit, task);
+        KND_TASK_ERR("failed to export commit");
         ctx->phase = KND_CONFIRM_COMMIT;
     }
     return knd_OK;

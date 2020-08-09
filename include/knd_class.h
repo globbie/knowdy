@@ -145,6 +145,9 @@ struct kndClass
     const char *name;
     size_t name_size;
 
+    char abbr[KND_ID_SIZE];
+    size_t abbr_size;
+
     struct kndClassEntry *entry;
     struct kndMemBlock *memblock;
 

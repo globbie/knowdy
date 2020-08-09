@@ -287,16 +287,14 @@ static gsl_err_t set_proc_name(void *obj, const char *name, size_t name_size)
         return make_gsl_err(gsl_FAIL);
     }
 
-    /* import comit in progress */
+    /* import commit in progress */
+
     err = knd_get_proc(repo, name, name_size, &proc, task);
     if (!err) goto doublet;
-
     entry = knd_dict_get(task->proc_name_idx, name, name_size);
     if (!entry) {
         entry = self->entry;
-        err = knd_dict_set(task->proc_name_idx,
-                           name, name_size,
-                           (void*)entry);
+        err = knd_dict_set(task->proc_name_idx, name, name_size, (void*)entry);
         if (err) return make_gsl_err_external(err);
         return make_gsl_err(gsl_OK);
     }

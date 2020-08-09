@@ -399,8 +399,7 @@ gsl_err_t kndClassInst_read_state(struct kndClassInst *self,
 }
 
 int knd_import_class_inst(struct kndClass *self,
-                          const char *rec,
-                          size_t *total_size,
+                          const char *rec, size_t *total_size,
                           struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;

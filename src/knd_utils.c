@@ -101,6 +101,25 @@ extern void knd_calc_num_id(const char *id, size_t id_size, size_t *numval)
     //knd_log("%.*s => %zu", id_size, id, aggr);
 }
 
+extern void knd_build_conc_abbr(const char *name, size_t name_size, char *buf, size_t *buf_size)
+{
+    const char *c = name;
+    size_t i = name_size;
+    size_t abbr_size = 0;
+
+    while (i) {
+        if (isupper(*c)) {
+            *(buf + abbr_size) = *c;
+            abbr_size++;
+            if (abbr_size >= KND_ID_SIZE) return;
+        }
+        c++;
+        i--;
+    }
+    *buf_size = abbr_size;
+    // knd_log("class: \"%.*s\"  abbr: \"%.*s\"", name_size, name, abbr_size, buf);
+}
+
 extern void
 knd_num_to_str(size_t numval, char *buf, size_t *buf_size, size_t base)
 {

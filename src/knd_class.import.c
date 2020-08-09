@@ -64,7 +64,10 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
         knd_log(".. set class name: \"%.*s\"..", name_size, name);
 
     /* initial bulk load in progress */
-    if (task->type == KND_LOAD_STATE) {
+    switch (task->type) {
+    case KND_LOAD_STATE:
+
+        knd_build_conc_abbr(name, name_size, self->abbr, &self->abbr_size);
         entry = knd_shared_dict_get(repo->class_name_idx, name, name_size);
         if (!entry) {
             entry = self->entry;
@@ -98,6 +101,8 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
         task->ctx->http_code = HTTP_CONFLICT;
         task->ctx->error = KND_CONFLICT;
         return make_gsl_err(gsl_FAIL);
+    default:
+        break;
     }
 
     /* commit in progress */
@@ -158,9 +163,7 @@ static gsl_err_t set_class_var(void *obj, const char *name, size_t name_size)
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
         knd_log(".. repo \"%.*s\" to check a class var name: %.*s [task id:%zu]",
-                repo->name_size,
-                repo->name,
-                name_size, name, task->id);
+                repo->name_size, repo->name, name_size, name, task->id);
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);

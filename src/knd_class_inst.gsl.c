@@ -61,7 +61,7 @@ int knd_class_inst_export_GSL(struct kndClassInst *self,
                          self->entry->id_size);                      RET_ERR();
         err = out->writec(out, '}');                                 RET_ERR();
     }
-    if (task->ctx->use_alias) {
+    if (task->ctx->use_alias && self->alias_size) {
         err = out->write(out, "{_as ", strlen("{_as "));             RET_ERR();
         err = out->write(out, self->alias,
                          self->alias_size);                   RET_ERR();

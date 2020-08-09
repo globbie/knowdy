@@ -235,6 +235,26 @@ static int export_JSON(struct kndText *self,
     return knd_OK;
 }
 
+int knd_par_export_GSL(struct kndPar *par,
+                       struct kndTask *task)
+{
+    struct kndOutput *out = task->out;
+    int err;
+
+    err = out->writef(out, "{%zu", par->numid);         RET_ERR();
+
+    if (par->class_declars) {
+        err = export_class_declars(par->class_declars, task);                      RET_ERR();
+    }
+
+    if (par->proc_declars) {
+        err = export_proc_declars(par->proc_declars, task);                        RET_ERR();
+    }
+
+    err = out->writec(out, '}');                        RET_ERR();
+    return knd_OK;
+}
+
 int knd_text_export(struct kndText *self,
                     knd_format format,
                     struct kndTask *task)
