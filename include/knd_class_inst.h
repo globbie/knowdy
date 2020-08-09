@@ -107,7 +107,7 @@ int knd_class_inst_export(struct kndClassInst *self,
                           bool is_list_item,
                           struct kndTask *task);
 int knd_class_inst_set_export(struct kndClassInst *self, knd_format format,
-                                     struct kndTask *task);
+                              struct kndTask *task);
 
 int knd_class_inst_commit_state(struct kndClass *self,
                                 struct kndStateRef *children,

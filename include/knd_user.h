@@ -29,6 +29,12 @@ struct kndUserContext
     struct kndRepo *base_repo;
 
     //TODO: permits
+
+    /* usage statistics */
+    size_t num_tasks;
+
+    struct kndUserContext *prev;
+    struct kndUserContext *next;
 };
 
 struct kndUser

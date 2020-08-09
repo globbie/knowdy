@@ -188,6 +188,7 @@ static int save_elem(struct kndSet *self,
     /* assign elem */
     if (!self->allow_overwrite &&
         parent_idx->elems[idx_pos] != NULL) {
+        knd_log("set elem already exists");
         return knd_CONFLICT;
     }
 
@@ -246,7 +247,10 @@ int knd_set_add(struct kndSet *self,
     // knd_log(".. adding ELEM \"%.*s\"", key_size, key);
 
     err = save_elem(self, self->idx, elem, key, key_size);
-    if (err) return err;
+    if (err) {
+        knd_log("failed to add a set elem: %d", err);
+        return err;
+    }
     return knd_OK;
 }
 

@@ -671,7 +671,7 @@ int knd_attr_select_clause(struct kndAttr *attr,
             // task->attr_var = attr_var;
         }
     }
-     return knd_OK;
+    return knd_OK;
 }
 
 extern int knd_attr_var_match(struct kndAttrVar *self,
