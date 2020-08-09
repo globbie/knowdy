@@ -23,16 +23,16 @@ struct LocalContext {
 };
 
 static int inherit_arg(void *obj,
-                        const char *unused_var(elem_id),
-                        size_t unused_var(elem_id_size),
-                        size_t unused_var(count),
-                        void *elem)
+                       const char *unused_var(elem_id),
+                       size_t unused_var(elem_id_size),
+                       size_t unused_var(count),
+                       void *elem)
 {
-    struct LocalContext *ctx = obj;
-    struct kndTask *task = ctx->task;
-    struct kndMemPool *mempool = task->mempool;
-    struct kndProc *self = ctx->proc;
-    struct kndSet     *arg_idx = self->arg_idx;
+    struct LocalContext  *ctx = obj;
+    struct kndTask       *task = ctx->task;
+    struct kndMemPool    *mempool = task->mempool;
+    struct kndProc       *self = ctx->proc;
+    struct kndSet        *arg_idx = self->arg_idx;
     struct kndProcArgRef *src_ref = elem;
     struct kndProcArg    *arg    = src_ref->arg;
     struct kndProcArgRef *ref;
@@ -40,8 +40,7 @@ static int inherit_arg(void *obj,
 
     if (DEBUG_PROC_RESOLVE_LEVEL_2) 
         knd_log("..  \"%.*s\" proc arg inherited by %.*s..",
-                arg->name_size, arg->name,
-                self->name_size, self->name);
+                arg->name_size, arg->name, self->name_size, self->name);
 
     err = knd_proc_arg_ref_new(mempool, &ref);                                    RET_ERR();
     ref->arg = arg;
@@ -51,9 +50,7 @@ static int inherit_arg(void *obj,
     if (DEBUG_PROC_RESOLVE_LEVEL_2) 
         knd_log("== inherit arg with id: %.*s", arg->id_size, arg->id);
 
-    err = arg_idx->add(arg_idx,
-                       arg->id, arg->id_size,
-                       (void*)ref);                                               RET_ERR();
+    err = arg_idx->add(arg_idx, arg->id, arg->id_size, (void*)ref);                    RET_ERR();
     return knd_OK;
 }
 
@@ -79,9 +76,7 @@ static int inherit_args(struct kndProc *self,
         .proc = self
     };
 
-    err = base->arg_idx->map(base->arg_idx,
-                              inherit_arg,
-                              (void*)&ctx);                                        RET_ERR();
+    err = base->arg_idx->map(base->arg_idx, inherit_arg, (void*)&ctx);             RET_ERR();
     return knd_OK;
 }
 
@@ -193,6 +188,13 @@ int knd_proc_resolve(struct kndProc *self,
 
     if (self->bases) {
         err = resolve_parents(self, repo, task);                                  RET_ERR();
+    }
+
+    if (self->result_classname_size) {
+        err = knd_get_class_entry(repo, self->result_classname, self->result_classname_size,
+                                  &self->result, task);
+        KND_TASK_ERR("no such class: %.*s", self->result_classname_size, self->result_classname);
+        //knd_log("EFFECT: %.*s", self->result_classname_size, self->result_classname);
     }
 
     //   if (self->proc_call) {

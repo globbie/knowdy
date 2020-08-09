@@ -96,15 +96,10 @@ static int kndSet_traverse(struct kndSet *self,
             knd_log("-- set elem idx mempool limit reached :(");
             return err;
         }
-
         result_idx->idxs[i] = sub_idx;
 
-        err = kndSet_traverse(self,
-                              idx,
-                              nested_idxs, num_idxs,
-                              sub_idx);
+        err = kndSet_traverse(self, idx, nested_idxs, num_idxs, sub_idx);
         if (err) return err;
-
     }
     
     return knd_OK;
@@ -128,10 +123,7 @@ extern int knd_set_intersect(struct kndSet *self,
                 self->base->name_size, self->base->name, num_sets);
 
     /* sort sets by size */
-    qsort(sets,
-          num_sets,
-          sizeof(struct kndSet*),
-          compare_set_by_size_ascend);
+    qsort(sets, num_sets, sizeof(struct kndSet*), compare_set_by_size_ascend);
 
     /* the smallest set is taken as a base */
     base_idx = sets[0]->idx;
@@ -140,10 +132,7 @@ extern int knd_set_intersect(struct kndSet *self,
     for (size_t i = 0; i < num_idxs; i++)
         idxs[i] = sets[i]->idx;
 
-    err = kndSet_traverse(self,
-                          base_idx,
-                          idxs, num_idxs,
-                          self->idx);
+    err = kndSet_traverse(self, base_idx, idxs, num_idxs, self->idx);
     if (err) return err;
 
     return knd_OK;
@@ -254,10 +243,10 @@ int knd_set_add(struct kndSet *self,
     return knd_OK;
 }
 
-static int kndSet_get_elem(struct kndSet *self,
-                           const char *key,
-                           size_t key_size,
-                           void **elem)
+int knd_set_get(struct kndSet *self,
+                const char *key,
+                size_t key_size,
+                void **elem)
 {
     int err;
 
@@ -303,9 +292,9 @@ static int kndSet_traverse_idx(struct kndSetElemIdx *parent_idx,
     return knd_OK;
 }
 
-static int kndSet_map(struct kndSet *self,
-                      map_cb_func cb,
-                      void *obj)
+int knd_set_map(struct kndSet *self,
+                map_cb_func cb,
+                void *obj)
 {
     size_t count = 0;
     int err;
@@ -474,8 +463,8 @@ int knd_set_sync(struct kndSet *self,
 int knd_set_init(struct kndSet *self)
 {
     self->add = knd_set_add;
-    self->get = kndSet_get_elem;
-    self->map = kndSet_map;
+    self->get = knd_set_get;
+    self->map = knd_set_map;
     return knd_OK;
 }
 

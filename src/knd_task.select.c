@@ -104,6 +104,11 @@ static gsl_err_t parse_format(void *obj,
           .name_size = strlen("offset"),
           .parse = gsl_parse_size_t,
           .obj = &self->ctx->format_offset
+        },
+        { .name = "depth",
+          .name_size = strlen("depth"),
+          .parse = gsl_parse_size_t,
+          .obj = &self->ctx->max_depth
         }
     };
 

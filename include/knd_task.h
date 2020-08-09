@@ -55,6 +55,7 @@ typedef enum knd_agent_role_type {
 typedef enum knd_task_spec_type {
     KND_GET_STATE,
     KND_SELECT_STATE,
+    KND_READ_STATE,
     KND_COMMIT_STATE,
     KND_INNER_STATE,
     KND_INNER_COMMIT_STATE,
@@ -95,7 +96,6 @@ struct kndMemBlock {
     struct kndMemBlock *next;
 };
 
-
 struct kndTaskContext {
     char id[KND_ID_SIZE];
     size_t id_size;
@@ -134,6 +134,7 @@ struct kndTaskContext {
     size_t depth;
     size_t max_depth;
     bool use_numid;
+    bool use_alias;
 
     // TODO: subscription channel
     // to push any commits

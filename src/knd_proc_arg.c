@@ -897,10 +897,20 @@ int knd_proc_arg_inst_mem(struct kndMemPool *mempool,
 int knd_proc_arg_ref_new(struct kndMemPool *mempool,
                          struct kndProcArgRef **self)
 {
-    int err = knd_mempool_alloc(mempool,
+    int err;
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool,
                                 KND_MEMPAGE_TINY,
                                 sizeof(struct kndProcArgRef),
                                 (void**)self);                      RET_ERR();
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool,
+                                     KND_MEMPAGE_TINY,
+                                     sizeof(struct kndProcArgRef),
+                                     (void**)self);                      RET_ERR();
+    }
     return knd_OK;
 }
 

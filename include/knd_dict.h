@@ -18,25 +18,19 @@ struct kndDictItem
 
 struct kndDict
 {
-    struct kndDictItem**hash_array;
+    struct kndDictItem **hash_array;
     size_t size;
 
     struct kndMemPool *mempool;
+    size_t num_keys;
     size_t num_items;
 };
 
-void* knd_dict_get(struct kndDict *self,
-                   const char *key,
-                   size_t key_size);
+void* knd_dict_get(struct kndDict *self, const char *key, size_t key_size);
 
-int knd_dict_set(struct kndDict *self,
-                 const char *key,
-                 size_t key_size,
-                 void *data);
+int knd_dict_set(struct kndDict *self, const char *key, size_t key_size, void *data);
 
-int knd_dict_remove(struct kndDict *self,
-                    const char *key,
-                    size_t key_size);
+int knd_dict_remove(struct kndDict *self, const char *key, size_t key_size);
 
 int knd_dict_new(struct kndDict **self,
                  struct kndMemPool *mempool,

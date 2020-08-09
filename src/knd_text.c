@@ -36,8 +36,8 @@ static gsl_err_t parse_synode(void *obj,
                               const char *rec,
                               size_t *total_size);
 
-static int knd_class_declar_new(struct kndMemPool *mempool,
-                                struct kndClassDeclaration **result)
+int knd_class_declar_new(struct kndMemPool *mempool,
+                         struct kndClassDeclaration **result)
 {
     void *page;
     int err;
@@ -119,8 +119,7 @@ static int knd_synode_new(struct kndMemPool *mempool,
     return knd_OK;
 }
 
-static int knd_clause_new(struct kndMemPool *mempool,
-                          struct kndClause **result)
+int knd_clause_new(struct kndMemPool *mempool, struct kndClause **result)
 {
     void *page;
     int err;
@@ -139,8 +138,7 @@ static int knd_clause_new(struct kndMemPool *mempool,
     return knd_OK;
 }
 
-static int knd_sent_new(struct kndMemPool *mempool,
-                        struct kndSentence **result)
+int knd_sentence_new(struct kndMemPool *mempool, struct kndSentence **result)
 {
     void *page;
     int err;
@@ -159,8 +157,7 @@ static int knd_sent_new(struct kndMemPool *mempool,
     return knd_OK;
 }
 
-static int knd_statement_new(struct kndMemPool *mempool,
-                             struct kndStatement **result)
+int knd_statement_new(struct kndMemPool *mempool, struct kndStatement **result)
 {
     void *page;
     int err;
@@ -179,8 +176,7 @@ static int knd_statement_new(struct kndMemPool *mempool,
     return knd_OK;
 }
 
-static int knd_par_new(struct kndMemPool *mempool,
-                       struct kndPar **result)
+int knd_par_new(struct kndMemPool *mempool, struct kndPar **result)
 {
     void *page;
     int err;
@@ -908,7 +904,7 @@ static gsl_err_t parse_sent_item(void *obj,
     gsl_err_t parser_err;
     int err;
 
-    err = knd_sent_new(mempool, &sent);
+    err = knd_sentence_new(mempool, &sent);
     if (err) return make_gsl_err_external(err);
     ctx->sent = sent;
 

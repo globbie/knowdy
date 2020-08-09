@@ -290,10 +290,10 @@ int knd_proc_get_arg(struct kndProc *self,
     int err;
 
     if (DEBUG_PROC_LEVEL_2) {
-        knd_log("\n.. \"%.*s\" proc (repo: %.*s) to select arg \"%.*s\" arg_idx:%p",
+        knd_log("\n.. \"%.*s\" proc (repo: %.*s) to select arg \"%.*s\"",
                 self->name_size, self->name,
                 self->entry->repo->name_size, self->entry->repo->name,
-                name_size, name, arg_idx);
+                name_size, name);
     }
 
     ref = knd_shared_dict_get(arg_name_idx, name, name_size);
@@ -313,20 +313,16 @@ int knd_proc_get_arg(struct kndProc *self,
         arg = ref->arg;
         if (DEBUG_PROC_LEVEL_2) {
             knd_log("== arg %.*s is used in proc: %.*s",
-                    name_size, name,
-                    ref->proc->name_size,
-                    ref->proc->name);
+                    name_size, name, ref->proc->name_size, ref->proc->name);
         }
-
         if (ref->proc == self) break;
 
         err = knd_proc_is_base(ref->proc, self);
         if (!err) break;
     }
     if (!arg) return knd_NO_MATCH;
-    
-    err = arg_idx->get(arg_idx,
-                       arg->id, arg->id_size, (void**)&ref);            RET_ERR();
+
+    err = arg_idx->get(arg_idx, arg->id, arg->id_size, (void**)&ref);
     if (err) return knd_NO_MATCH;
 
     *result = ref;
@@ -394,8 +390,7 @@ int knd_get_proc(struct kndRepo *repo,
         knd_log(".. \"%.*s\" repo to get proc: \"%.*s\"..",
                 repo->name_size, repo->name, name_size, name);
 
-    entry = knd_shared_dict_get(repo->proc_name_idx,
-                                name, name_size);
+    entry = knd_shared_dict_get(repo->proc_name_idx, name, name_size);
     if (!entry) {
         if (repo->base) {
             err = knd_get_proc(repo->base, name, name_size, result, task);
@@ -496,19 +491,34 @@ int knd_proc_var_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
-                            sizeof(struct kndProcVar), &page);          RET_ERR();
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
+                                sizeof(struct kndProcVar), &page);          RET_ERR();
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_TINY,
+                                     sizeof(struct kndProcVar), &page);          RET_ERR();
+        break;
+    }
     *result = page;
     return knd_OK;
 }
 
 int knd_proc_arg_var_new(struct kndMemPool *mempool,
-                                struct kndProcArgVar **result)
+                         struct kndProcArgVar **result)
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
-                            sizeof(struct kndProcArgVar), &page);                 RET_ERR();
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
+                                sizeof(struct kndProcArgVar), &page);                 RET_ERR();
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_TINY,
+                                     sizeof(struct kndProcArgVar), &page);                 RET_ERR();
+    }
     *result = page;
     return knd_OK;
 }
@@ -538,8 +548,15 @@ int knd_proc_ref_new(struct kndMemPool *mempool,
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY, sizeof(struct kndProcRef), &page);
-    if (err) return err;
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY, sizeof(struct kndProcRef), &page);
+        if (err) return err;
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_TINY, sizeof(struct kndProcRef), &page);
+        if (err) return err;
+    }
     *result = page;
     return knd_OK;
 }

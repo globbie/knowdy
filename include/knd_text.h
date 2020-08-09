@@ -134,6 +134,10 @@ struct kndPar
     struct kndSentence *last_sent;
     size_t num_sents;
 
+    struct kndClassDeclaration *class_declars;
+    struct kndProcDeclaration  *proc_declars;
+    struct kndDict *name_idx;
+
     struct kndPar *next;
 };
 
@@ -151,7 +155,7 @@ struct kndText
     struct kndPar *last_par;
     size_t num_pars;
 
-    /* translated renderings of master content: manual or automatic */
+    /* translated renderings of deep semantics: manual or automatic */
     struct kndText *trs;
     size_t num_trs;
 
@@ -162,13 +166,14 @@ struct kndText
 };
 
 void knd_text_str(struct kndText *self, size_t depth);
-gsl_err_t knd_text_import(struct kndText *self,
-                          const char *rec,
-                          size_t *total_size,
-                          struct kndTask *task);
+gsl_err_t knd_text_import(struct kndText *self, const char *rec, size_t *total_size, struct kndTask *task);
 
-int knd_text_export(struct kndText *self,
-                    knd_format format,
-                    struct kndTask *task);
-int knd_text_new(struct kndMemPool *mempool,
-                 struct kndText   **self);
+int knd_text_export(struct kndText *self, knd_format format, struct kndTask *task);
+int knd_par_export_GSL(struct kndPar *par, struct kndTask *task);
+
+int knd_text_new(struct kndMemPool *mempool, struct kndText **result);
+int knd_par_new(struct kndMemPool *mempool, struct kndPar **result);
+int knd_class_declar_new(struct kndMemPool *mempool, struct kndClassDeclaration **result);
+int knd_sentence_new(struct kndMemPool *mempool, struct kndSentence **result);
+int knd_clause_new(struct kndMemPool *mempool, struct kndClause **result);
+int knd_statement_new(struct kndMemPool *mempool, struct kndStatement **result);

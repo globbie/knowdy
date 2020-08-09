@@ -125,7 +125,9 @@ int knd_class_inst_export_GSP(struct kndClassInst *self,  struct kndTask *task);
 
 // knd_class_inst.gsl.c
 int knd_class_inst_export_GSL(struct kndClassInst *self,
-                              bool is_list_item, struct kndTask *task);
+                              bool is_list_item,
+                              struct kndTask *task,
+                              size_t depth);
 
 // knd_class_inst.import.c
 //gsl_err_t knd_import_class_inst(struct kndClassInst *self,

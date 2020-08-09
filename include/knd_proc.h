@@ -179,11 +179,7 @@ struct kndProc
     const char *name;
     size_t name_size;
 
-    size_t id;
-    size_t next_id;
-
     struct kndProcEntry *entry;
-
     struct kndText *tr;
 
     struct kndState * _Atomic states;
@@ -211,6 +207,7 @@ struct kndProc
 
     const char *result_classname;
     size_t result_classname_size;
+    struct kndClassEntry *result;
 
     struct kndProcEstimate estimate;
 
@@ -249,7 +246,8 @@ void knd_proc_inst_str(struct kndProcInst *self, size_t depth);
 
 int knd_proc_inst_export_GSL(struct kndProcInst *self,
                              bool is_list_item,
-                             struct kndTask *task);
+                             struct kndTask *task,
+                             size_t depth);
 
 gsl_err_t knd_proc_inst_import(struct kndProcInst *self,
                                struct kndRepo *repo,

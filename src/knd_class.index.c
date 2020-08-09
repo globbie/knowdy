@@ -276,8 +276,9 @@ int knd_class_index(struct kndClass *self,
     self->indexing_in_progress = true;
 
     if (DEBUG_CLASS_INDEX_LEVEL_2) {
-        knd_log(".. indexing class \"%.*s\"..",
-                self->entry->name_size, self->entry->name);
+        knd_log(".. indexing class \"%.*s\" (id:%.*s) ..",
+                self->entry->name_size, self->entry->name,
+                self->entry->id_size, self->entry->id);
     }
 
     /* a child of the root class */
@@ -296,8 +297,9 @@ int knd_class_index(struct kndClass *self,
                               (void*)&ctx);                                        RET_ERR();
 
     if (DEBUG_CLASS_INDEX_LEVEL_2)
-        knd_log("++ class \"%.*s\" indexed!",
-                self->entry->name_size, self->entry->name);
+        knd_log("++ class \"%.*s\" (id:%.*s) indexed!",
+                self->entry->name_size, self->entry->name,
+                self->entry->id_size, self->entry->id);
 
     self->is_indexed = true;
     return knd_OK;

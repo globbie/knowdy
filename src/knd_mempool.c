@@ -25,7 +25,21 @@ static int present_status(struct kndMemPool *self,
                           struct kndOutput *out)
 {
     int err;
-    err = out->writef(out, "{\"used_pages\":%zu}", self->pages_used);    RET_ERR();
+    err = out->writef(out, "{base-pages     %zu of %zu {used %.2f%%}}\n",
+                      self->pages_used, self->num_pages,
+                      (double)self->pages_used / self->num_pages * 100);                      RET_ERR();
+    err = out->writef(out, "{small-x4-pages %zu of %zu {used %.2f%%}}\n",
+                      self->small_x4_pages_used, self->num_small_x4_pages,
+                      (double)self->small_x4_pages_used / self->num_small_x4_pages * 100);    RET_ERR();
+    err = out->writef(out, "{small-x2-pages %zu of %zu {used %.2f%%}}\n",
+                      self->small_x2_pages_used, self->num_small_x2_pages,
+                      (double)self->small_x2_pages_used / self->num_small_x2_pages * 100);    RET_ERR();
+    err = out->writef(out, "{small-pages    %zu of %zu {used %.2f%%}}\n",
+                      self->small_pages_used, self->num_small_pages,
+                      (double)self->small_pages_used / self->num_small_pages * 100);          RET_ERR();
+    err = out->writef(out, "{tiny-pages     %zu of %zu {used %.2f%%}}\n",
+                      self->tiny_pages_used, self->num_tiny_pages,
+                      (double)self->tiny_pages_used / self->num_tiny_pages * 100);            RET_ERR();
     return knd_OK;
 }
 

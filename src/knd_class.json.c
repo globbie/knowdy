@@ -407,7 +407,6 @@ extern int knd_class_set_export_JSON(struct kndSet *set,
                      strlen(",\"batch\":["));                                     RET_ERR();
 
     curr_depth = task->ctx->max_depth;
-
     task->ctx->max_depth = 1;
 
     err = set->map(set, export_class_set_elem, (void*)task);
@@ -656,8 +655,8 @@ static int export_baseclass_vars(struct kndClass *self,
         }
 
         if (item->attrs) {
-            item->attrs->depth = task->depth;
-            item->attrs->max_depth = task->ctx->max_depth;
+            //item->attrs->depth = task->depth;
+            //item->attrs->max_depth = task->ctx->max_depth;
             err = knd_attr_vars_export_JSON(item->attrs,
                                             task, false);      RET_ERR();
         }

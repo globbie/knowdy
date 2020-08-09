@@ -187,7 +187,7 @@ int knd_class_inst_export(struct kndClassInst *self,
         case KND_FORMAT_JSON:
             return knd_class_inst_export_JSON(self, is_list_item, task);
         case KND_FORMAT_GSL:
-            return knd_class_inst_export_GSL(self, is_list_item, task);
+            return knd_class_inst_export_GSL(self, is_list_item, task, 0);
         case KND_FORMAT_GSP:
             return knd_class_inst_export_GSP(self, task);
         default:

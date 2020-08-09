@@ -51,7 +51,14 @@ typedef enum knd_logic { KND_LOGIC_AND,
 #define RET_ERR(S)  if (err) { printf("%s", "" #S);                               \
                               printf ("-- <%s> failed at line %d of file \"%s\"\n",\
                                       __func__, __LINE__, __FILE__); return err; } 
-#define MEMPOOL_ERR(S) if (err) { printf("-- mempool failed to alloc \"%s\"\n", "" #S);                               \
+
+#define OUT(...) \
+    { \
+        int e = out->write(out, __VA_ARGS__); \
+        if (e) return e; \
+    }
+
+#define MEMPOOL_ERR(S) if (err) { printf("-- mempool failed to alloc \"%s\"\n", "" #S); \
         printf ("-- <%s> failed at line %d of file \"%s\"\n",           \
                 __func__, __LINE__, __FILE__); return err; } 
 #define ALLOC_ERR(V) if (!(V)) { return knd_NOMEM; }

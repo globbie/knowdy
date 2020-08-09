@@ -88,7 +88,6 @@ struct kndClassVar
     size_t init_state;
     size_t num_states;
 
-    //struct kndClass *root_class;
     struct kndClass *parent;
 
     struct kndClassVar *next;
@@ -145,6 +144,9 @@ struct kndClass
 {
     const char *name;
     size_t name_size;
+
+    char abbr[KND_ID_SIZE];
+    size_t abbr_size;
 
     struct kndClassEntry *entry;
     struct kndMemBlock *memblock;
@@ -206,17 +208,10 @@ int knd_get_class_by_id(struct kndRepo *self,
                         struct kndClass **result,
                         struct kndTask *task);
 
-extern gsl_err_t knd_import_class_var(struct kndClassVar *self,
-                                      const char *rec,
-                                      size_t *total_size,
-                                      struct kndTask *task);
-
-int knd_is_base(struct kndClass *self,
-                struct kndClass *base);
+int knd_is_base(struct kndClass *self, struct kndClass *child);
 
 int knd_class_get_attr_var(struct kndClass *self,
-                           const char *name,
-                           size_t name_size,
+                           const char *name, size_t name_size,
                            struct kndAttrVar **result);
 
 int knd_class_get_attr(struct kndClass *self,
@@ -245,13 +240,13 @@ int knd_class_export_state(struct kndClassEntry *self,
                            knd_format format,
                            struct kndTask *task);
 
-extern gsl_err_t knd_parse_gloss_array(void *obj,
-                                       const char *rec,
-                                       size_t *total_size);
-extern gsl_err_t knd_parse_summary_array(void *obj,
-                                         const char *rec,
-                                         size_t *total_size);
-
+gsl_err_t knd_parse_gloss_array(void *obj,
+                                const char *rec,
+                                size_t *total_size);
+gsl_err_t knd_parse_summary_array(void *obj,
+                                  const char *rec,
+                                  size_t *total_size);
+// knd_class.gsl.c
 int knd_export_class_state_GSL(struct kndClassEntry *self,
                                struct kndTask *task);
 
@@ -259,6 +254,15 @@ int knd_class_export_GSL(struct kndClassEntry *self,
                          struct kndTask *task,
                          bool is_list_item,
                          size_t depth);
+
+int knd_class_read_GSL(const char *rec,
+                       size_t *total_size,
+                       struct kndClassEntry **self,
+                       struct kndTask *task);
+gsl_err_t knd_read_class_var(struct kndClassVar *self,
+                             const char *rec,
+                             size_t *total_size,
+                             struct kndTask *task);
 
 int knd_empty_set_export_GSL(struct kndClass *self,
                              struct kndTask *task);
