@@ -470,13 +470,10 @@ gsl_err_t knd_parse_select_user(void *obj,
     return make_gsl_err(gsl_OK);
 
  cleanup:
-
     return parser_err;
 }
 
-gsl_err_t knd_create_user(void *obj,
-                          const char *rec,
-                          size_t *total_size)
+gsl_err_t knd_create_user(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
     struct kndUser *self = task->shard->user;
@@ -491,8 +488,10 @@ gsl_err_t knd_create_user(void *obj,
     }
 
     err = knd_import_class_inst(self->class, rec, total_size, task);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-
+    if (err) {
+        knd_log("failed to import a User class inst: %.*s", task->log->buf_size, task->log->buf);
+        return *total_size = 0, make_gsl_err_external(err);
+    }
     err = knd_class_inst_commit_state(self->class,
                                       task->ctx->class_inst_state_refs,
                                       task->ctx->num_class_inst_state_refs,

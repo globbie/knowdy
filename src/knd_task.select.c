@@ -345,6 +345,7 @@ gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
+        knd_log("-- task err: %.*s", self->log->buf_size, self->log->buf);
         goto final;
     }
 
@@ -355,6 +356,8 @@ gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
         if (self->user_ctx) repo = self->user_ctx->repo;
         err = knd_confirm_commit(repo, self);
         if (err) return make_gsl_err_external(err);
+
+        knd_log(".. build report for commit %zu", self->ctx->commit->numid);
         break;
     case KND_RESTORE_STATE:
         knd_log("== restore commits ==");

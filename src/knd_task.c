@@ -155,17 +155,14 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
 
     task->input = input;
     task->input_size = input_size;
-
     task->output = NULL;
     task->output_size = 0;
 
     if (DEBUG_TASK_LEVEL_2) {
         size_t chunk_size = KND_TEXT_CHUNK_SIZE;
-        if (task->input_size < chunk_size)
-            chunk_size = task->input_size;
+        if (task->input_size < chunk_size) chunk_size = task->input_size;
         knd_log("== INPUT (size:%zu): %.*s ..",
-                task->input_size,
-                chunk_size, task->input);
+                task->input_size, chunk_size, task->input);
     }
 
     struct gslTaskSpec specs[] = {
@@ -175,8 +172,7 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
           .obj = task
         }
     };
-    parser_err = gsl_parse_task(task->input, &total_size,
-                                specs, sizeof specs / sizeof specs[0]);
+    parser_err = gsl_parse_task(task->input, &total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
         if (!task->log->buf_size) {
             task->http_code = HTTP_INTERNAL_SERVER_ERROR;

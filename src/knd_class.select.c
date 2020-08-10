@@ -944,6 +944,7 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
+        knd_log("failed to import class inst: %.*s", task->log->buf_size, task->log->buf);
         return parser_err;
     }
     if (!ctx.selected_class)

@@ -15,8 +15,7 @@
 #define DEBUG_STATE_LEVEL_3 0
 #define DEBUG_STATE_LEVEL_TMP 1
 
-extern int knd_state_new(struct kndMemPool *mempool,
-                         struct kndState **result)
+extern int knd_state_new(struct kndMemPool *mempool, struct kndState **result)
 {
     void *page;
     int err;
@@ -33,8 +32,7 @@ extern int knd_state_new(struct kndMemPool *mempool,
     return knd_OK;
 }
 
-extern int knd_state_ref_new(struct kndMemPool *mempool,
-                             struct kndStateRef **result)
+extern int knd_state_ref_new(struct kndMemPool *mempool, struct kndStateRef **result)
 {
     void *page;
     int err;

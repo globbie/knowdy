@@ -16,7 +16,7 @@ import (
 
 type Config struct {
 	ListenAddress     string        `json:"listen-address"`
-	ParentAddress     string        `json:"parent-address"`
+	ParentAddress     string        `json:"parent-address,required"`
 	KndConfigPath     string        `json:"shard-config"`
 	RequestsMax       int           `json:"requests-max"`
 	SlotAwaitDuration time.Duration `json:"slot-await-duration"`
@@ -40,7 +40,7 @@ func init() {
 
 	flag.StringVar(&configPath, "config-path", "/etc/knowdy/service.json", "path to http service config")
 	flag.StringVar(&kndConfigPath, "shard-config", "/etc/knowdy/shard.gsl", "path to Knowdy config")
-	flag.StringVar(&listenAddress, "listen-address", "127.0.0.1:8080", "Knowdy listen address")
+	flag.StringVar(&listenAddress, "listen-address", "", "Knowdy listen address")
 	flag.StringVar(&parentAddress, "parent-address", "", "parent service address")
 	flag.IntVar(&requestsMax, "requests-limit", 10, "maximum number of requests to process simultaneously")
 	flag.DurationVar(&duration, "request-limit-duration", 1*time.Second, "free slot awaiting time")
@@ -123,7 +123,8 @@ func main() {
 		close(done)
 	}()
 
-	log.Println("Knowdy server is ready to handle requests at:", cfg.ListenAddress)
+	log.Printf("Knowdy \"%s\" service (role:%s) is ready to handle requests at %s",
+		proc.Name, proc.Role, cfg.ListenAddress)
 
 	err = server.ListenAndServe()
 	if err != nil && err != http.ErrServerClosed {
@@ -170,7 +171,8 @@ func gslHandler(proc *kndProc) http.Handler {
 		}
 		result, _, err := proc.RunTask(string(body), len(body))
 		if err != nil {
-			http.Error(w, "internal server error: "+err.Error(),
+			// TODO HTTP error mapping
+			http.Error(w, err.Error(),
 				http.StatusInternalServerError)
 			return
 		}

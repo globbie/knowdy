@@ -84,23 +84,21 @@ int knd_class_inst_update_indices(struct kndRepo *repo,
     struct kndMemPool *mempool = task->mempool;
     int err;
 
-    if (DEBUG_INST_LEVEL_TMP) {
-        knd_log(".. repo \"%.*s\" to update inst indices of class \"%.*s\" (repo:%.*s)..",
+    if (DEBUG_INST_LEVEL_2)
+        knd_log(".. repo \"%.*s\" to update inst indices of class \"%.*s\" (repo:%.*s)",
                 repo->name_size, repo->name,
                 baseclass->name_size, baseclass->name,
                 baseclass->repo->name_size, baseclass->repo->name);
-    }
 
     /* user repo selected: activate copy-on-write */
     if (task->user_ctx) {
         mempool = task->shard->user->mempool;
         c = knd_shared_dict_get(repo->class_name_idx,
-                                baseclass->name,
-                                baseclass->name_size);
+                                baseclass->name, baseclass->name_size);
 
         if (baseclass->repo != repo) {
             if (!c) {
-                if (DEBUG_INST_LEVEL_2) {
+                if (DEBUG_INST_LEVEL_TMP) {
                     knd_log("NB: copy-on-write activated in repo %.*s",
                             repo->name_size, repo->name);
                 }

@@ -304,11 +304,9 @@ static int restore_journals(struct kndRepo *self,
         }
 
         if (DEBUG_REPO_LEVEL_2)
-            knd_log(".. restoring the journal file: %.*s",
-                    out->buf_size, out->buf);
+            knd_log(".. restoring the journal file: %.*s", out->buf_size, out->buf);
 
-        err = knd_task_read_file_block(task, out->buf, (size_t)st.st_size,
-                                       &memblock);
+        err = knd_task_read_file_block(task, out->buf, (size_t)st.st_size, &memblock);
         KND_TASK_ERR("failed to read memblock from %s", out->buf);
 
         err = restore_commits(self, memblock, task);
@@ -321,15 +319,11 @@ static int restore_journals(struct kndRepo *self,
     return knd_OK;
 }
 
-static gsl_err_t parse_sysrepo_class(void *obj,
-                                     const char *rec,
-                                     size_t *total_size)
+static gsl_err_t parse_sysrepo_class(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
-
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_3)
         knd_log(".. parsing the system repo class select: \"%.*s\"", 64, rec);
-
     return knd_class_select(task->repo, rec, total_size, task);
 }
 
@@ -348,7 +342,7 @@ static int apply_commit(void *obj,
     size_t total_size = commit->rec_size;
     int err;
 
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_3)
         knd_log(".. applying commit: #%zu", commit->numid);
 
     knd_task_reset(task);
@@ -463,13 +457,13 @@ static int restore_state(struct kndRepo *self,
 
     // NB: agent count starts from 1
     for (size_t i = 1; i < KND_MAX_TASKS; i++) {
-        buf_size = snprintf(buf, KND_TEMP_BUF_SIZE,
-                            "agent_%zu/", i);
+        buf_size = snprintf(buf, KND_TEMP_BUF_SIZE, "agent_%zu/", i);
         err = out->write(out, buf, buf_size);
         KND_TASK_ERR("agent path construction failed");
 
         if (stat(out->buf, &st)) {
-            knd_log("-- no such file: %.*s", out->buf_size, out->buf);
+            if (DEBUG_REPO_LEVEL_2)
+                knd_log("-- no such folder: %.*s", out->buf_size, out->buf);
             break;
         }
         err = restore_journals(self, task);
@@ -485,19 +479,15 @@ static int restore_state(struct kndRepo *self,
     /* all commits are there in the idx,
        time to apply them in timely order */
     task->repo = self;
-    err = self->snapshot.commit_idx->map(self->snapshot.commit_idx,
-                                         apply_commit,
-                                         (void*)task);
+    err = self->snapshot.commit_idx->map(self->snapshot.commit_idx, apply_commit, (void*)task);
     KND_TASK_ERR("failed to apply commits");
 
     atomic_store_explicit(&self->snapshot.num_commits,
                           self->snapshot.commit_idx->num_elems, memory_order_relaxed);
 
-    if (DEBUG_REPO_LEVEL_TMP) {
+    if (DEBUG_REPO_LEVEL_TMP)
         knd_log("== repo \"%.*s\", total commits applied: %zu",
-                self->name_size, self->name,
-                self->snapshot.commit_idx->num_elems);
-    }                 
+                self->name_size, self->name, self->snapshot.num_commits);
     return knd_OK;
 }
 
@@ -1370,9 +1360,8 @@ static int update_indices(struct kndRepo *self,
     struct kndSharedDict *name_idx = repo->class_name_idx;
     int err;
 
-    if (DEBUG_REPO_LEVEL_TMP)
-        knd_log(".. commit #%zu updating indices of %.*s..",
-                commit->numid, self->name_size, self->name);
+    if (DEBUG_REPO_LEVEL_2)
+        knd_log(".. commit #%zu updating indices of %.*s..", commit->numid, self->name_size, self->name);
 
     if (task->user_ctx) {
         mempool = task->shard->user->mempool;
@@ -1382,25 +1371,20 @@ static int update_indices(struct kndRepo *self,
 
     for (ref = commit->class_state_refs; ref; ref = ref->next) {
         entry = ref->obj;
-
-        if (DEBUG_REPO_LEVEL_TMP)
+        if (DEBUG_REPO_LEVEL_2)
             knd_log(".. idx update of class \"%.*s\" (phase:%d)",
                     entry->name_size, entry->name, ref->state->phase);
 
         switch (ref->state->phase) {
         case KND_CREATED:
-
             if (DEBUG_REPO_LEVEL_3)
                 knd_log(".. class name idx (%p) of repo \"%.*s\" to register class \"%.*s\"",
                         name_idx, self->name_size, self->name,
                         entry->name_size, entry->name);
 
             /* register new class */
-            err = knd_shared_dict_set(name_idx,
-                                      entry->name,  entry->name_size,
-                                      (void*)entry,
-                                      mempool,
-                                      commit, &item, false);
+            err = knd_shared_dict_set(name_idx, entry->name,  entry->name_size,
+                                      (void*)entry, mempool, commit, &item, false);
             KND_TASK_ERR("failed to register class %.*s", entry->name_size, entry->name);
             entry->dict_item = item;
             continue;
@@ -1477,22 +1461,18 @@ static int check_class_conflicts(struct kndRepo *unused_var(self),
             /* check class name idx */
             // knd_log(".. any new states in class name idx?");
 
-            state = atomic_load_explicit(&entry->dict_item->states,
-                                         memory_order_acquire);
+            state = atomic_load_explicit(&entry->dict_item->states, memory_order_acquire);
 
             for (; state; state = state->next) {
                 if (state->commit == new_commit) continue;
 
-                confirm = atomic_load_explicit(&state->commit->confirm,
-                                               memory_order_acquire);
+                confirm = atomic_load_explicit(&state->commit->confirm, memory_order_acquire);
                 switch (confirm) {
                 case KND_VALID_STATE:
                 case KND_PERSISTENT_STATE:
-                    atomic_store_explicit(&new_commit->confirm,
-                                          KND_CONFLICT_STATE, memory_order_release);
+                    atomic_store_explicit(&new_commit->confirm, KND_CONFLICT_STATE, memory_order_release);
                     err = knd_FAIL;
-                    KND_TASK_ERR("%.*s class already registered",
-                                 entry->name_size, entry->name);
+                    KND_TASK_ERR("%.*s class already registered", entry->name_size, entry->name);
                 default:
                     break;
                 }
@@ -1518,8 +1498,7 @@ static int check_commit_conflicts(struct kndRepo *self,
                 new_commit->numid, new_commit, new_commit->orig_state_id);
 
     do {
-        head_commit = atomic_load_explicit(&self->snapshot.commits,
-                                           memory_order_acquire);
+        head_commit = atomic_load_explicit(&self->snapshot.commits, memory_order_acquire);
         if (head_commit) {
             new_commit->prev = head_commit;
             new_commit->numid = head_commit->numid + 1;
@@ -1534,8 +1513,7 @@ static int check_commit_conflicts(struct kndRepo *self,
     atomic_fetch_add_explicit(&self->snapshot.num_commits, 1, memory_order_relaxed);
 
     if (DEBUG_REPO_LEVEL_2)
-        knd_log("++ no conflicts found, commit #%zu confirmed!",
-                new_commit->numid);
+        knd_log("++ no conflicts found, commit #%zu confirmed!", new_commit->numid);
 
     return knd_OK;
 }
@@ -1604,19 +1582,14 @@ static int save_commit_WAL(struct kndRepo *self, struct kndCommit *commit, struc
         err = knd_LIMIT;
         KND_TASK_ERR("journal filename too long");
     }
-
     memcpy(filename, out->buf, out->buf_size);
     filename_size = out->buf_size;
     filename[filename_size] = '\0';
 
-    // knd_log("WAL filename: %.*s", out->buf_size, out->buf);
-
     if (stat(out->buf, &st)) {
-        if (DEBUG_REPO_LEVEL_TMP)
-            knd_log(".. initializing the journal: \"%.*s\"",
-                    filename_size, filename);
-        err = knd_write_file((const char*)filename,
-                             "{WAL\n", strlen("{WAL\n"));
+        if (DEBUG_REPO_LEVEL_3)
+            knd_log(".. initializing the journal: \"%.*s\"", filename_size, filename);
+        err = knd_write_file((const char*)filename, "{WAL\n", strlen("{WAL\n"));
         KND_TASK_ERR("failed writing to file %.*s", filename, filename_size);
         goto append_wal_rec;
     }
@@ -1652,21 +1625,20 @@ static int save_commit_WAL(struct kndRepo *self, struct kndCommit *commit, struc
  append_wal_rec:
 
     // TODO: bufferize WAL
+
     out->reset(out);
     err = out->writef(out, "{commit %zu{_ts %zu}{_size %zu}",
-                      commit->numid, (size_t)commit->timestamp,
-                      rec_size);
+                      commit->numid, (size_t)commit->timestamp, rec_size);
     KND_TASK_ERR("commit header output failed");
 
+    // TODO: generate GSL to reflect any autogenerated names
     err = out->write(out, rec, rec_size);
     KND_TASK_ERR("commit body output failed");
 
     err = out->write(out, "}\n", strlen("}\n"));
     KND_TASK_ERR("commit footer output failed");
 
-    // knd_log(".. appending to WAL: %.*s", out->buf_size, out->buf);
-    err = knd_append_file((const char*)filename,
-                          out->buf, out->buf_size);
+    err = knd_append_file((const char*)filename, out->buf, out->buf_size);
     KND_TASK_ERR("WAL file append failed");
 
     return knd_OK;
@@ -1690,8 +1662,7 @@ static int resolve_class_inst_commit(struct kndStateRef *state_refs,
         case KND_CREATED:
             if (!entry->inst->is_resolved) {
                 err = knd_class_inst_resolve(entry->inst, task);
-                KND_TASK_ERR("failed to resolve class inst %.*s",
-                             entry->name_size, entry->name);
+                KND_TASK_ERR("failed to resolve class inst %.*s", entry->name_size, entry->name);
             }
             break;
         default:
@@ -1718,8 +1689,7 @@ static int resolve_commit(struct kndCommit *commit, struct kndTask *task)
         entry = ref->obj;
         if (!entry->class->is_resolved) {
             err = knd_class_resolve(entry->class, task);
-            KND_TASK_ERR("failed to resolve class \"%.*s\"",
-                         entry->name_size, entry->name);
+            KND_TASK_ERR("failed to resolve class \"%.*s\"", entry->name_size, entry->name);
         }
 
         state = ref->state;
@@ -1754,10 +1724,9 @@ int knd_confirm_commit(struct kndRepo *self, struct kndTask *task)
 
     assert(commit != NULL);
 
-    if (DEBUG_REPO_LEVEL_2) {
-        knd_log(".. \"%.*s\" repo to apply commit #%zu",
-                self->name_size, self->name, commit->numid);
-    }
+    if (DEBUG_REPO_LEVEL_2)
+        knd_log(".. \"%.*s\" repo to confirm commit #%zu", self->name_size, self->name, commit->numid);
+    
     commit->repo = self;
 
     err = resolve_commit(commit, task);
