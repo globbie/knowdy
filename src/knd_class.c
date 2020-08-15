@@ -54,7 +54,7 @@ static int str_attr_idx_rec(void *unused_var(obj),
             src_ref->attr->name_size, src_ref->attr->name,
             src_ref->attr_var);
     */
-    str_attr_vars(src_ref->attr_var, 2);
+    knd_attr_var_str(src_ref->attr_var, 2);
 
     return knd_OK;
 }
@@ -63,6 +63,7 @@ static void str(struct kndClass *self, size_t depth)
 {
     struct kndText *tr;
     struct kndClassVar *item;
+    struct kndAttrVar *var;
     struct kndClassRef *ref;
     struct kndClass *c;
     struct kndState *state;
@@ -114,7 +115,8 @@ static void str(struct kndClass *self, size_t depth)
             }
 
             if (item->attrs) {
-                str_attr_vars(item->attrs, depth + 1);
+                for (var = item->attrs; var; var = var->next)
+                    knd_attr_var_str(var, depth + 1);
             }
         }
     }

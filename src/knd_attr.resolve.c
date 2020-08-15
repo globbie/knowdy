@@ -623,7 +623,7 @@ int knd_resolve_attr_vars(struct kndClass *self,
             knd_log("++ got attr: %.*s [id:%.*s] indexed:%d",
                     attr->name_size, attr->name,
                     attr->id_size, attr->id, attr->is_indexed);
-            str_attr_vars(attr_var, 1);
+            knd_attr_var_str(attr_var, 1);
         }
 
         if (attr->is_a_set) {
@@ -702,9 +702,7 @@ int knd_resolve_attr_vars(struct kndClass *self,
     if (DEBUG_ATTR_RESOLVE_LEVEL_1) {
         knd_log("++ resolved attr vars of class \"%.*s\"!",
                 self->entry->name_size, self->entry->name);
-        self->attr_idx->map(self->attr_idx,
-                            str_attr_ref,
-                            (void*)self);
+        self->attr_idx->map(self->attr_idx, str_attr_ref, (void*)self);
     }
     return knd_OK;
 }

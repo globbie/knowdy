@@ -51,7 +51,6 @@ static gsl_err_t run_get_inst(void *obj, const char *name, size_t name_size)
 
     /* to return a single object */
     task->type = KND_GET_STATE;
-    inst->attr_inst_state_refs = NULL;
 
     if (DEBUG_INST_LEVEL_2) {
         knd_class_inst_str(inst, 0);
@@ -92,7 +91,6 @@ parse_get_inst_by_numid(void *obj, const char *rec, size_t *total_size)
     entry = result;
     inst = entry->inst;
     task->type = KND_GET_STATE;
-    inst->attr_inst_state_refs = NULL;
 
     if (DEBUG_INST_LEVEL_TMP) {
         knd_class_inst_str(inst, 0);
@@ -225,114 +223,7 @@ static gsl_err_t parse_select_state(void *obj,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static int validate_attr(struct kndClassInst *self,
-                         const char *name,
-                         size_t name_size,
-                         struct kndAttr **result,
-                         struct kndAttrInst **result_attr_inst)
-{
-    struct kndClass *conc;
-    struct kndAttrRef *attr_ref;
-    struct kndAttr *attr;
-    struct kndAttrInst *attr_inst = NULL;
-    //struct kndOutput *log = self->blueprint->entry->repo->log;
-    int err;
-
-    if (DEBUG_INST_LEVEL_2)
-        knd_log(".. \"%.*s\" to validate attr_inst: \"%.*s\"",
-                self->name_size, self->name, name_size, name);
-
-    /* check existing attr_insts */
-    for (attr_inst = self->attr_insts; attr_inst; attr_inst = attr_inst->next) {
-        if (!memcmp(attr_inst->attr->name, name, name_size)) {
-            if (DEBUG_INST_LEVEL_2)
-                knd_log("++ ATTR_INST \"%.*s\" is already set!", name_size, name);
-            *result_attr_inst = attr_inst;
-            return knd_OK;
-        }
-    }
-
-    conc = self->blueprint;
-    err = knd_class_get_attr(conc, name, name_size, &attr_ref);
-    if (err) {
-        knd_log("  -- \"%.*s\" attr is not approved :(", name_size, name);
-        //log->reset(log);
-        /*e = log->write(log, name, name_size);
-        if (e) return e;
-        e = log->write(log, " attr not confirmed",
-                       strlen(" attr not confirmed"));
-                       if (e) return e; */
-        return err;
-    }
-
-    attr = attr_ref->attr;
-    if (DEBUG_INST_LEVEL_2) {
-        const char *type_name = knd_attr_names[attr->type];
-        knd_log("++ \"%.*s\" ATTR_INST \"%s\" attr type: \"%s\"",
-                name_size, name, attr->name, type_name);
-    }
-
-    *result = attr;
-    return knd_OK;
-}
-
-static gsl_err_t parse_select_attr_inst(void *obj,
-                                   const char *name, size_t name_size,
-                                   const char *rec, size_t *total_size)
-{
-    struct LocalContext *ctx = obj;
-    struct kndTask *task = ctx->task;
-    struct kndClassInst *inst = ctx->class_inst;
-    struct kndAttrInst *attr_inst = NULL;
-    struct kndAttr *attr = NULL;
-    int err;
-    gsl_err_t parser_err;
-
-    if (!inst) {
-        knd_log("-- no inst selected");
-        return *total_size = 0, make_gsl_err(gsl_FAIL);
-    }
-
-    if (DEBUG_INST_LEVEL_2)
-        knd_log(".. parsing attr_inst \"%.*s\" select REC: %.*s",
-                name_size, name, 128, rec);
-
-    err = validate_attr(inst, name, name_size, &attr, &attr_inst);
-    if (err) {
-        knd_log("-- \"%.*s\" attr not validated", name_size, name);
-        return *total_size = 0, make_gsl_err_external(err);
-    }
-
-    if (!attr_inst) {
-        knd_log("-- attr_inst not set");
-        return *total_size = 0, make_gsl_err_external(knd_FAIL);
-    }
-
-    switch (attr_inst->attr->type) {
-    case KND_ATTR_INNER:
-        parser_err = knd_select_class_inst(attr_inst->inner->blueprint->entry,
-                                           rec, total_size, task);
-        if (parser_err.code) return parser_err;
-        break;
-        /*case KND_ATTR_TEXT:
-        parser_err = knd_text_parse_select(attr_inst, rec, total_size, task);
-        if (parser_err.code) return parser_err;
-        break;*/
-    default:
-        parser_err = knd_attr_inst_parse_select(attr_inst, rec, total_size, task);
-        if (parser_err.code) return parser_err;
-    }
-
-    if (DEBUG_INST_LEVEL_2)
-        knd_log("++ attr_inst %.*s select parsing OK!",
-                attr_inst->attr->name_size, attr_inst->attr->name);
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t remove_inst(void *obj,
-                             const char *unused_var(name),
-                             size_t unused_var(name_size))
+static gsl_err_t remove_inst(void *obj, const char *unused_var(name), size_t unused_var(name_size))
 {
     struct LocalContext *ctx = obj;
     struct kndClassInst *self = ctx->class_inst;
@@ -454,79 +345,6 @@ static gsl_err_t present_inst_selection(void *obj, const char *unused_var(val),
     return make_gsl_err(gsl_OK);
 }
 
-/*
-static int update_attr_inst_states(struct kndClassInst *self, struct kndTask *task)
-{
-    struct kndStateRef *ref;
-    struct kndState *state;
-    struct kndClassInst *inst;
-    struct kndAttrInst *attr_inst;
-    struct kndClass *c;
-    struct kndMemPool *mempool = task->mempool;
-    int err;
-
-    if (DEBUG_INST_LEVEL_TMP)
-        knd_log("\n++ \"%.*s\" class inst updates happened:",
-                self->name_size, self->name);
-
-    for (ref = self->attr_inst_state_refs; ref; ref = ref->next) {
-        state = ref->state;
-        if (state->val) {
-            attr_inst = state->val->obj;
-            knd_log("== attr_inst %.*s updated!",
-                    attr_inst->attr->name_size, attr_inst->attr->name);
-        }
-        if (state->children) {
-            knd_log("== child attr_inst updated: %zu", state->numid);
-        }
-    }
-
-    err = knd_state_new(mempool, &state);
-    if (err) {
-        knd_log("-- class inst state alloc failed");
-        return err;
-    }
-    err = knd_state_ref_new(mempool, &ref);
-    if (err) {
-        knd_log("-- state ref alloc failed :(");
-        return err;
-    }
-    ref->state = state;
-
-    state->phase = KND_UPDATED;
-    self->num_states++;
-    state->numid = self->num_states;
-    state->children = self->attr_inst_state_refs;
-    self->attr_inst_state_refs = NULL;
-    self->states = state;
-
-    // inform your immediate parent or baseclass
-    if (self->parent) {
-        attr_inst = self->parent;
-        inst = attr_inst->parent;
-
-        knd_log(".. inst \"%.*s\" to get new updates..",
-                inst->name_size, inst->name);
-
-        ref->next = inst->attr_inst_state_refs;
-        inst->attr_inst_state_refs = ref;
-    } else {
-        c = self->base;
-
-        knd_log("\n.. class \"%.*s\" (repo:%.*s) to get new updates..",
-                c->name_size, c->name,
-                c->entry->repo->name_size, c->entry->repo->name);
-        ref->type = KND_STATE_CLASS_INST;
-        ref->obj = (void*)self;
-
-        ref->next = task->class_inst_state_refs;
-        task->class_inst_state_refs = ref;
-    }
-
-    return knd_OK;
-}
-*/
-
 gsl_err_t knd_select_class_inst(struct kndClassEntry *c,
                                 const char *rec, size_t *total_size,
                                 struct kndTask *task)
@@ -561,14 +379,6 @@ gsl_err_t knd_select_class_inst(struct kndClassEntry *c,
           .parse = parse_select_state,
           .obj = &ctx
         },
-        { .validate = parse_select_attr_inst,
-          .obj = &ctx
-        }/*,
-        { .type = GSL_SET_STATE,
-          .is_validator = true,
-          .validate = parse_import_attr_inst,
-          .obj = self->
-          }*/,
         { .is_selector = true,
           .name = "_depth",
           .name_size = strlen("_depth"),

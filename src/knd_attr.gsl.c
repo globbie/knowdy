@@ -402,7 +402,6 @@ int knd_attr_var_export_GSL(struct kndAttrVar *var, struct kndTask *task, size_t
 {
     struct kndOutput *out = task->out;
     struct kndAttr *attr = var->attr;
-    struct kndClass *c;
     int err;
 
     if (task->ctx->depth >= task->ctx->max_depth) {

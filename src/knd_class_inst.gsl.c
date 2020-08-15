@@ -3,50 +3,13 @@
 #include <string.h>
 
 #include "knd_class_inst.h"
-#include "knd_attr_inst.h"
+#include "knd_attr.h"
 
-static int export_inner_GSL(struct kndClassInst *self,
-                            struct kndTask *task)
-{
-    struct kndAttrInst *attr_inst;
-    int err;
-
-    // knd_log(".. GSL export inner obj.. ");
-    /* anonymous obj */
-    //err = out->writec(out, '{');   RET_ERR();
-
-    attr_inst = self->attr_insts;
-    while (attr_inst) {
-        err = knd_attr_inst_export(attr_inst, KND_FORMAT_GSL, task);
-        if (err) {
-            KND_TASK_ERR("attr inst GSL export failed: %.*s",
-                         attr_inst->attr->name_size, attr_inst->attr->name);
-            return err;
-        }
-        attr_inst = attr_inst->next;
-    }
-    //err = out->writec(out, '}');   RET_ERR();
-
-    return knd_OK;
-}
-
-int knd_class_inst_export_GSL(struct kndClassInst *self,
-                              bool is_list_item,
-                              struct kndTask *task,
-                              size_t depth)
+int knd_class_inst_export_GSL(struct kndClassInst *self, bool is_list_item, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     size_t curr_depth;
     int err;
-
-    if (self->type == KND_OBJ_INNER) {
-        err = export_inner_GSL(self, task);
-        if (err) {
-            knd_log("-- inner obj GSL export failed");
-            return err;
-        }
-        return knd_OK;
-    }
 
     if (!is_list_item) {
         err = out->writec(out, '{');                                              RET_ERR();

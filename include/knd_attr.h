@@ -288,7 +288,7 @@ int knd_attr_export_GSL(struct kndAttr *self, struct kndTask *task, size_t depth
 
 int knd_attr_export(struct kndAttr *self,
                            knd_format format, struct kndTask *task);
-void str_attr_vars(struct kndAttrVar *item, size_t depth);
+void knd_attr_var_str(struct kndAttrVar *item, size_t depth);
 void knd_attr_str(struct kndAttr *attr, size_t depth);
 
 int knd_attr_var_new(struct kndMemPool *mempool,

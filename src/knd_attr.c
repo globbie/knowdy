@@ -92,15 +92,12 @@ void knd_attr_str(struct kndAttr *self, size_t depth)
         knd_log("%*s}",  depth * KND_OFFSET_SIZE, "");
 }
 
-extern void str_attr_vars(struct kndAttrVar *var, size_t depth)
+void knd_attr_var_str(struct kndAttrVar *var, size_t depth)
 {
     assert(var->attr != NULL);
 
     struct kndAttr *attr = var->attr;
     struct kndAttrVar *item;
-    const char *classname = "";
-    size_t classname_size = 0;
-    struct kndClass *c;
     const char *type_name = "";
 
     type_name = knd_attr_names[attr->type];
@@ -127,7 +124,7 @@ extern void str_attr_vars(struct kndAttrVar *var, size_t depth)
                     type_name, var->val_size, var->val);
         }
         for (item = var->children; item; item = item->next)
-            str_attr_vars(item, depth + 1);
+            knd_attr_var_str(item, depth + 1);
         return;
     }
 
@@ -135,7 +132,7 @@ extern void str_attr_vars(struct kndAttrVar *var, size_t depth)
         knd_log("%*s%.*s (%s)  [", depth * KND_OFFSET_SIZE, "", var->name_size, var->name, type_name);
 
         for (item = var->list; item; item = item->next)
-            str_attr_vars(item, depth + 1);
+            knd_attr_var_str(item, depth + 1);
 
         knd_log("%*s]", depth * KND_OFFSET_SIZE, "");
         return;
@@ -166,7 +163,7 @@ extern void str_attr_vars(struct kndAttrVar *var, size_t depth)
     }
 
     for (item = var->children; item; item = item->next)
-        str_attr_vars(item, depth + 1);
+        knd_attr_var_str(item, depth + 1);
 }
 
 static int export_JSON(struct kndAttr *self,
@@ -580,7 +577,7 @@ extern int knd_get_arg_value(struct kndAttrVar *src,
         knd_log("ref class: %.*s",
                 src->attr->ref_class->name_size,
                 src->attr->ref_class->name);
-        str_attr_vars(src, 1);
+        knd_attr_var_str(src, 1);
     }
     
     if (src->attr->ref_class) {
@@ -654,7 +651,7 @@ extern int knd_get_arg_value(struct kndAttrVar *src,
 
             //knd_log(".. continue to look up the \"%.*s\" attr..",
             //        query->children->name_size, query->children->name);
-            //str_attr_vars(curr_var, 1);
+            //knd_attr_var_str(curr_var, 1);
             
             err = knd_get_arg_value(curr_var, query->children, result_arg);
             if (err) return err;

@@ -47,7 +47,6 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     struct kndSharedDict *class_name_idx = repo->class_name_idx;
     struct kndSharedDict *name_idx = self->blueprint->entry->inst_name_idx;
     struct kndClass *c;
-    struct kndNameBuf *namebuf;
     int err;
 
     if (name_size == 0) return make_gsl_err(gsl_OK);
@@ -110,43 +109,7 @@ static gsl_err_t run_set_alias(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-static int validate_attr(struct kndClassInst *self,
-                         const char *name,
-                         size_t name_size,
-                         struct kndAttr **result,
-                         struct kndAttrInst **result_attr_inst,
-                         struct kndTask *task)
-{
-    struct kndAttrRef *attr_ref;
-    struct kndAttr *attr;
-    struct kndAttrInst *attr_inst = NULL;
-    int err;
-
-    if (DEBUG_INST_IMPORT_LEVEL_2)
-        knd_log(".. \"%.*s\" (base class: %.*s) to validate attr_inst: \"%.*s\"",
-                self->name_size, self->name,
-                self->blueprint->name_size, self->blueprint->name,
-                name_size, name);
-
-    /* check existing attr_insts */
-    for (attr_inst = self->attr_insts; attr_inst; attr_inst = attr_inst->next) {
-        if (!memcmp(attr_inst->attr->name, name, name_size)) {
-            if (DEBUG_INST_IMPORT_LEVEL_2)
-                knd_log("++ ATTR_INST \"%.*s\" is already set!", name_size, name);
-            *result_attr_inst = attr_inst;
-            return knd_OK;
-        }
-    }
-    err = knd_class_get_attr(self->blueprint, name, name_size, &attr_ref);
-    KND_TASK_ERR("\"%.*s\" attr is not approved", name_size, name);
-
-    attr = attr_ref->attr;
-    *result = attr;
-    return knd_OK;
-}
-
-static gsl_err_t import_attr_var(void *obj,
-                                 const char *name, size_t name_size,
+static gsl_err_t import_attr_var(void *obj, const char *name, size_t name_size,
                                  const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
@@ -156,8 +119,7 @@ static gsl_err_t import_attr_var(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t import_attr_var_list(void *obj,
-                                      const char *name, size_t name_size,
+static gsl_err_t import_attr_var_list(void *obj, const char *name, size_t name_size,
                                       const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
@@ -211,20 +173,6 @@ static gsl_err_t import_class_inst(struct kndClassInst *self,
     };
 
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-}
-
-static gsl_err_t run_set_state_id(void *obj, const char *name, size_t name_size)
-{
-    struct kndClassInst *self = obj;
-
-    if (!name_size) return make_gsl_err(gsl_FORMAT);
-    if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
-
-    if (DEBUG_INST_IMPORT_LEVEL_2)
-        knd_log("++ class inst state: \"%.*s\" inst:%.*s",
-                name_size, name, self->name_size, self->name);
-
-    return make_gsl_err(gsl_OK);
 }
 
 static int generate_uniq_inst_name(struct kndClassInst *inst, struct kndTask *task)

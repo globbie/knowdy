@@ -1,7 +1,6 @@
 #include "knd_class_inst.h"
 
 #include "knd_attr.h"
-#include "knd_attr_inst.h"
 #include "knd_set.h"
 #include "knd_output.h"
 
@@ -13,42 +12,10 @@
 #define DEBUG_INST_LEVEL_4 0
 #define DEBUG_INST_LEVEL_TMP 1
 
-static int export_inner_JSON(struct kndClassInst *self,
-                             struct kndTask *task)
+#if 0
+static int export_concise_JSON(struct kndClassInst *self, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
-    struct kndAttrInst *attr_inst;
-    int err;
-
-    err = out->writec(out, '{');                                                  RET_ERR();
-
-    attr_inst = self->attr_insts;
-    while (attr_inst) {
-        err = knd_attr_inst_export(attr_inst, KND_FORMAT_JSON, task);
-        if (err) {
-            knd_log("-- inst attr_inst export failed: %.*s",
-                    attr_inst->attr->name_size, attr_inst->attr->name);
-            return err;
-        }
-        if (attr_inst->next) {
-            err = out->write(out, ",", 1);
-            if (err) return err;
-        }
-        attr_inst = attr_inst->next;
-    }
-
-    err = out->writec(out, '}');   RET_ERR();
-
-    return knd_OK;
-}
-
-static int export_concise_JSON(struct kndClassInst *self,
-                               struct kndTask *task)
-{
-    struct kndOutput *out = task->out;
-    struct kndClassInst *obj;
-    struct kndAttrInst *attr_inst;
-    bool is_concise = true;
     int err;
 
     err = out->write(out, ",\"_class\":\"", strlen(",\"_class\":\""));
@@ -60,71 +27,14 @@ static int export_concise_JSON(struct kndClassInst *self,
     err = out->write(out, "\"", 1);
     if (err) return err;
 
-    for (attr_inst = self->attr_insts; attr_inst; attr_inst = attr_inst->next) {
-        if (DEBUG_INST_LEVEL_3)
-            knd_log(".. export attr_inst: %.*s",
-                    attr_inst->attr->name_size, attr_inst->attr->name);
-
-        /* filter out detailed presentation */
-        if (is_concise) {
-            /* inner obj? */
-            if (attr_inst->inner) {
-                obj = attr_inst->inner;
-
-                /*if (need_separ) {*/
-                err = out->write(out, ",", 1);
-                if (err) return err;
-
-                err = out->write(out, "\"", 1);
-                if (err) return err;
-                err = out->write(out,
-                                 attr_inst->attr->name,
-                                 attr_inst->attr->name_size);
-                if (err) return err;
-                err = out->write(out, "\":", 2);
-                if (err) return err;
-
-                err = knd_class_inst_export(obj, KND_FORMAT_JSON, false, task);
-                if (err) return err;
-
-                //need_separ = true;
-                continue;
-            }
-
-            if (attr_inst->attr)
-                if (attr_inst->attr->concise_level)
-                    goto export_attr_inst;
-
-            if (DEBUG_INST_LEVEL_2)
-                knd_log("  .. skip JSON attr_inst: %s..\n", attr_inst->attr->name);
-            continue;
-        }
-
-        export_attr_inst:
-        /*if (need_separ) {*/
-        err = out->write(out, ",", 1);
-        if (err) return err;
-
-        /* default export */
-        err = knd_attr_inst_export(attr_inst, KND_FORMAT_JSON, task);
-        if (err) {
-            knd_log("-- attr_inst not exported: %s", attr_inst->attr->name);
-            return err;
-        }
-        //need_separ = true;
-    }
     return knd_OK;
 }
+#endif
 
-int knd_class_inst_export_JSON(struct kndClassInst *self,
-                               bool is_list_item,
-                               struct kndTask *task)
+int knd_class_inst_export_JSON(struct kndClassInst *self, bool is_list_item, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
-    struct kndAttrInst *attr_inst;
-    struct kndClassInst *obj;
     struct kndState *state = self->states;
-    bool is_concise = false;
     int err;
 
     if (DEBUG_INST_LEVEL_2) {
@@ -136,16 +46,6 @@ int knd_class_inst_export_JSON(struct kndClassInst *self,
         }
     }
 
-    if (self->type == KND_OBJ_INNER) {
-        err = export_inner_JSON(self, task);
-        if (err) {
-            knd_log("-- inner obj JSON export failed");
-            return err;
-        }
-        return knd_OK;
-    }
-
-    
     err = out->write(out, "{\"_name\":\"", strlen("{\"_name\":\""));              RET_ERR();
     err = out->write(out, self->name, self->name_size);
     if (err) return err;
@@ -181,12 +81,6 @@ int knd_class_inst_export_JSON(struct kndClassInst *self,
         }
     }
 
-    if (task->depth >= task->max_depth) {
-        /* any concise fields? */
-        err = export_concise_JSON(self, task);                                     RET_ERR();
-        goto final;
-    }
-
     err = out->write(out, ",\"_class\":\"", strlen(",\"_class\":\""));
     if (err) return err;
 
@@ -196,71 +90,6 @@ int knd_class_inst_export_JSON(struct kndClassInst *self,
     err = out->write(out, "\"", 1);
     if (err) return err;
 
-    /* TODO: id */
-
-    for (attr_inst = self->attr_insts; attr_inst; attr_inst = attr_inst->next) {
-
-        if (DEBUG_INST_LEVEL_2)
-            knd_log(".. export attr_inst: %.*s",
-                    attr_inst->attr->name_size, attr_inst->attr->name);
-
-        /* filter out detailed presentation */
-        if (is_concise) {
-            /* inner obj? */
-            if (attr_inst->inner) {
-                obj = attr_inst->inner;
-                /*if (need_separ) {*/
-                err = out->write(out, ",", 1);
-                if (err) return err;
-
-                err = out->write(out, "\"", 1);
-                if (err) return err;
-                err = out->write(out,
-                                 attr_inst->attr->name,
-                                 attr_inst->attr->name_size);
-                if (err) return err;
-                err = out->write(out, "\":", 2);
-                if (err) return err;
-
-                err = knd_class_inst_export(obj, KND_FORMAT_JSON, false, task);
-                if (err) return err;
-
-                //need_separ = true;
-                continue;
-            }
-
-            if (attr_inst->attr)
-                if (attr_inst->attr->concise_level)
-                    goto export_attr_inst;
-
-            if (DEBUG_INST_LEVEL_TMP)
-                knd_log("  .. skip JSON attr_inst: %.*s..\n",
-                        attr_inst->attr->name_size, attr_inst->attr->name);
-            continue;
-        }
-
-        export_attr_inst:
-        /*if (need_separ) {*/
-        err = out->write(out, ",", 1);
-        if (err) return err;
-
-        /* default export */
-        err = knd_attr_inst_export(attr_inst, KND_FORMAT_JSON, task);
-        if (err) {
-            knd_log("-- attr_inst not exported: %s", attr_inst->attr->name);
-            return err;
-        }
-        //need_separ = true;
-    }
-
-    /*if (self->entry->rels) {
-        err = out->write(out, ",\"_rel\":", strlen(",\"_rel\":"));                RET_ERR();
-        err = out->writec(out, '[');                                              RET_ERR();
-        err = export_inst_relrefs_JSON(self, task);                                     RET_ERR();
-        err = out->writec(out, ']');                                              RET_ERR();
-        }*/
-
-    final:
     err = out->write(out, "}", 1);
     if (err) return err;
 

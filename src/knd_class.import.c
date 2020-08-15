@@ -360,12 +360,14 @@ static gsl_err_t set_uniq_type(void *obj, const char *name, size_t name_size)
     struct kndClass *self = ctx->class;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
-        knd_log(".. set uniq type: \"%.*s\"", name_size, name);
+        knd_log(".. set uniq type: \"%.*s\" for \"%.*s\"",
+                name_size, name, self->name_size, self->name);
+
     return make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t add_uniq_attr(void *obj, const char *name, size_t name_size,
-                               const char *rec, size_t *total_size)
+                               const char *unused_var(rec), size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndClass *self = ctx->class;
@@ -374,8 +376,8 @@ static gsl_err_t add_uniq_attr(void *obj, const char *name, size_t name_size,
     struct kndAttrRef *ref;
     int err;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
-        knd_log(".. add uniq attr: \"%.*s\"", name_size, name);
+    if (DEBUG_CLASS_IMPORT_LEVEL_2)
+        knd_log(">> add uniq attr: \"%.*s\"", name_size, name);
 
     err = knd_attr_ref_new(mempool, &ref);
     if (err) {

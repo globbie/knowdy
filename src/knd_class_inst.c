@@ -30,8 +30,8 @@
 
 void knd_class_inst_str(struct kndClassInst *self, size_t depth)
 {
-    struct kndAttrInst *attr_inst;
-    struct kndState *state = self->states;
+    //struct kndState *state = self->states;
+    struct kndAttrVar *item;
 
     if (self->type == KND_OBJ_ADDR) {
         knd_log("\n%*s>>> class inst \"%.*s::%.*s\"  numid:%zu",
@@ -43,8 +43,10 @@ void knd_class_inst_str(struct kndClassInst *self, size_t depth)
         //}
     }
 
-    if (self->class_var->attrs)
-        str_attr_vars(self->class_var->attrs, depth + 1);
+    if (self->class_var->attrs) {
+        for (item = self->class_var->attrs; item; item = item->next)
+            knd_attr_var_str(item, depth + 1);
+    }
 }
 
 static int update_attr_var_indices(struct kndClassEntry *blueprint,

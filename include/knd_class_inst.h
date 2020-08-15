@@ -27,7 +27,6 @@ struct kndState;
 struct kndSortTag;
 struct kndAttrInstRef;
 struct kndTask;
-struct kndAttrInst;
 struct kndRepo;
 struct kndClassEntry;
 struct kndOutput;
@@ -77,12 +76,12 @@ struct kndClassInst
     struct kndClassInst *root;
 
     struct kndClassVar *class_var;
-    struct kndAttrInst *parent;
+    //struct kndAttrInst *parent;
 
-    struct kndAttrInst *attr_insts;
-    struct kndAttrInst *tail;
-    size_t num_attr_insts;
-    struct kndStateRef *attr_inst_state_refs;
+    //struct kndAttrInst *attr_insts;
+    //struct kndAttrInst *tail;
+    //size_t num_attr_insts;
+    //struct kndStateRef *attr_inst_state_refs;
 
     bool resolving_in_progress;
     bool is_resolved;

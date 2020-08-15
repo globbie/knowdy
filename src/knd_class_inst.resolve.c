@@ -26,9 +26,7 @@
 int knd_class_inst_resolve(struct kndClassInst *self,
                            struct kndTask *task)
 {
-    struct kndAttrInst *attr_inst;
     int err;
-
     self->resolving_in_progress = true;
 
     if (self->class_var->attrs) {

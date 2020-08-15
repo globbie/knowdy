@@ -35,13 +35,10 @@ struct LocalContext {
     struct kndRepo *repo;
 };
 
-static int update_indices(struct kndRepo *self,
-                          struct kndCommit *commit,
-                          struct kndTask *task);
+static int update_indices(struct kndRepo *self, struct kndCommit *commit, struct kndTask *task);
 
 void knd_repo_del(struct kndRepo *self)
 {
-    char *rec;
     knd_shared_dict_del(self->class_name_idx);
     knd_shared_dict_del(self->attr_name_idx);
     knd_shared_dict_del(self->proc_name_idx);

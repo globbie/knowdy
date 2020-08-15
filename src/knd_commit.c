@@ -70,13 +70,11 @@ static int resolve_class_inst_commit(struct kndStateRef *state_refs,
     return knd_OK;
 }
 
-int knd_dedup_commit(struct kndCommit *commit, struct kndTask *task)
+int knd_dedup_commit(struct kndCommit *commit, struct kndTask *unused_var(task))
 {
-    struct kndState *state;
+    // struct kndState *state;
     struct kndClassEntry *entry;
-    struct kndProcEntry *proc_entry;
     struct kndStateRef *ref;
-    int err;
 
     for (ref = commit->class_state_refs; ref; ref = ref->next) {
         if (ref->state->phase == KND_REMOVED) {
