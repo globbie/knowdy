@@ -323,12 +323,12 @@ static int resolve_baseclasses(struct kndClass *self,
     return knd_OK;
 }
 
-int knd_class_resolve(struct kndClass *self,
-                      struct kndTask *task)
+int knd_class_resolve(struct kndClass *self, struct kndTask *task)
 {
     struct kndClassVar *cvar;
     struct kndClassEntry *entry = self->entry;
     struct kndRepo *repo = entry->repo;
+    struct kndAttrRef *attr_ref, *ref;
     int err;
 
     assert(!self->is_resolved);
@@ -338,13 +338,10 @@ int knd_class_resolve(struct kndClass *self,
                 entry->name_size, entry->name);
         return knd_FAIL;
     }
-
     self->resolving_in_progress = true;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
-        knd_log(".. resolving class \"%.*s\"..",
-                entry->name_size, entry->name);
-    }
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
+        knd_log(".. resolving class \"%.*s\"", entry->name_size, entry->name);
 
     /* primary attrs */
     if (self->num_attrs) {
@@ -368,12 +365,21 @@ int knd_class_resolve(struct kndClass *self,
             }
         }
     }
+
+    /* uniq attr constraints */
+    for (ref = self->uniq; ref; ref = ref->next) {
+        err = knd_class_get_attr(self, ref->name, ref->name_size, &attr_ref);
+        KND_TASK_ERR("no uniq attr \"%.*s\" in class \"%.*s\"",
+                     ref->name_size, ref->name, self->name_size, self->name);
+        ref->attr = attr_ref->attr;
+    }
+    
     self->is_resolved = true;
 
     /* this class is good to go: 
        it can now receive a unique class id */
-    entry->numid = atomic_fetch_add_explicit(&repo->class_id_count, 1,\
-                                             memory_order_relaxed);
+    // TODO: check Writer Role
+    entry->numid = atomic_fetch_add_explicit(&repo->class_id_count, 1, memory_order_relaxed);
     entry->numid++;
     knd_uid_create(entry->numid, entry->id, &entry->id_size);
 
@@ -463,12 +469,8 @@ int knd_resolve_class_ref(struct kndClass *self,
     }
 
     err = knd_get_class(self->entry->repo, name, name_size, &c, task);
-    if (err) {
-        knd_log("-- no such class: %.*s [repo:%.*s]", name_size, name,
-                self->entry->repo->name_size,
-                self->entry->repo->name);
-        return err;
-    }
+    KND_TASK_ERR("class \"%.*s\" not found in repo \"%.*s\"", name_size, name,
+                 self->entry->repo->name_size, self->entry->repo->name);
 
     if (!c->base_is_resolved) {
         err = knd_class_resolve_base(c, task);                                    RET_ERR();
@@ -476,15 +478,11 @@ int knd_resolve_class_ref(struct kndClass *self,
 
     if (base) {
         if (!base->base_is_resolved) {
-            err = knd_class_resolve_base(base, task);                            RET_ERR();
+            err = knd_class_resolve_base(base, task);
+            KND_TASK_ERR("failed to resolve class %.*s", base->name_size, base->name);
         }
         err = knd_is_base(base, c);
-        if (err) {
-            knd_log("-- no inheritance from %.*s to %.*s",
-                    base->name_size, base->name,
-                    c->name_size, c->name);
-            return err;
-        }
+        KND_TASK_ERR("no inheritance from %.*s to %.*s", base->name_size, base->name, c->name_size, c->name);
     }
 
     *result = c;

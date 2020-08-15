@@ -33,10 +33,10 @@ static int export_inner_GSL(struct kndClassInst *self,
 int knd_class_inst_export_GSL(struct kndClassInst *self,
                               bool is_list_item,
                               struct kndTask *task,
-                              size_t unused_var(depth))
+                              size_t depth)
 {
-    struct kndAttrInst *attr_inst;
     struct kndOutput *out = task->out;
+    size_t curr_depth;
     int err;
 
     if (self->type == KND_OBJ_INNER) {
@@ -54,7 +54,6 @@ int knd_class_inst_export_GSL(struct kndClassInst *self,
     }
 
     err = out->write(out, self->name, self->name_size);              RET_ERR();
-
     if (task->ctx->use_numid) {
         err = out->write(out, "{_id ", strlen("{_id "));             RET_ERR();
         err = out->write(out, self->entry->id,
@@ -68,11 +67,10 @@ int knd_class_inst_export_GSL(struct kndClassInst *self,
         err = out->writec(out, '}');                                 RET_ERR();
     }
 
-    /* attr_insts */
-    for (attr_inst = self->attr_insts; attr_inst; attr_inst = attr_inst->next) {
-        err = knd_attr_inst_export(attr_inst, KND_FORMAT_GSL, task);
-        KND_TASK_ERR("export of \"%.*s\" attr_inst failed",
-                     attr_inst->attr->name_size, attr_inst->attr->name);
+    if (self->class_var->attrs) {
+        curr_depth = task->ctx->depth;
+        err = knd_attr_vars_export_GSL(self->class_var->attrs, task, false, depth + 1);  RET_ERR();
+        task->ctx->depth = curr_depth;   
     }
 
     if (!is_list_item) {

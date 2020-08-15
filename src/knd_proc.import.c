@@ -3,6 +3,7 @@
 
 #include <gsl-parser.h>
 
+#include "knd_commit.h"
 #include "knd_proc.h"
 #include "knd_proc_arg.h"
 #include "knd_proc_call.h"

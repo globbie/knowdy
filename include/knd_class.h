@@ -35,7 +35,6 @@ struct kndAttrVar;
 struct kndProcCallArg;
 struct kndClass;
 struct kndText;
-struct kndClass;
 struct kndTask;
 struct kndSet;
 struct kndUser;
@@ -89,6 +88,7 @@ struct kndClassVar
     size_t num_states;
 
     struct kndClass *parent;
+    struct kndClassInst *inst;
 
     struct kndClassVar *next;
 };
@@ -159,7 +159,6 @@ struct kndClass
     size_t init_desc_state;
     size_t num_desc_states;
 
-
     struct kndText *tr;
     struct kndText *summary;
 
@@ -172,6 +171,7 @@ struct kndClass
 
     struct kndSet *attr_idx;
     struct kndAttr *implied_attr;
+    struct kndAttrRef *uniq;
 
     // detect vicious circles
     bool resolving_in_progress;
@@ -346,39 +346,23 @@ int knd_export_class_inst_state_JSON(struct kndClassEntry *self,
 int knd_get_class_attr_value(struct kndClass *src,
                                     struct kndAttrVar *query,
                                     struct kndProcCallArg *arg);
-
 int knd_resolve_classes(struct kndClass *self, struct kndTask *task);
-int knd_class_resolve_base(struct kndClass *self,
-                           struct kndTask *task);
-int knd_class_resolve(struct kndClass *self,
-                             struct kndTask *task);
+int knd_class_resolve_base(struct kndClass *self, struct kndTask *task);
+int knd_class_resolve(struct kndClass *self, struct kndTask *task);
 
 
-int knd_class_commit_new(struct kndMemPool *mempool,
-                                struct kndClassCommit **result);
-
-int knd_class_var_new(struct kndMemPool *mempool,
-                             struct kndClassVar **result);
-
-int knd_class_ref_new(struct kndMemPool *mempool,
-                             struct kndClassRef **result);
-int knd_class_facet_new(struct kndMemPool *mempool,
-                               struct kndClassFacet **result);
-
-
-int knd_class_entry_new(struct kndMemPool *mempool,
-                               struct kndClassEntry **result);
-int knd_inner_class_new(struct kndMemPool *mempool,
-                               struct kndClass **self);
-int knd_class_new(struct kndMemPool *mempool,
-                         struct kndClass **result);
+int knd_class_commit_new(struct kndMemPool *mempool, struct kndClassCommit **result);
+int knd_class_var_new(struct kndMemPool *mempool, struct kndClassVar **result);
+int knd_class_ref_new(struct kndMemPool *mempool, struct kndClassRef **result);
+int knd_class_facet_new(struct kndMemPool *mempool, struct kndClassFacet **result);
+int knd_class_entry_new(struct kndMemPool *mempool, struct kndClassEntry **result);
+int knd_inner_class_new(struct kndMemPool *mempool, struct kndClass **self);
+int knd_class_new(struct kndMemPool *mempool, struct kndClass **result);
 
 // knd_class.select.c
 extern gsl_err_t knd_class_select(struct kndRepo *repo,
-                                  const char *rec, size_t *total_size,
-                                  struct kndTask *task);
-int knd_class_match_query(struct kndClass *self,
-                                 struct kndAttrVar *query);
+                                  const char *rec, size_t *total_size, struct kndTask *task);
+int knd_class_match_query(struct kndClass *self, struct kndAttrVar *query);
 
 // knd_class.states.c
 int knd_retrieve_class_updates(struct kndStateRef *ref,

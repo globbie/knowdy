@@ -318,9 +318,7 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     if (err) goto error;
 
     /* system repo */
-    err = knd_repo_new(&repo, "/", 1,
-                       self->schema_path, self->schema_path_size,
-                       mempool);
+    err = knd_repo_new(&repo, "/", 1, self->schema_path, self->schema_path_size, mempool);
     if (err) goto error;
     self->repo = repo;
 
@@ -343,13 +341,11 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     task->repo = repo;
 
     /* user manager */
-    err = knd_user_new(&user,
-                       self->user_class_name, self->user_class_name_size,
+    err = knd_user_new(&user, self->user_class_name, self->user_class_name_size,
                        self->path, self->path_size,
                        self->user_repo_name, self->user_repo_name_size,
                        self->user_schema_path, self->user_schema_path_size,
-                       self,
-                       task);
+                       self, task);
     if (err) {
         knd_log("-- failed to create a user manager: %.*s",
                 task->output_size, task->output);
@@ -358,17 +354,15 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     self->user = user;
 
     /* clean up all temporary memblocks */
-    if (task)
-        knd_task_free_blocks(task);
+    if (task) knd_task_free_blocks(task);
     
     *shard = self;
     return knd_OK;
  error:
-    if (task) {
-        knd_task_free_blocks(task);
-    }
-    knd_shard_del(self);
 
+    knd_shard_del(self);
+    if (task) knd_task_free_blocks(task);
+ 
     return err;
 }
 

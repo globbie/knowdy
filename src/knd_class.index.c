@@ -292,9 +292,7 @@ int knd_class_index(struct kndClass *self,
         .task = task,
         .class = self
     };
-    err = self->attr_idx->map(self->attr_idx,
-                              index_attr,
-                              (void*)&ctx);                                        RET_ERR();
+    err = self->attr_idx->map(self->attr_idx, index_attr, (void*)&ctx);              RET_ERR();
 
     if (DEBUG_CLASS_INDEX_LEVEL_2)
         knd_log("++ class \"%.*s\" (id:%.*s) indexed!",

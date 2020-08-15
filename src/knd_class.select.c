@@ -1,3 +1,4 @@
+#include "knd_commit.h"
 #include "knd_class.h"
 #include "knd_attr.h"
 #include "knd_task.h"
@@ -867,10 +868,9 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
     gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_2) {
+    if (DEBUG_CLASS_SELECT_LEVEL_2)
         knd_log("\n.. parsing class select rec: \"%.*s\" (repo:%.*s)",
                 32, rec, repo->name_size, repo->name);
-    }
 
     struct LocalContext ctx = {
         .task = task,
@@ -943,12 +943,9 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
     };
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) {
-        knd_log("failed to import class inst: %.*s", task->log->buf_size, task->log->buf);
-        return parser_err;
-    }
-    if (!ctx.selected_class)
-        return make_gsl_err(gsl_OK);
+    if (parser_err.code) return parser_err;
+
+    if (!ctx.selected_class) return make_gsl_err(gsl_OK);
 
     /* any commits happened? */
     switch (task->type) {

@@ -28,7 +28,7 @@ struct kndSortTag;
 struct kndAttrInstRef;
 struct kndTask;
 struct kndAttrInst;
-
+struct kndRepo;
 struct kndClassEntry;
 struct kndOutput;
 struct kndMemPool;
@@ -76,6 +76,7 @@ struct kndClassInst
     struct kndClass *blueprint;
     struct kndClassInst *root;
 
+    struct kndClassVar *class_var;
     struct kndAttrInst *parent;
 
     struct kndAttrInst *attr_insts;
@@ -85,6 +86,7 @@ struct kndClassInst
 
     bool resolving_in_progress;
     bool is_resolved;
+    bool autogenerate_name;
 
     struct kndClassInst *next;
 };

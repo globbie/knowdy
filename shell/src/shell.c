@@ -88,8 +88,7 @@ static int knd_interact(struct kndShard *shard)
                     reader_task->output_size, reader_task->output);
             goto next_line;
         }
-        knd_log("== READER RESULT ==\n%.*s",
-                reader_task->output_size, reader_task->output);
+        knd_log("== READER RESULT ==\n%.*s", reader_task->output_size, reader_task->output);
 
         /* update tasks require another run,
            possibly involving network communication */

@@ -75,8 +75,7 @@ void* knd_shared_dict_get(struct kndSharedDict *self,
 }
 
 int knd_shared_dict_set(struct kndSharedDict *self,
-                        const char *key,
-                        size_t key_size,
+                        const char *key, size_t key_size,
                         void *data,
                         struct kndMemPool *mempool,
                         struct kndCommit *commit,

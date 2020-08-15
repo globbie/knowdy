@@ -251,7 +251,7 @@ static gsl_err_t parse_attr(void *obj,
     self->num_attrs++;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        attr->str(attr, 1);
+        knd_attr_str(attr, 1);
 
     if (attr->is_implied)
         self->implied_attr = attr;
@@ -321,9 +321,7 @@ static gsl_err_t parse_class_var(const char *rec,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_baseclass(void *obj,
-                                 const char *rec,
-                                 size_t *total_size)
+static gsl_err_t parse_baseclass(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
@@ -356,10 +354,64 @@ static gsl_err_t parse_baseclass(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-gsl_err_t knd_class_import(struct kndRepo *repo,
-                           const char *rec,
-                           size_t *total_size,
-                           struct kndTask *task)
+static gsl_err_t set_uniq_type(void *obj, const char *name, size_t name_size)
+{
+    struct LocalContext *ctx = obj;
+    struct kndClass *self = ctx->class;
+
+    if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
+        knd_log(".. set uniq type: \"%.*s\"", name_size, name);
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t add_uniq_attr(void *obj, const char *name, size_t name_size,
+                               const char *rec, size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+    struct kndClass *self = ctx->class;
+    struct kndTask *task = ctx->task;
+    struct kndMemPool *mempool = task->mempool;
+    struct kndAttrRef *ref;
+    int err;
+
+    if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
+        knd_log(".. add uniq attr: \"%.*s\"", name_size, name);
+
+    err = knd_attr_ref_new(mempool, &ref);
+    if (err) {
+        KND_TASK_LOG("failed to alloc kndAttrRef");
+        return *total_size = 0, make_gsl_err_external(err);
+    }
+    ref->name = name;
+    ref->name_size = name_size;
+
+    ref->next = self->uniq;
+    self->uniq = ref;
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_uniq_attr_constraint(void *obj, const char *rec, size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+    gsl_err_t parser_err;
+
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = set_uniq_type,
+          .obj = ctx
+        },
+        { .validate = add_uniq_attr,
+          .obj = ctx
+        }
+    };
+
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) return parser_err;
+
+    return make_gsl_err(gsl_OK);
+}
+
+gsl_err_t knd_class_import(struct kndRepo *repo, const char *rec, size_t *total_size, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
     struct kndClass *c;
@@ -368,8 +420,7 @@ gsl_err_t knd_class_import(struct kndRepo *repo,
     gsl_err_t parser_err;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log("..worker \"%zu\" to import class: \"%.*s\"",
-                task->id, 128, rec);
+        knd_log("..worker \"%zu\" to import class: \"%.*s\"", task->id, 128, rec);
 
     if (task->user_ctx)
         mempool = task->shard->user->mempool;
@@ -421,6 +472,11 @@ gsl_err_t knd_class_import(struct kndRepo *repo,
           .run = set_state_top_option,
           .obj = c
         },
+        { .name = "uniq",
+          .name_size = strlen("uniq"),
+          .parse = parse_uniq_attr_constraint,
+          .obj = &ctx
+        },
         { .validate = parse_attr,
           .obj = &ctx
         }
@@ -428,8 +484,7 @@ gsl_err_t knd_class_import(struct kndRepo *repo,
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
-        KND_TASK_LOG("\"%.*s\" class parsing error",
-                     c->name_size, c->name);
+        KND_TASK_LOG("\"%.*s\" class parsing error: %d", c->name_size, c->name, parser_err.code);
         goto final;
     }
 
@@ -447,8 +502,7 @@ gsl_err_t knd_class_import(struct kndRepo *repo,
     }
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2) {
-        knd_log("++  \"%.*s\" class import completed!",
-                c->name_size, c->name);
+        knd_log("++  \"%.*s\" class import completed!", c->name_size, c->name);
         c->str(c, 1);
     }
 

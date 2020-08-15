@@ -18,6 +18,7 @@
 #include "knd_set.h"
 #include "knd_mempool.h"
 #include "knd_state.h"
+#include "knd_commit.h"
 #include "knd_output.h"
 
 #define DEBUG_USER_LEVEL_0 0

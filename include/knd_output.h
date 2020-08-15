@@ -6,6 +6,13 @@
 
 #define KND_OUTPUT_THRESHOLD_RATIO 0.8
 
+struct kndMemPool;
+
+struct kndNameBuf {
+    char name[KND_NAME_SIZE];
+    size_t name_size;
+};
+
 struct kndOutput
 {
     char *buf;
@@ -43,7 +50,6 @@ struct kndOutput
                               const char *filename);
 };
 
-int knd_output_new(struct kndOutput **self,
-                   char *buf,
-                   size_t capacity);
+int knd_output_new(struct kndOutput **self, char *buf, size_t capacity);
+int knd_name_buf_new(struct kndMemPool *mempool, struct kndNameBuf **result);
 void knd_output_del(struct kndOutput *self);

@@ -286,6 +286,23 @@ static gsl_err_t confirm_implied(void *obj,
     self->is_implied = true;
     return make_gsl_err(gsl_OK);
 }
+static gsl_err_t confirm_required(void *obj,
+                                  const char *unused_var(name),
+                                  size_t unused_var(name_size))
+{
+    struct kndAttr *self = obj;
+    self->is_required = true;
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t confirm_unique(void *obj,
+                                const char *unused_var(name),
+                                size_t unused_var(name_size))
+{
+    struct kndAttr *self = obj;
+    self->is_unique = true;
+    return make_gsl_err(gsl_OK);
+}
 
 static gsl_err_t set_attr_var_name(void *obj, const char *name, size_t name_size)
 {
@@ -337,7 +354,6 @@ static gsl_err_t confirm_attr_var(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-
 static gsl_err_t import_nested_attr_var_list(void *obj,
                                              const char *name, size_t name_size,
                                              const char *rec, size_t *total_size)
@@ -350,15 +366,15 @@ static gsl_err_t import_nested_attr_var_list(void *obj,
     int err;
 
     if (DEBUG_ATTR_LEVEL_2)
-        knd_log(".. import nested attr_var list: \"%.*s\" REC: %.*s",
-                name_size, name, 32, rec);
+        knd_log(".. import nested attr_var list: \"%.*s\" REC: %.*s", name_size, name, 32, rec);
 
     err = knd_attr_var_new(mempool, &attr_var);
     if (err) {
-            return make_gsl_err(err);
+        return make_gsl_err(err);
     }
     attr_var->name = name;
     attr_var->name_size = name_size;
+    attr_var->class_var = parent_attr_var->class_var;
 
     attr_var->next = parent_attr_var->children;
     parent_attr_var->children = attr_var;
@@ -536,12 +552,11 @@ int knd_import_attr_var_list(struct kndClassVar *self,
         knd_log("-- anonymous class var: %.*s?  REC:%.*s", 64, rec);
         struct kndOutput *log = task->log; 
         log->reset(log);
-        e = log->write(log, "no baseclass name specified",
-                     strlen("no baseclass name specified"));
+        e = log->write(log, "no baseclass name specified", strlen("no baseclass name specified"));
         if (e) return e;
         task->http_code = HTTP_BAD_REQUEST;
         return knd_FAIL;
-    } 
+    }
 
     if (DEBUG_ATTR_LEVEL_2)
         knd_log("== import attr attr_var list: \"%.*s\" REC: %.*s",
@@ -724,6 +739,16 @@ gsl_err_t knd_import_attr(struct kndAttr *self,
         { .name = "impl",
           .name_size = strlen("impl"),
           .run = confirm_implied,
+          .obj = self
+        },
+        { .name = "req",
+          .name_size = strlen("req"),
+          .run = confirm_required,
+          .obj = self
+        },
+        { .name = "uniq",
+          .name_size = strlen("uniq"),
+          .run = confirm_unique,
           .obj = self
         },
         { .name = "concise",

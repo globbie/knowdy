@@ -1,4 +1,5 @@
 #include "knd_output.h"
+#include "knd_mempool.h"
 #include "knd_utils.h"
 
 #include <assert.h>
@@ -220,6 +221,25 @@ kndOutput_init(struct kndOutput *self,
     self->write_state_path = kndOutput_write_state_path;
     self->write_file_content = kndOutput_write_file_content;
 
+    return knd_OK;
+}
+
+int knd_name_buf_new(struct kndMemPool *mempool, struct kndNameBuf **result)
+{
+    void *page;
+    int err;
+
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_BASE, sizeof(struct kndNameBuf), &page);
+        RET_ERR();
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_BASE, sizeof(struct kndNameBuf), &page);
+        RET_ERR();
+        break;
+    }
+    *result = page;
     return knd_OK;
 }
 

@@ -20,6 +20,7 @@
 #include "knd_attr.h"
 #include "knd_task.h"
 #include "knd_state.h"
+#include "knd_commit.h"
 #include "knd_user.h"
 #include "knd_repo.h"
 #include "knd_mempool.h"

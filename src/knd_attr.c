@@ -24,8 +24,7 @@
 #define DEBUG_ATTR_LEVEL_5 0
 #define DEBUG_ATTR_LEVEL_TMP 1
 
-static void str(struct kndAttr *self,
-                size_t depth)
+void knd_attr_str(struct kndAttr *self, size_t depth)
 {
     struct kndText *tr;
     const char *type_name = knd_attr_names[self->type];
@@ -93,63 +92,81 @@ static void str(struct kndAttr *self,
         knd_log("%*s}",  depth * KND_OFFSET_SIZE, "");
 }
 
-extern void str_attr_vars(struct kndAttrVar *item, size_t depth)
+extern void str_attr_vars(struct kndAttrVar *var, size_t depth)
 {
-    struct kndAttrVar *curr_item;
-    struct kndAttrVar *list_item;
+    assert(var->attr != NULL);
+
+    struct kndAttr *attr = var->attr;
+    struct kndAttrVar *item;
     const char *classname = "";
     size_t classname_size = 0;
     struct kndClass *c;
-    size_t count = 0;
+    const char *type_name = "";
 
-    if (item->attr) {
-        if (item->attr->is_a_set) {
-            c = item->attr->parent_class;
-            classname = c->entry->name;
-            classname_size = c->entry->name_size;
+    type_name = knd_attr_names[attr->type];
 
-            knd_log("%*s_list attr: \"%.*s\" (parent: %.*s) size: %zu [",
-                    depth * KND_OFFSET_SIZE, "",
-                    item->name_size, item->name,
-                    classname_size, classname,
-                    item->num_list_elems);
-            
-            count = 0;
-            if (item->val_size) {
-                count = 1;
-                knd_log("%*s%zu)  val:%.*s",
-                        depth * KND_OFFSET_SIZE, "",
-                        count,
-                        item->val_size, item->val);
-            }
-            
-            for (list_item = item->list;
-                 list_item;
-                 list_item = list_item->next) {
-                count++;
-                str_attr_vars(list_item, depth + 1);
-            }
-            knd_log("%*s]", depth * KND_OFFSET_SIZE, "");
-            return;
-        } else {
-            knd_log("%*s_attr: \"%.*s\" => %.*s (ref:%p)",
-                    depth * KND_OFFSET_SIZE, "",
-                    item->name_size, item->name,
-                    item->val_size, item->val, item->class);
+    if (var->is_list_item) {
+        switch (attr->type) {
+        case KND_ATTR_INNER:
+            knd_log("%*s* inner \"%.*s\":", depth * KND_OFFSET_SIZE, "",
+                    attr->ref_class->name_size, attr->ref_class->name);
+            break;
+        case KND_ATTR_REF:
+            knd_log("%*s* ref \"%.*s\":", depth * KND_OFFSET_SIZE, "",
+                    attr->ref_class->name_size, attr->ref_class->name);
+            break;
+        default:
+            knd_log("%*s* %s: \"%.*s\"", depth * KND_OFFSET_SIZE, "",
+                    type_name, var->name_size, var->name);
+            break;
         }
+        if (var->implied_attr) {
+            type_name = knd_attr_names[var->implied_attr->type];
+            knd_log("%*s_implied: \"%.*s\" (%s) => %.*s", (depth + 1) * KND_OFFSET_SIZE, "",
+                    var->implied_attr->name_size, var->implied_attr->name,
+                    type_name, var->val_size, var->val);
+        }
+        for (item = var->children; item; item = item->next)
+            str_attr_vars(item, depth + 1);
+        return;
+    }
+
+    if (attr->is_a_set) {
+        knd_log("%*s%.*s (%s)  [", depth * KND_OFFSET_SIZE, "", var->name_size, var->name, type_name);
+
+        for (item = var->list; item; item = item->next)
+            str_attr_vars(item, depth + 1);
+
         knd_log("%*s]", depth * KND_OFFSET_SIZE, "");
-    } else {
-        knd_log("%*s_attr: \"%.*s\" => %.*s",
-                depth * KND_OFFSET_SIZE, "",
-                item->name_size, item->name,
-                item->val_size, item->val);
+        return;
     }
 
-    if (item->children) {
-        for (curr_item = item->children; curr_item; curr_item = curr_item->next) {
-            str_attr_vars(curr_item, depth + 1);
-        }
+    switch (attr->type) {
+        case KND_ATTR_INNER:
+            knd_log("%*s%.*s (inner \"%.*s\")", depth * KND_OFFSET_SIZE, "",
+                    var->name_size, var->name,
+                    attr->ref_class->name_size, attr->ref_class->name);
+            break;
+        case KND_ATTR_REF:
+            knd_log("%*s%.*s (\"%.*s\" class ref) => %.*s", depth * KND_OFFSET_SIZE, "",
+                    var->name_size, var->name,
+                    attr->ref_class->name_size, attr->ref_class->name,
+                    var->class->name_size, var->class->name);
+            break;
+        case KND_ATTR_REL:
+            knd_log("%*s%.*s (\"%.*s\" class inst rel) => \"%.*s\"", depth * KND_OFFSET_SIZE, "",
+                    var->name_size, var->name,
+                    attr->ref_class->name_size, attr->ref_class->name,
+                    var->class_inst_entry->name_size, var->class_inst_entry->name);
+            break;
+        default:
+            knd_log("%*s%.*s (%s) => %.*s", depth * KND_OFFSET_SIZE, "",
+                   var->name_size, var->name,  type_name, var->val_size, var->val);
+            break;
     }
+
+    for (item = var->children; item; item = item->next)
+        str_attr_vars(item, depth + 1);
 }
 
 static int export_JSON(struct kndAttr *self,
@@ -257,6 +274,16 @@ static int export_GSP(struct kndAttr *self, struct kndOutput *out)
 
     if (self->is_implied) {
         err = out->write(out, "{impl}", strlen("{impl}"));
+        if (err) return err;
+    }
+
+    if (self->is_required) {
+        err = out->write(out, "{req}", strlen("{req}"));
+        if (err) return err;
+    }
+
+    if (self->is_unique) {
+        err = out->write(out, "{uniq}", strlen("{uniq}"));
         if (err) return err;
     }
 
@@ -376,10 +403,9 @@ extern int knd_apply_attr_var_commits(struct kndClass *self,
     return knd_OK;
 }
 
-extern void kndAttr_init(struct kndAttr *self)
+void kndAttr_init(struct kndAttr *self)
 {
     memset(self, 0, sizeof(struct kndAttr));
-    self->str = str;
 }
 
 extern int knd_register_attr_ref(void *obj,

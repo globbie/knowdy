@@ -18,6 +18,7 @@
 #include "knd_mempool.h"
 #include "knd_repo.h"
 #include "knd_state.h"
+#include "knd_commit.h"
 #include "knd_class.h"
 #include "knd_class_inst.h"
 #include "knd_attr.h"
@@ -76,8 +77,7 @@ static void str(struct kndClass *self, size_t depth)
             self->entry->id_size, self->entry->id,
             self->entry->numid);
 
-    state = atomic_load_explicit(&self->states,
-                                 memory_order_relaxed);
+    state = atomic_load_explicit(&self->states, memory_order_relaxed);
     for (; state; state = state->next) {
         knd_log("\n%*s_state:%zu",
             depth * KND_OFFSET_SIZE, "",
@@ -148,8 +148,7 @@ int knd_get_class_inst(struct kndClassEntry *self,
     if (DEBUG_CLASS_LEVEL_TMP)
         knd_log(".. \"%.*s\" class (repo:%.*s) to get instance \"%.*s\"..",
                 self->name_size, self->name,
-                self->repo->name_size, self->repo->name,
-                name_size, name);
+                self->repo->name_size, self->repo->name, name_size, name);
 
     if (!self->inst_name_idx) {
         err = HTTP_NOT_FOUND;

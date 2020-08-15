@@ -18,6 +18,7 @@
 
 #include "knd_user.h"
 #include "knd_state.h"
+#include "knd_commit.h"
 
 #include <gsl-parser.h>
 
@@ -33,38 +34,26 @@ void knd_class_inst_str(struct kndClassInst *self, size_t depth)
     struct kndState *state = self->states;
 
     if (self->type == KND_OBJ_ADDR) {
-        knd_log("\n%*sClass Instance \"%.*s::%.*s\"  numid:%zu",
+        knd_log("\n%*s>>> class inst \"%.*s::%.*s\"  numid:%zu",
                 depth * KND_OFFSET_SIZE, "",
                 self->blueprint->name_size, self->blueprint->name,
-                self->name_size, self->name,
-                self->entry->numid);
-        if (state) {
-            knd_log("    state:%zu  phase:%d",
-                    state->numid, state->phase);
-        }
+                self->name_size, self->name, self->entry->numid);
+        //if (state) {
+        //    knd_log("    state:%zu  phase:%d", state->numid, state->phase);
+        //}
     }
 
-    for (attr_inst = self->attr_insts; attr_inst; attr_inst = attr_inst->next) {
-        knd_attr_inst_str(attr_inst, depth + 1);
-    }
+    if (self->class_var->attrs)
+        str_attr_vars(self->class_var->attrs, depth + 1);
 }
 
-static int update_attr_inst_indices(struct kndClassEntry *blueprint,
-                                    struct kndClassInstEntry *entry,
-                                    struct kndTask *unused_var(task))
+static int update_attr_var_indices(struct kndClassEntry *blueprint,
+                                   struct kndClassInstEntry *entry,
+                                   struct kndTask *unused_var(task))
 {
-    struct kndAttrInst *attr_inst;
-    
-    for (attr_inst = entry->inst->attr_insts; attr_inst; attr_inst = attr_inst->next) {
-        if (!attr_inst->attr->is_indexed) continue;
-
-        knd_log(".. class %.*s is indexing attr \"%.*s\" (inst: %.*s)..",
-                blueprint->name_size, blueprint->name,
-                attr_inst->attr->name_size, attr_inst->attr->name,
-                entry->name_size, entry->name);
-
-
-    }
+    knd_log(".. class inst %.*s::%.*s attr var indexing",
+            blueprint->name_size, blueprint->name,
+            entry->id_size, entry->id);
 
     return knd_OK;
 }
@@ -84,6 +73,8 @@ int knd_class_inst_update_indices(struct kndRepo *repo,
     struct kndMemPool *mempool = task->mempool;
     int err;
 
+    assert(commit != NULL);
+
     if (DEBUG_INST_LEVEL_2)
         knd_log(".. repo \"%.*s\" to update inst indices of class \"%.*s\" (repo:%.*s)",
                 repo->name_size, repo->name,
@@ -93,8 +84,7 @@ int knd_class_inst_update_indices(struct kndRepo *repo,
     /* user repo selected: activate copy-on-write */
     if (task->user_ctx) {
         mempool = task->shard->user->mempool;
-        c = knd_shared_dict_get(repo->class_name_idx,
-                                baseclass->name, baseclass->name_size);
+        c = knd_shared_dict_get(repo->class_name_idx, baseclass->name, baseclass->name_size);
 
         if (baseclass->repo != repo) {
             if (!c) {
@@ -145,18 +135,16 @@ int knd_class_inst_update_indices(struct kndRepo *repo,
 
     for (ref = state_refs; ref; ref = ref->next) {
         entry = ref->obj;
+
         switch (ref->state->phase) {
         case KND_CREATED:
-            err = knd_shared_dict_set(name_idx,
-                                      entry->name,  entry->name_size,
-                                      (void*)entry,
-                                      mempool,
-                                      commit, &item, false);
-            KND_TASK_ERR("name idx failed to register class inst %.*s",
-                         entry->name_size, entry->name);
-            // TODO
-            item->phase = KND_SHARED_DICT_VALID;
-
+            if (entry->name_size) {
+                err = knd_shared_dict_set(name_idx, entry->name, entry->name_size, (void*)entry,
+                                          mempool, commit, &item, false);
+                KND_TASK_ERR("name idx failed to register class inst %.*s",
+                             entry->name_size, entry->name);
+                item->phase = KND_SHARED_DICT_VALID;
+            }
             /* err = knd_set_add(idx,
                               entry->id, entry->id_size,
                               (void*)entry);
@@ -164,9 +152,9 @@ int knd_class_inst_update_indices(struct kndRepo *repo,
                          entry->name_size, entry->name, err);
             */
 
-            err = update_attr_inst_indices(c, entry, task);
+            err = update_attr_var_indices(c, entry, task);
             KND_TASK_ERR("failed to update attr inst indices with \"%.*s\"",
-                         entry->name_size, entry->name);
+                         entry->id_size, entry->id);
 
             break;
         default:

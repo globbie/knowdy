@@ -5,6 +5,7 @@
 #include "knd_repo.h"
 #include "knd_shard.h"
 #include "knd_user.h"
+#include "knd_commit.h"
 #include "knd_utils.h"
 
 #include <gsl-parser.h>
@@ -357,7 +358,9 @@ gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
         err = knd_confirm_commit(repo, self);
         if (err) return make_gsl_err_external(err);
 
-        knd_log(".. build report for commit %zu", self->ctx->commit->numid);
+        // TODO
+        knd_log(".. building report for commit %zu", self->ctx->commit->numid);
+
         break;
     case KND_RESTORE_STATE:
         knd_log("== restore commits ==");
