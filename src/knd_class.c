@@ -198,8 +198,7 @@ int knd_get_class_attr_value(struct kndClass *src,
     struct kndSharedDict *attr_name_idx = src->entry->repo->attr_name_idx;
     int err;
 
-    attr_ref = knd_shared_dict_get(attr_name_idx,
-                                   query->name, query->name_size);
+    attr_ref = knd_shared_dict_get(attr_name_idx, query->name, query->name_size);
     if (!attr_ref) {
         if (DEBUG_CLASS_LEVEL_2)
             knd_log("-- no such attr: %.*s", query->name_size, query->name);

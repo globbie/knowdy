@@ -49,6 +49,25 @@ extern void knd_log(const char *fmt, ...)
     va_end(args);
 }
 
+size_t knd_generate_random_id(char *buf, size_t chunk_size, size_t num_chunks, char separ)
+{
+    size_t max_size = strlen(obj_id_seq) - 1;
+    size_t buf_size = 0;
+
+    for (size_t chunk_num = 0; chunk_num < num_chunks; chunk_num++) {
+        if (chunk_num != 0) {
+            buf[buf_size] = separ;
+            buf_size++;
+        }
+        for (size_t i = 0; i < chunk_size; i++) {
+            int key = rand() % (int)max_size;
+            buf[buf_size] = obj_id_seq[key];
+            buf_size++;
+        }
+    }
+    return buf_size;
+}
+
 extern gsl_err_t knd_set_curr_state(void *obj,
                                     const char *val, size_t val_size)
 {

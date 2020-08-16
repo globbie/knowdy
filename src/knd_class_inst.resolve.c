@@ -23,8 +23,7 @@
 #define DEBUG_INST_RESOLVE_LEVEL_1 0
 #define DEBUG_INST_RESOLVE_LEVEL_TMP 1
 
-int knd_class_inst_resolve(struct kndClassInst *self,
-                           struct kndTask *task)
+int knd_class_inst_resolve(struct kndClassInst *self, struct kndTask *task)
 {
     int err;
     self->resolving_in_progress = true;

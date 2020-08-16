@@ -180,8 +180,17 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
         }
         return gsl_err_to_knd_err_codes(parser_err);
     }
-    task->output = task->out->buf;
-    task->output_size = task->out->buf_size;
+
+    switch (task->role) {
+    case KND_WRITER:
+        task->output = task->file_out->buf;
+        task->output_size = task->file_out->buf_size;
+        break;
+    default:
+        task->output = task->out->buf;
+        task->output_size = task->out->buf_size;
+        break;
+    }
     return knd_OK;
 }
 

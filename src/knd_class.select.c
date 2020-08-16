@@ -949,6 +949,8 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
 
     /* any commits happened? */
     switch (task->type) {
+    case KND_RESTORE_STATE:
+        // fall through
     case KND_COMMIT_STATE:
         err = knd_class_commit_state(ctx.selected_class, task->phase, task);
         if (err) return make_gsl_err_external(err);

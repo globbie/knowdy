@@ -40,9 +40,7 @@ int knd_commit_new(struct kndMemPool *mempool,
     return knd_OK;
 }
 
-static int resolve_class_inst_commit(struct kndStateRef *state_refs,
-                                     struct kndCommit *commit,
-                                     struct kndTask *task)
+static int resolve_class_inst_commit(struct kndStateRef *state_refs, struct kndCommit *commit, struct kndTask *task)
 {
     struct kndState *state;
     struct kndClassInstEntry *entry;
@@ -53,6 +51,8 @@ static int resolve_class_inst_commit(struct kndStateRef *state_refs,
         entry = ref->obj;
         state = ref->state;
         state->commit = commit;
+
+        knd_log(".. resolve class inst %.*s", entry->name_size, entry->name);
 
         switch (state->phase) {
         case KND_CREATED:
@@ -103,6 +103,9 @@ int knd_resolve_commit(struct kndCommit *commit, struct kndTask *task)
     struct kndStateRef *ref;
     int err;
 
+    if (DEBUG_COMMIT_LEVEL_TMP)
+        knd_log(".. resolving commit #%zu (class state refs:%p)", commit->numid, commit->class_state_refs);
+    
     for (ref = commit->class_state_refs; ref; ref = ref->next) {
         if (ref->state->phase == KND_REMOVED) {
             continue;

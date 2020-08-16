@@ -180,22 +180,22 @@ static int generate_uniq_inst_name(struct kndClassInst *inst, struct kndTask *ta
     struct kndMemPool *mempool = task->mempool;
     struct kndOutput *out = task->out;
     struct kndNameBuf *namebuf;
-    struct kndClass *c = inst->blueprint;
     int err;
 
     err = knd_name_buf_new(mempool, &namebuf);
     KND_TASK_ERR("name buf alloc failed");
 
     out->reset(out);
-    OUT("/", 1);
+    OUT("_", 1);
     OUT(task->shard->name, task->shard->name_size);
-    OUT(c->entry->repo->name, c->entry->repo->name_size);
-    OUT(c->abbr, c->abbr_size);
-    OUT("/", 1);
-    OUT(inst->entry->id, inst->entry->id_size);
-
+    OUT(":", 1);
+    
     memcpy(namebuf->name, out->buf, out->buf_size);
     namebuf->name_size = out->buf_size;
+
+    namebuf->name_size += knd_generate_random_id(namebuf->name + out->buf_size,
+                                                 KND_RAND_CHUNK_SIZE, KND_NUM_RAND_CHUNKS, '-');
+
     inst->name = namebuf->name;
     inst->name_size = namebuf->name_size;
     inst->entry->name = namebuf->name;
@@ -229,6 +229,8 @@ int knd_import_class_inst(struct kndClass *self,
                 self->name_size, self->name, 128, rec, repo->name_size, repo->name, task->id, task->type);
     }
     switch (task->type) {
+    case KND_RESTORE_STATE:
+        break;
     case KND_INNER_COMMIT_STATE:
         // fall through
     case KND_INNER_STATE:
@@ -294,7 +296,8 @@ int knd_import_class_inst(struct kndClass *self,
     ctx->num_class_inst_state_refs++;
 
     if (DEBUG_INST_IMPORT_LEVEL_TMP)
-        knd_log("++ class inst \"%.*s::%.*s\" numid:%zu initial import  OK!",
-                self->name_size, self->name, inst->name_size, inst->name, inst->entry->numid);
+        knd_log("++ class inst \"%.*s::%.*s\" numid:%zu initial import  OK (num inst states:%zu)",
+                self->name_size, self->name, inst->name_size, inst->name, inst->entry->numid,
+                ctx->num_class_inst_state_refs);
     return knd_OK;
 }

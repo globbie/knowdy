@@ -77,7 +77,7 @@ int knd_class_inst_update_indices(struct kndRepo *repo,
 
     assert(commit != NULL);
 
-    if (DEBUG_INST_LEVEL_2)
+    if (DEBUG_INST_LEVEL_TMP)
         knd_log(".. repo \"%.*s\" to update inst indices of class \"%.*s\" (repo:%.*s)",
                 repo->name_size, repo->name,
                 baseclass->name_size, baseclass->name,
@@ -103,8 +103,7 @@ int knd_class_inst_update_indices(struct kndRepo *repo,
 
                 err = knd_shared_dict_set(repo->class_name_idx,
                                           c->name, c->name_size,
-                                          (void*)c,
-                                          mempool,
+                                          (void*)c, mempool,
                                           NULL, &item, false);
                 KND_TASK_ERR("failed to register class entry \"%.*s\"",
                              c->name_size, c->name);
@@ -143,8 +142,9 @@ int knd_class_inst_update_indices(struct kndRepo *repo,
             if (entry->name_size) {
                 err = knd_shared_dict_set(name_idx, entry->name, entry->name_size, (void*)entry,
                                           mempool, commit, &item, false);
-                KND_TASK_ERR("name idx failed to register class inst %.*s",
-                             entry->name_size, entry->name);
+                KND_TASK_ERR("name idx failed to register class inst %.*s, err:%d",
+                             entry->name_size, entry->name, err);
+                
                 item->phase = KND_SHARED_DICT_VALID;
             }
             /* err = knd_set_add(idx,
@@ -201,8 +201,7 @@ int knd_class_inst_commit_state(struct kndClass *self,
     state->num_children = num_children;
 
     do {
-        head = atomic_load_explicit(&self->entry->inst_states,
-                                    memory_order_relaxed);
+        head = atomic_load_explicit(&self->entry->inst_states, memory_order_relaxed);
         if (head) {
             state->next = head;
             state->numid = head->numid + 1;

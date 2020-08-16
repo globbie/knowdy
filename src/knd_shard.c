@@ -355,7 +355,9 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
 
     /* clean up all temporary memblocks */
     if (task) knd_task_free_blocks(task);
-    
+
+    srand(time(NULL));
+
     *shard = self;
     return knd_OK;
  error:

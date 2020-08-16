@@ -8,11 +8,10 @@
 #include "knd_config.h"
 #include "knd_output.h"
 
-extern gsl_err_t knd_set_curr_state(void *obj,
-                                    const char *val, size_t val_size);
-
-extern void  knd_calc_num_id(const char *id, size_t id_size, size_t *numval);
-extern void knd_num_to_str(size_t numval, char *buf, size_t *buf_size, size_t base);
+gsl_err_t knd_set_curr_state(void *obj, const char *val, size_t val_size);
+void  knd_calc_num_id(const char *id, size_t id_size, size_t *numval);
+void knd_num_to_str(size_t numval, char *buf, size_t *buf_size, size_t base);
+size_t knd_generate_random_id(char *buf, size_t chunk_size, size_t num_chunks, char separ);
 
 extern void knd_build_conc_abbr(const char *name, size_t name_size, char *buf, size_t *buf_size);
 

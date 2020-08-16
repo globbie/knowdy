@@ -102,7 +102,7 @@ static int inner_var_export_GSL(struct kndAttrVar *var, struct kndTask *task, si
     struct kndAttrVar *item;
     int err;
 
-    if (DEBUG_ATTR_GSL_LEVEL_TMP)
+    if (DEBUG_ATTR_GSL_LEVEL_2)
         knd_log(".. GSL export inner var \"%.*s\"  list item:%d",
                 var->name_size, var->name, var->is_list_item);
 
@@ -315,7 +315,7 @@ static int attr_var_list_export_GSL(struct kndAttrVar *var, struct kndTask *task
     size_t count = 0;
     int err;
 
-    if (DEBUG_ATTR_GSL_LEVEL_TMP)
+    if (DEBUG_ATTR_GSL_LEVEL_2)
         knd_log(".. export GSL list attr \"%.*s\"", var->name_size, var->name);
 
     OUT("[", 1);

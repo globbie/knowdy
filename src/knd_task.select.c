@@ -364,6 +364,7 @@ gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
         break;
     case KND_RESTORE_STATE:
         knd_log("== restore commits ==");
+
         break;
     default:
         self->ctx->phase = KND_COMPLETE;
