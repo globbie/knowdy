@@ -124,16 +124,11 @@ int knd_repo_commit_indices(struct kndRepo *self,
                             struct kndTaskContext *ctx);
 int knd_repo_check_conflicts(struct kndRepo *self,
                              struct kndTaskContext *ctx);
-gsl_err_t knd_parse_repo_commit(void *obj,
-                                const char *rec,
-                                size_t *total_size);
+gsl_err_t knd_parse_repo_commit(void *obj, const char *rec, size_t *total_size);
 
 int knd_repo_open(struct kndRepo *self, struct kndTask *task);
 int knd_repo_sync(struct kndRepo *self, struct kndTask *task);
-
 void knd_repo_del(struct kndRepo *self);
 
-int knd_repo_new(struct kndRepo **self,
-                 const char *name, size_t name_size,
-                 const char *schema_path, size_t schema_path_size,
-                 struct kndMemPool *mempool);
+int knd_repo_new(struct kndRepo **self, const char *name, size_t name_size,
+                 const char *schema_path, size_t schema_path_size, struct kndMemPool *mempool);

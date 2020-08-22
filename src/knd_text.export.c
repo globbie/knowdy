@@ -22,47 +22,7 @@
 #define DEBUG_TEXT_EXPORT_LEVEL_3 0
 #define DEBUG_TEXT_EXPORT_LEVEL_TMP 1
 
-void knd_text_str(struct kndText *self, size_t depth)
-{
-    struct kndState *state;
-    struct kndStateVal *val;
-    struct kndPar *par;
-    struct kndSentence *sent;
-
-    state = atomic_load_explicit(&self->states,
-                                 memory_order_relaxed);
-    if (!state) {
-        if (self->seq_size) {
-            knd_log("%*stext: \"%.*s\" (lang:%.*s)",
-                    depth * KND_OFFSET_SIZE, "",
-                    self->seq_size, self->seq, self->locale_size, self->locale);
-            return;
-        }
-        if (self->num_pars) {
-            knd_log("%*stext (lang:%.*s) [par",
-                    depth * KND_OFFSET_SIZE, "",
-                    self->locale_size, self->locale);
-            for (par = self->pars; par; par = par->next) {
-                knd_log("%*s#%zu:", (depth + 1) * KND_OFFSET_SIZE, "", par->numid);
-
-                for (sent = par->sents; sent; sent = sent->next) {
-                    knd_log("%*s#%zu: \"%.*s\"",
-                            (depth + 2) * KND_OFFSET_SIZE, "",
-                            sent->numid, sent->seq_size, sent->seq);
-                }
-            }
-            knd_log("%*s]", depth * KND_OFFSET_SIZE, "");
-        }
-        return;
-    }
-    val = state->val;
-    knd_log("%*stext: \"%.*s\" (lang:%.*s)",
-            depth * KND_OFFSET_SIZE, "",
-            val->val_size, val->val, self->locale_size, self->locale);
-}
-
-static int export_class_declars(struct kndClassDeclaration *decl,
-                                struct kndTask *task)
+static int export_class_declars(struct kndClassDeclaration *decl, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndClass *c;
@@ -174,8 +134,7 @@ static int export_GSL(struct kndText *self,
     // struct kndText *t;
     int err;
 
-    state = atomic_load_explicit(&self->states,
-                                 memory_order_relaxed);
+    state = atomic_load_explicit(&self->states, memory_order_relaxed);
     if (state) {
         seq = state->val->val;
         seq_size = state->val->val_size;

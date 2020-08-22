@@ -21,8 +21,7 @@
 #define DEBUG_COMMIT_LEVEL_3 0
 #define DEBUG_COMMIT_LEVEL_TMP 1
 
-int knd_commit_new(struct kndMemPool *mempool,
-                   struct kndCommit **result)
+int knd_commit_new(struct kndMemPool *mempool, struct kndCommit **result)
 {
     void *page;
     int err;

@@ -257,8 +257,7 @@ int knd_class_update_indices(struct kndRepo *repo,
     return knd_OK;
 }
 
-int knd_class_index(struct kndClass *self,
-                    struct kndTask *task)
+int knd_class_index(struct kndClass *self, struct kndTask *task)
 {
     struct kndRepo *repo = self->entry->repo;
     int err;
@@ -277,8 +276,7 @@ int knd_class_index(struct kndClass *self,
 
     if (DEBUG_CLASS_INDEX_LEVEL_2) {
         knd_log(".. indexing class \"%.*s\" (id:%.*s) ..",
-                self->entry->name_size, self->entry->name,
-                self->entry->id_size, self->entry->id);
+                self->entry->name_size, self->entry->name, self->entry->id_size, self->entry->id);
     }
 
     /* a child of the root class */

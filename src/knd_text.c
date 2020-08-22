@@ -36,8 +36,7 @@ static gsl_err_t parse_synode(void *obj,
                               const char *rec,
                               size_t *total_size);
 
-int knd_class_declar_new(struct kndMemPool *mempool,
-                         struct kndClassDeclaration **result)
+int knd_class_declar_new(struct kndMemPool *mempool, struct kndClassDeclaration **result)
 {
     void *page;
     int err;
@@ -304,6 +303,8 @@ static gsl_err_t set_clause_class(void *obj, const char *val, size_t val_size)
 static gsl_err_t set_sent_seq(void *obj, const char *val, size_t val_size)    
 {
     struct kndSentence *self = obj;
+
+    if (!val_size) return make_gsl_err(gsl_FORMAT);
     self->seq_size = val_size;
     self->seq = val;
     return make_gsl_err(gsl_OK);
@@ -944,6 +945,9 @@ static gsl_err_t parse_sent_array(void *obj,
                                   const char *rec,
                                   size_t *total_size)
 {
+    if (DEBUG_TEXT_LEVEL_TMP)
+        knd_log(".. parse sentence array");
+
     struct gslTaskSpec item_spec = {
         .is_list_item = true,
         .parse = parse_sent_item,
@@ -960,8 +964,7 @@ static gsl_err_t set_par_numid(void *obj, const char *val, size_t val_size)
     long numval;
     int err;
 
-    if (val_size >= KND_NAME_SIZE)
-        return make_gsl_err(gsl_FAIL);
+    if (val_size >= KND_NAME_SIZE) return make_gsl_err(gsl_FAIL);
 
     memcpy(buf, val, val_size);
     buf[val_size] = '\0';
@@ -974,9 +977,20 @@ static gsl_err_t set_par_numid(void *obj, const char *val, size_t val_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_par_item(void *obj,
-                                const char *rec,
-                                size_t *total_size)
+static gsl_err_t confirm_par(void *obj, const char *unused_var(name), size_t unused_var(name_size))
+{
+    struct LocalContext *ctx = obj;
+    struct kndPar *par = ctx->par;
+
+    knd_log(".. confirm par..");
+    if (!par->num_sents) {
+        knd_log("NB: empty text par #zu", par->numid);
+        return make_gsl_err(gsl_FORMAT);
+    }
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_par_item(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
@@ -998,6 +1012,10 @@ static gsl_err_t parse_par_item(void *obj,
           .name_size = strlen("s"),
           .parse = parse_sent_array,
           .obj = obj
+        },
+        { .is_default = true,
+          .run = confirm_par,
+          .obj = obj
         }
     };
 
@@ -1009,6 +1027,11 @@ static gsl_err_t parse_par_item(void *obj,
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return parser_err;
 
+    if (!par->num_sents) {
+        KND_TASK_LOG("empty paragraphs not accepted");
+        return make_gsl_err_external(err);
+    }
+    
     if (text->last_par)
         text->last_par->next = par;
     else
@@ -1021,9 +1044,7 @@ static gsl_err_t parse_par_item(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_par_array(void *obj,
-                                 const char *rec,
-                                 size_t *total_size)
+static gsl_err_t parse_par_array(void *obj, const char *rec, size_t *total_size)
 {
     struct gslTaskSpec item_spec = {
         .is_list_item = true,
@@ -1033,11 +1054,11 @@ static gsl_err_t parse_par_array(void *obj,
     return gsl_parse_array(&item_spec, rec, total_size);
 }
 
-gsl_err_t knd_text_import(struct kndText *self,
-                          const char *rec,
-                          size_t *total_size,
-                          struct kndTask *task)
+gsl_err_t knd_text_import(struct kndText *self, const char *rec, size_t *total_size, struct kndTask *task)
 {
+    if (DEBUG_TEXT_LEVEL_TMP)
+        knd_log(".. import text: \"%.*s\"", 64, rec);
+   
     struct LocalContext ctx = {
         .task = task,
         .text = self
@@ -1068,3 +1089,40 @@ gsl_err_t knd_text_import(struct kndText *self,
     return make_gsl_err(gsl_OK);
 }
 
+void knd_text_str(struct kndText *self, size_t depth)
+{
+    struct kndState *state;
+    struct kndStateVal *val;
+    struct kndPar *par;
+    struct kndSentence *sent;
+
+    state = atomic_load_explicit(&self->states, memory_order_relaxed);
+    if (!state) {
+        if (self->seq_size) {
+            knd_log("%*stext: \"%.*s\" (lang:%.*s)",
+                    depth * KND_OFFSET_SIZE, "",
+                    self->seq_size, self->seq, self->locale_size, self->locale);
+            return;
+        }
+        if (self->num_pars) {
+            knd_log("%*stext (lang:%.*s) [par",
+                    depth * KND_OFFSET_SIZE, "",
+                    self->locale_size, self->locale);
+            for (par = self->pars; par; par = par->next) {
+                knd_log("%*s#%zu:", (depth + 1) * KND_OFFSET_SIZE, "", par->numid);
+
+                for (sent = par->sents; sent; sent = sent->next) {
+                    knd_log("%*s#%zu: \"%.*s\"",
+                            (depth + 2) * KND_OFFSET_SIZE, "",
+                            sent->numid, sent->seq_size, sent->seq);
+                }
+            }
+            knd_log("%*s]", depth * KND_OFFSET_SIZE, "");
+        }
+        return;
+    }
+    val = state->val;
+    knd_log("%*stext: \"%.*s\" (lang:%.*s)",
+            depth * KND_OFFSET_SIZE, "",
+            val->val_size, val->val, self->locale_size, self->locale);
+}

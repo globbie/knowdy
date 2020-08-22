@@ -154,8 +154,7 @@ int knd_get_class_inst(struct kndClassEntry *self,
 
     if (!self->inst_name_idx) {
         err = HTTP_NOT_FOUND;
-        KND_TASK_ERR("class \"%.*s\" has no instances",
-                     self->name_size, self->name);
+        KND_TASK_ERR("class \"%.*s\" has no instances", self->name_size, self->name);
     }
 
     name_idx = self->inst_name_idx;
@@ -326,8 +325,7 @@ static int commit_state(struct kndClass *self,
     state->next = NULL;
 
     do {
-       head = atomic_load_explicit(&self->states,
-                                   memory_order_relaxed);
+       head = atomic_load_explicit(&self->states, memory_order_relaxed);
        if (head) {
            state->next = head;
            state->numid = head->numid + 1;
@@ -800,15 +798,13 @@ int knd_unregister_class_inst(struct kndClass *self,
                               struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
-    struct kndSet *inst_idx;
+    struct kndSharedSet *inst_idx = atomic_load_explicit(&self->entry->inst_idx, memory_order_relaxed);
     struct kndClass *c;
     struct kndState *state;
     int err;
 
     /* skip the root class */
     if (!self->entry->ancestors) return knd_OK;
-
-    inst_idx = self->entry->inst_idx;
     if (!inst_idx) return knd_OK;
 
     // remove

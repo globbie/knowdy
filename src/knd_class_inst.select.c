@@ -12,6 +12,7 @@
 #include "knd_text.h"
 #include "knd_num.h"
 #include "knd_rel.h"
+#include "knd_shared_set.h"
 #include "knd_set.h"
 #include "knd_rel_arg.h"
 
@@ -52,50 +53,45 @@ static gsl_err_t run_get_inst(void *obj, const char *name, size_t name_size)
     /* to return a single object */
     task->type = KND_GET_STATE;
 
-    if (DEBUG_INST_LEVEL_2) {
+    if (DEBUG_INST_LEVEL_TMP)
         knd_class_inst_str(inst, 0);
-    }
+
     ctx->class_inst = inst;
 
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t
-parse_get_inst_by_numid(void *obj, const char *rec, size_t *total_size)
+static gsl_err_t parse_get_inst_by_numid(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndSet *inst_idx = ctx->class_entry->inst_idx;
+    struct kndSharedSet *inst_idx = atomic_load_explicit(&ctx->class_entry->inst_idx, memory_order_acquire);
     struct kndClassInstEntry *entry;
-    struct kndClassInst *inst;
-    int err;
-    size_t numid;
-    void *result;
-    gsl_err_t parser_err = gsl_parse_size_t(&numid, rec, total_size);
-    if (parser_err.code) return parser_err;
-
     char id[KND_ID_SIZE];
     size_t id_size;
+    size_t numid;
+    int err;
+
+    assert(inst_idx != NULL);
+
+    gsl_err_t parser_err = gsl_parse_size_t(&numid, rec, total_size);
+    if (parser_err.code) return parser_err;
     knd_uid_create(numid, id, &id_size);
 
     if (DEBUG_INST_LEVEL_TMP)
-        knd_log("ID: %zu => \"%.*s\" [size: %zu]",
-                numid, (int)id_size, id, id_size);
+        knd_log("class inst id: %zu => \"%.*s\" [size: %zu]", numid, (int)id_size, id, id_size);
 
-    err = inst_idx->get(inst_idx, id, id_size, &result);
+    err = knd_shared_set_get(inst_idx, id, id_size, (void**)&entry);
     if (err) {
-        knd_log("-- no such instance: %.*s", id_size, id);
+        KND_TASK_LOG("failed to open class inst \"%.*s\"", id_size, id);
         return make_gsl_err_external(err);
     }
-
-    entry = result;
-    inst = entry->inst;
     task->type = KND_GET_STATE;
 
     if (DEBUG_INST_LEVEL_TMP) {
-        knd_class_inst_str(inst, 0);
+        knd_class_inst_str(entry->inst, 0);
     }
-    ctx->class_inst = inst;
+    ctx->class_inst = entry->inst;
 
     return make_gsl_err(gsl_OK);
 }
@@ -124,9 +120,7 @@ static gsl_err_t set_curr_state(void *obj, const char *val, size_t val_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t present_state(void *obj,
-                               const char *unused_var(name),
-                               size_t unused_var(name_size))
+static gsl_err_t present_state(void *obj, const char *unused_var(name), size_t unused_var(name_size))
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
@@ -151,15 +145,13 @@ static gsl_err_t present_state(void *obj,
     if (err) return make_gsl_err_external(err);
     set->mempool = mempool;
 
-    err = knd_class_get_inst_updates(ctx->class_entry,
-                                     task->state_gt, task->state_lt,
-                                     task->state_eq, set);
+    err = knd_class_get_inst_updates(ctx->class_entry, task->state_gt, task->state_lt, task->state_eq, set);
     if (err) return make_gsl_err_external(err);
 
     task->show_removed_objs = true;
 
-    err = knd_class_inst_set_export_JSON(set, task);
-    if (err) return make_gsl_err_external(err);
+    //err = knd_class_inst_set_export_JSON(set, task);
+    //if (err) return make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);
 
@@ -219,7 +211,6 @@ static gsl_err_t parse_select_state(void *obj,
           .obj = ctx
         }
     };
-
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
@@ -288,7 +279,7 @@ static gsl_err_t present_inst_selection(void *obj, const char *unused_var(val),
     if (task->type == KND_SELECT_STATE) {
         /* no sets found? */
         if (!task->num_sets) {
-            if (entry->inst_idx) {
+            /*if (entry->inst_idx) {
                 set = entry->inst_idx;
 
                 task->show_removed_objs = false;
@@ -297,7 +288,7 @@ static gsl_err_t present_inst_selection(void *obj, const char *unused_var(val),
                 if (err) return make_gsl_err_external(err);
                 return make_gsl_err(gsl_OK);
             }
-
+            */
             // TODO
             err = out->write(out, "{}", strlen("{}"));
             if (err) return make_gsl_err_external(err);
@@ -328,8 +319,8 @@ static gsl_err_t present_inst_selection(void *obj, const char *unused_var(val),
         /* final presentation in JSON
            TODO: choose output format */
         task->show_removed_objs = false;
-        err = knd_class_inst_set_export_JSON(set, task);
-        if (err) return make_gsl_err_external(err);
+        //err = knd_class_inst_set_export_JSON(set, task);
+        //if (err) return make_gsl_err_external(err);
 
         return make_gsl_err(gsl_OK);
     }
@@ -345,9 +336,7 @@ static gsl_err_t present_inst_selection(void *obj, const char *unused_var(val),
     return make_gsl_err(gsl_OK);
 }
 
-gsl_err_t knd_select_class_inst(struct kndClassEntry *c,
-                                const char *rec, size_t *total_size,
-                                struct kndTask *task)
+gsl_err_t knd_select_class_inst(struct kndClassEntry *c, const char *rec, size_t *total_size, struct kndTask *task)
 {
     gsl_err_t parser_err;
 
@@ -355,7 +344,6 @@ gsl_err_t knd_select_class_inst(struct kndClassEntry *c,
         knd_log(".. class instance parsing: \"%.*s\"", 64, rec);
 
     task->type = KND_SELECT_STATE;
-
     struct LocalContext ctx = {
         .task = task,
         .class_entry = c,

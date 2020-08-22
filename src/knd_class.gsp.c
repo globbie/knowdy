@@ -735,9 +735,7 @@ static gsl_err_t read_nested_attr_var(void *obj,
         if (attr->ref_class) break;
 
         class_name_idx = c->entry->repo->class_name_idx;
-        entry = knd_shared_dict_get(class_name_idx,
-                                    attr->ref_classname,
-                                    attr->ref_classname_size);
+        entry = knd_shared_dict_get(class_name_idx, attr->ref_classname, attr->ref_classname_size);
         if (!entry) {
             knd_log("-- inner ref not resolved :( no such class: %.*s",
                     attr->ref_classname_size,
@@ -919,48 +917,45 @@ static gsl_err_t alloc_class_inst_item(struct LocalContext *ctx, struct kndClass
 
 static gsl_err_t append_class_inst_item(struct LocalContext *ctx, struct kndClassInst *inst)
 {
-    struct kndClass *self =   ctx->class;
-    struct kndSharedDict *name_idx = self->entry->inst_name_idx;
-    struct kndSet *set = self->entry->inst_idx;
+    struct kndClass *self = ctx->class;
+    struct kndSharedDict *name_idx = atomic_load_explicit(&self->entry->inst_name_idx, memory_order_acquire);
+    //struct kndSharedSet *idx = atomic_load_explicit(&self->entry->inst_idx, memory_order_acquire);
     struct kndMemPool *mempool = ctx->task->mempool;
     struct kndSharedDictItem *item;
     int err;
 
     if (DEBUG_CLASS_GSP_LEVEL_2) {
-        knd_log(".. append inst: %.*s %.*s",
-                inst->entry->id_size, inst->entry->id,
+        knd_log(".. append inst: %.*s %.*s", inst->entry->id_size, inst->entry->id,
                 inst->entry->name_size, inst->entry->name);
         knd_class_inst_str(inst, 0);
     }
 
     // TODO atomic
-    if (!name_idx) {
-        err = knd_shared_dict_new(&self->entry->inst_name_idx, KND_HUGE_DICT_SIZE);
+    /*if (!name_idx) {
+        err = knd_shared_dict_new(&self->entry->inst_name_idx, KND_MEDIUM_DICT_SIZE);
         if (err) return make_gsl_err_external(err);
         name_idx = self->entry->inst_name_idx;
-    }
+        }*/
 
-    err = knd_shared_dict_set(name_idx,
-                              inst->name, inst->name_size,
-                              (void*)inst->entry,
-                              mempool,
+    err = knd_shared_dict_set(name_idx, inst->name, inst->name_size, (void*)inst->entry, mempool,
                               ctx->task->ctx->commit, &item, false);
     if (err) return make_gsl_err_external(err);
 
     self->entry->num_insts++;
 
     /* index by id */
-    if (!set) {
+    /*if (!set) {
         err = knd_set_new(mempool, &set);
         if (err) return make_gsl_err_external(err);
         set->type = KND_SET_CLASS_INST;
         self->entry->inst_idx = set;
     }
+
     err = set->add(set, inst->entry->id, inst->entry->id_size, (void*)inst->entry);
     if (err) {
         knd_log("-- failed to commit the class inst idx");
         return make_gsl_err_external(err);
-    }
+        }*/
     return make_gsl_err(gsl_OK);
 }
 
@@ -1225,13 +1220,10 @@ static gsl_err_t validate_attr_var_list(void *obj,
 
         // TODO
         class_name_idx = class_var->entry->repo->class_name_idx;
-        entry = knd_shared_dict_get(class_name_idx,
-                                    attr->ref_classname,
-                                    attr->ref_classname_size);
+        entry = knd_shared_dict_get(class_name_idx, attr->ref_classname, attr->ref_classname_size);
         if (!entry) {
             knd_log("-- inner ref not resolved :( no such class: %.*s",
-                    attr->ref_classname_size,
-                    attr->ref_classname);
+                    attr->ref_classname_size, attr->ref_classname);
             return *total_size = 0, make_gsl_err(gsl_FAIL);
         }
 

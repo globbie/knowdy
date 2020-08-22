@@ -147,7 +147,7 @@ int knd_class_inst_export_JSON(struct kndClassInst *self,
                                bool is_list_item,
                                struct kndTask *task);
 
-int knd_class_inst_set_export_JSON(struct kndSet *set, struct kndTask *task);
+//int knd_class_inst_set_export_JSON(struct kndSet *set, struct kndTask *task);
 
 // knd_class_inst.select.c
 gsl_err_t knd_select_class_inst(struct kndClassEntry *c,

@@ -12,6 +12,7 @@
 #include "knd_task.h"
 #include "knd_class.h"
 #include "knd_proc.h"
+#include "knd_text.h"
 #include "knd_output.h"
 
 #define DEBUG_ATTR_LEVEL_1 0
@@ -44,6 +45,29 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     struct kndAttr *self = obj;
     self->name = name;
     self->name_size = name_size;
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_text(void *obj, const char *rec, size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    struct kndMemPool *mempool = task->mempool;
+    struct kndText *text;
+    gsl_err_t parser_err;
+    int err;
+
+    if (DEBUG_ATTR_LEVEL_TMP)
+        knd_log(".. %.*s: allocate text obj", ctx->attr_var->name_size, ctx->attr_var->name);
+
+    err = knd_text_new(mempool, &text);
+    if (err) return *total_size = 0, make_gsl_err_external(knd_NOMEM);
+    memset(text, 0, sizeof(struct kndText));
+
+    parser_err = knd_text_import(text, rec, total_size, task);
+    if (parser_err.code) return parser_err;
+    ctx->attr_var->text = text;
+
     return make_gsl_err(gsl_OK);
 }
 
@@ -405,8 +429,7 @@ int knd_import_attr_var(struct kndClassVar *self,
     int err;
 
     if (DEBUG_ATTR_LEVEL_2)
-        knd_log("\n.. import attr var: \"%.*s\" REC: %.*s",
-                name_size, name, 32, rec);
+        knd_log(".. import attr var: \"%.*s\" REC: %.*s", name_size, name, 32, rec);
 
     err = knd_attr_var_new(mempool, &attr_var);
     if (err) return err;
@@ -439,9 +462,13 @@ int knd_import_attr_var(struct kndClassVar *self,
           .validate = import_nested_attr_var_list,
           .obj = &ctx
         },
+        { .name = "_t",
+          .name_size = strlen("_t"),
+          .parse = parse_text,
+          .obj = &ctx
+        },
         /*{ .name = "_cdata",
           .name_size = strlen("_cdata"),
-          .parse = gsl_parse_cdata,
           .obj = &cdata_spec
           }*/
         { .is_default = true,
@@ -626,6 +653,11 @@ static gsl_err_t import_nested_attr_var(void *obj,
           .validate = import_nested_attr_var_list,
           .obj = ctx
         },
+        { .name = "_t",
+          .name_size = strlen("_t"),
+          .parse = parse_text,
+          .obj = ctx
+        },
         /*{ .name = "_cdata",
           .name_size = strlen("_cdata"),
           .parse = parse_attr_var_cdata,
@@ -691,8 +723,7 @@ static void append_attr_var(struct kndClassVar *ci,
     ci->num_attrs++;
 }
 
-gsl_err_t knd_import_attr(struct kndAttr *self,
-                          struct kndTask *task,
+gsl_err_t knd_import_attr(struct kndAttr *self, struct kndTask *task,
                           const char *rec, size_t *total_size)
 {
     struct LocalContext ctx = {

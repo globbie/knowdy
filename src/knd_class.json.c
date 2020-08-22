@@ -28,6 +28,7 @@
 #include "knd_rel.h"
 #include "knd_proc.h"
 #include "knd_proc_arg.h"
+#include "knd_shared_set.h"
 #include "knd_set.h"
 #include "knd_output.h"
 #include "knd_utils.h"

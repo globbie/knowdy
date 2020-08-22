@@ -13,7 +13,8 @@
 #include "knd_text.h"
 #include "knd_num.h"
 #include "knd_rel.h"
-#include "knd_set.h"
+#include "knd_shared_dict.h"
+#include "knd_shared_set.h"
 #include "knd_output.h"
 
 #include "knd_user.h"
@@ -60,16 +61,16 @@ static int update_attr_var_indices(struct kndClassEntry *blueprint,
     return knd_OK;
 }
 
-int knd_class_inst_update_indices(struct kndRepo *repo,
-                                  struct kndClassEntry *baseclass,
-                                  struct kndStateRef *state_refs,
-                                  struct kndTask *task)
+int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *baseclass,
+                                  struct kndStateRef *state_refs, struct kndTask *task)
 {
     struct kndClassEntry *c = baseclass;
     struct kndStateRef *ref;
     struct kndClassInstEntry *entry;
-    struct kndSharedDict *name_idx;
-    // struct kndSet *idx;
+    struct kndSharedDict *name_idx = NULL;
+    struct kndSharedDict *new_name_idx = NULL;
+    struct kndSharedSet *idx = NULL;
+    struct kndSharedSet *new_idx = NULL;
     struct kndCommit *commit = state_refs->state->commit;
     struct kndSharedDictItem *item = NULL;
     struct kndMemPool *mempool = task->mempool;
@@ -79,8 +80,7 @@ int knd_class_inst_update_indices(struct kndRepo *repo,
 
     if (DEBUG_INST_LEVEL_TMP)
         knd_log(".. repo \"%.*s\" to update inst indices of class \"%.*s\" (repo:%.*s)",
-                repo->name_size, repo->name,
-                baseclass->name_size, baseclass->name,
+                repo->name_size, repo->name, baseclass->name_size, baseclass->name,
                 baseclass->repo->name_size, baseclass->repo->name);
 
     /* user repo selected: activate copy-on-write */
@@ -101,12 +101,9 @@ int knd_class_inst_update_indices(struct kndRepo *repo,
                 c->name_size = baseclass->name_size;
                 c->class = baseclass->class;
 
-                err = knd_shared_dict_set(repo->class_name_idx,
-                                          c->name, c->name_size,
-                                          (void*)c, mempool,
-                                          NULL, &item, false);
-                KND_TASK_ERR("failed to register class entry \"%.*s\"",
-                             c->name_size, c->name);
+                err = knd_shared_dict_set(repo->class_name_idx, c->name, c->name_size,
+                                          (void*)c, mempool, NULL, &item, false);
+                KND_TASK_ERR("failed to register class entry \"%.*s\"", c->name_size, c->name);
                 c->dict_item = item;
             }
         }
@@ -114,29 +111,36 @@ int knd_class_inst_update_indices(struct kndRepo *repo,
 
     if (!c) {
         err = knd_FAIL;
-        KND_TASK_ERR("class not found: %.*s",
-                     baseclass->name_size, baseclass->name);
+        KND_TASK_ERR("class not found: %.*s", baseclass->name_size, baseclass->name);
     }
 
-    name_idx = c->inst_name_idx;
-    if (!name_idx) {
-        err = knd_shared_dict_new(&name_idx, KND_MEDIUM_DICT_SIZE);
+    do {
+        name_idx = atomic_load_explicit(&c->inst_name_idx, memory_order_acquire);
+        if (name_idx) {
+            // TODO free new_name_idx if (new_name_idx != NULL) 
+            break;
+        }
+        err = knd_shared_dict_new(&new_name_idx, KND_MEDIUM_DICT_SIZE);
         KND_TASK_ERR("failed to create inst name idx");
 
-        // TODO: atomic
-        c->inst_name_idx = name_idx; 
-    }
+    } while (!atomic_compare_exchange_weak(&c->inst_name_idx, &name_idx, new_name_idx));
 
-    /*if (!idx) {
-        // TODO: thread safe
-        err = knd_set_new(mempool, &idx);
+    do {
+        idx = atomic_load_explicit(&c->inst_idx, memory_order_acquire);
+        if (idx) {
+            // TODO free new_idx if (new_idx != NULL) 
+            break;
+        }
+        err = knd_shared_set_new(NULL, &new_idx);
         KND_TASK_ERR("failed to create inst idx");
-        baseclass->inst_idx = idx; 
-        }*/
 
+    } while (!atomic_compare_exchange_weak(&c->inst_idx, &idx, new_idx));
+
+    name_idx = atomic_load_explicit(&c->inst_name_idx, memory_order_acquire);
+    idx = atomic_load_explicit(&c->inst_idx, memory_order_acquire);
+    
     for (ref = state_refs; ref; ref = ref->next) {
         entry = ref->obj;
-
         switch (ref->state->phase) {
         case KND_CREATED:
             if (entry->name_size) {
@@ -147,17 +151,12 @@ int knd_class_inst_update_indices(struct kndRepo *repo,
                 
                 item->phase = KND_SHARED_DICT_VALID;
             }
-            /* err = knd_set_add(idx,
-                              entry->id, entry->id_size,
-                              (void*)entry);
-            KND_TASK_ERR("failed to register class inst %.*s err:%d",
-                         entry->name_size, entry->name, err);
-            */
+
+            err = knd_shared_set_add(idx, entry->id, entry->id_size, (void*)entry);
+            KND_TASK_ERR("class inst idx failed to register \"%.*s\"", entry->name_size, entry->name);
 
             err = update_attr_var_indices(c, entry, task);
-            KND_TASK_ERR("failed to update attr inst indices with \"%.*s\"",
-                         entry->id_size, entry->id);
-
+            KND_TASK_ERR("failed to update attr inst indices with \"%.*s\"", entry->id_size, entry->id);
             break;
         default:
             break;
@@ -166,10 +165,7 @@ int knd_class_inst_update_indices(struct kndRepo *repo,
     return knd_OK;
 }
 
-int knd_class_inst_export(struct kndClassInst *self,
-                          knd_format format,
-                          bool is_list_item,
-                          struct kndTask *task)
+int knd_class_inst_export(struct kndClassInst *self, knd_format format, bool is_list_item, struct kndTask *task)
 {
     switch (format) {
         case KND_FORMAT_JSON:
@@ -183,9 +179,7 @@ int knd_class_inst_export(struct kndClassInst *self,
     }
 }
 
-int knd_class_inst_commit_state(struct kndClass *self,
-                                struct kndStateRef *children,
-                                size_t num_children,
+int knd_class_inst_commit_state(struct kndClass *self, struct kndStateRef *children, size_t num_children,
                                 struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
@@ -221,8 +215,7 @@ int knd_class_inst_commit_state(struct kndClass *self,
     return knd_OK;
 }
 
-int knd_class_inst_export_commit(struct kndStateRef *state_refs,
-                                 struct kndTask *task)
+int knd_class_inst_export_commit(struct kndStateRef *state_refs, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndStateRef *ref;
@@ -247,28 +240,24 @@ int knd_class_inst_export_commit(struct kndStateRef *state_refs,
     return knd_OK;
 }
 
-int knd_class_inst_entry_new(struct kndMemPool *mempool,
-                             struct kndClassInstEntry **result)
+int knd_class_inst_entry_new(struct kndMemPool *mempool, struct kndClassInstEntry **result)
 {
     void *page;
     int err;
     switch (mempool->type) {
     case KND_ALLOC_LIST:
-        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
-                                sizeof(struct kndClassInstEntry), &page);
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL, sizeof(struct kndClassInstEntry), &page);
         RET_ERR();
         break;
     default:
-        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL,
-                                     sizeof(struct kndClassInstEntry), &page);
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL, sizeof(struct kndClassInstEntry), &page);
         RET_ERR();
     }
     *result = page;
     return knd_OK;
 }
 
-int knd_class_inst_new(struct kndMemPool *mempool,
-                       struct kndClassInst **result)
+int knd_class_inst_new(struct kndMemPool *mempool, struct kndClassInst **result)
 {
     void *page;
     int err;

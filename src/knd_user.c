@@ -212,13 +212,11 @@ static gsl_err_t parse_class_select(void *obj,
 {
     struct kndTask *task = obj;
     gsl_err_t parser_err;
-
     if (!task->user_ctx) {
         KND_TASK_LOG("no user selected");
         task->http_code = HTTP_BAD_REQUEST;
         return make_gsl_err(gsl_FAIL);
     }
-
     /* check private repo first */
     if (task->user_ctx->repo) {
         parser_err = knd_class_select(task->user_ctx->repo, rec, total_size, task);
@@ -230,7 +228,6 @@ static gsl_err_t parse_class_select(void *obj,
             return make_gsl_err(gsl_FAIL);
         }
     }
-
     /* shared read-only repo */
     return knd_class_select(task->user_ctx->base_repo, rec, total_size, task);
 }

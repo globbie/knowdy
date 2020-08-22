@@ -62,7 +62,7 @@ set(HEADERS include/knd_attr.h
         include/knd_proc.h include/knd_proc_arg.h include/knd_proc_call.h
         include/knd_queue.h include/knd_query.h
         include/knd_repo.h
-        include/knd_set.h include/knd_set_idx.h include/knd_shard.h
+        include/knd_set.h include/knd_shared_set.h include/knd_set_idx.h include/knd_shard.h
         include/knd_state.h include/knd_commit.h
         include/knd_task.h include/knd_text.h
         include/knd_user.h include/knd_utils.h)
@@ -79,7 +79,7 @@ set(SOURCES src/knd_attr.c src/knd_attr.gsp.c src/knd_attr.import.c src/knd_attr
         src/knd_proc.gsl.c src/knd_proc.json.c src/knd_proc.svg.c src/knd_proc_arg.c
         src/knd_proc_arg.gsl.c src/knd_proc_call.c
         src/knd_repo.c src/knd_repo.gsp.c
-        src/knd_set.c src/knd_set_idx.c src/knd_shard.c
+        src/knd_set.c src/knd_shared_set.c src/knd_set_idx.c src/knd_shard.c
         src/knd_state.c src/knd_commit.c
         src/knd_task.c src/knd_task.select.c
         src/knd_text.c src/knd_text.select.c src/knd_text.export.c

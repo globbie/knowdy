@@ -6,7 +6,7 @@
 #include "knd_utils.h"
 #include "knd_repo.h"
 #include "knd_mempool.h"
-#include "knd_set.h"
+#include "knd_shared_set.h"
 #include "knd_task.h"
 
 #include <gsl-parser.h>
@@ -18,13 +18,12 @@
 #define DEBUG_SET_LEVEL_4 0
 #define DEBUG_SET_LEVEL_TMP 1
 
-static int compare_set_by_size_ascend(const void *a,
-                                      const void *b)
+static int compare_set_by_size_ascend(const void *a, const void *b)
 {
-    struct kndSet **obj1, **obj2;
+    struct kndSharedSet **obj1, **obj2;
 
-    obj1 = (struct kndSet**)a;
-    obj2 = (struct kndSet**)b;
+    obj1 = (struct kndSharedSet**)a;
+    obj2 = (struct kndSharedSet**)b;
 
     if ((*obj1)->num_elems == (*obj2)->num_elems) return 0;
     if ((*obj1)->num_elems > (*obj2)->num_elems) return 1;
@@ -32,21 +31,15 @@ static int compare_set_by_size_ascend(const void *a,
     return -1;
 }
 
-static int kndSet_traverse(struct kndSet *self,
-                           struct kndSetElemIdx *base_idx,
-                           struct kndSetElemIdx **idxs,
-                           size_t num_idxs,
-                           struct kndSetElemIdx *result_idx)
+static int traverse(struct kndSharedSet *self, struct kndSharedSetElemIdx *base_idx,
+                    struct kndSharedSetElemIdx **idxs, size_t num_idxs,
+                    struct kndSharedSetElemIdx *result_idx)
 {
-    struct kndSetElemIdx *nested_idxs[KND_MAX_CLAUSES];
-    struct kndSetElemIdx *idx, *sub_idx, *nested_idx;
+    struct kndSharedSetElemIdx *nested_idxs[KND_MAX_CLAUSES];
+    struct kndSharedSetElemIdx *idx, *sub_idx, *nested_idx;
     void *elem;
     bool gotcha = false;
     int err;
-
-    if (DEBUG_SET_LEVEL_2)
-        knd_log(".. traverse %.*s, total elems: %zu",
-                self->base->name_size, self->base->name, self->num_elems);
 
     /* iterate over terminal elems */
     for (size_t i = 0; i < KND_RADIX_BASE; i++) {
@@ -87,43 +80,31 @@ static int kndSet_traverse(struct kndSet *self,
         }
         if (!gotcha) continue;
 
-        if (self->mempool->type == KND_ALLOC_LIST) {
-	    err = knd_set_elem_idx_new(self->mempool, &sub_idx);
-	} else {
-	    err = knd_set_elem_idx_mem(self->mempool, &sub_idx);
-	}
+        err = knd_shared_set_elem_idx_new(self->mempool, &sub_idx);
         if (err) {
             knd_log("-- set elem idx mempool limit reached :(");
             return err;
         }
         result_idx->idxs[i] = sub_idx;
 
-        err = kndSet_traverse(self, idx, nested_idxs, num_idxs, sub_idx);
+        err = traverse(self, idx, nested_idxs, num_idxs, sub_idx);
         if (err) return err;
     }
     
     return knd_OK;
 }
 
-extern int knd_set_intersect(struct kndSet *self,
-                             struct kndSet **sets,
-                             size_t num_sets)
+extern int knd_shared_set_intersect(struct kndSharedSet *self, struct kndSharedSet **sets, size_t num_sets)
 {
-    struct kndSetElemIdx *base_idx;
-    struct kndSetElemIdx *idxs[KND_MAX_CLAUSES];
+    struct kndSharedSetElemIdx *base_idx;
+    struct kndSharedSetElemIdx *idxs[KND_MAX_CLAUSES];
     size_t num_idxs = num_sets - 1;
     int err;
 
-    if (num_sets == 1) {
-        return knd_FAIL;
-    }
-
-    if (DEBUG_SET_LEVEL_2)
-        knd_log(" .. intersection by Set \"%.*s\".. total sets:%zu",
-                self->base->name_size, self->base->name, num_sets);
+    assert(num_sets > 1);
 
     /* sort sets by size */
-    qsort(sets, num_sets, sizeof(struct kndSet*), compare_set_by_size_ascend);
+    qsort(sets, num_sets, sizeof(struct kndSharedSet*), compare_set_by_size_ascend);
 
     /* the smallest set is taken as a base */
     base_idx = sets[0]->idx;
@@ -132,123 +113,100 @@ extern int knd_set_intersect(struct kndSet *self,
     for (size_t i = 0; i < num_idxs; i++)
         idxs[i] = sets[i]->idx;
 
-    err = kndSet_traverse(self, base_idx, idxs, num_idxs, self->idx);
+    err = traverse(self, base_idx, idxs, num_idxs, self->idx);
     if (err) return err;
 
     return knd_OK;
 }
 
-static int save_elem(struct kndSet *self,
-                     struct kndSetElemIdx *parent_idx,
-                     void *elem,
-                     const char *id,
-                     size_t id_size)
+static int save_elem(struct kndSharedSet *self, struct kndSharedSetElemIdx *parent_idx,
+                     void *elem, const char *id, size_t id_size)
 {
-    struct kndSetElemIdx *idx;
+    struct kndSharedSetElemIdx *idx = NULL;
+    struct kndSharedSetElemIdx *new_idx = NULL;
+    void *prev_elem = NULL;
     int idx_pos;
     int err;
 
-    if (DEBUG_SET_LEVEL_2) {
-        knd_log("== set idx to save ID remainder: \"%.*s\" elem:%p",
-                id_size, id, elem);
-    }
+    if (DEBUG_SET_LEVEL_TMP)
+        knd_log("== set idx to save ID remainder: \"%.*s\"", id_size, id);
+
+    assert(parent_idx != NULL);
 
     idx_pos = obj_id_base[(unsigned int)*id];
     if (id_size > 1) {
-        idx = parent_idx->idxs[idx_pos];
-        if (!idx) {
-	    if (self->mempool->type == KND_ALLOC_LIST) {
-		err = knd_set_elem_idx_new(self->mempool, &idx);
-	    } else {
-		err = knd_set_elem_idx_mem(self->mempool, &idx);
-	    }
+        do {
+            idx = atomic_load_explicit(&parent_idx->idxs[idx_pos], memory_order_relaxed);
+            if (idx) break;
+
+            err = knd_shared_set_elem_idx_new(self->mempool, &new_idx);
             if (err) {
                 knd_log("-- set elem idx mempool limit reached");
                 return err;
             }
-            parent_idx->idxs[idx_pos] = idx;
-        }
+        } while (!atomic_compare_exchange_weak(&parent_idx->idxs[idx_pos], &idx, new_idx));
 
         err = save_elem(self, idx, elem, id + 1, id_size - 1);
         if (err) return err;
         return knd_OK;
     }
 
-    /* assign elem */
-    if (!self->allow_overwrite &&
-        parent_idx->elems[idx_pos] != NULL) {
-        knd_log("set elem already exists");
-        return knd_CONFLICT;
-    }
+    /* assign payload elem */
+    do {
+       prev_elem = atomic_load_explicit(&parent_idx->elems[idx_pos], memory_order_relaxed);
+       if (prev_elem && !self->allow_overwrite) {
+           knd_log("set elem already exists");
+           return knd_CONFLICT;
+       }
+    } while (!atomic_compare_exchange_weak(&parent_idx->elems[idx_pos], &prev_elem, elem));
 
-    parent_idx->elems[idx_pos] = elem;
-    self->num_elems++;
-    self->num_valid_elems++;
-
+    atomic_fetch_add_explicit(&self->num_elems, 1, memory_order_relaxed);
+    atomic_fetch_add_explicit(&self->num_valid_elems, 1, memory_order_relaxed);
     return knd_OK;
 }
 
-static int get_elem(struct kndSet *self,
-                    struct kndSetElemIdx *parent_idx,
-                    void **result,
-                    const char *id,
-                    size_t id_size)
+static int get_elem(struct kndSharedSet *self, struct kndSharedSetElemIdx *parent_idx,
+                    void **result, const char *id, size_t id_size)
 {
-    struct kndSetElemIdx *idx;
+    struct kndSharedSetElemIdx *idx;
     void *elem;
     int idx_pos;
     int err;
 
-    idx_pos = obj_id_base[(unsigned int)*id];
-
     if (DEBUG_SET_LEVEL_2)
-        knd_log(".. get elem by ID, remainder \"%.*s\" POS:%d", id_size, id, idx_pos);
+        knd_log(".. get elem by ID, remainder \"%.*s\"", id_size, id);
 
+    assert(parent_idx != NULL);
+
+    idx_pos = obj_id_base[(unsigned int)*id];
     if (id_size > 1) {
-        idx = parent_idx->idxs[idx_pos];
+        idx = atomic_load_explicit(&parent_idx->idxs[idx_pos], memory_order_relaxed);
         if (!idx) return knd_NO_MATCH;
 
         err = get_elem(self, idx, result, id + 1, id_size - 1);
         if (err) return err;
-
         return knd_OK;
     }
-
-    elem = parent_idx->elems[idx_pos];
-    if (!elem) {
-        return knd_NO_MATCH;
-    }
+    elem = atomic_load_explicit(&parent_idx->elems[idx_pos], memory_order_relaxed);
+    if (!elem) return knd_NO_MATCH;
 
     *result = elem;
     return knd_OK;
 }
 
-int knd_set_add(struct kndSet *self,
-                const char *key,
-                size_t key_size,
-                void *elem)
+int knd_shared_set_add(struct kndSharedSet *self, const char *key, size_t key_size, void *elem)
 {
     int err;
     assert(key_size != 0);
     assert(key != NULL);
-
-    // knd_log(".. adding ELEM \"%.*s\"", key_size, key);
-
     err = save_elem(self, self->idx, elem, key, key_size);
-    if (err) {
-        knd_log("failed to add a set elem: %d", err);
-        return err;
-    }
+    if (err) return err;
     return knd_OK;
 }
 
-int knd_set_get(struct kndSet *self,
-                const char *key,
-                size_t key_size,
-                void **elem)
+int knd_shared_set_get(struct kndSharedSet *self, const char *key, size_t key_size, void **elem)
 {
     int err;
-
     if (!self->idx) return knd_FAIL;
 
     err = get_elem(self, self->idx, elem, key, key_size);
@@ -257,14 +215,11 @@ int knd_set_get(struct kndSet *self,
     return knd_OK;
 }
 
-static int kndSet_traverse_idx(struct kndSetElemIdx *parent_idx,
-                               map_cb_func cb,
-                               void *obj,
-                               size_t *count)
+static int traverse_idx(struct kndSharedSetElemIdx *parent_idx, map_cb_func cb, void *obj, size_t *count)
 {
     char buf[KND_ID_SIZE];
     size_t buf_size = 0;
-    struct kndSetElemIdx *idx;
+    struct kndSharedSetElemIdx *idx;
     void *elem;
     int err;
 
@@ -284,16 +239,14 @@ static int kndSet_traverse_idx(struct kndSetElemIdx *parent_idx,
         idx = parent_idx->idxs[i];
         if (!idx) continue;
 
-        err = kndSet_traverse_idx(idx, cb, obj, count);
+        err = traverse_idx(idx, cb, obj, count);
         if (err) return err;
     }
 
     return knd_OK;
 }
 
-int knd_set_map(struct kndSet *self,
-                map_cb_func cb,
-                void *obj)
+int knd_shared_set_map(struct kndSharedSet *self, map_cb_func cb, void *obj)
 {
     size_t count = 0;
     int err;
@@ -304,20 +257,20 @@ int knd_set_map(struct kndSet *self,
         return knd_OK;
     }
 
-    err = kndSet_traverse_idx(self->idx, cb, obj, &count);
+    err = traverse_idx(self->idx, cb, obj, &count);
     if (err) return err;
 
     return knd_OK;
 }
 
-static int build_dir_footer(struct kndSetDir *dir,
+static int build_dir_footer(struct kndSharedSetDir *dir,
                                 bool use_positional_indexing,
                                 struct kndTask *task)
 {
     unsigned char buf[KND_NAME_SIZE];
     size_t buf_size = KND_UINT_SIZE;
     unsigned int numval;
-    struct kndSetDirEntry *entry;
+    struct kndSharedSetDirEntry *entry;
     struct kndOutput *out = task->out;
     int err;
 
@@ -364,26 +317,24 @@ static int build_dir_footer(struct kndSetDir *dir,
     return knd_OK;
 }
 
-static int traverse_sync(struct kndSetElemIdx *parent_idx,
-                         map_cb_func cb,
-                         void *obj,
-                         struct kndSetDir **result_dir)
+static int traverse_sync(struct kndSharedSetElemIdx *parent_idx,
+                         map_cb_func cb, void *obj, struct kndSharedSetDir **result_dir)
 {
     char buf[KND_ID_SIZE];
     size_t buf_size = 0;
     struct kndTask *task = obj;
-    struct kndSetElemIdx *idx;
-    struct kndSetDir *dir, *subdir;
-    struct kndSetDirEntry *entry;
+    struct kndSharedSetElemIdx *idx;
+    struct kndSharedSetDir *dir, *subdir;
+    struct kndSharedSetDirEntry *entry;
     size_t num_empty_entries = 0;
     bool use_positional_indexing = true;
     void *elem;
     int err;
 
-    dir = calloc(1, sizeof(struct kndSetDir));
+    dir = calloc(1, sizeof(struct kndSharedSetDir));
     if (!dir) {
         err = knd_NOMEM;
-        KND_TASK_ERR("failed to alloc kndSetDir");
+        KND_TASK_ERR("failed to alloc kndSharedSetDir");
     }
 
     /* sync subdirs */
@@ -441,15 +392,10 @@ static int traverse_sync(struct kndSetElemIdx *parent_idx,
     return knd_OK;
 }
 
-int knd_set_sync(struct kndSet *self,
-                 map_cb_func cb,
-                 size_t *total_size,
-                 struct kndTask *task)
+int knd_shared_set_sync(struct kndSharedSet *self, map_cb_func cb, size_t *total_size, struct kndTask *task)
 {
-    struct kndSetDir *root_dir;
+    struct kndSharedSetDir *root_dir;
     int err;
-
-    knd_log(".. sync kndSet.. ");
 
     err = traverse_sync(self->idx, cb, task, &root_dir);
     if (err) return err;
@@ -459,66 +405,64 @@ int knd_set_sync(struct kndSet *self,
     return knd_OK;
 }
 
-int knd_set_init(struct kndSet *self)
-{
-    self->add = knd_set_add;
-    self->get = knd_set_get;
-    self->map = knd_set_map;
-    return knd_OK;
-}
-
-int knd_set_new(struct kndMemPool *mempool,
-                struct kndSet **result)
+int knd_shared_set_new(struct kndMemPool *mempool, struct kndSharedSet **result)
 {
     void *page;
-    struct kndSetElemIdx *idx;
+    struct kndSharedSet *set;
+    struct kndSharedSetElemIdx *idx;
     int err;
+
+    if (!mempool) {
+        set = calloc(1, sizeof(struct kndSharedSet));
+        if (!set) return knd_NOMEM;
+
+        err = knd_shared_set_elem_idx_new(mempool, &idx);
+        if (err) return err;
+        set->idx = idx;
+        *result = set;
+        return knd_OK;
+    }
 
     switch (mempool->type) {
     case KND_ALLOC_LIST:
-        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
-                                sizeof(struct kndSet), &page);
-        RET_ERR();
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL, sizeof(struct kndSharedSet), &page);
+        if (err) return err;
 
-        err = knd_set_elem_idx_new(mempool, &idx);
-        RET_ERR();
+        err = knd_shared_set_elem_idx_new(mempool, &idx);
+        if (err) return err;
         break;
     default:
-        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL,
-                                     sizeof(struct kndSet), &page);
-        RET_ERR();
-        
-        err = knd_set_elem_idx_mem(mempool, &idx);
-        RET_ERR();
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL, sizeof(struct kndSharedSet), &page);
+        if (err) return err;
+        err = knd_shared_set_elem_idx_new(mempool, &idx);
+        if (err) return err;
     }
     
     *result = page;
     (*result)->mempool = mempool;
     (*result)->idx = idx;
-    knd_set_init(*result);
     return knd_OK;
 }
 
-int knd_set_elem_idx_new(struct kndMemPool *mempool,
-                         struct kndSetElemIdx **result)
+int knd_shared_set_elem_idx_new(struct kndMemPool *mempool, struct kndSharedSetElemIdx **result)
 {
     void *page;
     int err;
 
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_BASE,
-                            sizeof(struct kndSetElemIdx), &page);                      RET_ERR();
-    *result = page;
-    return knd_OK;
-}
+    if (!mempool) {
+        *result = calloc(1, sizeof(struct kndSharedSetElemIdx));
+        return *result ? 0 : knd_NOMEM;
+    }
 
-int knd_set_elem_idx_mem(struct kndMemPool *mempool,
-                         struct kndSetElemIdx **result)
-{
-    void *page;
-    int err;
-
-    err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_BASE,
-				 sizeof(struct kndSetElemIdx), &page);                      RET_ERR();
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_BASE, sizeof(struct kndSharedSetElemIdx), &page);
+        if (err) return err;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_BASE, sizeof(struct kndSharedSetElemIdx), &page);
+        if (err) return err;
+        break;
+    }
     *result = page;
     return knd_OK;
 }

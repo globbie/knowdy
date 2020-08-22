@@ -19,9 +19,6 @@
  */
 #pragma once
 
-#include "knd_dict.h"
-#include "knd_shared_dict.h"
-#include "knd_facet.h"
 #include "knd_utils.h"
 #include "knd_class_inst.h"
 #include "knd_config.h"
@@ -106,7 +103,7 @@ struct kndClassEntry
     struct kndClassEntry *base;
     struct kndClass *class;
 
-    struct kndSharedDictItem   *dict_item;
+    struct kndSharedDictItem *dict_item;
 
     knd_state_phase phase;
 
@@ -124,16 +121,15 @@ struct kndClassEntry
     size_t init_inst_state;
     size_t num_inst_states;
 
-    struct kndSet        *inst_idx;
-    struct kndSharedDict *inst_name_idx;
+    struct kndSharedSet  * _Atomic inst_idx;
+    struct kndSharedDict * _Atomic inst_name_idx;
     atomic_size_t    num_insts;
     atomic_size_t    inst_id_count;
 
     struct kndSet *attr_idx;
-
     struct kndAttrHub *attr_hubs;
 
-    /* usage */
+    /* usage metrics */
     atomic_size_t num_requests;
     
     struct kndClassEntry *prev;
@@ -188,25 +184,14 @@ struct kndClass
     void (*str)(struct kndClass *self, size_t depth);
 };
 
-/* constructor */
-int kndClass_new(struct kndClass **self,
-                 struct kndMemPool *mempool);
-
 int knd_class_coordinate(struct kndClass *self, struct kndTask *task);
+int knd_get_class_entry(struct kndRepo *self, const char *name, size_t name_size,
+                        struct kndClassEntry **result, struct kndTask *task);
+int knd_get_class(struct kndRepo *self, const char *name, size_t name_size,
+                  struct kndClass **result, struct kndTask *task);
 
-int knd_get_class_entry(struct kndRepo *self,
-                        const char *name, size_t name_size,
-                        struct kndClassEntry **result,
-                        struct kndTask *task);
-int knd_get_class(struct kndRepo *self,
-                  const char *name, size_t name_size,
-                  struct kndClass **result,
-                  struct kndTask *task);
-
-int knd_get_class_by_id(struct kndRepo *self,
-                        const char *id, size_t id_size,
-                        struct kndClass **result,
-                        struct kndTask *task);
+int knd_get_class_by_id(struct kndRepo *self, const char *id, size_t id_size,
+                        struct kndClass **result, struct kndTask *task);
 
 int knd_is_base(struct kndClass *self, struct kndClass *child);
 

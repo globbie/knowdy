@@ -4,6 +4,7 @@
 
 #include "knd_class_inst.h"
 #include "knd_attr.h"
+#include "knd_shared_set.h"
 
 int knd_class_inst_export_GSL(struct kndClassInst *self, bool is_list_item, struct kndTask *task, size_t depth)
 {

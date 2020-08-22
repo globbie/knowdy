@@ -61,58 +61,17 @@ static int str_attr_ref(void *obj,
     return knd_OK;
 }
 
-static int resolve_text(struct kndAttrVar *attr_var,
-                        struct kndTask *task)
+static int resolve_text(struct kndAttrVar *attr_var, struct kndTask *task)
 {
-    struct kndAttrVar *curr_item;
-    struct kndAttrVar *val_item;
-    struct kndText *text;
-    struct kndText *tr;
-    struct kndMemPool *mempool = task->mempool;
-    int err;
-
     if (DEBUG_ATTR_RESOLVE_LEVEL_2)
         knd_log(".. resolving text attr var: %.*s  class:%.*s",
                 attr_var->name_size, attr_var->name,
                 attr_var->class_var->parent->name_size,
                 attr_var->class_var->parent->name);
-
-    err = knd_text_new(mempool, &text);
-    if (err) {
-        knd_log("-- no text alloc");
-        return err;
+    if (!attr_var->text) {
+        KND_TASK_LOG("no text field (_t) found in attr var \"%.*s\"", attr_var->name_size, attr_var->name);
+        return knd_FAIL;
     }
-
-    for (curr_item = attr_var->list; curr_item; curr_item = curr_item->next) {
-        err = knd_text_new(mempool, &tr);
-        if (err) {
-            knd_log("-- no text alloc");
-        }
-
-        tr->locale = curr_item->name;
-        tr->locale_size = curr_item->name_size;
-
-        // no text value
-        if (!curr_item->children) {
-            knd_log("-- no children");
-            return knd_FAIL;
-        }
-        val_item = curr_item->children;
-        if (memcmp(val_item->name, "t", 1)) {
-            knd_log("-- no t field");
-            return knd_FAIL;
-        }
-
-        tr->seq = val_item->val;
-        tr->seq_size = val_item->val_size;
-
-        tr->next = text->trs;
-        text->trs = tr;
-        text->num_trs++;
-    }
-
-    attr_var->text = text;
-
     return knd_OK;
 }
 
@@ -590,7 +549,7 @@ int knd_resolve_attr_vars(struct kndClass *self,
     struct kndRepo *repo = self->entry->repo;
     int err;
 
-    if (DEBUG_ATTR_RESOLVE_LEVEL_2) {
+    if (DEBUG_ATTR_RESOLVE_LEVEL_3) {
         knd_log("\n.. resolving attr vars of class \"%.*s\" (base:%.*s) (repo:%.*s) ..",
                 self->entry->name_size, self->entry->name,
                 parent_item->entry->name_size, parent_item->entry->name,
@@ -673,6 +632,7 @@ int knd_resolve_attr_vars(struct kndClass *self,
             if (err) return err;
             break;
         case KND_ATTR_TEXT:
+            attr_var->attr = attr;
             err = resolve_text(attr_var, task);
             KND_TASK_ERR("failed to resolve text attr");
             break;

@@ -444,8 +444,10 @@ int knd_attr_var_export_GSL(struct kndAttrVar *var, struct kndTask *task, size_t
         KND_TASK_ERR("GSL inner var output failed");
         break;
     case KND_ATTR_TEXT:
+        OUT("{_t", strlen("{_t"));
         err = knd_text_export(var->text, KND_FORMAT_GSL, task);
         KND_TASK_ERR("GSL text export failed");
+        OUT("}", strlen("}"));
         break;
     default:
         OUT(var->val, var->val_size);

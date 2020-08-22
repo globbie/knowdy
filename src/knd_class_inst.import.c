@@ -12,7 +12,7 @@
 
 #include "knd_text.h"
 #include "knd_num.h"
-#include "knd_set.h"
+#include "knd_shared_dict.h"
 
 #include "knd_user.h"
 #include "knd_state.h"

@@ -19,8 +19,7 @@
 #include "knd_config.h"
 #include "knd_utils.h"
 
-static int dict_item_new(struct kndMemPool *mempool,
-                         struct kndSharedDictItem **result)
+static int dict_item_new(struct kndMemPool *mempool, struct kndSharedDictItem **result)
 {
     void *page;
     int err;
@@ -54,13 +53,10 @@ knd_shared_dict_hash(const char *key, size_t key_size)
     return h;
 }
 
-void* knd_shared_dict_get(struct kndSharedDict *self,
-                   const char *key,
-                   size_t key_size)
+void* knd_shared_dict_get(struct kndSharedDict *self, const char *key, size_t key_size)
 {
     size_t h = knd_shared_dict_hash(key, key_size) % self->size;
-    struct kndSharedDictItem *item = atomic_load_explicit(&self->hash_array[h],
-                                                    memory_order_relaxed);
+    struct kndSharedDictItem *item = atomic_load_explicit(&self->hash_array[h], memory_order_relaxed);
     while (item) {
         if (item->key_size != key_size) goto next_item;
         if (!memcmp(item->key, key, key_size)) {
@@ -74,20 +70,15 @@ void* knd_shared_dict_get(struct kndSharedDict *self,
     return NULL;
 }
 
-int knd_shared_dict_set(struct kndSharedDict *self,
-                        const char *key, size_t key_size,
-                        void *data,
-                        struct kndMemPool *mempool,
-                        struct kndCommit *commit,
-                        struct kndSharedDictItem **result,
-                        bool allow_overwrite)
+int knd_shared_dict_set(struct kndSharedDict *self, const char *key, size_t key_size,
+                        void *data, struct kndMemPool *mempool, struct kndCommit *commit,
+                        struct kndSharedDictItem **result, bool allow_overwrite)
 {
     struct kndSharedDictItem *head;
     struct kndSharedDictItem *new_item;
     size_t h = knd_shared_dict_hash(key, key_size) % self->size;
 
-    struct kndSharedDictItem *orig_head = atomic_load_explicit(&self->hash_array[h],
-                                                               memory_order_acquire);
+    struct kndSharedDictItem *orig_head = atomic_load_explicit(&self->hash_array[h], memory_order_acquire);
     struct kndSharedDictItem *item = orig_head;
     struct kndState *state;
     int err;
@@ -131,8 +122,7 @@ int knd_shared_dict_set(struct kndSharedDict *self,
     new_item->key_size = key_size;
 
     do {
-        head = atomic_load_explicit(&self->hash_array[h],
-                                    memory_order_acquire);
+        head = atomic_load_explicit(&self->hash_array[h], memory_order_acquire);
         new_item->next = head;
         item = head;
 
@@ -155,18 +145,14 @@ int knd_shared_dict_set(struct kndSharedDict *self,
         }
     } while (!atomic_compare_exchange_weak(&self->hash_array[h], &head, new_item));
     
-    atomic_fetch_add_explicit(&self->num_items, 1,
-                              memory_order_relaxed);
+    atomic_fetch_add_explicit(&self->num_items, 1, memory_order_relaxed);
     return knd_OK;
 }
 
-int knd_shared_dict_remove(struct kndSharedDict *self,
-                    const char *key,
-                    size_t key_size)
+int knd_shared_dict_remove(struct kndSharedDict *self, const char *key, size_t key_size)
 {
     size_t h = knd_shared_dict_hash(key, key_size) % self->size;
-    struct kndSharedDictItem *head = atomic_load_explicit(&self->hash_array[h],
-                                                    memory_order_relaxed);
+    struct kndSharedDictItem *head = atomic_load_explicit(&self->hash_array[h], memory_order_relaxed);
     struct kndSharedDictItem *item = head;
 
     while (item) {

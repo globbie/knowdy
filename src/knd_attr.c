@@ -94,6 +94,7 @@ void knd_attr_str(struct kndAttr *self, size_t depth)
 
 void knd_attr_var_str(struct kndAttrVar *var, size_t depth)
 {
+    knd_log("attr var:%.*s", var->name_size, var->name);
     assert(var->attr != NULL);
 
     struct kndAttr *attr = var->attr;
@@ -156,6 +157,10 @@ void knd_attr_var_str(struct kndAttrVar *var, size_t depth)
                     attr->ref_class->name_size, attr->ref_class->name,
                     var->class_inst_entry->name_size, var->class_inst_entry->name);
             break;
+        case KND_ATTR_TEXT:
+            knd_log("%*s%.*s:", depth * KND_OFFSET_SIZE, "", var->name_size, var->name);
+            knd_text_str(var->text, depth + 1);
+            return;
         default:
             knd_log("%*s%.*s (%s) => %.*s", depth * KND_OFFSET_SIZE, "",
                    var->name_size, var->name,  type_name, var->val_size, var->val);

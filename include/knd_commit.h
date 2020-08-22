@@ -10,7 +10,8 @@ typedef enum knd_commit_confirm { KND_INIT_STATE,
                                   KND_FAILED_STATE,
                                   KND_CONFLICT_STATE,
                                   KND_VALID_STATE,
-                                  KND_PERSISTENT_STATE
+                                  KND_PERSISTENT_STATE,
+                                  KND_REPLICATED_STATE
 } knd_commit_confirm;
 
 struct kndCommit

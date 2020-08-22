@@ -386,8 +386,7 @@ parse_select_by_baseclass(void *obj, const char *rec, size_t *total_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t
-present_class_state(void *obj, const char *unused_var(name), size_t unused_var(name_size))
+static gsl_err_t present_class_state(void *obj, const char *unused_var(name), size_t unused_var(name_size))
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
@@ -402,9 +401,7 @@ present_class_state(void *obj, const char *unused_var(name), size_t unused_var(n
         if (err) return make_gsl_err_external(err);
         return make_gsl_err_external(knd_FAIL);
     }
-
-    err = knd_class_export_state(ctx->selected_class->entry,
-                                 task->ctx->format, task);
+    err = knd_class_export_state(ctx->selected_class->entry, task->ctx->format, task);
     if (err) {
         knd_log("-- class state export failed");
         return make_gsl_err_external(err);
@@ -637,8 +634,7 @@ parse_select_class_desc(void *obj, const char *rec, size_t *total_size)
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static gsl_err_t
-parse_select_class_inst(void *obj, const char *rec, size_t *total_size)
+static gsl_err_t parse_select_class_inst(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
@@ -861,16 +857,13 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
     return make_gsl_err(gsl_FAIL);
 }
 
-gsl_err_t knd_class_select(struct kndRepo *repo,
-                           const char *rec, size_t *total_size,
-                           struct kndTask *task)
+gsl_err_t knd_class_select(struct kndRepo *repo, const char *rec, size_t *total_size, struct kndTask *task)
 {
     gsl_err_t parser_err;
     int err;
 
     if (DEBUG_CLASS_SELECT_LEVEL_2)
-        knd_log("\n.. parsing class select rec: \"%.*s\" (repo:%.*s)",
-                32, rec, repo->name_size, repo->name);
+        knd_log("\n.. parsing class select rec: \"%.*s\" (repo:%.*s)", 32, rec, repo->name_size, repo->name);
 
     struct LocalContext ctx = {
         .task = task,
