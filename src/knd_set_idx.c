@@ -44,7 +44,7 @@ static int knd_set_idx_folder_do_intersect(struct kndSetIdxFolder *result,
         result->folders_mask &= operands[i]->folders_mask;
     }
 
-    for (uint64_t folders_mask = result->folders_mask ; folders_mask; folders_mask = MASK_CLEAR_LSBIT(folders_mask)) {
+    for (uint64_t folders_mask = result->folders_mask; folders_mask; folders_mask = MASK_CLEAR_LSBIT(folders_mask)) {
         uint8_t folder_bit = MASK_LSBIT(folders_mask);
 
         struct kndSetIdxFolder *subresult = result->folders[folder_bit] = knd_set_idx_folder_new();

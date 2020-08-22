@@ -105,6 +105,7 @@ func (p *kndProc) RunTask(task string, task_len int) (string, string, error) {
 		}
 		return "", "", errors.New(msg)
 	}
+	// TODO check what replication level is needed for new commits
 	
 	return C.GoStringN((*C.char)(worker.output), C.int(worker.output_size)), "meta", nil
 }

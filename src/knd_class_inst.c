@@ -54,9 +54,9 @@ static int update_attr_var_indices(struct kndClassEntry *blueprint,
                                    struct kndClassInstEntry *entry,
                                    struct kndTask *unused_var(task))
 {
-    knd_log(".. class inst %.*s::%.*s attr var indexing",
-            blueprint->name_size, blueprint->name,
-            entry->id_size, entry->id);
+    if (DEBUG_INST_LEVEL_2)
+        knd_log(".. class inst %.*s::%.*s attr var indexing",
+                blueprint->name_size, blueprint->name, entry->id_size, entry->id);
 
     return knd_OK;
 }
@@ -78,7 +78,7 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *ba
 
     assert(commit != NULL);
 
-    if (DEBUG_INST_LEVEL_TMP)
+    if (DEBUG_INST_LEVEL_2)
         knd_log(".. repo \"%.*s\" to update inst indices of class \"%.*s\" (repo:%.*s)",
                 repo->name_size, repo->name, baseclass->name_size, baseclass->name,
                 baseclass->repo->name_size, baseclass->repo->name);

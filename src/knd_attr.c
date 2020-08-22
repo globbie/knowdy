@@ -94,7 +94,6 @@ void knd_attr_str(struct kndAttr *self, size_t depth)
 
 void knd_attr_var_str(struct kndAttrVar *var, size_t depth)
 {
-    knd_log("attr var:%.*s", var->name_size, var->name);
     assert(var->attr != NULL);
 
     struct kndAttr *attr = var->attr;
@@ -102,7 +101,6 @@ void knd_attr_var_str(struct kndAttrVar *var, size_t depth)
     const char *type_name = "";
 
     type_name = knd_attr_names[attr->type];
-
     if (var->is_list_item) {
         switch (attr->type) {
         case KND_ATTR_INNER:

@@ -357,14 +357,8 @@ gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
         if (self->user_ctx) repo = self->user_ctx->repo;
         err = knd_confirm_commit(repo, self);
         if (err) return make_gsl_err_external(err);
-
         // TODO
         knd_log(".. building report for commit %zu", self->ctx->commit->numid);
-
-        break;
-    case KND_RESTORE_STATE:
-        knd_log("== restore commits ==");
-
         break;
     default:
         self->ctx->phase = KND_COMPLETE;

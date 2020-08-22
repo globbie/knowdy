@@ -98,7 +98,7 @@ static gsl_err_t save_task_body(void *obj, const char *rec, size_t *total_size)
     memcpy(commit->rec + strlen("{task"), rec, remainder_size);
     commit->rec[rec_size] = '\0';
 
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_2)
         knd_log("#%zu COMMIT: \"%.*s\" [size:%zu]",
                 commit->numid, commit->rec_size, commit->rec, commit->rec_size);
 
@@ -168,7 +168,6 @@ static gsl_err_t parse_commit(void *obj, const char *rec, size_t *total_size)
         }
         return make_gsl_err_external(err);
     }
-    knd_log("OK: size:%zu", *total_size);
     return make_gsl_err(gsl_OK);
 }
 
@@ -366,7 +365,7 @@ static int restore_state(struct kndRepo *self, struct kndTask *task)
         return knd_OK;
     }
 
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_2)
         knd_log("== the latest snapshot of \"%.*s\" is #%d",
                 self->name_size, self->name, latest_snapshot_id);
 
@@ -393,8 +392,9 @@ static int restore_state(struct kndRepo *self, struct kndTask *task)
         return knd_OK;
     }
 
-    knd_log("== total commits to restore in repo \"%.*s\": %zu", self->name_size, self->name,
-            self->snapshot.commit_idx->num_elems);
+    if (DEBUG_REPO_LEVEL_3)
+        knd_log("== total commits to restore in repo \"%.*s\": %zu", self->name_size, self->name,
+                self->snapshot.commit_idx->num_elems);
 
     /* all commits are there in the idx,
        time to apply them in timely order */
@@ -402,10 +402,9 @@ static int restore_state(struct kndRepo *self, struct kndTask *task)
     err = self->snapshot.commit_idx->map(self->snapshot.commit_idx, apply_commit, (void*)task);
     KND_TASK_ERR("failed to apply commits");
 
-    atomic_store_explicit(&self->snapshot.num_commits,
-                          self->snapshot.commit_idx->num_elems, memory_order_relaxed);
+    atomic_store_explicit(&self->snapshot.num_commits, self->snapshot.commit_idx->num_elems, memory_order_relaxed);
 
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_3)
         knd_log("== repo \"%.*s\", total commits applied: %zu",
                 self->name_size, self->name, self->snapshot.num_commits);
     return knd_OK;
@@ -1277,7 +1276,7 @@ static int update_indices(struct kndRepo *self, struct kndCommit *commit, struct
 
     for (ref = commit->class_state_refs; ref; ref = ref->next) {
         entry = ref->obj;
-        if (DEBUG_REPO_LEVEL_TMP)
+        if (DEBUG_REPO_LEVEL_2)
             knd_log(".. idx update of class \"%.*s\" (phase:%d)",
                     entry->name_size, entry->name, ref->state->phase);
 

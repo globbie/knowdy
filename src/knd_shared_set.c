@@ -11,12 +11,12 @@
 
 #include <gsl-parser.h>
 
-#define DEBUG_SET_LEVEL_0 0
-#define DEBUG_SET_LEVEL_1 0
-#define DEBUG_SET_LEVEL_2 0
-#define DEBUG_SET_LEVEL_3 0
-#define DEBUG_SET_LEVEL_4 0
-#define DEBUG_SET_LEVEL_TMP 1
+#define DEBUG_SHARED_SET_LEVEL_0 0
+#define DEBUG_SHARED_SET_LEVEL_1 0
+#define DEBUG_SHARED_SET_LEVEL_2 0
+#define DEBUG_SHARED_SET_LEVEL_3 0
+#define DEBUG_SHARED_SET_LEVEL_4 0
+#define DEBUG_SHARED_SET_LEVEL_TMP 1
 
 static int compare_set_by_size_ascend(const void *a, const void *b)
 {
@@ -128,7 +128,7 @@ static int save_elem(struct kndSharedSet *self, struct kndSharedSetElemIdx *pare
     int idx_pos;
     int err;
 
-    if (DEBUG_SET_LEVEL_TMP)
+    if (DEBUG_SHARED_SET_LEVEL_3)
         knd_log("== set idx to save ID remainder: \"%.*s\"", id_size, id);
 
     assert(parent_idx != NULL);
@@ -173,7 +173,7 @@ static int get_elem(struct kndSharedSet *self, struct kndSharedSetElemIdx *paren
     int idx_pos;
     int err;
 
-    if (DEBUG_SET_LEVEL_2)
+    if (DEBUG_SHARED_SET_LEVEL_2)
         knd_log(".. get elem by ID, remainder \"%.*s\"", id_size, id);
 
     assert(parent_idx != NULL);
@@ -252,7 +252,7 @@ int knd_shared_set_map(struct kndSharedSet *self, map_cb_func cb, void *obj)
     int err;
 
     if (!self->idx) {
-        if (DEBUG_SET_LEVEL_2)
+        if (DEBUG_SHARED_SET_LEVEL_2)
             knd_log("NB: -- set has no root idx");
         return knd_OK;
     }

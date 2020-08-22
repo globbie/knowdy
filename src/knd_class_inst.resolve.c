@@ -32,7 +32,7 @@ int knd_class_inst_resolve(struct kndClassInst *self, struct kndTask *task)
         err = knd_resolve_attr_vars(self->blueprint, self->class_var, task);   RET_ERR();
     }
 
-    if (DEBUG_INST_RESOLVE_LEVEL_TMP)
+    if (DEBUG_INST_RESOLVE_LEVEL_1)
         knd_class_inst_str(self, 0);
 
     self->is_resolved = true;

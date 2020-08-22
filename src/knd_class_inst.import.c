@@ -203,9 +203,7 @@ static int generate_uniq_inst_name(struct kndClassInst *inst, struct kndTask *ta
     return knd_OK;
 }
 
-int knd_import_class_inst(struct kndClass *self,
-                          const char *rec, size_t *total_size,
-                          struct kndTask *task)
+int knd_import_class_inst(struct kndClass *self, const char *rec, size_t *total_size, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
     struct kndClass *c = self;
@@ -295,7 +293,7 @@ int knd_import_class_inst(struct kndClass *self,
     ctx->class_inst_state_refs = state_ref;
     ctx->num_class_inst_state_refs++;
 
-    if (DEBUG_INST_IMPORT_LEVEL_TMP)
+    if (DEBUG_INST_IMPORT_LEVEL_2)
         knd_log("++ class inst \"%.*s::%.*s\" numid:%zu initial import  OK (num inst states:%zu)",
                 self->name_size, self->name, inst->name_size, inst->name, inst->entry->numid,
                 ctx->num_class_inst_state_refs);

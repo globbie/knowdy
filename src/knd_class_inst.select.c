@@ -325,10 +325,13 @@ static gsl_err_t present_inst_selection(void *obj, const char *unused_var(val),
         return make_gsl_err(gsl_OK);
     }
 
+    /*  KND_GET_STATE */
     if (!ctx->class_inst) {
         KND_TASK_LOG("no class inst selected");
         return make_gsl_err(gsl_FAIL);
     }
+
+    if (task->ctx->max_depth == 0) task->ctx->max_depth = 1;
 
     err = knd_class_inst_export(ctx->class_inst, task->ctx->format, false, task);
     if (err) return make_gsl_err_external(err);

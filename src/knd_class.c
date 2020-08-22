@@ -137,27 +137,24 @@ static void str(struct kndClass *self, size_t depth)
             self->entry->name_size, self->entry->name);
 }
 
-int knd_get_class_inst(struct kndClassEntry *self,
-                       const char *name, size_t name_size,
-                       struct kndTask *task,
-                       struct kndClassInst **result)
+int knd_get_class_inst(struct kndClassEntry *self, const char *name, size_t name_size,
+                       struct kndTask *task, struct kndClassInst **result)
 {
     struct kndClassInstEntry *entry;
     struct kndClassInst *obj;
-    struct kndSharedDict *name_idx;
+    struct kndSharedDict *name_idx = atomic_load_explicit(&self->inst_name_idx, memory_order_acquire);
     int err;
 
-    if (DEBUG_CLASS_LEVEL_TMP)
-        knd_log(".. \"%.*s\" class (repo:%.*s) to get instance \"%.*s\"..",
-                self->name_size, self->name,
-                self->repo->name_size, self->repo->name, name_size, name);
+    if (DEBUG_CLASS_LEVEL_3)
+        knd_log(".. class \"%.*s\" (repo:%.*s) to get inst \"%.*s\"",
+                self->name_size, self->name, self->repo->name_size, self->repo->name, name_size, name);
 
-    if (!self->inst_name_idx) {
-        err = HTTP_NOT_FOUND;
+    if (!name_idx) {
+        err = knd_NO_MATCH;
+        task->http_code = HTTP_NOT_FOUND;
         KND_TASK_ERR("class \"%.*s\" has no instances", self->name_size, self->name);
     }
 
-    name_idx = self->inst_name_idx;
     entry = knd_shared_dict_get(name_idx, name, name_size);
     if (!entry) {
         err = knd_NO_MATCH;
@@ -176,14 +173,10 @@ int knd_get_class_inst(struct kndClassEntry *self,
         KND_TASK_LOG("\"%s\" instance was removed", name);
         return knd_NO_MATCH;
     }
-
-    if (DEBUG_CLASS_LEVEL_2) {
-        knd_log("++ got class inst: %.*s",  name_size, name);
+    if (DEBUG_CLASS_LEVEL_3)
         knd_class_inst_str(entry->inst, 1);
-    }
 
     obj = entry->inst;
-    
     *result = obj;
     return knd_OK;
 }

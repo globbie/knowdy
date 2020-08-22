@@ -51,8 +51,6 @@ static int resolve_class_inst_commit(struct kndStateRef *state_refs, struct kndC
         state = ref->state;
         state->commit = commit;
 
-        knd_log(".. resolve class inst %.*s", entry->name_size, entry->name);
-
         switch (state->phase) {
         case KND_CREATED:
             if (!entry->inst->is_resolved) {
@@ -102,8 +100,8 @@ int knd_resolve_commit(struct kndCommit *commit, struct kndTask *task)
     struct kndStateRef *ref;
     int err;
 
-    if (DEBUG_COMMIT_LEVEL_TMP)
-        knd_log(".. resolving commit #%zu (class state refs:%p)", commit->numid, commit->class_state_refs);
+    if (DEBUG_COMMIT_LEVEL_2)
+        knd_log(".. resolving commit #%zu", commit->numid);
     
     for (ref = commit->class_state_refs; ref; ref = ref->next) {
         if (ref->state->phase == KND_REMOVED) {
@@ -126,7 +124,7 @@ int knd_resolve_commit(struct kndCommit *commit, struct kndTask *task)
     /* PROCS */
     for (ref = commit->proc_state_refs; ref; ref = ref->next) {
         if (ref->state->phase == KND_REMOVED) {
-            knd_log(".. proc to be removed");
+            // knd_log(".. proc to be removed");
             continue;
         }
         proc_entry = ref->obj;
