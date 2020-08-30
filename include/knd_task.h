@@ -42,14 +42,12 @@ struct kndClassInst;
 struct kndConcFolder;
 struct kndText;
 
-typedef int (*task_cb_func)(void *obj,
-                            const char *msg,
-                            size_t msg_size,
-                            void *ctx);
+typedef int (*task_cb_func)(void *obj, const char *msg, size_t msg_size, void *ctx);
 
 typedef enum knd_agent_role_type {
     KND_READER,
-    KND_WRITER
+    KND_WRITER,
+    KND_ARBITER
 } knd_agent_role_type;
 
 typedef enum knd_task_spec_type {
@@ -154,11 +152,15 @@ struct kndTaskContext {
     struct kndCommit *commit;
     bool commit_confirmed;
 
-    /* inner statements */
-    struct kndClassInstEntry *stm_class_insts;
-    size_t num_stm_class_insts;
-    struct kndProcInstEntry *stm_proc_insts;
-    size_t num_stm_proc_insts;
+    /* inner statement declarations */
+    struct kndClassDeclaration *class_declars;
+    size_t num_class_declars;
+    struct kndProcDeclaration *proc_declars;
+    size_t num_proc_declars;
+
+    /* text search query & results */
+    struct kndStatement *query;
+    struct kndTextSearchReport *reports;
 
     struct kndTaskContext *next;
 };
@@ -230,6 +232,7 @@ struct kndTask
 
     struct kndMemPool *mempool;
     bool is_mempool_owner;
+    bool keep_local_WAL;
 
     struct kndMemBlock *blocks;
     size_t num_blocks;

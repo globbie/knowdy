@@ -225,7 +225,7 @@ typedef enum knd_logic { KND_LOGIC_AND,
 #define KND_MAX_ATTRS 264
 #define KND_MAX_COMPUTED_ATTRS 16
 #define KND_MAX_CLAUSES 32
-#define KND_MAX_ELEMLOCS 128
+#define KND_MAX_TEXT_LOCS 64
 
 #define KND_LEAF_SIZE 10
 

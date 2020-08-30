@@ -183,6 +183,19 @@ struct kndAttrRef
     struct kndAttrRef *next;
 };
 
+struct kndAttrIdx
+{
+    struct kndAttr *attr;
+
+    /* text indices */
+    struct kndSet *class_idx;
+    struct kndSet *proc_idx;
+    struct kndTextLoc *locs;
+    size_t num_locs;
+
+    struct kndAttrIdx *next;
+};
+
 struct kndAttr
 {
     char id[KND_ID_SIZE];
@@ -280,38 +293,26 @@ int knd_apply_attr_var_updates(struct kndClass *self,
 int knd_register_attr_ref(void *obj, const char *elem_id, size_t elem_id_size,
                           size_t count, void *elem);
 
-int knd_get_arg_value(struct kndAttrVar *src,
-                             struct kndAttrVar *query,
-                             struct kndProcCallArg *arg);
+int knd_get_arg_value(struct kndAttrVar *src, struct kndAttrVar *query, struct kndProcCallArg *arg);
 
 int knd_attr_export_GSL(struct kndAttr *self, struct kndTask *task, size_t depth);
 
-int knd_attr_export(struct kndAttr *self,
-                           knd_format format, struct kndTask *task);
+int knd_attr_export(struct kndAttr *self, knd_format format, struct kndTask *task);
 void knd_attr_var_str(struct kndAttrVar *item, size_t depth);
 void knd_attr_str(struct kndAttr *attr, size_t depth);
 
-int knd_attr_var_new(struct kndMemPool *mempool,
-                            struct kndAttrVar **result);
-int knd_attr_ref_new(struct kndMemPool *mempool,
-                     struct kndAttrRef **result);
-int knd_attr_facet_new(struct kndMemPool *mempool,
-                       struct kndAttrFacet **result);
-int knd_attr_hub_new(struct kndMemPool *mempool,
-                     struct kndAttrHub **result);
-
-int knd_attr_new(struct kndMemPool *mempool,
-                 struct kndAttr **result);
+int knd_attr_new(struct kndMemPool *mempool, struct kndAttr **result);
+int knd_attr_var_new(struct kndMemPool *mempool, struct kndAttrVar **result);
+int knd_attr_ref_new(struct kndMemPool *mempool, struct kndAttrRef **result);
+int knd_attr_idx_new(struct kndMemPool *mempool, struct kndAttrIdx **result);
+int knd_attr_facet_new(struct kndMemPool *mempool, struct kndAttrFacet **result);
+int knd_attr_hub_new(struct kndMemPool *mempool, struct kndAttrHub **result);
 
 // knd_attr.import.c
-int knd_import_attr_var(struct kndClassVar *self,
-                        const char *name, size_t name_size,
-                        const char *rec, size_t *total_size,
-                        struct kndTask *task);
-int knd_import_attr_var_list(struct kndClassVar *self,
-                             const char *name, size_t name_size,
-                             const char *rec, size_t *total_size,
-                             struct kndTask *task);
+int knd_import_attr_var(struct kndClassVar *self, const char *name, size_t name_size,
+                        const char *rec, size_t *total_size, struct kndTask *task);
+int knd_import_attr_var_list(struct kndClassVar *self, const char *name, size_t name_size,
+                             const char *rec, size_t *total_size, struct kndTask *task);
 // knd_attr.gsl.c
 int knd_read_attr_var(struct kndClassVar *self,
                       const char *name, size_t name_size,

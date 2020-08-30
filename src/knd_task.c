@@ -182,6 +182,8 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
     }
 
     switch (task->role) {
+    case KND_ARBITER:
+        // fall through
     case KND_WRITER:
         task->output = task->file_out->buf;
         task->output_size = task->file_out->buf_size;
@@ -312,10 +314,7 @@ int knd_task_block_new(struct kndMemPool *mempool,
     return knd_OK;
 }
 
-int knd_task_new(struct kndShard *shard,
-                 struct kndMemPool *mempool,
-                 int task_id,
-                 struct kndTask **task)
+int knd_task_new(struct kndShard *shard, struct kndMemPool *mempool, int task_id, struct kndTask **task)
 {
     struct kndTask *self;
     struct kndRepo *repo = shard->repo;
@@ -328,6 +327,14 @@ int knd_task_new(struct kndShard *shard,
     self->id = task_id;
     self->role = shard->role;
 
+    switch (shard->role) {
+    case KND_ARBITER:
+        // config
+        self->keep_local_WAL = true;
+        break;
+    default:
+        break;
+    }
     self->path = shard->path;
     self->path_size = shard->path_size;
 

@@ -331,9 +331,7 @@ int knd_export_class_state_GSL(struct kndClassEntry *self,
 
     err = out->write(out, "{state ", strlen("{state "));                          RET_ERR();
 
-    state = atomic_load_explicit(&self->class->states,
-                                 memory_order_relaxed);
-
+    state = atomic_load_explicit(&self->states, memory_order_relaxed);
     if (state) {
         err = out->writef(out, "%zu", state->commit->numid);                      RET_ERR();
         timestamp = state->commit->timestamp;
@@ -393,7 +391,7 @@ static int export_conc_elem_GSL(void *obj,
                 elem_id_size, elem_id);
 
     if (!task->show_removed_objs) {
-        state = entry->class->states;
+        state = entry->states;
         if (state && state->phase == KND_REMOVED) return knd_OK;
     }
 
@@ -646,7 +644,7 @@ static int present_subclasses(struct kndClass *self,
         // TODO: defreeze
         if (!c) continue;
         
-        state = c->states;
+        state = ref->entry->states;
         if (state && state->phase == KND_REMOVED) continue;
         if (task->ctx->format_offset) {
             err = out->writec(out, '\n');                                         RET_ERR();
@@ -660,7 +658,7 @@ static int present_subclasses(struct kndClass *self,
             c = ref->class;
             // TODO: defreeze
             if (!c) continue;
-            state = c->states;
+            state = ref->entry->states;
             if (state && state->phase == KND_REMOVED) continue;
 
             if (task->ctx->format_offset) {
@@ -824,7 +822,7 @@ int knd_class_export_GSL(struct kndClassEntry *entry,
     struct kndClassEntry *orig_entry = entry->base;
     struct kndOutput *out = task->out;
     struct kndAttrHub *attr_hub;
-    struct kndState *state = self->states;
+    struct kndState *state = entry->states;
     size_t num_children;
     int err;
 
@@ -909,7 +907,7 @@ int knd_class_export_GSL(struct kndClassEntry *entry,
     task->depth++;
 
     /* state info */
-    if (0 && self->num_states) {
+    if (0 && self->entry->num_states) {
         err = knd_export_class_state_GSL(self->entry, task);                             RET_ERR();
     }
 
@@ -955,8 +953,8 @@ int knd_class_export_GSL(struct kndClassEntry *entry,
     */
 
     num_children = entry->num_children;
-    if (self->desc_states) {
-        state = self->desc_states;
+    if (entry->desc_states) {
+        state = entry->desc_states;
         if (state->val) 
             num_children = state->val->val_size;
     }

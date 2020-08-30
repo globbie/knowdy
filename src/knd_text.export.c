@@ -28,34 +28,29 @@ static int export_class_declars(struct kndClassDeclaration *decl, struct kndTask
     struct kndClass *c;
     struct kndClassInstEntry *entry;
     struct kndClassInst *inst;
-    int err;
 
     for (; decl; decl = decl->next) {
-        c = decl->class;
-
-        err = out->write(out, "{class ", strlen("{class "));         RET_ERR();
-        err = out->write(out, c->name, c->name_size);                RET_ERR();
+        c = decl->entry->class;
+        OUT("{class ", strlen("{class "));
+        OUT(c->name, c->name_size);
 
         for (entry = decl->insts; entry; entry = entry->next) {
             inst = entry->inst;
-
-            err = out->write(out, "{!inst ", strlen("{!inst "));         RET_ERR();
-            err = out->write(out, inst->name, inst->name_size);          RET_ERR();
-
+            OUT("{!inst ", strlen("{!inst "));
+            OUT(inst->name, inst->name_size);
             if (inst->alias_size) {
-                err = out->write(out, "{_as ", strlen("{_as "));         RET_ERR();
-                err = out->write(out, inst->alias, inst->alias_size);          RET_ERR();
-                err = out->writec(out, '}');                                 RET_ERR();
+                OUT("{_as ", strlen("{_as "));
+                OUT(inst->alias, inst->alias_size);
+                OUT("}", 1);
             }
-            err = out->writec(out, '}');                                 RET_ERR();
+            OUT("}", 1);
         }
-        err = out->writec(out, '}');                                 RET_ERR();
+        OUT("}", 1);
     }
     return knd_OK;
 }
 
-static int export_proc_declars(struct kndProcDeclaration *decl,
-                               struct kndTask *task)
+static int export_proc_declars(struct kndProcDeclaration *decl, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndProc *proc;
@@ -65,7 +60,6 @@ static int export_proc_declars(struct kndProcDeclaration *decl,
 
     for (; decl; decl = decl->next) {
         proc = decl->proc;
-
         err = out->write(out, "{proc ", strlen("{proc "));                        RET_ERR();
         err = out->write(out, proc->name, proc->name_size);                       RET_ERR();
 
@@ -81,14 +75,13 @@ static int export_proc_declars(struct kndProcDeclaration *decl,
     return knd_OK;
 }
 
-static int stm_export_GSL(struct kndStatement *stm,
-                          struct kndTask *task)
+static int stm_export_GSL(struct kndStatement *stm, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     int err;
 
-    err = out->write(out, "{stm ", strlen("{stm "));                              RET_ERR();
-    err = out->write(out, stm->name, stm->name_size);                             RET_ERR();
+    OUT("{stm ", strlen("{stm "));
+    OUT(stm->schema_name, stm->schema_name_size);
 
     if (stm->class_declars) {
         err = export_class_declars(stm->class_declars, task);                      RET_ERR();
@@ -97,13 +90,12 @@ static int stm_export_GSL(struct kndStatement *stm,
     if (stm->proc_declars) {
         err = export_proc_declars(stm->proc_declars, task);                        RET_ERR();
     }
-    err = out->writec(out, '}');                                                  RET_ERR();
+    OUT("}", 1);
 
     return knd_OK;
 }
 
-static int sent_export_GSL(struct kndSentence *sent,
-                           struct kndTask *task)
+static int sent_export_GSL(struct kndSentence *sent, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     int err;
@@ -119,8 +111,7 @@ static int sent_export_GSL(struct kndSentence *sent,
     return knd_OK;
 }
 
-static int export_GSL(struct kndText *self,
-                      struct kndTask *task)
+static int export_GSL(struct kndText *self, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     //const char *locale = task->ctx->locale;
@@ -194,8 +185,7 @@ static int export_JSON(struct kndText *self,
     return knd_OK;
 }
 
-int knd_par_export_GSL(struct kndPar *par,
-                       struct kndTask *task)
+int knd_par_export_GSL(struct kndPar *par, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     int err;
@@ -214,23 +204,65 @@ int knd_par_export_GSL(struct kndPar *par,
     return knd_OK;
 }
 
-int knd_text_export(struct kndText *self,
-                    knd_format format,
-                    struct kndTask *task)
+int knd_text_export_query_report_GSL(struct kndTask *task)
+{
+    struct kndOutput *out = task->out;
+    struct kndTextSearchReport *report;
+    struct kndClassEntry *entry;
+    struct kndTextLoc *loc;
+    int err;
+    OUT("[report ", strlen("[report "));
+
+    for (report = task->ctx->reports; report; report = report->next) {
+        entry = report->entry;
+        OUT("{", 1);
+        OUT(entry->name, entry->name_size);
+
+        if (report->num_locs) {
+            OUT("{tot ", strlen("{tot "));
+            err = out->writef(out, "%zu", report->num_locs);         RET_ERR();
+            OUT("}", 1);
+        }
+        OUT("[loc ", strlen("[loc "));
+        for (loc = report->locs; loc; loc = loc->next) {
+            OUT("{", 1);
+            err = out->writef(out, "%zu:%zu", loc->par_id, loc->sent_id);         RET_ERR();
+            OUT("}", 1);
+        }
+        OUT("]", 1);
+        OUT("}", 1);
+    }
+    OUT("]", 1);
+    return knd_OK;
+}
+
+
+int knd_text_export_query_report(struct kndTask *task)
+{
+    int err;
+
+    switch (task->ctx->format) {
+    case KND_FORMAT_JSON:
+        //
+        break;
+     default:
+         err = knd_text_export_query_report_GSL(task);
+         if (err) return err;
+         break;
+    }
+    return knd_OK;
+}
+
+int knd_text_export(struct kndText *self, knd_format format, struct kndTask *task)
 {
     int err;
 
     switch (format) {
-    case KND_FORMAT_GSL:
-        err = export_GSL(self, task);                            RET_ERR();
-        break;
     case KND_FORMAT_JSON:
         err = export_JSON(self, task);                           RET_ERR();
         break;
-        /*case KND_FORMAT_GSP:
-        err = export_GSP(self, task, task->out);  RET_ERR();
-        break;*/
     default:
+        err = export_GSL(self, task);                            RET_ERR();
         break;
     }
 

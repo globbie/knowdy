@@ -99,8 +99,8 @@ static gsl_err_t get_agent_role(void *obj, const char *name, size_t name_size)
 {
     struct kndShard *self = obj;
 
-    if (name_size == strlen("Writer") && !memcmp(name, "Writer", name_size)) {
-        self->role = KND_WRITER;
+    if (name_size == strlen("Arbiter") && !memcmp(name, "Arbiter", name_size)) {
+        self->role = KND_ARBITER;
     }
     return make_gsl_err(gsl_OK);
 }

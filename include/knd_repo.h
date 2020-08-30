@@ -68,9 +68,6 @@ struct kndRepo
     const char *locale;
     size_t locale_size;
 
-    /* local repo index */
-    struct kndSharedDict *repo_idx;
-
     bool restore_mode;
     size_t intersect_matrix_size;
 
@@ -103,7 +100,7 @@ struct kndRepo
     atomic_size_t   num_proc_args;
 
     struct kndRepoSnapshot snapshot;
-  
+
     struct kndRepo *next;
 };
 

@@ -430,7 +430,7 @@ static int export_class_body_commits(struct kndClass *self,
                                      struct kndTask *task)
 {
     struct kndOutput *out = task->out;
-    struct kndState *state = self->states;
+    struct kndState *state = self->entry->states;
     struct kndAttr *attr;
     int err;
 
@@ -497,7 +497,7 @@ extern int knd_class_export_commits_GSP(struct kndClass *self,
 {
     struct kndOutput *out = task->out;
     struct kndCommit *commit = class_commit->commit;
-    struct kndState *state = self->states;
+    struct kndState *state = self->entry->states;
     int err;
     
     err = out->writec(out, '{');                                                  RET_ERR();
@@ -908,7 +908,7 @@ static gsl_err_t alloc_class_inst_item(struct LocalContext *ctx, struct kndClass
 
     inst->entry = entry;
     entry->inst = inst;
-    inst->blueprint = self;
+    inst->blueprint = self->entry;
 
     *item = inst;
 
@@ -1047,8 +1047,8 @@ static gsl_err_t set_class_state(void *obj,
         return make_gsl_err_external(err);
     }
 
-    state->next = self->states;
-    self->states = state;
+    state->next = self->entry->states;
+    self->entry->states = state;
 
     return make_gsl_err(gsl_OK);
 }

@@ -441,9 +441,9 @@ gsl_err_t knd_proc_inst_parse_import(struct kndProc *self,
 
     switch (task->type) {
     case KND_INNER_COMMIT_STATE:
-        entry->next = ctx->stm_proc_insts;
-        ctx->stm_proc_insts = entry;
-        ctx->num_stm_proc_insts++;
+        //entry->next = ctx->stm_proc_insts;
+        //ctx->stm_proc_insts = entry;
+        //ctx->num_stm_proc_insts++;
         return parser_err;
     default:
         break;

@@ -1320,8 +1320,7 @@ static int update_indices(struct kndRepo *self, struct kndCommit *commit, struct
         switch (ref->state->phase) {
         case KND_REMOVED:
             proc_entry->phase = KND_REMOVED;
-            err = knd_shared_dict_remove(name_idx,
-                                  proc_entry->name, proc_entry->name_size);       RET_ERR();
+            err = knd_shared_dict_remove(name_idx, proc_entry->name, proc_entry->name_size);       RET_ERR();
             continue;
         case KND_UPDATED:
             proc_entry->phase = KND_UPDATED;
@@ -1329,11 +1328,8 @@ static int update_indices(struct kndRepo *self, struct kndCommit *commit, struct
         default:
             break;
         }
-        err = knd_shared_dict_set(name_idx,
-                                  proc_entry->name,  proc_entry->name_size,
-                                  (void*)proc_entry,
-                                  task->mempool,
-                                  commit, &item, false);                                    RET_ERR();
+        err = knd_shared_dict_set(name_idx, proc_entry->name,  proc_entry->name_size,
+                                  (void*)proc_entry, task->mempool, commit, &item, false);        RET_ERR();
         proc_entry->dict_item = item;
     }
     return knd_OK;
@@ -1423,7 +1419,7 @@ static int check_commit_conflicts(struct kndRepo *self, struct kndCommit *commit
     return knd_OK;
 }
 
-static int save_commit_WAL(struct kndRepo *self, struct kndCommit *commit, struct kndTask *task)
+static int build_commit_WAL(struct kndRepo *self, struct kndCommit *commit, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndOutput *file_out = task->file_out;
@@ -1436,10 +1432,11 @@ static int save_commit_WAL(struct kndRepo *self, struct kndCommit *commit, struc
     
     commit->timestamp = time(NULL);
     if (DEBUG_REPO_LEVEL_2) {
-        knd_log(".. kndTask #%zu to write a WAL entry (path:%.*s)",
+        knd_log(".. kndTask #%zu to build a WAL entry (path:%.*s)",
                 task->id, task->path_size, task->path);
     }
 
+    
     out->reset(out);
     err = out->write(out, task->path, task->path_size);
     KND_TASK_ERR("system path construction failed");
@@ -1530,12 +1527,12 @@ static int save_commit_WAL(struct kndRepo *self, struct kndCommit *commit, struc
 
     err = file_out->write(file_out, "}\n", strlen("}\n"));
     KND_TASK_ERR("commit output failed");
-    
-    err = knd_append_file((const char*)filename, file_out->buf, file_out->buf_size);
-    KND_TASK_ERR("WAL file append failed");
 
-    atomic_store_explicit(&commit->confirm, KND_PERSISTENT_STATE, memory_order_relaxed);
-
+    if (task->keep_local_WAL) {
+        err = knd_append_file((const char*)filename, file_out->buf, file_out->buf_size);
+        KND_TASK_ERR("WAL file append failed");
+        atomic_store_explicit(&commit->confirm, KND_PERSISTENT_STATE, memory_order_relaxed);
+    }
     return knd_OK;
 }
 
@@ -1559,18 +1556,18 @@ int knd_confirm_commit(struct kndRepo *self, struct kndTask *task)
     KND_TASK_ERR("failed to dedup commit #%zu", commit->numid);
 
     switch (task->role) {
-    case KND_WRITER:
+    case KND_ARBITER:
         err = update_indices(self, commit, task);
         KND_TASK_ERR("index update failed");
 
         err = check_commit_conflicts(self, commit, task);
         KND_TASK_ERR("commit conflicts detected, please get the latest repo updates");
 
-        err = save_commit_WAL(self, commit, task);
-        KND_TASK_ERR("WAL saving failed");
+        err = build_commit_WAL(self, commit, task);
+        KND_TASK_ERR("WAL build failed");
         break;
     default:
-        /* delegate commit confirmation to a Writer */
+        /* delegate commit confirmation to an Arbiter */
         err = export_commit_GSL(self, commit, task);
         KND_TASK_ERR("failed to export commit");
         ctx->phase = KND_CONFIRM_COMMIT;

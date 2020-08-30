@@ -43,17 +43,18 @@ struct kndClassInstEntry
     size_t id_size;
     size_t numid;
     knd_state_phase phase;
-
     const char *name;
     size_t name_size;
+
+    struct kndClassInst *inst;
 
     char *block;
     size_t block_size;
     size_t offset;
 
-    struct kndSharedDictItem   *dict_item;
+    struct kndSharedDictItem *dict_item;
+    struct kndAttrIdx *attr_idxs;
 
-    struct kndClassInst *inst;
     struct kndClassInstEntry *next;
 };
 
@@ -72,12 +73,12 @@ struct kndClassInst
     size_t num_states;
 
     struct kndClassInstEntry *entry;
-    struct kndClass *blueprint;
     struct kndClassInst *root;
+    struct kndClassEntry *blueprint;
 
     struct kndClassVar *class_var;
-    //struct kndAttrInst *parent;
 
+    //struct kndAttrInst *parent;
     //struct kndAttrInst *attr_insts;
     //struct kndAttrInst *tail;
     //size_t num_attr_insts;
@@ -137,15 +138,11 @@ int knd_class_inst_export_GSL(struct kndClassInst *self,
 gsl_err_t kndClassInst_read_state(struct kndClassInst *self,
                                   const char *rec, size_t *total_size,
                                   struct kndTask *task);
-int knd_import_class_inst(struct kndClass *self,
-                          const char *rec,
-                          size_t *total_size,
-                          struct kndTask *task);
+
+int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *total_size, struct kndTask *task);
 
 // knd_class_inst.json.c
-int knd_class_inst_export_JSON(struct kndClassInst *self,
-                               bool is_list_item,
-                               struct kndTask *task);
+int knd_class_inst_export_JSON(struct kndClassInst *self, bool is_list_item, struct kndTask *task);
 
 //int knd_class_inst_set_export_JSON(struct kndSet *set, struct kndTask *task);
 

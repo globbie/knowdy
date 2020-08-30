@@ -350,9 +350,7 @@ static int export_GSP(struct kndAttr *self, struct kndOutput *out)
     return knd_OK;
 }
 
-extern int knd_attr_export(struct kndAttr *self,
-                           knd_format format,
-                           struct kndTask *task)
+int knd_attr_export(struct kndAttr *self, knd_format format, struct kndTask *task)
 {
     switch (format) {
     case KND_FORMAT_JSON: return export_JSON(self, task);
@@ -361,9 +359,7 @@ extern int knd_attr_export(struct kndAttr *self,
     }
 }
 
-extern int knd_apply_attr_var_commits(struct kndClass *self,
-                                      struct kndClassCommit *class_commit,
-                                      struct kndTask *task)
+int knd_apply_attr_var_commits(struct kndClass *unused_var(self), struct kndClassCommit *class_commit, struct kndTask *task)
 {
     struct kndState *state; //, *s, *next_state = NULL;
     //struct kndAttrVar *attr_var;
@@ -394,12 +390,12 @@ extern int knd_apply_attr_var_commits(struct kndClass *self,
         //attr_var->num_states++;
     //}
 
-    state->next = self->states;
+    /* state->next = self->states;
     self->states = state;
     self->num_states++;
     state->numid = self->num_states;
     state->phase = KND_UPDATED;
-
+    */
     return knd_OK;
 }
 
@@ -677,6 +673,25 @@ int knd_attr_var_new(struct kndMemPool *mempool,
     default:
         err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL_X2,
                                      sizeof(struct kndAttrVar), &page);                    RET_ERR();
+        if (err) return err;
+    }        
+    *result = page;
+    return knd_OK;
+}
+
+int knd_attr_idx_new(struct kndMemPool *mempool, struct kndAttrIdx **result)
+{
+    void *page;
+    int err;
+    switch (mempool->type) {
+    case KND_ALLOC_LIST:
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
+                                sizeof(struct kndAttrIdx), &page);                    RET_ERR();
+        if (err) return err;
+        break;
+    default:
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_TINY,
+                                     sizeof(struct kndAttrIdx), &page);                    RET_ERR();
         if (err) return err;
     }        
     *result = page;

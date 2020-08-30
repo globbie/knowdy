@@ -512,7 +512,7 @@ gsl_err_t knd_class_import(struct kndRepo *repo, const char *rec, size_t *total_
     case KND_RESTORE_STATE:
         // fall through
     case KND_COMMIT_STATE:
-        err = knd_class_commit_state(c, KND_CREATED, task);
+        err = knd_class_commit_state(c->entry, KND_CREATED, task);
         if (err) {
             return make_gsl_err_external(err);
         }

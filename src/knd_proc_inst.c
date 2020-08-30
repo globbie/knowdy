@@ -70,7 +70,7 @@ static int proc_arg_inst_export_GSL(struct kndProcArgInst *self,
                       depth * KND_OFFSET_SIZE, "",
                       self->arg->name_size, self->arg->name);                     RET_ERR();
     if (self->class_inst) {
-        c = self->class_inst->blueprint;
+        c = self->class_inst->blueprint->class;
 
         if (task->ctx->use_alias) {
             err = out->writef(out, "%*s%.*s",

@@ -57,7 +57,7 @@ static gsl_err_t parse_text(void *obj, const char *rec, size_t *total_size)
     gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_ATTR_LEVEL_TMP)
+    if (DEBUG_ATTR_LEVEL_2)
         knd_log(".. %.*s: allocate text obj", ctx->attr_var->name_size, ctx->attr_var->name);
 
     err = knd_text_new(mempool, &text);
@@ -67,6 +67,7 @@ static gsl_err_t parse_text(void *obj, const char *rec, size_t *total_size)
     parser_err = knd_text_import(text, rec, total_size, task);
     if (parser_err.code) return parser_err;
     ctx->attr_var->text = text;
+    text->attr_var = ctx->attr_var;
 
     return make_gsl_err(gsl_OK);
 }
@@ -418,10 +419,8 @@ static gsl_err_t import_nested_attr_var_list(void *obj,
     return gsl_parse_array(&import_attr_var_spec, rec, total_size);
 }
 
-int knd_import_attr_var(struct kndClassVar *self,
-                        const char *name, size_t name_size,
-                        const char *rec, size_t *total_size,
-                        struct kndTask *task)
+int knd_import_attr_var(struct kndClassVar *self, const char *name, size_t name_size,
+                        const char *rec, size_t *total_size, struct kndTask *task)
 {
     struct kndAttrVar *attr_var;
     struct kndMemPool *mempool = task->mempool;

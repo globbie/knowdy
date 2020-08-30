@@ -29,7 +29,7 @@ int knd_class_inst_resolve(struct kndClassInst *self, struct kndTask *task)
     self->resolving_in_progress = true;
 
     if (self->class_var->attrs) {
-        err = knd_resolve_attr_vars(self->blueprint, self->class_var, task);   RET_ERR();
+        err = knd_resolve_attr_vars(self->blueprint->class, self->class_var, task);   RET_ERR();
     }
 
     if (DEBUG_INST_RESOLVE_LEVEL_1)

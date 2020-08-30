@@ -45,7 +45,7 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     struct kndRepo *repo = ctx->task->repo;
     struct kndTask *task = ctx->task;
     struct kndSharedDict *class_name_idx = repo->class_name_idx;
-    struct kndSharedDict *name_idx = self->blueprint->entry->inst_name_idx;
+    struct kndSharedDict *name_idx = self->blueprint->inst_name_idx;
     struct kndClass *c;
     int err;
 
@@ -68,14 +68,13 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
         }
         c = class_entry->class;
 
-        err = knd_is_base(self->blueprint, c);
+        err = knd_is_base(self->blueprint->class, c);
         if (err) {
             KND_TASK_LOG("no inheritance from %.*s to %.*s",
-                         self->blueprint->name_size, self->blueprint->name,
-                         c->name_size, c->name);
+                         self->blueprint->name_size, self->blueprint->name, c->name_size, c->name);
             return make_gsl_err_external(err);
         }
-        self->blueprint = c;
+        self->blueprint = class_entry;
         return make_gsl_err(gsl_OK);
     }
 
@@ -203,17 +202,19 @@ static int generate_uniq_inst_name(struct kndClassInst *inst, struct kndTask *ta
     return knd_OK;
 }
 
-int knd_import_class_inst(struct kndClass *self, const char *rec, size_t *total_size, struct kndTask *task)
+int knd_import_class_inst(struct kndClassEntry *self, const char *rec, size_t *total_size, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
-    struct kndClass *c = self;
+    struct kndClass *c = self->class;
+    struct kndClassEntry *entry = self;
     struct kndClassInst *inst;
-    struct kndClassInstEntry *entry;
+    struct kndClassInstEntry *inst_entry;
     struct kndClassVar *class_var;
     struct kndRepo *repo = task->repo;
     struct kndState *state;
     struct kndStateRef *state_ref;
     struct kndTaskContext *ctx = task->ctx;
+    struct kndClassDeclaration *declar = NULL;
     int err;
     gsl_err_t parser_err;
 
@@ -222,10 +223,11 @@ int knd_import_class_inst(struct kndClass *self, const char *rec, size_t *total_
         // use non-ephemeral mempool
         mempool = task->shard->user->mempool;
     }
-    if (DEBUG_INST_IMPORT_LEVEL_2) {
-        knd_log(".. class \"%.*s\" to import inst \"%.*s\" (repo:%.*s) task #%d type:%d",
-                self->name_size, self->name, 128, rec, repo->name_size, repo->name, task->id, task->type);
-    }
+
+    if (DEBUG_INST_IMPORT_LEVEL_2)
+        knd_log(".. class \"%.*s\" (repo:%.*s) to import inst \"%.*s\"",
+                entry->name_size, entry->name, entry->repo->name_size, entry->repo->name, 128, rec);
+
     switch (task->type) {
     case KND_RESTORE_STATE:
         break;
@@ -238,18 +240,18 @@ int knd_import_class_inst(struct kndClass *self, const char *rec, size_t *total_
         task->type = KND_COMMIT_STATE;
     }
     
-    err = knd_class_inst_entry_new(mempool, &entry);
+    err = knd_class_inst_entry_new(mempool, &inst_entry);
     KND_TASK_ERR("class inst  alloc failed");
     err = knd_class_inst_new(mempool, &inst);
     KND_TASK_ERR("class inst alloc failed");
-    inst->entry = entry;
-    entry->inst = inst;
-    inst->blueprint = c;
+    inst->entry = inst_entry;
+    inst_entry->inst = inst;
+    inst->blueprint = entry;
 
     err = knd_class_var_new(mempool, &class_var);
     KND_TASK_ERR("failed to alloc a class var");
-    class_var->entry = self->entry;
-    class_var->parent = self;
+    class_var->entry = self;
+    class_var->parent = self->class;
     class_var->inst = inst;
     inst->class_var = class_var;
 
@@ -268,9 +270,19 @@ int knd_import_class_inst(struct kndClass *self, const char *rec, size_t *total_
     
     switch (task->type) {
     case KND_INNER_COMMIT_STATE:
-        entry->next = ctx->stm_class_insts;
-        ctx->stm_class_insts = entry;
-        ctx->num_stm_class_insts++;
+        for (declar = ctx->class_declars; declar; declar = declar->next) {
+            if (declar->entry == c->entry) break;
+        }
+        if (!declar) {
+            err = knd_class_declar_new(mempool, &declar);
+            KND_TASK_ERR("failed to alloc class declar");
+            declar->entry = c->entry;
+            declar->next = task->ctx->class_declars;
+            task->ctx->class_declars = declar;
+        }
+        inst_entry->next = declar->insts;
+        declar->insts = inst_entry;
+        declar->num_insts++;
         return knd_OK;
     default:
         break;
@@ -287,7 +299,7 @@ int knd_import_class_inst(struct kndClass *self, const char *rec, size_t *total_
     KND_TASK_ERR("failed to alloc a state ref");
     state_ref->state = state;
     state_ref->type = KND_STATE_CLASS_INST;
-    state_ref->obj = (void*)entry;
+    state_ref->obj = (void*)inst_entry;
 
     state_ref->next = ctx->class_inst_state_refs;
     ctx->class_inst_state_refs = state_ref;
