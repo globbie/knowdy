@@ -186,15 +186,10 @@ struct kndClass
 };
 
 void knd_class_entry_str(struct kndClassEntry *self, size_t depth);
-
-int knd_class_coordinate(struct kndClass *self, struct kndTask *task);
 int knd_get_class_entry(struct kndRepo *self, const char *name, size_t name_size,
                         struct kndClassEntry **result, struct kndTask *task);
-int knd_get_class(struct kndRepo *self, const char *name, size_t name_size,
-                  struct kndClass **result, struct kndTask *task);
-
-int knd_get_class_by_id(struct kndRepo *self, const char *id, size_t id_size,
-                        struct kndClass **result, struct kndTask *task);
+int knd_get_class(struct kndRepo *self, const char *name, size_t name_size, struct kndClass **result, struct kndTask *task);
+int knd_get_class_by_id(struct kndRepo *self, const char *id, size_t id_size, struct kndClass **result, struct kndTask *task);
 
 int knd_is_base(struct kndClass *self, struct kndClass *child);
 
@@ -278,15 +273,9 @@ int knd_register_state(struct kndClass *self);
 int knd_register_descendant_states(struct kndClass *self);
 int knd_register_inst_states(struct kndClass *self);
 
-int knd_export_class_inst_state_JSON(struct kndClassEntry *self,
-                                     struct kndTask *task);
+int knd_export_class_inst_state_JSON(struct kndClassEntry *self, struct kndTask *task);
 
-int knd_get_class_attr_value(struct kndClass *src,
-                                    struct kndAttrVar *query,
-                                    struct kndProcCallArg *arg);
-int knd_resolve_classes(struct kndClass *self, struct kndTask *task);
-int knd_class_resolve_base(struct kndClass *self, struct kndTask *task);
-int knd_class_resolve(struct kndClass *self, struct kndTask *task);
+int knd_get_class_attr_value(struct kndClass *src, struct kndAttrVar *query, struct kndProcCallArg *arg);
 
 int knd_class_commit_new(struct kndMemPool *mempool, struct kndClassCommit **result);
 int knd_class_var_new(struct kndMemPool *mempool, struct kndClassVar **result);
@@ -302,12 +291,9 @@ extern gsl_err_t knd_class_select(struct kndRepo *repo,
 int knd_class_match_query(struct kndClass *self, struct kndAttrVar *query);
 
 // knd_class.states.c
-int knd_retrieve_class_updates(struct kndStateRef *ref,
-                               struct kndSet *set);
-int knd_class_get_updates(struct kndClass *self,
-                          size_t gt, size_t lt,
-                          size_t unused_var(eq),
-                          struct kndSet *set);
+int knd_retrieve_class_updates(struct kndStateRef *ref, struct kndSet *set);
+int knd_class_get_updates(struct kndClass *self, size_t gt, size_t lt,
+                          size_t unused_var(eq), struct kndSet *set);
 int knd_class_get_desc_updates(struct kndClass *self,
                                size_t gt, size_t lt,
                                size_t unused_var(eq),
@@ -316,11 +302,9 @@ int knd_class_get_desc_updates(struct kndClass *self,
 int knd_class_get_inst_updates(struct kndClassEntry *self, size_t gt, size_t lt, size_t eq, struct kndSet *set);
 
 // knd_class.resolve.c
-int knd_resolve_class_ref(struct kndClass *self,
-                          const char *name, size_t name_size,
-                          struct kndClass *base,
-                          struct kndClass **result,
-                          struct kndTask *task);
+int knd_class_resolve(struct kndClass *self, struct kndTask *task);
+int knd_resolve_class_ref(struct kndClass *self, const char *name, size_t name_size,
+                          struct kndClass *base, struct kndClass **result, struct kndTask *task);
 
 // knd_class.index.c
 int knd_class_update_indices(struct kndRepo *repo, struct kndClassEntry *self, struct kndState *state, struct kndTask *task);

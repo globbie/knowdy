@@ -184,6 +184,71 @@ int knd_mempool_incr_alloc(struct kndMemPool *self, knd_mempage_t page_type, siz
     return knd_OK;
 }
 
+int knd_mempool_shared_alloc(struct kndMemPool *self, knd_mempage_t page_type, size_t obj_size, void **result)
+{
+    struct kndMemPageHeader * _Atomic *page_list;
+    size_t page_size, num_pages;
+    atomic_size_t *pages_used;
+
+    assert(self->type == KND_ALLOC_SHARED);
+    
+    switch (page_type) {
+        /*case KND_MEMPAGE_BASE:
+        page_size = self->page_size;
+        num_pages = self->num_pages;
+        pages_used = &self->pages_used;
+        page_list = &self->page_list;
+        break;
+    case KND_MEMPAGE_SMALL_X4:
+        page_size = self->small_x4_page_size;
+        num_pages = self->num_small_x4_pages;
+        pages_used = &self->small_x4_pages_used;
+        page_list = &self->small_x4_page_list;
+        break;
+    case KND_MEMPAGE_SMALL_X2:
+        page_size = self->small_x2_page_size;
+        num_pages = self->num_small_x2_pages;
+        pages_used = &self->small_x2_pages_used;
+        page_list = &self->small_x2_page_list;
+        break;
+    case KND_MEMPAGE_SMALL:
+        page_size = self->small_page_size;
+        num_pages = self->num_small_pages;
+        pages_used = &self->small_pages_used;
+        page_list = &self->small_page_list;
+        break;
+        */
+    case KND_MEMPAGE_TINY:
+        page_size = self->tiny_page_size;
+        num_pages = self->num_tiny_pages;
+        pages_used = &self->tiny_shared_pages_used;
+        page_list = &self->tiny_shared_page_list;
+        break;
+    default:
+        page_size = self->page_size;
+        num_pages = self->num_pages;
+        //pages_used = &self->pages_used;
+        //page_list = &self->page_list;
+        break;
+    }
+    assert(page_size >= obj_size);
+
+    if (*pages_used + 1 > num_pages) {
+        knd_log("mem limit reached: max pages:%zu [%d] capacity:%zu",
+                num_pages, page_type, self->capacity);
+        return knd_LIMIT;
+    }
+
+    assert(*page_list != NULL);
+
+    *result = *page_list;
+    *page_list = (*page_list)->next;
+    (*pages_used)++;
+    memset(*result, 0, obj_size);  // FIXME(k15tfu): don't initialize the memory
+
+    return knd_OK;
+}
+
 void knd_mempool_reset(struct kndMemPool *self)
 {
     self->pages_used = 0;    
@@ -267,10 +332,20 @@ static int alloc_page_buf(struct kndMemPool *self,
 static void build_linked_list(char *pages, size_t num_pages, size_t page_size, struct kndMemPageHeader **page_list)
 {
     for (size_t i = 0; i < num_pages; i++) {
-        *page_list = (struct kndMemPageHeader *)pages;
+        *page_list = (struct kndMemPageHeader*)pages;
 
         pages += page_size;
         page_list = &(*page_list)->next;
+    }
+    *page_list = NULL;
+}
+
+static void build_shared_linked_list(char *pages, size_t num_pages, size_t page_size, struct kndMemPageHeader * _Atomic *page_list)
+{
+    for (size_t i = 0; i < num_pages; i++) {
+        *page_list = (struct kndMemPageHeader*)pages;
+        pages += page_size;
+        page_list = &(*page_list)->next_shared;
     }
     *page_list = NULL;
 }
@@ -299,45 +374,35 @@ static int alloc_capacity(struct kndMemPool *self)
 {
     int err;
 
-    err = alloc_page_buf(self,
-                         &self->pages, &self->num_pages,
-                         KND_NUM_BASE_MEMPAGES,
+    err = alloc_page_buf(self, &self->pages, &self->num_pages, KND_NUM_BASE_MEMPAGES,
                          &self->page_size, KND_BASE_MEMPAGE_SIZE);                RET_ERR();
 
-    err = alloc_page_buf(self,
-                         &self->small_x4_pages, &self->num_small_x4_pages,
-                         KND_NUM_SMALL_X4_MEMPAGES,
+    err = alloc_page_buf(self, &self->small_x4_pages, &self->num_small_x4_pages, KND_NUM_SMALL_X4_MEMPAGES,
                          &self->small_x4_page_size, KND_SMALL_X4_MEMPAGE_SIZE);   RET_ERR();
 
-    err = alloc_page_buf(self,
-                         &self->small_x2_pages, &self->num_small_x2_pages,
-                         KND_NUM_SMALL_X2_MEMPAGES,
+    err = alloc_page_buf(self, &self->small_x2_pages, &self->num_small_x2_pages, KND_NUM_SMALL_X2_MEMPAGES,
                          &self->small_x2_page_size, KND_SMALL_X2_MEMPAGE_SIZE);   RET_ERR();
 
-    err = alloc_page_buf(self,
-                         &self->small_pages, &self->num_small_pages,
-                         KND_NUM_SMALL_MEMPAGES,
+    err = alloc_page_buf(self, &self->small_pages, &self->num_small_pages, KND_NUM_SMALL_MEMPAGES,
                          &self->small_page_size, KND_SMALL_MEMPAGE_SIZE);         RET_ERR();
 
-    err = alloc_page_buf(self,
-                         &self->tiny_pages, &self->num_tiny_pages,
-                         KND_NUM_TINY_MEMPAGES,
+    err = alloc_page_buf(self, &self->tiny_pages, &self->num_tiny_pages, KND_NUM_TINY_MEMPAGES,
                          &self->tiny_page_size, KND_TINY_MEMPAGE_SIZE);           RET_ERR();
 
-    // knd_log("== MemPool total bytes alloc'd: %zu", self->capacity);
-
-    if (self->type != KND_ALLOC_LIST) return knd_OK;
-
-    build_linked_list(self->pages, self->num_pages, self->page_size, &self->page_list);
-
-    build_linked_list(self->small_x4_pages, self->num_small_x4_pages, self->small_x4_page_size, &self->small_x4_page_list);
-    
-    build_linked_list(self->small_x2_pages, self->num_small_x2_pages, self->small_x2_page_size, &self->small_x2_page_list);
-
-    build_linked_list(self->small_pages, self->num_small_pages, self->small_page_size, &self->small_page_list);
-    
-    build_linked_list(self->tiny_pages, self->num_tiny_pages, self->tiny_page_size, &self->tiny_page_list);
-
+    switch (self->type) {
+    case KND_ALLOC_LIST:
+        build_linked_list(self->pages, self->num_pages, self->page_size, &self->page_list);
+        build_linked_list(self->small_x4_pages, self->num_small_x4_pages, self->small_x4_page_size, &self->small_x4_page_list);
+        build_linked_list(self->small_x2_pages, self->num_small_x2_pages, self->small_x2_page_size, &self->small_x2_page_list);
+        build_linked_list(self->small_pages, self->num_small_pages, self->small_page_size, &self->small_page_list);
+        build_linked_list(self->tiny_pages, self->num_tiny_pages, self->tiny_page_size, &self->tiny_page_list);
+        break;
+    case KND_ALLOC_SHARED:
+        build_shared_linked_list(self->tiny_pages, self->num_tiny_pages, self->tiny_page_size, &self->tiny_shared_page_list);
+        break;
+    default:
+        break;
+    }
     return knd_OK;
 }
 

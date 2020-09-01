@@ -1125,7 +1125,7 @@ static int resolve_procs(struct kndRepo *self,
         }
     }
 
-    for (size_t i = 0; i < proc_name_idx->size; i++) {
+    /*for (size_t i = 0; i < proc_name_idx->size; i++) {
         item = atomic_load_explicit(&proc_name_idx->hash_array[i],
                                     memory_order_relaxed);
         for (; item; item = item->next) {
@@ -1139,7 +1139,7 @@ static int resolve_procs(struct kndRepo *self,
                 }
             }
         }
-    }
+        }*/
 
     return knd_OK;
 }

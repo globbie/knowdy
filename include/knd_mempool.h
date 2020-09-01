@@ -21,8 +21,10 @@
 
 #include "knd_config.h"
 
-#include <gsl-parser.h>
 #include <stddef.h>
+#include <stdatomic.h>
+
+#include <gsl-parser.h>
 
 struct kndOutput;
 
@@ -37,12 +39,14 @@ typedef enum knd_mempage_t { KND_MEMPAGE_LARGE,
 } knd_mempage_t;
 
 typedef enum knd_mempool_t { KND_ALLOC_LIST,
-                             KND_ALLOC_INCR
+                             KND_ALLOC_INCR,
+                             KND_ALLOC_SHARED                            
 } knd_mempool_t;
 
 struct kndMemPageHeader
 {
     struct kndMemPageHeader *next;
+    struct kndMemPageHeader * _Atomic next_shared;
 };
 
 struct kndMemPool
@@ -86,20 +90,23 @@ struct kndMemPool
     size_t num_tiny_pages;
     size_t tiny_pages_used;
     struct kndMemPageHeader *tiny_page_list;
+    struct kndMemPageHeader * _Atomic tiny_shared_page_list;
+    atomic_size_t tiny_shared_pages_used;
 
     size_t max_set_size;
 
     int (*alloc)(struct kndMemPool   *self);
     int (*reset)(struct kndMemPool   *self);
-    int (*present)(struct kndMemPool *self,
-                   struct kndOutput  *out);
-    gsl_err_t (*parse)(struct kndMemPool *self,
-		       const char *rec, size_t *total_size);
+    int (*present)(struct kndMemPool *self, struct kndOutput  *out);
+    gsl_err_t (*parse)(struct kndMemPool *self, const char *rec, size_t *total_size);
 };
 
 int  knd_mempool_new(struct kndMemPool **self, int mempool_id);
 void knd_mempool_del(struct kndMemPool *self);
+
 int  knd_mempool_alloc(struct kndMemPool *self, knd_mempage_t page_type, size_t obj_size, void **result);
 int  knd_mempool_incr_alloc(struct kndMemPool *self, knd_mempage_t page_type, size_t obj_size, void **result);
+int  knd_mempool_shared_alloc(struct kndMemPool *self, knd_mempage_t page_type, size_t obj_size, void **result);
+
 void knd_mempool_free(struct kndMemPool *self, knd_mempage_t page_type, void *page_data);
 void knd_mempool_reset(struct kndMemPool *self);

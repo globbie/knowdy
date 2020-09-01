@@ -138,26 +138,22 @@ int knd_proc_inst_export(struct kndProcInst *self,
     }
 }
 
-int knd_proc_inst_entry_new(struct kndMemPool *mempool,
-                            struct kndProcInstEntry **result)
+int knd_proc_inst_entry_new(struct kndMemPool *mempool, struct kndProcInstEntry **result)
 {
     void *page;
     int err;
     switch (mempool->type) {
     case KND_ALLOC_LIST:
-        err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
-                                sizeof(struct kndProcInstEntry), &page);              RET_ERR();
+        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL, sizeof(struct kndProcInstEntry), &page);              RET_ERR();
         break;
     default:
-        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_TINY,
-                                     sizeof(struct kndProcInstEntry), &page);         RET_ERR();
+        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL, sizeof(struct kndProcInstEntry), &page);         RET_ERR();
     }
     *result = page;
     return knd_OK;
 }
 
-int knd_proc_inst_new(struct kndMemPool *mempool,
-                      struct kndProcInst **result)
+int knd_proc_inst_new(struct kndMemPool *mempool, struct kndProcInst **result)
 {
     void *page;
     int err;

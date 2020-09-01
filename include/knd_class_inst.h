@@ -78,6 +78,9 @@ struct kndClassInst
 
     struct kndClassVar *class_var;
 
+    size_t linear_pos;
+    size_t linear_len;
+
     //struct kndAttrInst *parent;
     //struct kndAttrInst *attr_insts;
     //struct kndAttrInst *tail;

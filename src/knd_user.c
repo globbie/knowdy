@@ -46,12 +46,9 @@ static gsl_err_t parse_proc_import(void *obj, const char *rec, size_t *total_siz
     return knd_proc_import(task->repo, rec, total_size, task);
 }
 
-static gsl_err_t parse_proc_select(void *obj,
-                                   const char *rec,
-                                   size_t *total_size)
+static gsl_err_t parse_proc_select(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
-
     return knd_proc_select(task->repo, rec, total_size, task);
 }
 
@@ -260,11 +257,23 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
 
         err = self->user_idx->add(self->user_idx, inst->entry->id, inst->entry->id_size, (void*)ctx);
         if (err) return make_gsl_err_external(err);
+        self->num_users++;
     }
 
     ctx->user_inst = inst;
     ctx->base_repo = self->repo;
     task->user_ctx = ctx;
+
+    if (ctx->prev)
+        ctx->prev->next = ctx->next;
+    if (ctx->next)
+        ctx->next->prev = ctx->prev;
+    else
+        self->tail = ctx->prev;
+
+    ctx->prev = NULL;
+    ctx->next = self->top;
+    self->top = ctx;
 
     if (!ctx->repo) {
         err = knd_create_user_repo(task);

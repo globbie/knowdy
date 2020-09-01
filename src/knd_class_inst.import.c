@@ -137,9 +137,7 @@ static gsl_err_t check_empty_inst(void *obj, const char *unused_var(name), size_
     return make_gsl_err(gsl_FORMAT);
 }
 
-static gsl_err_t import_class_inst(struct kndClassInst *self,
-                                   const char *rec, size_t *total_size,
-                                   struct kndTask *task)
+static gsl_err_t import_class_inst(struct kndClassInst *self, const char *rec, size_t *total_size, struct kndTask *task)
 {
     if (DEBUG_INST_IMPORT_LEVEL_2)
         knd_log(".. class inst import REC: %.*s", 128, rec);
@@ -157,6 +155,16 @@ static gsl_err_t import_class_inst(struct kndClassInst *self,
           .name_size = strlen("_as"),
           .run = run_set_alias,
           .obj = &ctx
+        },
+        { .name = "_pos",
+          .name_size = strlen("_pos"),
+          .parse = gsl_parse_size_t,
+          .obj = &self->linear_pos
+        },
+        { .name = "_len",
+          .name_size = strlen("_len"),
+          .parse = gsl_parse_size_t,
+          .obj = &self->linear_len
         },
         { .validate = import_attr_var,
           .obj = &ctx

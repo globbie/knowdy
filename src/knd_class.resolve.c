@@ -50,6 +50,8 @@ struct LocalContext {
     struct kndClassVar *class_var;
 };
 
+static int resolve_base(struct kndClass *self, struct kndTask *task);
+
 static int inherit_attr(void *obj,
                         const char *unused_var(elem_id),
                         size_t unused_var(elem_id_size),
@@ -115,9 +117,7 @@ static int inherit_attr(void *obj,
     return knd_OK;
 }
 
-static int inherit_attrs(struct kndClass *self,
-                         struct kndClass *base,
-                         struct kndTask *task)
+static int inherit_attrs(struct kndClass *self, struct kndClass *base, struct kndTask *task)
 {
     int err;
 
@@ -125,28 +125,23 @@ static int inherit_attrs(struct kndClass *self,
         err = knd_class_resolve(base, task);
         KND_TASK_ERR("base class \"%.*s\" failed to resolve", base->name_size, base->name);
     }
-
     if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
         knd_log(".. \"%.*s\" class to inherit attrs from \"%.*s\"..",
                 self->entry->name_size, self->entry->name,
                 base->name_size, base->name);
     }
-
     struct LocalContext ctx = {
         .task = task,
         .class = self,
         .baseclass = base
     };
-
     err = base->attr_idx->map(base->attr_idx, inherit_attr, (void*)&ctx);
     KND_TASK_ERR("class \"%.*s\" failed to inherit attrs from \"%.*s\"",
                  self->name_size, self->name, base->name_size, base->name);
     return knd_OK;
 }
 
-static int link_ancestor(struct kndClass *self,
-                         struct kndClassEntry *base_entry,
-                         struct kndTask *task)
+static int link_ancestor(struct kndClass *self, struct kndClassEntry *base_entry, struct kndTask *task)
 {
     struct kndClassEntry *entry = self->entry;
     struct kndClassEntry *prev_entry;
@@ -240,8 +235,7 @@ static int link_baseclass(struct kndClass *self,
     return knd_OK;
 }
 
-static int resolve_baseclasses(struct kndClass *self,
-                               struct kndTask *task)
+static int resolve_baseclasses(struct kndClass *self, struct kndTask *task)
 {
     struct kndClassVar *cvar;
     struct kndClassEntry *entry;
@@ -305,7 +299,7 @@ static int resolve_baseclasses(struct kndClass *self,
         }
 
         if (!c->base_is_resolved) {
-            err = knd_class_resolve_base(c, task);                                RET_ERR();
+            err = resolve_base(c, task);                                RET_ERR();
         }
 
         err = link_baseclass(self, c, task);                                      RET_ERR();
@@ -389,8 +383,7 @@ int knd_class_resolve(struct kndClass *self, struct kndTask *task)
     return knd_OK;
 }
 
-int knd_class_resolve_base(struct kndClass *self,
-                           struct kndTask *task)
+static int resolve_base(struct kndClass *self, struct kndTask *task)
 {
     struct kndClassEntry *entry = self->entry;
     int err;
@@ -411,11 +404,8 @@ int knd_class_resolve_base(struct kndClass *self,
     return knd_OK;
 }
 
-int knd_resolve_class_ref(struct kndClass *self,
-                          const char *name, size_t name_size,
-                          struct kndClass *base,
-                          struct kndClass **result,
-                          struct kndTask *task)
+int knd_resolve_class_ref(struct kndClass *self, const char *name, size_t name_size, struct kndClass *base,
+                          struct kndClass **result, struct kndTask *task)
 {
     struct kndClassEntry *entry;
     struct kndClass *c;
@@ -446,13 +436,13 @@ int knd_resolve_class_ref(struct kndClass *self,
         }
 
         if (!c->base_is_resolved) {
-            err = knd_class_resolve_base(c, task);
+            err = resolve_base(c, task);
             KND_TASK_ERR("failed to resolve base classes of %.*s", name_size, name);
         }
 
         if (base) {
             if (!base->base_is_resolved) {
-                err = knd_class_resolve_base(base, task);                            RET_ERR();
+                err = resolve_base(base, task);                            RET_ERR();
             }
 
             if (base != c) {
@@ -473,12 +463,12 @@ int knd_resolve_class_ref(struct kndClass *self,
                  self->entry->repo->name_size, self->entry->repo->name);
 
     if (!c->base_is_resolved) {
-        err = knd_class_resolve_base(c, task);                                    RET_ERR();
+        err = resolve_base(c, task);                                    RET_ERR();
     }
 
     if (base) {
         if (!base->base_is_resolved) {
-            err = knd_class_resolve_base(base, task);
+            err = resolve_base(base, task);
             KND_TASK_ERR("failed to resolve class %.*s", base->name_size, base->name);
         }
         err = knd_is_base(base, c);

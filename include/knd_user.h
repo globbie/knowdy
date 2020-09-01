@@ -16,7 +16,6 @@ struct kndRepoAccess
 
     bool may_import;
     bool may_update;
-
     bool may_select;
     bool may_get;
 };
@@ -25,10 +24,9 @@ struct kndUserContext
 {
     struct kndClassInst *user_inst;
     struct kndRepo *repo;
-
     struct kndRepo *base_repo;
 
-    //TODO: permits
+    struct kndRepoAccess *repo_acl;
 
     /* usage statistics */
     size_t num_tasks;
@@ -59,29 +57,19 @@ struct kndUser
     size_t num_users;
 
     struct kndSet *user_idx;
+
+    struct kndUserContext *top;
+    struct kndUserContext *tail;
 };
 
-int knd_user_new(struct kndUser **self,
-                 const char *classname,
-                 size_t classname_size,
-                 const char *path,
-                 size_t path_size,
-                 const char *reponame,
-                 size_t reponame_size,
-                 const char *schema_path,
-                 size_t schema_path_size,
-                 struct kndShard *shard,
-                 struct kndTask *task);
+int knd_user_new(struct kndUser **self, const char *classname, size_t classname_size,
+                 const char *path, size_t path_size, const char *reponame, size_t reponame_size,
+                 const char *schema_path, size_t schema_path_size,
+                 struct kndShard *shard, struct kndTask *task);
 void knd_user_del(struct kndUser *self);
 
-gsl_err_t knd_create_user(void *obj,
-                          const char *rec,
-                          size_t *total_size);
+gsl_err_t knd_create_user(void *obj, const char *rec, size_t *total_size);
 int knd_create_user_repo(struct kndTask *task);
+gsl_err_t knd_parse_select_user(void *obj, const char *rec, size_t *total_size);
 
-gsl_err_t knd_parse_select_user(void *obj,
-                                const char *rec,
-                                size_t *total_size);
-
-int knd_user_context_new(struct kndMemPool *mempool,
-                                struct kndUserContext **result);
+int knd_user_context_new(struct kndMemPool *mempool, struct kndUserContext **result);

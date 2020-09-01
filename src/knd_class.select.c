@@ -690,8 +690,7 @@ static gsl_err_t parse_import_class_inst(void *obj, const char *rec, size_t *tot
 }
 
 static gsl_err_t
-validate_select_class_attr(void *obj, const char *name, size_t name_size,
-                           const char *rec, size_t *total_size)
+validate_select_class_attr(void *obj, const char *name, size_t name_size, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
 
@@ -758,7 +757,7 @@ static gsl_err_t present_class_selection(void *obj, const char *unused_var(val),
 
     switch (task->type) {
     case KND_INNER_STATE:
-        if (DEBUG_CLASS_SELECT_LEVEL_TMP)
+        if (DEBUG_CLASS_SELECT_LEVEL_2)
             knd_log("^^ inner state class selection detected!");
         if (!ctx->class_entry) return make_gsl_err(gsl_FORMAT);
         err = knd_class_declar_new(task->mempool, &declar);
@@ -768,11 +767,6 @@ static gsl_err_t present_class_selection(void *obj, const char *unused_var(val),
         ctx->class_declar = declar;
         declar->next = task->ctx->class_declars;
         task->ctx->class_declars = declar;
-
-        knd_log(">> declar class repo:%.*s  curr repo:%.*s",
-                declar->entry->repo->name_size, declar->entry->repo->name,
-                ctx->repo->name_size, ctx->repo->name);
-
         return make_gsl_err(gsl_OK);
     default:
         break;
@@ -816,6 +810,7 @@ static gsl_err_t present_class_selection(void *obj, const char *unused_var(val),
 
         /* add base set */
         assert(task->num_sets + 1 <= KND_MAX_CLAUSES);  // FIXME(k15tfu): <<
+
         task->sets[task->num_sets] = ctx->selected_base->entry->descendants;
         task->num_sets++;
 

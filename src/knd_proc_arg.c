@@ -634,9 +634,9 @@ int knd_proc_arg_resolve(struct kndProcArg *self,
 }
 
 int knd_proc_arg_compute(struct kndProcArg *self,
-                         struct kndTask *task)
+                         struct kndTask *unused_var(task))
 {
-    int err;
+    //int err;
 
     if (DEBUG_PROC_ARG_LEVEL_2)
         knd_log(".. computing arg \"%.*s\"..",
@@ -645,10 +645,10 @@ int knd_proc_arg_compute(struct kndProcArg *self,
 
     if (!self->proc_call->proc) return knd_OK;
 
-    if (!self->proc_call->proc->is_computed) {
+    /*if (!self->proc_call->proc->is_computed) {
         err = knd_proc_compute(self->proc_call->proc, task);
         if (err) return err;
-    }
+        }*/
  
     return knd_OK;
 }
@@ -818,15 +818,13 @@ gsl_err_t knd_arg_inst_import(struct kndProcArgInst *self,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-int knd_proc_arg_inst_resolve(struct kndProcArg *self,
-                              struct kndProcArgInst *inst)
+int knd_proc_arg_inst_resolve(struct kndProcArg *self, struct kndProcArgInst *inst)
 {
     struct kndProcEntry *entry;
     struct kndRepo *repo = self->parent->entry->repo;
     struct kndClassInstEntry *class_inst_entry;
 
-    entry = knd_shared_dict_get(repo->class_name_idx,
-                                inst->procname, inst->procname_size);
+    entry = knd_shared_dict_get(repo->class_name_idx, inst->procname, inst->procname_size);
     if (!entry) {
         knd_log("-- no such proc: %.*s",
                 inst->procname_size, inst->procname);

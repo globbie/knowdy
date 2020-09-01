@@ -49,6 +49,8 @@ struct kndTextIdx
     struct kndTextLoc * _Atomic locs;
     atomic_size_t num_locs;
 
+    struct kndProcArgRef *arg_roles;
+
     /* any other attrs? */
     struct kndTextIdx *children;
     struct kndTextIdx *next;
@@ -138,8 +140,8 @@ struct kndSyNode
     struct kndSyNodeSpec *specs;
     size_t num_specs;
 
-    size_t pos;
-    size_t len;
+    size_t linear_pos;
+    size_t linear_len;
 
     struct kndSyNode *next;
 };
@@ -225,8 +227,12 @@ int knd_text_export_query_report(struct kndTask *task);
 int knd_text_export_query_report_GSL(struct kndTask *task);
 
 int knd_text_new(struct kndMemPool *mempool, struct kndText **result);
+int knd_synode_new(struct kndMemPool *mempool, struct kndSyNode **result);
+int knd_synode_spec_new(struct kndMemPool *mempool, struct kndSyNodeSpec **result);
+
 int knd_par_new(struct kndMemPool *mempool, struct kndPar **result);
 int knd_class_declar_new(struct kndMemPool *mempool, struct kndClassDeclaration **result);
+int knd_proc_declar_new(struct kndMemPool *mempool, struct kndProcDeclaration **result);
 int knd_sentence_new(struct kndMemPool *mempool, struct kndSentence **result);
 int knd_clause_new(struct kndMemPool *mempool, struct kndClause **result);
 int knd_statement_new(struct kndMemPool *mempool, struct kndStatement **result);

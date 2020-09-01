@@ -496,9 +496,7 @@ int knd_is_base(struct kndClass *self,
     return knd_FAIL;
 }
 
-int knd_class_get_attr(struct kndClass *self,
-                       const char *name, size_t name_size,
-                       struct kndAttrRef **result)
+int knd_class_get_attr(struct kndClass *self, const char *name, size_t name_size, struct kndAttrRef **result)
 {
     struct kndAttrRef *ref;
     struct kndSharedDict *attr_name_idx = self->entry->repo->attr_name_idx;
