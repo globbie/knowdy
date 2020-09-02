@@ -458,6 +458,7 @@ int knd_shared_set_elem_idx_new(struct kndMemPool *mempool, struct kndSharedSetE
     case KND_ALLOC_LIST:
         err = knd_mempool_alloc(mempool, KND_MEMPAGE_BASE, sizeof(struct kndSharedSetElemIdx), &page);
         if (err) return err;
+        break;
     default:
         err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_BASE, sizeof(struct kndSharedSetElemIdx), &page);
         if (err) return err;

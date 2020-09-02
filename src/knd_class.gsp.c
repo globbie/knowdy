@@ -990,6 +990,7 @@ static gsl_err_t set_class_inst_name(void *obj, const char *name, size_t name_si
     return make_gsl_err(gsl_OK);
 }
 
+#if 0
 static gsl_err_t parse_class_inst_state(void *obj,
                                         const char *rec,
                                         size_t *total_size)
@@ -997,6 +998,7 @@ static gsl_err_t parse_class_inst_state(void *obj,
     struct LocalContext *ctx = obj;
     return kndClassInst_read_state(ctx->class_inst, rec, total_size, ctx->task);
 }
+#endif
 
 static gsl_err_t parse_class_inst_item(void *obj,
                                        const char *rec,
@@ -1017,12 +1019,12 @@ static gsl_err_t parse_class_inst_item(void *obj,
           .name_size = strlen("_n"),
           .run = set_class_inst_name,
           .obj = ctx
-        },
+        }/*,
         { .name = "_st",
           .name_size = strlen("_st"),
           .parse = parse_class_inst_state,
           .obj = ctx
-        }
+          }*/
     };
 
     err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);

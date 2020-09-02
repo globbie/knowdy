@@ -78,6 +78,8 @@ int knd_dedup_commit(struct kndCommit *commit, struct kndTask *unused_var(task))
             continue;
         }
         entry = ref->obj;
+        knd_log(".. dedup class \"%.*s\"", entry->name_size, entry->name);
+
         //err = knd_class_dedup(entry->class, task);
         //KND_TASK_ERR("failed to dedup class \"%.*s\"", entry->name_size, entry->name);
 

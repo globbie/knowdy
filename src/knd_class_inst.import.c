@@ -218,7 +218,6 @@ int knd_import_class_inst(struct kndClassEntry *self, const char *rec, size_t *t
     struct kndClassInst *inst;
     struct kndClassInstEntry *inst_entry;
     struct kndClassVar *class_var;
-    struct kndRepo *repo = task->repo;
     struct kndState *state;
     struct kndStateRef *state_ref;
     struct kndTaskContext *ctx = task->ctx;
@@ -227,7 +226,6 @@ int knd_import_class_inst(struct kndClassEntry *self, const char *rec, size_t *t
     gsl_err_t parser_err;
 
     if (task->user_ctx) {
-        repo = task->user_ctx->repo;
         // use non-ephemeral mempool
         mempool = task->shard->user->mempool;
     }
