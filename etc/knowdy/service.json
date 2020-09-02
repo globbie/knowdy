@@ -1,1 +1,2 @@
-{"listen-address":"localhost:8080"}
+{"listen-address":"127.0.0.1:8088",
+"shard-config":"/etc/knowdy/shard.gsl"}
