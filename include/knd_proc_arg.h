@@ -34,39 +34,41 @@ struct kndTask;
 struct kndProc;
 struct kndProcInst;
 struct kndProcArg;
-struct kndProcArgInst;
 struct kndProcCall;
 struct kndProcCallArg;
 
 struct kndProcArgRef
 {
     struct kndProcArg    *arg;
+    struct kndProcArgVar *var;
     struct kndProc       *proc;
     struct kndProcArgRef *next;
 };
 
-struct kndProcArgInst
+struct kndProcArgVar
 {
-//    knd_task_spec_type type;
+    const char *name;
+    size_t name_size;
+    struct kndProcVar *parent;
+
     struct kndProcArg *arg;
-    struct kndProcInst *parent;
-
-    const char *procname;
-    size_t procname_size;
-    struct kndProcEntry *proc_entry;
-
-    const char *class_inst_name;
-    size_t class_inst_name_size;
-    struct kndClassInst *class_inst;
-
     const char *val;
     size_t val_size;
 
-    struct kndState *states;
-    size_t init_state;
-    size_t num_states;
+    struct kndClassEntry *template;
+    struct kndClassInst *inst;
 
-    struct kndProcArgInst *next;
+    struct kndProcArgVar *next;
+};
+
+struct kndProcArgEntry
+{
+    const char *name;
+    size_t name_size;
+
+    struct kndProcArg *arg;
+
+    struct kndProcArgVar *next;
 };
 
 struct kndProcArg 
@@ -78,12 +80,13 @@ struct kndProcArg
     const char *name;
     size_t name_size;
 
+    struct kndProc *parent;
+
     const char *classname;
     size_t classname_size;
-    struct kndClass *class;
-    struct kndAttrVar *attr_var;
+    struct kndClassEntry *template;
 
-    struct kndProc *parent;
+    struct kndAttrVar *attr_var;
 
     struct kndProcCall  *proc_call;
     struct kndProcEntry *proc_entry;
@@ -96,43 +99,18 @@ struct kndProcArg
     struct kndProcArg *next;
 };
 
-extern void kndProcArgInst_init(struct kndProcArgInst *self);
+gsl_err_t knd_proc_arg_parse(struct kndProcArg *self, const char *rec, size_t *chunk_size, struct kndTask *task);
+int knd_proc_arg_export_GSL(struct kndProcArg *self, struct kndTask *task, bool is_list_item, size_t depth);
+int knd_proc_arg_var_export_GSL(struct kndProcArgVar *self, struct kndTask *task, size_t depth);
+int knd_proc_arg_export(struct kndProcArg *self, knd_format format, struct kndTask *task, struct kndOutput *out);
 
-gsl_err_t knd_proc_arg_parse(struct kndProcArg *self,
-                             const char   *rec,
-                             size_t *chunk_size,
-                             struct kndTask *task);
+int knd_proc_arg_resolve(struct kndProcArg *self, struct kndRepo *repo, struct kndTask *task);
+int knd_resolve_proc_arg_var(struct kndProc *self, struct kndProcArgVar *var, struct kndTask *task);
 
-int knd_proc_arg_export_GSL(struct kndProcArg *self,
-                            struct kndTask *task,
-                            bool is_list_item,
-                            size_t depth);
-
-int knd_proc_arg_export(struct kndProcArg *self,
-                        knd_format format,
-                        struct kndTask *task,
-                        struct kndOutput *out);
-int knd_proc_arg_resolve(struct kndProcArg *self,
-                         struct kndRepo *repo);
-
-gsl_err_t knd_arg_inst_import(struct kndProcArgInst *self,
-                              const char *rec, size_t *total_size,
-                              struct kndTask *task);
-
-int knd_proc_arg_compute(struct kndProcArg *self,
-                         struct kndTask *task);
-
-void knd_proc_arg_str(struct kndProcArg *self,
-                      size_t depth);
+int knd_proc_arg_compute(struct kndProcArg *self, struct kndTask *task);
+void knd_proc_arg_str(struct kndProcArg *self, size_t depth);
 
 /* allocators */
-int knd_proc_arg_ref_new(struct kndMemPool *mempool,
-                         struct kndProcArgRef **self);
-
-int knd_proc_arg_inst_new(struct kndMemPool *mempool,
-                          struct kndProcArgInst **self);
-int knd_proc_arg_inst_mem(struct kndMemPool *mempool,
-                          struct kndProcArgInst **self);
-
-int knd_proc_arg_new(struct kndMemPool *mempool,
-                     struct kndProcArg **self);
+int knd_proc_arg_ref_new(struct kndMemPool *mempool, struct kndProcArgRef **self);
+int knd_proc_arg_new(struct kndMemPool *mempool, struct kndProcArg **self);
+int knd_proc_arg_var_new(struct kndMemPool *mempool, struct kndProcArgVar **result);

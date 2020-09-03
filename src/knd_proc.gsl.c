@@ -44,10 +44,7 @@ static int proc_call_arg_export_GSL(struct kndProc *unused_var(self),
     return knd_OK;
 }
 
-int knd_proc_export_GSL(struct kndProc *self,
-                        struct kndTask *task,
-                        bool is_list_item,
-                        size_t depth)
+int knd_proc_export_GSL(struct kndProc *self, struct kndTask *task, bool is_list_item, size_t depth)
 {
     struct kndProcArg *arg;
     struct kndProcCallArg *carg;
@@ -55,8 +52,7 @@ int knd_proc_export_GSL(struct kndProc *self,
     int err;
 
     if (DEBUG_PROC_GSL_LEVEL_2)
-        knd_log(".. \"%.*s\" proc export GSL..",
-                self->name_size, self->name);
+        knd_log(".. \"%.*s\" proc export GSL..", self->name_size, self->name);
 
     err = out->writec(out, '{');                                                  RET_ERR();
 

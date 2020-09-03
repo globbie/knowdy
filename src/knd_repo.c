@@ -948,10 +948,7 @@ static int read_GSL_file(struct kndRepo *repo,
     return knd_OK;
 }
 
-int knd_repo_index_proc_arg(struct kndRepo *repo,
-                            struct kndProc *proc,
-                            struct kndProcArg *arg,
-                            struct kndTask *task)
+int knd_repo_index_proc_arg(struct kndRepo *repo, struct kndProc *proc, struct kndProcArg *arg, struct kndTask *task)
 {
     struct kndMemPool *mempool   = task->mempool;
     struct kndSet *arg_idx       = repo->proc_arg_idx;
@@ -979,21 +976,17 @@ int knd_repo_index_proc_arg(struct kndRepo *repo,
     prev_arg_ref = knd_shared_dict_get(arg_name_idx,
                                        arg->name, arg->name_size);
     arg_ref->next = prev_arg_ref;
-    err = knd_shared_dict_set(arg_name_idx,
-                              arg->name, arg->name_size,
-                              (void*)arg_ref,
-                              mempool,
+    err = knd_shared_dict_set(arg_name_idx, arg->name, arg->name_size, (void*)arg_ref, mempool,
                               task->ctx->commit, &item, true);                                       RET_ERR();
 
-    err = arg_idx->add(arg_idx,
-                        arg->id, arg->id_size,
-                        (void*)arg_ref);                                          RET_ERR();
+    err = arg_idx->add(arg_idx, arg->id, arg->id_size, (void*)arg_ref);
+    KND_TASK_ERR("failed to idx arg ref");
 
     // TODO: local task register
 
     if (DEBUG_REPO_LEVEL_2)
-        knd_log("++ new primary arg: \"%.*s\" (id:%.*s)",
-                arg->name_size, arg->name, arg->id_size, arg->id);
+        knd_log("++ new primary arg: \"%.*s\" (id:%.*s) of \"%.*s\" (repo:%.*s)",
+                arg->name_size, arg->name, arg->id_size, arg->id, proc->name_size, proc->name, repo->name_size, repo->name);
 
     return knd_OK;
 }

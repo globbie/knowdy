@@ -129,20 +129,12 @@ int knd_class_inst_update_indices(struct kndRepo *repo,
 int knd_class_inst_export_GSP(struct kndClassInst *self,  struct kndTask *task);
 
 // knd_class_inst.gsl.c
-int knd_class_inst_export_GSL(struct kndClassInst *self,
-                              bool is_list_item,
-                              struct kndTask *task,
+int knd_class_inst_export_GSL(struct kndClassInst *self, bool is_list_item, knd_state_phase phase, struct kndTask *task,
                               size_t depth);
 
 // knd_class_inst.import.c
-//gsl_err_t knd_import_class_inst(struct kndClassInst *self,
-//                                const char *rec, size_t *total_size,
-//                                struct kndTask *task);
-gsl_err_t kndClassInst_read_state(struct kndClassInst *self,
-                                  const char *rec, size_t *total_size,
-                                  struct kndTask *task);
-
 int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *total_size, struct kndTask *task);
+gsl_err_t knd_class_inst_read_state(struct kndClassInst *self, const char *rec, size_t *total_size, struct kndTask *task);
 
 // knd_class_inst.json.c
 int knd_class_inst_export_JSON(struct kndClassInst *self, bool is_list_item, struct kndTask *task);

@@ -504,9 +504,13 @@ static gsl_err_t parse_statement(void *obj, const char *rec, size_t *total_size)
 
     parser_err = knd_statement_import(stm, rec, total_size, task);
     if (parser_err.code) {
-        knd_log("-- text stm parsing failed: %d", parser_err.code);
+        KND_TASK_LOG("text stm import failed");
         return *total_size = 0, parser_err;
     }
+
+    err = knd_statement_resolve(stm, task);
+    if (err) return make_gsl_err_external(err);
+    
     return make_gsl_err(gsl_OK);
 }
 

@@ -58,6 +58,9 @@ typedef enum knd_logic { KND_LOGIC_AND,
         if (e) return e; \
     }
 
+#define FOREACH(item, list) \
+    for (item = list; item != NULL; item = item->next)
+
 #define MEMPOOL_ERR(S) if (err) { printf("-- mempool failed to alloc \"%s\"\n", "" #S); \
         printf ("-- <%s> failed at line %d of file \"%s\"\n",           \
                 __func__, __LINE__, __FILE__); return err; } 

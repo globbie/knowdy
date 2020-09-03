@@ -203,8 +203,7 @@ gsl_err_t knd_proc_select(struct kndRepo *repo, const char *rec, size_t *total_s
         }
     };
 
-    parser_err = gsl_parse_task(rec, total_size, specs,
-                                sizeof specs / sizeof specs[0]);
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return parser_err;
 
     if (!ctx.proc) {

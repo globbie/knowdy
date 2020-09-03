@@ -30,80 +30,41 @@
 #define DEBUG_PROC_INST_LEVEL_3 0
 #define DEBUG_PROC_INST_LEVEL_TMP 1
 
-void knd_proc_arg_inst_str(struct kndProcArgInst *self, size_t depth)
-{
-    knd_log("%*s{%.*s} {class inst:%p}",
-            depth * KND_OFFSET_SIZE, "",
-            self->arg->name_size, self->arg->name,
-            self->class_inst);
-}
-
 void knd_proc_inst_str(struct kndProcInst *self, size_t depth)
 {
-    struct kndProcArgInst *arg;
+    struct kndProcArgVar *var;
 
     knd_log("%*s{proc-inst %.*s",
-            depth * KND_OFFSET_SIZE, "",
-            self->name_size, self->name);
+            depth * KND_OFFSET_SIZE, "", self->name_size, self->name);
 
-    if (self->args) {
+    if (self->procvar) {
         knd_log("%*s    [arg", depth * KND_OFFSET_SIZE, "");
-        for (arg = self->args; arg; arg = arg->next) {
-            knd_proc_arg_inst_str(arg, depth + 2);
+        for (var = self->procvar->args; var; var = var->next) {
+            //
         }
         knd_log("%*s    ]", depth * KND_OFFSET_SIZE, "");
     }
 
-    knd_log("%*s}",
-            depth * KND_OFFSET_SIZE, "");
+    knd_log("%*s}", depth * KND_OFFSET_SIZE, "");
 }
 
-static int proc_arg_inst_export_GSL(struct kndProcArgInst *self,
-                                    struct kndTask *task,
-                                    size_t depth)
+int knd_proc_inst_export_GSL(struct kndProcInst *self, bool is_list_item, knd_state_phase phase, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
-    struct kndClass *c;
+    struct kndProcArgVar *var;
     int err;
-    
-    err = out->writef(out, "%*s{%.*s",
-                      depth * KND_OFFSET_SIZE, "",
-                      self->arg->name_size, self->arg->name);                     RET_ERR();
-    if (self->class_inst) {
-        c = self->class_inst->blueprint->class;
 
-        if (task->ctx->use_alias) {
-            err = out->writef(out, "%*s%.*s",
-                              depth * KND_OFFSET_SIZE, "",
-                              self->class_inst->alias_size, self->class_inst->alias);  RET_ERR();
-        } else {
-            err = out->writef(out, "%*s{class %.*s",
-                              (depth + 1) * KND_OFFSET_SIZE, "",
-                              c->name_size, c->name);                     RET_ERR();
-            err = out->writec(out, '}');
+    if (!is_list_item) {
+        err = out->writec(out, '{');
+        RET_ERR();
+        if (phase == KND_CREATED) {
+            err = out->writec(out, '!');
+            RET_ERR();
         }
-    } else {
-        err = out->writef(out, "%*s%.*s",
-                          depth * KND_OFFSET_SIZE, "",
-                          self->val_size, self->val);                     RET_ERR();
+        OUT("inst ", strlen("inst "));
     }
-    err = out->writec(out, '}');
-    return knd_OK;
-}
 
-int knd_proc_inst_export_GSL(struct kndProcInst *self,
-                             bool is_list_item,
-                             struct kndTask *task,
-                             size_t depth)
-{
-    struct kndOutput *out = task->out;
-    struct kndProcArgInst *arg;
-    int err;
-
-    if (is_list_item) {
-        err = out->writef(out, "%*s{", depth * KND_OFFSET_SIZE, "");        RET_ERR();
-    }
-    err = out->write(out, self->name, self->name_size);                       RET_ERR();
+    OUT(self->name, self->name_size);
 
     if (task->ctx->use_alias) {
         if (self->alias_size) {
@@ -112,27 +73,36 @@ int knd_proc_inst_export_GSL(struct kndProcInst *self,
             err = out->writec(out, '}');                                      RET_ERR();
         }
     }
-
-    for (arg = self->args; arg; arg = arg->next) {
-        proc_arg_inst_export_GSL(arg, task, depth + 2);
+    if (self->linear_pos) {
+        err = out->write(out, "{_pos ", strlen("{_pos "));             RET_ERR();
+        err = out->writef(out, "%zu", self->linear_pos);                   RET_ERR();
+        err = out->writec(out, '}');                                 RET_ERR();
+    }
+    if (self->linear_len) {
+        err = out->write(out, "{_len ", strlen("{_len "));             RET_ERR();
+        err = out->writef(out, "%zu", self->linear_len);                   RET_ERR();
+        err = out->writec(out, '}');                                 RET_ERR();
     }
 
-    if (is_list_item) {
+    if (self->procvar) {
+        for (var = self->procvar->args; var; var = var->next) {
+            knd_proc_arg_var_export_GSL(var, task, depth + 2);
+        }
+    }
+
+    if (!is_list_item) {
         err = out->writef(out, "%*s}", depth * KND_OFFSET_SIZE, "");  RET_ERR();
     }
     return knd_OK;
 }
 
-int knd_proc_inst_export(struct kndProcInst *self,
-                         knd_format format,
-                         bool is_list_item,
-                         struct kndTask *task)
+int knd_proc_inst_export(struct kndProcInst *self, knd_format format, bool is_list_item, struct kndTask *task)
 {
     switch (format) {
         //case KND_FORMAT_JSON:
         //    return knd_proc_inst_export_JSON(self, is_list_item, task);
         case KND_FORMAT_GSL:
-            return knd_proc_inst_export_GSL(self, is_list_item, task, 0);
+            return knd_proc_inst_export_GSL(self, is_list_item, KND_SELECTED, task, 0);
         default:
             return knd_RANGE;
     }

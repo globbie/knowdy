@@ -25,25 +25,15 @@
 static int export_class_declars(struct kndClassDeclaration *decl, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
-    struct kndClass *c;
     struct kndClassInstEntry *entry;
-    struct kndClassInst *inst;
-
+    int err;
     for (; decl; decl = decl->next) {
-        c = decl->entry->class;
         OUT("{class ", strlen("{class "));
-        OUT(c->name, c->name_size);
+        OUT(decl->entry->name, decl->entry->name_size);
 
         for (entry = decl->insts; entry; entry = entry->next) {
-            inst = entry->inst;
-            OUT("{!inst ", strlen("{!inst "));
-            OUT(inst->name, inst->name_size);
-            if (inst->alias_size) {
-                OUT("{_as ", strlen("{_as "));
-                OUT(inst->alias, inst->alias_size);
-                OUT("}", 1);
-            }
-            OUT("}", 1);
+            err = knd_class_inst_export_GSL(entry->inst, false, KND_CREATED, task, 0);
+            KND_TASK_ERR("failed to export class inst GSL");
         }
         OUT("}", 1);
     }
@@ -53,22 +43,15 @@ static int export_class_declars(struct kndClassDeclaration *decl, struct kndTask
 static int export_proc_declars(struct kndProcDeclaration *decl, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
-    struct kndProc *proc;
     struct kndProcInstEntry *entry;
-    struct kndProcInst *inst;
     int err;
 
     for (; decl; decl = decl->next) {
-        proc = decl->proc;
         err = out->write(out, "{proc ", strlen("{proc "));                        RET_ERR();
-        err = out->write(out, proc->name, proc->name_size);                       RET_ERR();
+        err = out->write(out, decl->entry->name, decl->entry->name_size);         RET_ERR();
 
         for (entry = decl->insts; entry; entry = entry->next) {
-            inst = entry->inst;
-
-            err = out->write(out, "{!inst ", strlen("{!inst "));                  RET_ERR();
-            err = knd_proc_inst_export_GSL(inst, false, task, 0);                    RET_ERR();
-            err = out->writec(out, '}');                                          RET_ERR();
+            err = knd_proc_inst_export_GSL(entry->inst, false, KND_CREATED, task, 0);    RET_ERR();
         }
         err = out->writec(out, '}');                                              RET_ERR();
     }

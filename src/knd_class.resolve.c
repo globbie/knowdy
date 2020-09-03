@@ -87,18 +87,8 @@ static int inherit_attr(void *obj,
                 src_ref->attr_var,
                 self->name_size, self->name);
 
-    err = attr_idx->get(attr_idx, attr->id, attr->id_size, (void**)&ref);
-    if (!err) {
-        if (DEBUG_CLASS_RESOLVE_LEVEL_2) 
-            knd_log("  == attr already exists: %.*s",
-                    ref->attr_var);
+    if (ref) {
         if (src_ref->attr_var) {
-            if (ref->attr_var) {
-                err = knd_CONFLICT;
-                KND_TASK_ERR("conflict in attr %.*s assignment in class \"%.*s\"",
-                             attr->name_size, attr->name,
-                             self->name_size, self->name);
-            }
             ref->attr_var = src_ref->attr_var;
             ref->class_entry = src_ref->class_entry;
         }
@@ -107,7 +97,7 @@ static int inherit_attr(void *obj,
 
     /* new attr entry */
     err = knd_attr_ref_new(mempool, &ref);
-    KND_TASK_ERR("failed to alloc kndAttrRef");
+    KND_TASK_ERR("failed to alloc an attr ref");
     ref->attr = attr;
     ref->attr_var = src_ref->attr_var;
     ref->class_entry = src_ref->class_entry;

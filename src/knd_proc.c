@@ -126,15 +126,15 @@ int knd_proc_get_arg(struct kndProc *self, const char *name, size_t name_size, s
     int err;
 
     if (DEBUG_PROC_LEVEL_2)
-        knd_log("\n.. \"%.*s\" proc (repo: %.*s) to select arg \"%.*s\"",
+        knd_log(".. \"%.*s\" proc (repo: %.*s) to select arg \"%.*s\"",
                 self->name_size, self->name, self->entry->repo->name_size, self->entry->repo->name, name_size, name);
 
     ref = knd_shared_dict_get(arg_name_idx, name, name_size);
     if (!ref) {
-        /* if (self->entry->repo->base) {
-            arg_name_idx = self->entry->repo->base->arg_name_idx;
-            ref = arg_name_idx->get(arg_name_idx, name, name_size);
-        }*/
+        if (self->entry->repo->base) {
+            arg_name_idx = self->entry->repo->base->proc_arg_name_idx;
+            ref = knd_shared_dict_get(arg_name_idx, name, name_size);
+        }
         if (!ref) {
             knd_log("-- no such proc arg: \"%.*s\"", name_size, name);
             return knd_NO_MATCH;
@@ -144,7 +144,7 @@ int knd_proc_get_arg(struct kndProc *self, const char *name, size_t name_size, s
     /* iterating over synonymous attrs */
     for (; ref; ref = ref->next) {
         arg = ref->arg;
-        if (DEBUG_PROC_LEVEL_TMP) {
+        if (DEBUG_PROC_LEVEL_3) {
             knd_log("== arg %.*s is used in proc: %.*s",
                     name_size, name, ref->proc->name_size, ref->proc->name);
         }
@@ -346,8 +346,7 @@ int knd_proc_commit_state(struct kndProc *self,
 }
 
 
-int knd_proc_var_new(struct kndMemPool *mempool,
-                            struct kndProcVar **result)
+int knd_proc_var_new(struct kndMemPool *mempool, struct kndProcVar **result)
 {
     void *page;
     int err;
@@ -364,24 +363,6 @@ int knd_proc_var_new(struct kndMemPool *mempool,
     *result = page;
     return knd_OK;
 }
-
-int knd_proc_arg_var_new(struct kndMemPool *mempool, struct kndProcArgVar **result)
-{
-    void *page;
-    int err;
-    switch (mempool->type) {
-    case KND_ALLOC_LIST:
-        err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
-                                sizeof(struct kndProcArgVar), &page);                 RET_ERR();
-        break;
-    default:
-        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_TINY,
-                                     sizeof(struct kndProcArgVar), &page);                 RET_ERR();
-    }
-    *result = page;
-    return knd_OK;
-}
-
 
 int knd_proc_entry_new(struct kndMemPool *mempool, struct kndProcEntry **result)
 {

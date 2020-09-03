@@ -95,7 +95,7 @@ struct kndClassDeclaration
 
 struct kndProcDeclaration
 {
-    struct kndProc *proc;
+    struct kndProcEntry *entry;
 
     struct kndProcInstEntry *insts;
     struct kndProcInstEntry *inst_tail;
@@ -219,7 +219,9 @@ void knd_text_str(struct kndText *self, size_t depth);
 gsl_err_t knd_text_import(struct kndText *self, const char *rec, size_t *total_size, struct kndTask *task);
 int knd_text_index(struct kndText *self, struct kndRepo *repo, struct kndTask *task);
 gsl_err_t knd_text_search(struct kndRepo *repo, const char *rec, size_t *total_size, struct kndTask *task);
+
 gsl_err_t knd_statement_import(struct kndStatement *stm, const char *rec, size_t *total_size, struct kndTask *task);
+int knd_statement_resolve(struct kndStatement *stm, struct kndTask *task);
 
 int knd_text_export(struct kndText *self, knd_format format, struct kndTask *task);
 int knd_par_export_GSL(struct kndPar *par, struct kndTask *task);

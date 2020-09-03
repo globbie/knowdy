@@ -23,33 +23,42 @@ struct LocalContext {
     struct kndProc *base;
 };
 
-static int inherit_arg(void *obj,
-                       const char *unused_var(elem_id),
-                       size_t unused_var(elem_id_size),
-                       size_t unused_var(count),
-                       void *elem)
+static int inherit_arg(void *obj, const char *unused_var(elem_id), size_t unused_var(elem_id_size),
+                       size_t unused_var(count), void *elem)
 {
     struct LocalContext  *ctx = obj;
     struct kndTask       *task = ctx->task;
-    struct kndMemPool    *mempool = task->mempool;
     struct kndProc       *self = ctx->proc;
-    struct kndSet        *arg_idx = self->arg_idx;
     struct kndProcArgRef *src_ref = elem;
     struct kndProcArg    *arg    = src_ref->arg;
     struct kndProc       *base = arg->parent;
-    struct kndProcArgRef *ref;
+    struct kndProcArgRef *ref = NULL;
     int err;
 
-    if (DEBUG_PROC_RESOLVE_LEVEL_TMP) 
-        knd_log("..  \"%.*s\" of \"%.*s\" inherited by \"%.*s\"",
-                arg->name_size, arg->name, base->name_size, base->name, self->name_size, self->name);
+    err = self->arg_idx->get(self->arg_idx, arg->id, arg->id_size, (void**)&ref);
+    if (!err) {
+        if (DEBUG_PROC_RESOLVE_LEVEL_2)
+            knd_log("== \"%.*s\" (id:%.*s) arg is already registered in \"%.*s\"",
+                    arg->name_size, arg->name, arg->id_size, arg->id, self->name_size, self->name);
+        if (src_ref->var)
+            ref->var = src_ref->var;
+        return knd_OK;
+    }
 
-    err = knd_proc_arg_ref_new(mempool, &ref);                                    RET_ERR();
+    err = knd_proc_arg_ref_new(task->mempool, &ref);
+    KND_TASK_ERR("failed to alloc a proc arg ref");
     ref->arg = arg;
-    //ref->arg_var = src_ref->arg_var;
+    ref->var = src_ref->var;
     ref->proc = src_ref->proc;
 
-    err = arg_idx->add(arg_idx, arg->id, arg->id_size, (void*)ref);                    RET_ERR();
+    err = self->arg_idx->add(self->arg_idx, arg->id, arg->id_size, (void*)ref);
+    KND_TASK_ERR("failed to idx a proc arg ref");
+
+    if (DEBUG_PROC_RESOLVE_LEVEL_3)
+        knd_log("..  \"%.*s\" (var:%p) of \"%.*s\" inherited by \"%.*s\"",
+                arg->name_size, arg->name, ref->var,
+                base->name_size, base->name, self->name_size, self->name);
+
     return knd_OK;
 }
 
@@ -221,6 +230,7 @@ int knd_proc_resolve(struct kndProc *self, struct kndTask *task)
 {
     struct kndRepo *repo = self->entry->repo;
     struct kndProcArg *arg = NULL;
+    struct kndProcArgVar *var = NULL;
     struct kndProcArgRef *arg_ref;
     struct kndProcVar *base;
     int err;
@@ -239,16 +249,19 @@ int knd_proc_resolve(struct kndProc *self, struct kndTask *task)
     }
 
     for (arg = self->args; arg; arg = arg->next) {
-        err = knd_proc_arg_resolve(arg, repo);                                    RET_ERR();
+        err = knd_proc_arg_resolve(arg, repo, task);
+        KND_TASK_ERR("failed to resolve a proc arg");
 
-        // no conflicts detected, register a new arg in repo
-        err = knd_repo_index_proc_arg(repo, self, arg, task);                     RET_ERR();
+        err = knd_repo_index_proc_arg(repo, self, arg, task);
+        KND_TASK_ERR("failed to register a proc arg");
 
         // local index 
-        err = knd_proc_arg_ref_new(task->mempool, &arg_ref);                      RET_ERR();
+        err = knd_proc_arg_ref_new(task->mempool, &arg_ref);
+        KND_TASK_ERR("failed to alloc an arg ref");
         arg_ref->arg = arg;
         arg_ref->proc = self;
-        err = self->arg_idx->add(self->arg_idx, arg->id, arg->id_size, (void*)arg_ref);      RET_ERR();
+        err = self->arg_idx->add(self->arg_idx, arg->id, arg->id_size, (void*)arg_ref);
+        KND_TASK_ERR("failed to idx an arg ref");
     }
 
     if (!self->base_is_resolved) {
@@ -258,26 +271,24 @@ int knd_proc_resolve(struct kndProc *self, struct kndTask *task)
 
     /* arg inheritance */
     for (base = self->bases; base; base = base->next) {
-        if (DEBUG_PROC_RESOLVE_LEVEL_3)
-            knd_log("\n.. \"%.*s\" proc to inherit args from its parent: \"%.*s\"",
-                    self->name_size, self->name, base->name_size, base->name);
-
         err = inherit_args(self, base->proc, repo, task);
         KND_TASK_ERR("failed to inherit args");
-    }
 
+        for (var = base->args; var; var = var->next) {
+            err = knd_resolve_proc_arg_var(self, var, task);
+            KND_TASK_ERR("failed to resolve proc arg var \"%.*s\"", var->name_size, var->name);
+        }
+    }
     if (self->result_classname_size) {
         err = knd_get_class_entry(repo, self->result_classname, self->result_classname_size, &self->result, task);
         KND_TASK_ERR("no such class: %.*s", self->result_classname_size, self->result_classname);
         //knd_log("EFFECT: %.*s", self->result_classname_size, self->result_classname);
     }
-
     //   if (self->proc_call) {
     //     err = resolve_proc_call(self);                                            RET_ERR();
     //}
     
     self->is_resolved = true;
-
     return knd_OK;
 }
 

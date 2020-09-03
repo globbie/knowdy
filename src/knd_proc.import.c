@@ -76,8 +76,8 @@ static gsl_err_t set_base_arg_classname(void *obj, const char *name, size_t name
 {
     struct kndProcArgVar *self = obj;
     if (!name_size) return make_gsl_err(gsl_FORMAT);
-    self->classname = name;
-    self->classname_size = name_size;
+    self->val = name;
+    self->val_size = name_size;
 
     if (DEBUG_PROC_IMPORT_LEVEL_TMP)
         knd_log(".. proc arg var \"%.*s\" => \"%.*s\"", self->name_size, self->name, name_size, name);
@@ -109,6 +109,7 @@ static gsl_err_t validate_base_arg(void *obj, const char *name, size_t name_size
     if (err) return *total_size = 0, make_gsl_err_external(err);
     proc_arg_var->name = name;
     proc_arg_var->name_size = name_size;
+    proc_arg_var->parent = base;
 
     if (DEBUG_PROC_IMPORT_LEVEL_2)
         knd_log(".. assign proc arg var \"%.*s\"", name_size, name);

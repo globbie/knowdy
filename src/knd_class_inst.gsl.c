@@ -6,7 +6,7 @@
 #include "knd_attr.h"
 #include "knd_shared_set.h"
 
-int knd_class_inst_export_GSL(struct kndClassInst *self, bool is_list_item, struct kndTask *task, size_t depth)
+int knd_class_inst_export_GSL(struct kndClassInst *self, bool is_list_item, knd_state_phase phase, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     size_t curr_depth;
@@ -14,6 +14,9 @@ int knd_class_inst_export_GSL(struct kndClassInst *self, bool is_list_item, stru
 
     if (!is_list_item) {
         err = out->writec(out, '{');                                              RET_ERR();
+        if (phase == KND_CREATED) {
+            err = out->writec(out, '!');                                         RET_ERR();
+        }
         err = out->write(out, "inst ", strlen("inst "));                          RET_ERR();
     }
 
@@ -28,6 +31,17 @@ int knd_class_inst_export_GSL(struct kndClassInst *self, bool is_list_item, stru
         err = out->write(out, "{_as ", strlen("{_as "));             RET_ERR();
         err = out->write(out, self->alias,
                          self->alias_size);                   RET_ERR();
+        err = out->writec(out, '}');                                 RET_ERR();
+    }
+
+    if (self->linear_pos) {
+        err = out->write(out, "{_pos ", strlen("{_pos "));             RET_ERR();
+        err = out->writef(out, "%zu", self->linear_pos);                   RET_ERR();
+        err = out->writec(out, '}');                                 RET_ERR();
+    }
+    if (self->linear_len) {
+        err = out->write(out, "{_len ", strlen("{_len "));             RET_ERR();
+        err = out->writef(out, "%zu", self->linear_len);                   RET_ERR();
         err = out->writec(out, '}');                                 RET_ERR();
     }
 
