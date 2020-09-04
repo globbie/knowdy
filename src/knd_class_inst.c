@@ -130,15 +130,10 @@ int knd_class_inst_entry_new(struct kndMemPool *mempool, struct kndClassInstEntr
 {
     void *page;
     int err;
-    switch (mempool->type) {
-    case KND_ALLOC_LIST:
-        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL, sizeof(struct kndClassInstEntry), &page);
-        RET_ERR();
-        break;
-    default:
-        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL, sizeof(struct kndClassInstEntry), &page);
-        RET_ERR();
-    }
+    assert(mempool->small_page_size >= sizeof(struct kndClassInstEntry));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
+    if (err) return err;
+    memset(page, 0,  sizeof(struct kndClassInstEntry));
     *result = page;
     return knd_OK;
 }
@@ -147,25 +142,10 @@ int knd_class_inst_new(struct kndMemPool *mempool, struct kndClassInst **result)
 {
     void *page;
     int err;
-
-    if (mempool->type == KND_ALLOC_INCR) {
-        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL_X2,
-                                     sizeof(struct kndClassInst), &page);         RET_ERR();
-    } else {
-        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
-                                sizeof(struct kndClassInst), &page);                  RET_ERR();
-    }
-    *result = page;
-    return knd_OK;
-}
-
-int knd_class_inst_mem(struct kndMemPool *mempool,
-                       struct kndClassInst **result)
-{
-    void *page;
-    int err;
-    err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL_X2,
-                                 sizeof(struct kndClassInst), &page);                  RET_ERR();
+    assert(mempool->small_x2_page_size >= sizeof(struct kndClassInst));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL_X2, &page);
+    if (err) return err;
+    memset(page, 0,  sizeof(struct kndClassInst));
     *result = page;
     return knd_OK;
 }

@@ -323,7 +323,7 @@ static int restore_state(struct kndRepo *self, struct kndTask *task)
         const char *owner_name = "/";
         size_t owner_name_size = 1;
         if (task->user_ctx) {
-            user_inst = task->user_ctx->user_inst;
+            user_inst = task->user_ctx->inst;
             owner_name = user_inst->name;
             owner_name_size = user_inst->name_size;
         }
@@ -338,7 +338,7 @@ static int restore_state(struct kndRepo *self, struct kndTask *task)
     KND_TASK_ERR("system path construction failed");
 
     if (task->user_ctx) {
-        user_inst = task->user_ctx->user_inst;
+        user_inst = task->user_ctx->inst;
         err = out->writef(out, "users/%.*s/", user_inst->entry->id_size, user_inst->entry->id);
         KND_TASK_ERR("user path output failed");
     }
@@ -404,7 +404,7 @@ static int restore_state(struct kndRepo *self, struct kndTask *task)
 
     atomic_store_explicit(&self->snapshot.num_commits, self->snapshot.commit_idx->num_elems, memory_order_relaxed);
 
-    if (DEBUG_REPO_LEVEL_3)
+    if (DEBUG_REPO_LEVEL_2)
         knd_log("== repo \"%.*s\", total commits applied: %zu",
                 self->name_size, self->name, self->snapshot.num_commits);
     return knd_OK;
@@ -483,7 +483,7 @@ static gsl_err_t present_repo_state(void *obj,
                                                    memory_order_relaxed);
     task->state_lt = latest_commit_id + 1;
 
-    if (DEBUG_REPO_LEVEL_TMP) {
+    if (DEBUG_REPO_LEVEL_2) {
         knd_log(".. select repo delta:  gt %zu  lt %zu  eq:%zu..",
                 task->state_gt, task->state_lt, task->state_eq);
     }
@@ -973,8 +973,7 @@ int knd_repo_index_proc_arg(struct kndRepo *repo, struct kndProc *proc, struct k
     // if (task->type == KND_LOAD_STATE) {
 
     /* global indices */
-    prev_arg_ref = knd_shared_dict_get(arg_name_idx,
-                                       arg->name, arg->name_size);
+    prev_arg_ref = knd_shared_dict_get(arg_name_idx, arg->name, arg->name_size);
     arg_ref->next = prev_arg_ref;
     err = knd_shared_dict_set(arg_name_idx, arg->name, arg->name_size, (void*)arg_ref, mempool,
                               task->ctx->commit, &item, true);                                       RET_ERR();
@@ -1200,7 +1199,7 @@ static int export_commit_GSL(struct kndRepo *self, struct kndCommit *commit, str
     OUT("{task", strlen("{task"));
 
     if (task->user_ctx) {
-        user_inst = task->user_ctx->user_inst;
+        user_inst = task->user_ctx->inst;
         OUT("{user ", strlen("{user "));
         OUT(user_inst->name, user_inst->name_size);
     }
@@ -1257,7 +1256,7 @@ static int update_indices(struct kndRepo *self, struct kndCommit *commit, struct
     struct kndSharedDict *name_idx = repo->class_name_idx;
     int err;
 
-    if (DEBUG_REPO_LEVEL_2)
+    if (DEBUG_REPO_LEVEL_3)
         knd_log(".. commit #%zu to update the indices of %.*s [shard role:%d]",
                 commit->numid, self->name_size, self->name, task->role);
 
@@ -1428,8 +1427,6 @@ static int build_commit_WAL(struct kndRepo *self, struct kndCommit *commit, stru
         knd_log(".. kndTask #%zu to build a WAL entry (path:%.*s)",
                 task->id, task->path_size, task->path);
     }
-
-    
     out->reset(out);
     err = out->write(out, task->path, task->path_size);
     KND_TASK_ERR("system path construction failed");
@@ -1437,11 +1434,8 @@ static int build_commit_WAL(struct kndRepo *self, struct kndCommit *commit, stru
     if (task->user_ctx) {
         err = out->write(out, "users/", strlen("users/"));
         KND_TASK_ERR("users path construction failed");
-
-        user_inst = task->user_ctx->user_inst;
-        err = out->writef(out, "%.*s/",
-                               user_inst->entry->id_size,
-                               user_inst->entry->id);
+        user_inst = task->user_ctx->inst;
+        err = out->writef(out, "%.*s/", user_inst->entry->id_size, user_inst->entry->id);
         KND_TASK_ERR("user home path construction failed");
     }
 
@@ -1568,8 +1562,7 @@ int knd_confirm_commit(struct kndRepo *self, struct kndTask *task)
     return knd_OK;
 }
 
-int knd_present_repo_state(struct kndRepo *self,
-                           struct kndTask *task)
+int knd_present_repo_state(struct kndRepo *self, struct kndTask *task)
 {
     int err;
 
@@ -1579,30 +1572,20 @@ int knd_present_repo_state(struct kndRepo *self,
     return knd_OK;
 }
 
-int knd_conc_folder_new(struct kndMemPool *mempool,
-                        struct kndConcFolder **result)
+int knd_conc_folder_new(struct kndMemPool *mempool, struct kndConcFolder **result)
 {
     void *page;
     int err;
-
-    switch (mempool->type) {
-    case KND_ALLOC_LIST:
-        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
-                                sizeof(struct kndConcFolder), &page);                 RET_ERR();
-        break;
-    default:
-        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL,
-                                     sizeof(struct kndConcFolder), &page);                 RET_ERR();
-        break;
-    }
+    assert(mempool->small_page_size >= sizeof(struct kndConcFolder));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
+    if (err) return err;
+    memset(page, 0, sizeof(struct kndConcFolder));
     *result = page;
     return knd_OK;
 }
 
-int knd_repo_new(struct kndRepo **repo,
-                 const char *name, size_t name_size,
-                 const char *schema_path, size_t schema_path_size,
-                 struct kndMemPool *mempool)
+int knd_repo_new(struct kndRepo **repo, const char *name, size_t name_size,
+                 const char *schema_path, size_t schema_path_size, struct kndMemPool *mempool)
 {
     struct kndRepo *self;
     struct kndClass *c;
@@ -1701,7 +1684,6 @@ int knd_repo_new(struct kndRepo **repo,
     self->snapshot.max_journals = KND_MAX_JOURNALS;
     self->snapshot.max_journal_size = KND_FILE_BUF_SIZE;
     *repo = self;
-
     return knd_OK;
  error:
     // TODO: release resources

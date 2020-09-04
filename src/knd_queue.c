@@ -7,8 +7,7 @@
 #include "knd_config.h"
 #include "knd_utils.h"
 
-int knd_queue_push(struct kndQueue *self,
-                   void *elem)
+int knd_queue_push(struct kndQueue *self, void *elem)
 {
     size_t head_pos, tail_pos, next_tail_pos;
 
@@ -46,8 +45,7 @@ int knd_queue_push(struct kndQueue *self,
     return knd_OK;
 }
 
-int knd_queue_pop(struct kndQueue *self,
-                  void **result)
+int knd_queue_pop(struct kndQueue *self, void **result)
 {
     void *elem;
     size_t head_pos, tail_pos, next_head_pos;
@@ -82,8 +80,7 @@ int knd_queue_pop(struct kndQueue *self,
     return knd_OK;
 }
 
-int knd_queue_new(struct kndQueue **queue,
-                  size_t capacity)
+int knd_queue_new(struct kndQueue **queue, size_t capacity)
 {
     struct kndQueue *self;
     self = malloc(sizeof(struct kndQueue));

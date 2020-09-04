@@ -23,17 +23,10 @@ static int dict_item_new(struct kndMemPool *mempool, struct kndSharedDictItem **
 {
     void *page;
     int err;
-    switch (mempool->type) {
-    case KND_ALLOC_LIST:
-        err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
-                                sizeof(struct kndSharedDictItem), &page);
-        if (err) return err;
-        break;
-    default:
-        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_TINY,
-                                     sizeof(struct kndSharedDictItem), &page);
-        if (err) return err;
-    }
+    assert(mempool->tiny_page_size >= sizeof(struct kndSharedDictItem));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
+    if (err) return err;
+    memset(page, 0, sizeof(struct kndSharedDictItem));
     *result = page;
     return knd_OK;
 }
@@ -116,7 +109,6 @@ int knd_shared_dict_set(struct kndSharedDict *self, const char *key, size_t key_
         new_item->states = state;
         *result = new_item;
     }
-
     new_item->data = data;
     new_item->key = key;
     new_item->key_size = key_size;
@@ -155,16 +147,12 @@ int knd_shared_dict_remove(struct kndSharedDict *self, const char *key, size_t k
     struct kndSharedDictItem *head = atomic_load_explicit(&self->hash_array[h], memory_order_relaxed);
     struct kndSharedDictItem *item = head;
 
-    while (item) {
-        if (item->key_size != key_size) goto next_item;
-        if (!memcmp(item->key, key, key_size)) {
+    FOREACH (item, head) {
+        if (item->key_size != key_size) continue;
+        if (!memcmp(item->key, key, key_size))
             break;
-        }
-    next_item:
-        item = item->next;
     }
     if (!item) return knd_FAIL;
-
     item->phase = KND_SHARED_DICT_REMOVED;
     return knd_OK;
 }
@@ -177,8 +165,7 @@ void knd_shared_dict_del(struct kndSharedDict *self)
     free(self);
 }
 
-int knd_shared_dict_new(struct kndSharedDict **dict,
-                        size_t init_size)
+int knd_shared_dict_new(struct kndSharedDict **dict, size_t init_size)
 {
     struct kndSharedDict *self = malloc(sizeof(struct kndSharedDict));
     if (!self) return knd_NOMEM;

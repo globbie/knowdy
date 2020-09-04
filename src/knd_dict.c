@@ -17,22 +17,14 @@
 #include "knd_config.h"
 #include "knd_utils.h"
 
-static int dict_item_new(struct kndMemPool *mempool,
-                         struct kndDictItem **result)
+static int dict_item_new(struct kndMemPool *mempool, struct kndDictItem **result)
 {
     void *page;
     int err;
-    switch (mempool->type) {
-    case KND_ALLOC_LIST:
-        err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
-                                sizeof(struct kndDictItem), &page);
-        if (err) return err;
-        break;
-    default:
-        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_TINY,
-                                     sizeof(struct kndDictItem), &page);
-        if (err) return err;
-    }
+    assert(mempool->tiny_page_size >= sizeof(struct kndDictItem));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
+    if (err) return err;
+    memset(page, 0,  sizeof(struct kndDictItem));
     *result = page;
     return knd_OK;
 }

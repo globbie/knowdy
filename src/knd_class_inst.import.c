@@ -176,7 +176,6 @@ static gsl_err_t import_class_inst(struct kndClassInst *self, const char *rec, s
           .obj = &ctx
         }
     };
-
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
@@ -258,7 +257,6 @@ int knd_import_class_inst(struct kndClassEntry *self, const char *rec, size_t *t
     class_var->parent = self->class;
     class_var->inst = inst;
     inst->class_var = class_var;
-
     parser_err = import_class_inst(inst, rec, total_size, task);
     if (parser_err.code) return parser_err.code;
 

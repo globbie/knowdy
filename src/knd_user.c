@@ -251,7 +251,6 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
 
     err = self->user_idx->get(self->user_idx, inst->entry->id, inst->entry->id_size, (void**)&ctx);
     if (err) {
-        // TODO atomic mempool
         err = knd_user_context_new(self->mempool, &ctx);
         if (err) return make_gsl_err_external(err);
 
@@ -260,7 +259,7 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
         self->num_users++;
     }
 
-    ctx->user_inst = inst;
+    ctx->inst = inst;
     ctx->base_repo = self->repo;
     task->user_ctx = ctx;
 
@@ -274,7 +273,6 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
     ctx->prev = NULL;
     ctx->next = self->top;
     self->top = ctx;
-
     if (!ctx->repo) {
         err = knd_create_user_repo(task);
         if (err) return make_gsl_err_external(err);
@@ -329,7 +327,7 @@ static gsl_err_t run_present_user(void *obj,
     err = user_header_export(task);
     if (err) return make_gsl_err_external(err);
 
-    user_inst = task->user_ctx->user_inst;
+    user_inst = task->user_ctx->inst;
     err = knd_class_inst_export(user_inst, task->ctx->format, false, task);
     if (err) return make_gsl_err_external(err);
 
@@ -339,9 +337,7 @@ static gsl_err_t run_present_user(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t run_present_state(void *obj,
-                                   const char *unused_var(val),
-                                   size_t unused_var(val_size))
+static gsl_err_t run_present_state(void *obj, const char *unused_var(val), size_t unused_var(val_size))
 {
     struct kndTask *task = obj;
     struct kndRepo *repo;
@@ -465,13 +461,10 @@ gsl_err_t knd_parse_select_user(void *obj, const char *rec, size_t *total_size)
         }
     };
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) {
-        KND_TASK_LOG("user task failed: %d", parser_err.code);
-        goto cleanup;
-    }
-    return make_gsl_err(gsl_OK);
 
- cleanup:
+    if (task->user_ctx)
+        atomic_fetch_sub_explicit(&task->user_ctx->num_workers, 1, memory_order_relaxed);
+
     return parser_err;
 }
 
@@ -544,8 +537,7 @@ int knd_user_new(struct kndUser **user, const char *classname, size_t classname_
         goto error;
     }
 
-    /* mempool */
-    err = knd_mempool_new(&mempool, 0);
+    err = knd_mempool_new(&mempool, KND_ALLOC_SHARED, 0);
     if (err) goto error;
     mempool->num_pages = shard->mem_config.num_pages;
     mempool->num_small_x4_pages = shard->mem_config.num_small_x4_pages;
@@ -559,16 +551,14 @@ int knd_user_new(struct kndUser **user, const char *classname, size_t classname_
     /* read-only base repo for all users */
     self->reponame = reponame;
     self->reponame_size = reponame_size;
-    err = knd_repo_new(&self->repo, reponame, reponame_size, schema_path, schema_path_size, mempool);
+    err = knd_repo_new(&self->repo, reponame, reponame_size, schema_path, schema_path_size, shard->mempool);
     if (err) goto error;
 
     task->repo = self->repo;
-    task->mempool = mempool;
-    
+    task->mempool = shard->mempool;
     err = knd_repo_open(self->repo, task);
     if (err) goto error;
-
-    err = knd_set_new(mempool, &self->user_idx);                                  RET_ERR();
+    err = knd_set_new(shard->mempool, &self->user_idx);                                  RET_ERR();
 
     *user = self;
     return knd_OK;
@@ -581,15 +571,10 @@ int knd_user_context_new(struct kndMemPool *mempool, struct kndUserContext **res
 {
     void *page;
     int err;
-    switch (mempool->type) {
-    case KND_ALLOC_LIST:
-        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
-                                sizeof(struct kndUserContext), &page);                RET_ERR();
-        break;
-    default:
-        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL,
-                                     sizeof(struct kndUserContext), &page);           RET_ERR();
-    }
+    assert(mempool->tiny_page_size >= sizeof(struct kndUserContext));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
+    if (err) return err;
+    memset(page, 0, sizeof(struct kndUserContext));
     *result = page;
     return knd_OK;
 }

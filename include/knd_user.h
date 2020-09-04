@@ -22,14 +22,15 @@ struct kndRepoAccess
 
 struct kndUserContext
 {
-    struct kndClassInst *user_inst;
+    struct kndClassInst *inst;
     struct kndRepo *repo;
     struct kndRepo *base_repo;
 
     struct kndRepoAccess *repo_acl;
 
     /* usage statistics */
-    size_t num_tasks;
+    atomic_size_t num_workers;
+    atomic_size_t total_tasks;
 
     struct kndUserContext *prev;
     struct kndUserContext *next;

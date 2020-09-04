@@ -292,24 +292,14 @@ void knd_task_free_blocks(struct kndTask *task)
     task->num_blocks = 0;
 }
 
-int knd_task_context_new(struct kndMemPool *mempool,
-                         struct kndTaskContext **result)
+int knd_task_context_new(struct kndMemPool *mempool, struct kndTaskContext **result)
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
-                            sizeof(struct kndTaskContext), &page);                RET_ERR();
-    *result = page;
-    return knd_OK;
-}
-
-int knd_task_block_new(struct kndMemPool *mempool,
-                       struct kndTask **result)
-{
-    void *page;
-    int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
-                            sizeof(struct kndTask), &page);                   RET_ERR();
+    assert(mempool->small_x2_page_size >= sizeof(struct kndTaskContext));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL_X2, &page);
+    if (err) return err;
+    memset(page, 0, sizeof(struct kndTaskContext));
     *result = page;
     return knd_OK;
 }
@@ -339,9 +329,8 @@ int knd_task_new(struct kndShard *shard, struct kndMemPool *mempool, int task_id
     self->path_size = shard->path_size;
 
     if (!mempool) {
-        err = knd_mempool_new(&mempool, 0);
+        err = knd_mempool_new(&mempool, KND_ALLOC_INCR, 0);
         if (err) goto error;
-        mempool->type = KND_ALLOC_INCR;
         mempool->num_pages = shard->ctx_mem_config.num_pages;
         mempool->num_small_x4_pages = shard->ctx_mem_config.num_small_x4_pages;
         mempool->num_small_x2_pages = shard->ctx_mem_config.num_small_x2_pages;

@@ -345,21 +345,14 @@ int knd_proc_commit_state(struct kndProc *self,
     return knd_OK;
 }
 
-
 int knd_proc_var_new(struct kndMemPool *mempool, struct kndProcVar **result)
 {
     void *page;
     int err;
-    switch (mempool->type) {
-    case KND_ALLOC_LIST:
-        err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
-                                sizeof(struct kndProcVar), &page);          RET_ERR();
-        break;
-    default:
-        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_TINY,
-                                     sizeof(struct kndProcVar), &page);          RET_ERR();
-        break;
-    }
+    assert(mempool->tiny_page_size >= sizeof(struct kndProcVar));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
+    if (err) return err;
+    memset(page, 0, sizeof(struct kndProcVar));
     *result = page;
     return knd_OK;
 }
@@ -368,52 +361,34 @@ int knd_proc_entry_new(struct kndMemPool *mempool, struct kndProcEntry **result)
 {
     void *page;
     int err;
-
-    switch (mempool->type) {
-    case KND_ALLOC_LIST:
-        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
-                                sizeof(struct kndProcEntry), &page);                  RET_ERR();
-        break;
-    default:
-        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL_X2,
-                                     sizeof(struct kndProcEntry), &page);                  RET_ERR();
-    }
+    assert(mempool->small_x2_page_size >= sizeof(struct kndProcEntry));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL_X2, &page);
+    if (err) return err;
+    memset(page, 0, sizeof(struct kndProcEntry));
     *result = page;
     return knd_OK;
 }
 
-int knd_proc_ref_new(struct kndMemPool *mempool,
-                     struct kndProcRef **result)
+int knd_proc_ref_new(struct kndMemPool *mempool, struct kndProcRef **result)
 {
     void *page;
     int err;
-    switch (mempool->type) {
-    case KND_ALLOC_LIST:
-        err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY, sizeof(struct kndProcRef), &page);
-        if (err) return err;
-        break;
-    default:
-        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_TINY, sizeof(struct kndProcRef), &page);
-        if (err) return err;
-    }
+    assert(mempool->tiny_page_size >= sizeof(struct kndProcRef));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
+    if (err) return err;
+    memset(page, 0, sizeof(struct kndProcRef));
     *result = page;
     return knd_OK;
 }
 
-int knd_proc_new(struct kndMemPool *mempool,
-                 struct kndProc **result)
+int knd_proc_new(struct kndMemPool *mempool, struct kndProc **result)
 {
     void *page;
     int err;
-    switch (mempool->type) {
-    case KND_ALLOC_LIST:
-        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
-                                sizeof(struct kndProc), &page);                       RET_ERR();
-        break;
-    default:
-        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL_X2,
-                                     sizeof(struct kndProc), &page);                       RET_ERR();
-    }
+    assert(mempool->small_x2_page_size >= sizeof(struct kndProc));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL_X2, &page);
+    if (err) return err;
+    memset(page, 0, sizeof(struct kndProc));
     *result = page;
     return knd_OK;
 }

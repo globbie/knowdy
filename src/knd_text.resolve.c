@@ -38,8 +38,6 @@ static int resolve_proc_inst(struct kndStatement *stm, struct kndProcInstEntry *
     int err = knd_OK;
     
     FOREACH (var, proc_entry->inst->procvar->args) {
-        knd_log(".. resolving proc arg \"%.*s\" => \"%.*s\"",
-                var->arg->name_size, var->arg->name, var->val_size, var->val);
         if (!var->template) continue;
         FOREACH (cd, stm->class_declars) {
             FOREACH (entry, cd->insts) {

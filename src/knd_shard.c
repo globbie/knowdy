@@ -300,7 +300,7 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
         goto error;
     }
 
-    err = knd_mempool_new(&mempool, 0);
+    err = knd_mempool_new(&mempool, KND_ALLOC_INCR, 0);
     if (err) goto error;
     mempool->num_pages = self->mem_config.num_pages;
     mempool->num_small_x4_pages = self->mem_config.num_small_x4_pages;

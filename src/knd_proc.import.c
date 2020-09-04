@@ -78,10 +78,6 @@ static gsl_err_t set_base_arg_classname(void *obj, const char *name, size_t name
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     self->val = name;
     self->val_size = name_size;
-
-    if (DEBUG_PROC_IMPORT_LEVEL_TMP)
-        knd_log(".. proc arg var \"%.*s\" => \"%.*s\"", self->name_size, self->name, name_size, name);
-
     return make_gsl_err(gsl_OK);
 }
 

@@ -112,13 +112,10 @@ int knd_proc_inst_entry_new(struct kndMemPool *mempool, struct kndProcInstEntry 
 {
     void *page;
     int err;
-    switch (mempool->type) {
-    case KND_ALLOC_LIST:
-        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL, sizeof(struct kndProcInstEntry), &page);              RET_ERR();
-        break;
-    default:
-        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL, sizeof(struct kndProcInstEntry), &page);         RET_ERR();
-    }
+    assert(mempool->small_page_size >= sizeof(struct kndProcInstEntry));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
+    if (err) return err;
+    memset(page, 0, sizeof(struct kndProcInstEntry));
     *result = page;
     return knd_OK;
 }
@@ -127,26 +124,10 @@ int knd_proc_inst_new(struct kndMemPool *mempool, struct kndProcInst **result)
 {
     void *page;
     int err;
-    switch (mempool->type) {
-    case KND_ALLOC_LIST:
-        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
-                                sizeof(struct kndProcInst), &page);               RET_ERR();
-        break;
-    default:
-        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL,
-                                     sizeof(struct kndProcInst), &page);          RET_ERR();
-    }
-    *result = page;
-    return knd_OK;
-}
-
-int knd_proc_inst_mem(struct kndMemPool *mempool,
-                      struct kndProcInst **result)
-{
-    void *page;
-    int err;
-    err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL,
-                                 sizeof(struct kndProcInst), &page);              RET_ERR();
+    assert(mempool->small_page_size >= sizeof(struct kndProcInst));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
+    if (err) return err;
+    memset(page, 0, sizeof(struct kndProcInst));
     *result = page;
     return knd_OK;
 }

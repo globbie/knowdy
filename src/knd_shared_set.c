@@ -423,20 +423,13 @@ int knd_shared_set_new(struct kndMemPool *mempool, struct kndSharedSet **result)
         return knd_OK;
     }
 
-    switch (mempool->type) {
-    case KND_ALLOC_LIST:
-        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL, sizeof(struct kndSharedSet), &page);
-        if (err) return err;
+    assert(mempool->small_page_size >= sizeof(struct kndSharedSet));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
+    if (err) return err;
+    memset(page, 0, sizeof(struct kndSharedSet));
 
-        err = knd_shared_set_elem_idx_new(mempool, &idx);
-        if (err) return err;
-        break;
-    default:
-        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL, sizeof(struct kndSharedSet), &page);
-        if (err) return err;
-        err = knd_shared_set_elem_idx_new(mempool, &idx);
-        if (err) return err;
-    }
+    err = knd_shared_set_elem_idx_new(mempool, &idx);
+    if (err) return err;
     
     *result = page;
     (*result)->mempool = mempool;
@@ -448,22 +441,14 @@ int knd_shared_set_elem_idx_new(struct kndMemPool *mempool, struct kndSharedSetE
 {
     void *page;
     int err;
-
     if (!mempool) {
         *result = calloc(1, sizeof(struct kndSharedSetElemIdx));
         return *result ? 0 : knd_NOMEM;
     }
-
-    switch (mempool->type) {
-    case KND_ALLOC_LIST:
-        err = knd_mempool_alloc(mempool, KND_MEMPAGE_BASE, sizeof(struct kndSharedSetElemIdx), &page);
-        if (err) return err;
-        break;
-    default:
-        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_BASE, sizeof(struct kndSharedSetElemIdx), &page);
-        if (err) return err;
-        break;
-    }
+    assert(mempool->page_size >= sizeof(struct kndSharedSetElemIdx));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_BASE, &page);
+    if (err) return err;
+    memset(page, 0, sizeof(struct kndSharedSetElemIdx));
     *result = page;
     return knd_OK;
 }

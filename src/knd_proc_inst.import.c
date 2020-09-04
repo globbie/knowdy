@@ -228,7 +228,7 @@ int knd_import_proc_inst(struct kndProcEntry *self, const char *rec, size_t *tot
     gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_PROC_INST_IMPORT_LEVEL_TMP)
+    if (DEBUG_PROC_INST_IMPORT_LEVEL_2)
         knd_log(".. import \"%.*s\" proc inst.. (repo:%.*s)", 128, rec, repo->name_size, repo->name);
 
     switch (task->type) {
@@ -302,7 +302,7 @@ int knd_import_proc_inst(struct kndProcEntry *self, const char *rec, size_t *tot
     state_ref->next = ctx->proc_inst_state_refs;
     ctx->proc_inst_state_refs = state_ref;
 
-    if (DEBUG_PROC_INST_IMPORT_LEVEL_TMP)
+    if (DEBUG_PROC_INST_IMPORT_LEVEL_2)
         knd_log("++ \"%.*s\" (%.*s) proc inst parse OK!",
                 inst->name_size, inst->name, inst->entry->id_size, inst->entry->id, self->name_size, self->name);
 

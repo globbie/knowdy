@@ -228,24 +228,15 @@ int knd_name_buf_new(struct kndMemPool *mempool, struct kndNameBuf **result)
 {
     void *page;
     int err;
-
-    switch (mempool->type) {
-    case KND_ALLOC_LIST:
-        err = knd_mempool_alloc(mempool, KND_MEMPAGE_BASE, sizeof(struct kndNameBuf), &page);
-        RET_ERR();
-        break;
-    default:
-        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_BASE, sizeof(struct kndNameBuf), &page);
-        RET_ERR();
-        break;
-    }
+    assert(mempool->page_size >= sizeof(struct kndNameBuf));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_BASE, &page);
+    if (err) return err;
+    memset(page, 0,  sizeof(struct kndNameBuf));
     *result = page;
     return knd_OK;
 }
 
-int knd_output_new(struct kndOutput **output,
-                   char *buf,
-                   size_t capacity)
+int knd_output_new(struct kndOutput **output, char *buf, size_t capacity)
 {
     int err;
     struct kndOutput *self;

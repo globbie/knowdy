@@ -25,15 +25,10 @@ int knd_commit_new(struct kndMemPool *mempool, struct kndCommit **result)
 {
     void *page;
     int err;
-    switch (mempool->type) {
-    case KND_ALLOC_LIST:
-        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
-                                sizeof(struct kndCommit), &page);                   RET_ERR();
-        break;
-    default:
-        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL,
-                                     sizeof(struct kndCommit), &page);                     RET_ERR();
-    }
+    assert(mempool->small_page_size >= sizeof(struct kndCommit));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
+    if (err) return err;
+    memset(page, 0, sizeof(struct kndCommit));
     *result = page;
     (*result)->numid = 1;
     return knd_OK;
