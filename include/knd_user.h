@@ -29,8 +29,8 @@ struct kndUserContext
     struct kndRepoAccess *repo_acl;
 
     /* usage statistics */
-    atomic_size_t num_workers;
     atomic_size_t total_tasks;
+    size_t cache_cell_num;
 
     struct kndUserContext *prev;
     struct kndUserContext *next;
@@ -53,6 +53,7 @@ struct kndUser
     size_t schema_path_size;
 
     struct kndMemPool *mempool;
+    struct kndCache *cache;
 
     size_t max_users;
     size_t num_users;
