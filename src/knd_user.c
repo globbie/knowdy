@@ -515,10 +515,11 @@ gsl_err_t knd_parse_select_user(void *obj, const char *rec, size_t *total_size)
 
     if (task->user_ctx) {
         struct kndUser *self = task->shard->user;
-        knd_log(".. finish reading user ctx, cell idx:%zu", task->user_ctx->cache_cell_num - 1);
-        int err = knd_cache_finish_reading(self->cache, task->user_ctx->cache_cell_num - 1, task->user_ctx);
+        if (DEBUG_USER_LEVEL_2)
+            knd_log(".. done reading user ctx, cell idx:%zu", task->user_ctx->cache_cell_num - 1);
+        int err = knd_cache_release(self->cache, task->user_ctx->cache_cell_num - 1, task->user_ctx);
         if (err) {
-            KND_TASK_LOG("cache reading finish failed");
+            KND_TASK_LOG("cache reading release failed");
             return make_gsl_err_external(err);
         }
         atomic_fetch_add_explicit(&task->user_ctx->total_tasks, 1, memory_order_relaxed);

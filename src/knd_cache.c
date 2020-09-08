@@ -106,7 +106,7 @@ int knd_cache_get(struct kndCache *self, size_t cell_num, void **result)
     return knd_OK;
 }
 
-int knd_cache_finish_reading(struct kndCache *self, size_t cell_num, void *data)
+int knd_cache_release(struct kndCache *self, size_t cell_num, void *data)
 {
     struct kndCacheCell *cell;
     int num_readers;
@@ -123,7 +123,6 @@ int knd_cache_finish_reading(struct kndCache *self, size_t cell_num, void *data)
         knd_log(">> curr num readers: %d", num_readers);
         if (num_readers == -1 || num_readers == 0) return knd_CONFLICT;
     } while (!atomic_compare_exchange_weak(&cell->num_readers, &num_readers, num_readers - 1));
-
     return knd_OK;
 }
 

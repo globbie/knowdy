@@ -30,4 +30,4 @@ void knd_cache_del(struct kndCache *self);
 
 int knd_cache_set(struct kndCache *self, void *data, size_t *cell_num);
 int knd_cache_get(struct kndCache *self, size_t cell_num, void **result);
-int knd_cache_finish_reading(struct kndCache *self, size_t cell_num, void *data);
+int knd_cache_release(struct kndCache *self, size_t cell_num, void *data);
