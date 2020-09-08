@@ -26,8 +26,6 @@
 #include "knd_shared_idx.h"
 
 struct kndTask;
-struct kndClass;
-struct kndProc;
 struct kndSyNode;
 struct kndStatement;
 struct kndRepo;
@@ -36,24 +34,6 @@ struct kndAttrVar;
 struct kndDiscourseContext
 {
     struct kndStatement *stms;
-
-};
-
-struct kndTextIdx
-{
-    struct kndClassEntry *entry;
-    struct kndAttr *attr;
-
-    struct kndSharedIdx * _Atomic idx;
-
-    struct kndTextLoc * _Atomic locs;
-    atomic_size_t num_locs;
-
-    struct kndProcArgRef *arg_roles;
-
-    /* any other attrs? */
-    struct kndTextIdx *children;
-    struct kndTextIdx *next;
 };
 
 struct kndTextLoc
@@ -238,6 +218,5 @@ int knd_proc_declar_new(struct kndMemPool *mempool, struct kndProcDeclaration **
 int knd_sentence_new(struct kndMemPool *mempool, struct kndSentence **result);
 int knd_clause_new(struct kndMemPool *mempool, struct kndClause **result);
 int knd_statement_new(struct kndMemPool *mempool, struct kndStatement **result);
-int knd_text_idx_new(struct kndMemPool *mempool, struct kndTextIdx **result);
 int knd_text_loc_new(struct kndMemPool *mempool, struct kndTextLoc **result);
 int knd_text_search_report_new(struct kndMemPool *mempool, struct kndTextSearchReport **result);

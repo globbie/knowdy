@@ -236,9 +236,7 @@ static gsl_err_t parse_proc_select(void *obj,
     return knd_proc_select(task->repo, rec, total_size, task);
 }
 
-static gsl_err_t parse_update(void *obj,
-                              const char *rec,
-                              size_t *total_size)
+static gsl_err_t parse_update(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *self = obj;
 
@@ -251,14 +249,11 @@ static gsl_err_t parse_update(void *obj,
           .obj = self
         }
     };
-
     self->type = KND_LIQUID_STATE;
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static gsl_err_t parse_sync_task(void *obj,
-                                 const char *unused_var(rec),
-                                 size_t *total_size)
+static gsl_err_t parse_sync_task(void *obj, const char *unused_var(rec), size_t *total_size)
 {
     struct kndTask *task = obj;
     int err;

@@ -301,8 +301,7 @@ extern int knd_empty_set_export_JSON(struct kndClass *unused_var(self),
 }
 */
 
-static int export_facet(struct kndClassFacet *parent_facet,
-                        struct kndTask *task)
+static int export_facet(struct kndClassFacet *parent_facet, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndClassFacet *facet;

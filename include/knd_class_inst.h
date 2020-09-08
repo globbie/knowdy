@@ -19,6 +19,8 @@
  */
 #pragma once
 
+#include <stdatomic.h>
+
 #include "knd_config.h"
 #include "knd_state.h"
 #include "knd_class.h"
@@ -47,6 +49,8 @@ struct kndClassInstEntry
     size_t name_size;
 
     struct kndClassInst *inst;
+
+    atomic_size_t cache_cell_num;
 
     char *block;
     size_t block_size;

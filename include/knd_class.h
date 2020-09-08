@@ -21,6 +21,7 @@
 
 #include "knd_utils.h"
 #include "knd_class_inst.h"
+#include "knd_text.h"
 #include "knd_config.h"
 #include "knd_state.h"
 
@@ -31,8 +32,6 @@ struct kndAttr;
 struct kndAttrVar;
 struct kndProcCallArg;
 struct kndClass;
-struct kndText;
-struct kndTextIdx;
 struct kndTask;
 struct kndSet;
 struct kndUser;
@@ -62,10 +61,28 @@ struct kndClassFacet
     struct kndClassFacet *next;
 };
 
+struct kndClassIdx
+{
+    struct kndClassEntry *entry;
+
+    struct kndSharedIdx * _Atomic idx;
+    struct kndTextLoc * _Atomic locs;
+    atomic_size_t num_locs;
+
+    atomic_size_t total_locs;
+
+    // struct kndProcArgRef *arg_roles;
+
+    struct kndClassRef * _Atomic children;
+};
+
 struct kndClassRef
 {
-    struct kndClass      *class;
     struct kndClassEntry *entry;
+    struct kndClass      *class;
+    struct kndAttr       *attr;
+    struct kndClassIdx   *idx;
+    struct kndProcIdx    *proc_idx;
     struct kndClassRef   *next;
 };
 
@@ -137,8 +154,7 @@ struct kndClassEntry
     struct kndAttrHub *attr_hubs;
 
     /* text indices grouped by source type (messages, posts, articles, books etc.) */
-    //struct kndTextIdx * _Atomic text_idxs;
-    struct kndTextIdx *text_idxs;
+    struct kndClassRef * _Atomic text_idxs;
 
     struct kndClassEntry *next;
 };
@@ -153,7 +169,6 @@ struct kndClass
 
     struct kndClassEntry *entry;
     struct kndMemBlock *memblock;
-
 
     struct kndText *tr;
     struct kndText *summary;
@@ -280,6 +295,7 @@ int knd_get_class_attr_value(struct kndClass *src, struct kndAttrVar *query, str
 int knd_class_commit_new(struct kndMemPool *mempool, struct kndClassCommit **result);
 int knd_class_var_new(struct kndMemPool *mempool, struct kndClassVar **result);
 int knd_class_ref_new(struct kndMemPool *mempool, struct kndClassRef **result);
+int knd_class_idx_new(struct kndMemPool *mempool, struct kndClassIdx **result);
 int knd_class_facet_new(struct kndMemPool *mempool, struct kndClassFacet **result);
 int knd_class_entry_new(struct kndMemPool *mempool, struct kndClassEntry **result);
 int knd_inner_class_new(struct kndMemPool *mempool, struct kndClass **self);

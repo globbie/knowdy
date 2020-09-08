@@ -180,9 +180,7 @@ static int link_ancestor(struct kndClass *self, struct kndClassEntry *base_entry
     return knd_OK;
 }
 
-static int link_baseclass(struct kndClass *self,
-                          struct kndClass *base,
-                          struct kndTask *task)
+static int link_baseclass(struct kndClass *self, struct kndClass *base, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
     struct kndClassRef *ref, *baseref;
@@ -194,8 +192,7 @@ static int link_baseclass(struct kndClass *self,
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2)
         knd_log(".. \"%.*s\" (%.*s) links to base => \"%.*s\" (%.*s) top:%d",
-                entry->name_size, entry->name,
-                entry->repo->name_size, entry->repo->name,
+                entry->name_size, entry->name, entry->repo->name_size, entry->repo->name,
                 base->entry->name_size, base->entry->name,
                 base->entry->repo->name_size, base->entry->repo->name,
                 base->entry->class->state_top);
@@ -206,6 +203,7 @@ static int link_baseclass(struct kndClass *self,
         err = link_ancestor(self, base->entry, task);                             RET_ERR();
         parent_linked = true;
     }
+
     /* copy the ancestors */
     for (baseref = base->entry->ancestors; baseref; baseref = baseref->next) {
         if (baseref->entry->class && baseref->entry->class->state_top) continue;
@@ -215,7 +213,7 @@ static int link_baseclass(struct kndClass *self,
     if (!parent_linked) {
         /* register a parent */
         err = knd_class_ref_new(mempool, &ref);
-        KND_TASK_ERR("mempool failed to alloc kndClassRef");
+        KND_TASK_ERR("mempool failed to alloc a class ref");
         ref->class = base;
         ref->entry = base->entry;
         ref->next = entry->ancestors;
@@ -236,8 +234,7 @@ static int resolve_baseclasses(struct kndClass *self, struct kndTask *task)
     int err;
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_1)
-        knd_log(".. class \"%.*s\" to resolve its bases..",
-                self->name_size, self->name);
+        knd_log(".. class \"%.*s\" to resolve its bases", self->name_size, self->name);
 
     for (cvar = self->baseclass_vars; cvar; cvar = cvar->next) {
         if (cvar->entry->class == self) {
@@ -267,8 +264,7 @@ static int resolve_baseclasses(struct kndClass *self, struct kndTask *task)
                 KND_TASK_ERR("no base class specified in class cvar \"%.*s\"",
                              self->entry->name_size, self->entry->name);
             }
-            err = knd_get_class(self->entry->repo,
-                                classname, classname_size, &c, task);
+            err = knd_get_class(self->entry->repo, classname, classname_size, &c, task);
             KND_TASK_ERR("no class \"%.*s\" found in repo \"%.*s\"",
                          classname_size, classname, repo->name_size, repo->name);
         }

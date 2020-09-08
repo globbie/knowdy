@@ -62,17 +62,17 @@ static int str_attr_idx_rec(void *unused_var(obj),
 
 void knd_class_entry_str(struct kndClassEntry *self, size_t depth)
 {
-    struct kndTextIdx *idx;
+    struct kndClassRef *ref;
 
     knd_log("\n%*s** class entry \"%.*s\" (repo:%.*s)   id:%.*s",
             depth * KND_OFFSET_SIZE, "", self->name_size, self->name,
             self->repo->name_size, self->repo->name, self->id_size, self->id);
 
-    for (idx = self->text_idxs; idx; idx = idx->next) {
-        assert(idx->entry != NULL);
-        assert(idx->entry->repo != NULL);
-        knd_log(">> text idx: \"%.*s\" (repo:%.*s) num locs:%zu", idx->entry->name_size, idx->entry->name,
-                idx->entry->repo->name_size, idx->entry->repo->name, idx->num_locs);
+    FOREACH (ref, self->text_idxs) {
+        assert(ref->entry != NULL);
+        assert(ref->entry->repo != NULL);
+        knd_log(">> text idx: \"%.*s\" (repo:%.*s) num locs:%zu", ref->entry->name_size, ref->entry->name,
+                ref->entry->repo->name_size, ref->entry->repo->name, ref->idx->num_locs);
     }
 }
 
@@ -910,6 +910,8 @@ int knd_class_entry_clone(struct kndClassEntry *self, struct kndRepo *repo,
     entry->class = self->class;
     entry->name = self->name;
     entry->name_size = self->name_size;
+    entry->children = self->children;
+    entry->num_children = self->num_children;
     entry->ancestors = self->ancestors;
     entry->num_ancestors = self->num_ancestors;
     entry->descendants = self->descendants;
@@ -960,6 +962,18 @@ int knd_class_facet_new(struct kndMemPool *mempool, struct kndClassFacet **resul
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndClassFacet));
+    *result = page;
+    return knd_OK;
+}
+
+int knd_class_idx_new(struct kndMemPool *mempool, struct kndClassIdx **result)
+{
+    void *page;
+    int err;
+    assert(mempool->tiny_page_size >= sizeof(struct kndClassIdx));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
+    if (err) return err;
+    memset(page, 0,  sizeof(struct kndClassIdx));
     *result = page;
     return knd_OK;
 }

@@ -241,6 +241,34 @@ int knd_get_proc(struct kndRepo *repo, const char *name, size_t name_size, struc
     return knd_FAIL;
 }
 
+int knd_get_proc_entry(struct kndRepo *repo, const char *name, size_t name_size,
+                       struct kndProcEntry **result, struct kndTask *task)
+{
+    struct kndProcEntry *entry;
+    struct kndSharedDict *proc_name_idx = repo->proc_name_idx;
+    int err;
+
+    if (DEBUG_PROC_LEVEL_2)
+        knd_log(".. \"%.*s\" repo to get proc entry: \"%.*s\"", repo->name_size, repo->name, name_size, name);
+
+    entry = knd_shared_dict_get(proc_name_idx, name, name_size);
+    if (!entry) {
+        if (DEBUG_PROC_LEVEL_2)
+            knd_log("-- no local proc \"%.*s\" found in repo %.*s",
+                    name_size, name, repo->name_size, repo->name);
+        /* check base repo */
+        if (repo->base) {
+            err = knd_get_proc_entry(repo->base, name, name_size, result, task);
+            if (err) return err;
+            return knd_OK;
+        }
+        return knd_NO_MATCH;
+    }
+
+    *result = entry;
+    return knd_OK;
+}
+
 static int commit_state(struct kndProc *self,
                         struct kndStateRef *children,
                         knd_state_phase phase,
@@ -353,6 +381,18 @@ int knd_proc_var_new(struct kndMemPool *mempool, struct kndProcVar **result)
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndProcVar));
+    *result = page;
+    return knd_OK;
+}
+
+int knd_proc_idx_new(struct kndMemPool *mempool, struct kndProcIdx **result)
+{
+    void *page;
+    int err;
+    assert(mempool->tiny_page_size >= sizeof(struct kndProcIdx));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
+    if (err) return err;
+    memset(page, 0, sizeof(struct kndProcIdx));
     *result = page;
     return knd_OK;
 }

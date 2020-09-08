@@ -33,10 +33,10 @@ struct LocalContext {
     struct kndTextSearchReport *report;
 };
 
-static int approve_src(struct kndTextSearchReport *pref, struct kndTextIdx *idx)
+static int approve_src(struct kndTextSearchReport *pref, struct kndClassRef *ref)
 {
     for (; pref; pref = pref->next) {
-        if (pref->entry == idx->entry && pref->attr == idx->attr)
+        if (pref->entry == ref->entry && pref->attr == ref->attr)
             return knd_OK;
     }
     return knd_NO_MATCH;
@@ -46,7 +46,7 @@ static gsl_err_t build_search_plan(void *obj, const char *unused_var(name), size
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndTextIdx *idx = NULL;
+    struct kndClassRef *ref = NULL;
     struct kndTextSearchReport *report, *pref = task->ctx->reports;
     struct kndClassDeclaration *declar;
     struct kndClassEntry *entry;
@@ -76,25 +76,24 @@ static gsl_err_t build_search_plan(void *obj, const char *unused_var(name), size
         knd_log(">> class declar: %.*s (repo:%.*s)",
                 entry->name_size, entry->name, entry->repo->name_size, entry->repo->name);
 
-        idx = entry->text_idxs; // atomic_load_explicit(&entry->text_idxs, memory_order_relaxed);
-        for (; idx; idx = idx->next) {
-            assert(idx->entry != NULL);
+        // atomic_load_explicit(&entry->text_idxs, memory_order_relaxed);
+        FOREACH (ref, entry->text_idxs) {
+            assert(ref->entry != NULL);
 
             //knd_log("text idx: \"%.*s\" (repo:%.*s)",
-            //        idx->entry->name_size, idx->entry->name,
-            //        idx->entry->repo->name_size, idx->entry->repo->name);
+            //        ref->entry->name_size, ref->entry->name,
+            //        ref->entry->repo->name_size, ref->entry->repo->name);
 
             if (pref) {
                 knd_log("++ check pref \"%.*s\" (repo:%.*s)",
-                        pref->entry->name_size, pref->entry->name,
-                        pref->entry->repo->name_size, pref->entry->repo->name);
+                        pref->entry->name_size, pref->entry->name, pref->entry->repo->name_size, pref->entry->repo->name);
 
-                err = approve_src(pref, idx);
+                err = approve_src(pref, ref);
                 if (err) {
-                    knd_log("-- wrong idx");
+                    knd_log("-- wrong text idx");
                     continue;
                 }
-                pref->num_locs = idx->num_locs;
+                pref->num_locs = ref->idx->num_locs;
                 continue;
             }
 
@@ -103,9 +102,9 @@ static gsl_err_t build_search_plan(void *obj, const char *unused_var(name), size
                 KND_TASK_LOG("failed to alloc text idx");
                 return make_gsl_err_external(err);
             }
-            report->entry = idx->entry;
-            report->locs = idx->locs;
-            report->num_locs = idx->num_locs;
+            report->entry = ref->entry;
+            report->locs = ref->idx->locs;
+            report->num_locs = ref->idx->num_locs;
 
             report->next = task->ctx->reports;
             task->ctx->reports = report;
