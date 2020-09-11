@@ -70,9 +70,9 @@ int knd_create_user_repo(struct kndTask *task)
 
     assert(ctx->repo == NULL);
 
-    err = knd_repo_new(&repo, "~", 1, NULL, 0, task->shard->user->mempool);
+    err = knd_repo_new(&repo, "~", 1, NULL, 0, ctx->mempool);
     KND_TASK_ERR("failed to alloc new repo");
-    repo->base = task->shard->user->repo;
+    repo->base = ctx->base_repo;
     ctx->repo = repo;
 
     err = knd_repo_open(repo, task);
@@ -106,10 +106,8 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
         err = knd_commit_new(task->mempool, &task->ctx->commit);
         if (err) return make_gsl_err_external(err);
         
-        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot.num_commits,
-                                                                memory_order_relaxed);
+        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot.num_commits, memory_order_relaxed);
     }
-
     return knd_class_import(user_ctx->repo, rec, total_size, task);
 }
 
@@ -156,7 +154,7 @@ static gsl_err_t parse_sync_task(void *obj, const char *unused_var(rec), size_t 
     buf_size += path_size;
     buf[buf_size] = '\0';
 
-    task->type = KND_SYNC_STATE;
+    task->type = KND_SNAPSHOT_STATE;
 
     //err = knd_class_freeze(self->repo->root_class);
     /*if (err) {
@@ -249,6 +247,8 @@ static int build_user_ctx(struct kndUser *self, struct kndClassInst *inst,
     KND_TASK_ERR("failed to alloc user ctx");
     ctx->inst = inst;
     ctx->base_repo = self->repo;
+    ctx->mempool = self->mempool;
+
     task->user_ctx = ctx;
     err = knd_create_user_repo(task);
     KND_TASK_ERR("failed to create user repo");
@@ -278,7 +278,8 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
 
     do {
         cell_num = atomic_load_explicit(&inst->entry->cache_cell_num, memory_order_relaxed);
-        knd_log("++ got user inst (curr cache cell:%zu)", cell_num);
+        if (DEBUG_USER_LEVEL_TMP)
+            knd_log("== user inst %.*s (cache cell:%zu)", name_size, name, cell_num);
         if (!cell_num) {
             err = build_user_ctx(self, inst, &ctx, task);
             if (err) {
@@ -297,8 +298,6 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
                 }
                 return make_gsl_err_external(err);
             }
-
-            knd_log("++ cache cell set: %zu", cell_num);
             // 0 cell num denotes NULL so add 1 to store the cache cell idx
             cell_num++;
             atomic_store_explicit(&inst->entry->cache_cell_num, cell_num, memory_order_relaxed);
@@ -320,7 +319,6 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
         task->user_ctx = ctx;
         break;
     } while (1);
-
     return make_gsl_err(gsl_OK);
 }
 
@@ -558,10 +556,8 @@ gsl_err_t knd_create_user(void *obj, const char *rec, size_t *total_size)
 }
 
 int knd_user_new(struct kndUser **user, const char *classname, size_t classname_size,
-                 const char *path, size_t path_size,
-                 const char *reponame, size_t reponame_size,
-                 const char *schema_path, size_t schema_path_size,
-                 struct kndShard *shard, struct kndTask *task)
+                 const char *path, size_t path_size, const char *reponame, size_t reponame_size,
+                 const char *schema_path, size_t schema_path_size, struct kndShard *shard, struct kndTask *task)
 {
     struct kndUser *self;
     struct kndMemPool *mempool = NULL;

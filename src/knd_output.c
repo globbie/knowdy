@@ -41,8 +41,7 @@ kndOutput_rtrim(struct kndOutput *self,
 }
 
 static int
-kndOutput_writec(struct kndOutput *self,
-                 char ch)
+kndOutput_writec(struct kndOutput *self, char ch)
 {
     if (self->buf_size >= self->capacity - 1)
         return knd_NOMEM;
@@ -73,10 +72,7 @@ kndOutput_writef(struct kndOutput *self,
     return knd_OK;
 }
 
-static int
-kndOutput_write(struct kndOutput *self,
-                const char *buf,
-                size_t buf_size)
+static int kndOutput_write(struct kndOutput *self, const char *buf, size_t buf_size)
 {
     if (buf_size > self->capacity - self->buf_size - 1)
         return knd_NOMEM;

@@ -1397,3 +1397,22 @@ extern gsl_err_t knd_read_class_state(struct kndClass *self,
     */
     return make_gsl_err(gsl_OK);
 }
+
+int knd_class_name_marshall(void *elem, size_t *output_size, struct kndTask *task)
+{
+    struct kndClassEntry *entry = elem;
+    struct kndOutput *out = task->out;
+    size_t orig_size = out->buf_size;
+
+    assert(entry->class != NULL);
+
+    OUT(entry->class->name, entry->class->name_size);
+
+    if (DEBUG_CLASS_GSP_LEVEL_TMP)
+        knd_log("** %.*s => %.*s (size:%zu)",  entry->id_size, entry->id,
+                entry->class->name_size,  entry->class->name, out->buf_size - orig_size);
+
+    *output_size = out->buf_size - orig_size;
+    return knd_OK;
+}
+

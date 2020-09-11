@@ -66,7 +66,7 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *bl
     struct kndSharedSet *new_idx = NULL;
     struct kndCommit *commit = state_refs->state->commit;
     struct kndSharedDictItem *item = NULL;
-    struct kndMemPool *mempool = task->mempool;
+    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
     int err;
 
     assert(commit != NULL);
@@ -78,9 +78,7 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *bl
 
     /* user repo selected: activate copy-on-write */
     if (task->user_ctx) {
-        mempool = task->shard->user->mempool;
         c = knd_shared_dict_get(repo->class_name_idx, blueprint->name, blueprint->name_size);
-
         if (blueprint->repo != repo) {
             if (!c) {
                 if (DEBUG_INST_IDX_LEVEL_TMP) {

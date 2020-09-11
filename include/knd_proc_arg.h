@@ -42,6 +42,7 @@ struct kndProcArgRef
     struct kndProcArg    *arg;
     struct kndProcArgVar *var;
     struct kndProc       *proc;
+    struct kndClassIdx   *idx;
     struct kndProcArgRef *next;
 };
 

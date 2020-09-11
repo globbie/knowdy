@@ -7,6 +7,7 @@
 #include "knd_user.h"
 #include "knd_shard.h"
 #include "knd_set.h"
+#include "knd_shared_set.h"
 #include "knd_output.h"
 
 #include <gsl-parser.h>
@@ -60,7 +61,7 @@ static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
         ctx->class_entry = ctx->repo->root_class->entry;
         return make_gsl_err(gsl_OK);
     }
-    err = knd_get_class_entry(ctx->repo, name, name_size, &ctx->class_entry, task);
+    err = knd_get_class_entry(ctx->repo, name, name_size, true, &ctx->class_entry, task);
     if (err) {
         KND_TASK_LOG("\"%.*s\" class name not found", name_size, name);
         task->ctx->http_code = HTTP_NOT_FOUND;
@@ -649,7 +650,7 @@ static gsl_err_t parse_import_class_inst(void *obj, const char *rec, size_t *tot
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
     struct kndCommit *commit = task->ctx->commit;
-    struct kndMemPool *mempool = task->mempool;
+    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
     struct kndClassEntry *entry = ctx->class_entry;
     int err;
 
@@ -659,7 +660,6 @@ static gsl_err_t parse_import_class_inst(void *obj, const char *rec, size_t *tot
     }
 
     if (task->user_ctx) {
-        mempool = task->shard->user->mempool;
         if (entry->repo != task->user_ctx->repo) {
             err = knd_class_entry_clone(ctx->class_entry, task->user_ctx->repo, &entry, task);
             if (err) {
@@ -856,6 +856,7 @@ static gsl_err_t present_class_selection(void *obj, const char *unused_var(val),
     }
 
     /* display all classes */
+#if 0
     if (ctx->repo->class_idx->num_elems) {
         err = knd_class_set_export(ctx->repo->class_idx, task->ctx->format, task);
         if (err) return make_gsl_err_external(err);
@@ -867,6 +868,7 @@ static gsl_err_t present_class_selection(void *obj, const char *unused_var(val),
         if (err) return make_gsl_err_external(err);
         return make_gsl_err(gsl_OK);
     }
+#endif
 
     KND_TASK_LOG("nothing to present");
     return make_gsl_err(gsl_FAIL);

@@ -29,6 +29,7 @@
 #include "knd_proc.h"
 #include "knd_proc_arg.h"
 #include "knd_set.h"
+#include "knd_shared_set.h"
 #include "knd_utils.h"
 #include "knd_output.h"
 #include "knd_http_codes.h"
@@ -590,9 +591,7 @@ int knd_class_get_attr_var(struct kndClass *self,
     return knd_OK;
 }
 
-int knd_class_set_export(struct kndSet *self,
-                         knd_format format,
-                         struct kndTask *task)
+int knd_class_set_export(struct kndSet *self, knd_format format, struct kndTask *task)
 {
     task->out->reset(task->out);
 
@@ -651,7 +650,7 @@ int knd_get_class(struct kndRepo *self, const char *name, size_t name_size, stru
     return knd_OK;
 }
 
-int knd_get_class_entry(struct kndRepo *repo, const char *name, size_t name_size,
+int knd_get_class_entry(struct kndRepo *repo, const char *name, size_t name_size, bool check_ancestors,
                         struct kndClassEntry **result, struct kndTask *task)
 {
     struct kndClassEntry *entry;
@@ -667,8 +666,8 @@ int knd_get_class_entry(struct kndRepo *repo, const char *name, size_t name_size
             knd_log("-- no local class \"%.*s\" found in repo %.*s",
                     name_size, name, repo->name_size, repo->name);
         /* check base repo */
-        if (repo->base) {
-            err = knd_get_class_entry(repo->base, name, name_size, result, task);
+        if (check_ancestors && repo->base) {
+            err = knd_get_class_entry(repo->base, name, name_size, check_ancestors, result, task);
             if (err) return err;
             return knd_OK;
         }
@@ -683,7 +682,7 @@ int knd_get_class_by_id(struct kndRepo *repo, const char *id, size_t id_size,
                         struct kndClass **result, struct kndTask *task)
 {
     struct kndClassEntry *entry;
-    struct kndSet *class_idx = repo->class_idx;
+    struct kndSharedSet *class_idx = repo->class_idx;
     void *elem;
     struct kndState *state;
     int err;
@@ -693,7 +692,7 @@ int knd_get_class_by_id(struct kndRepo *repo, const char *id, size_t id_size,
                 repo->name_size, repo->name, id_size, id);
     }
 
-    err = class_idx->get(class_idx, id, id_size, &elem);
+    err = knd_shared_set_get(class_idx, id, id_size, &elem);
     if (err) {
         /* check parent schema */
         if (repo->base) {
@@ -782,9 +781,7 @@ int knd_unregister_class_inst(struct kndClass *self, struct kndClassInstEntry *e
 
 int knd_class_clone(struct kndClass *self, struct kndRepo *target_repo, struct kndClass **result, struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->mempool;
-    if (task->user_ctx)
-        mempool = task->shard->user->mempool;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndClass *c;
     struct kndClassEntry *entry;
     // struct kndSharedDict *class_name_idx = target_repo->class_name_idx;
@@ -836,9 +833,7 @@ int knd_class_clone(struct kndClass *self, struct kndRepo *target_repo, struct k
     return knd_OK;
 }
 
-int knd_class_copy(struct kndClass *self,
-                   struct kndClass *c,
-                   struct kndMemPool *mempool)
+int knd_class_copy(struct kndClass *self, struct kndClass *c, struct kndMemPool *mempool)
 {
     //struct kndRepo *repo =  c->entry->repo;
     struct kndClassEntry *entry, *src_entry;
@@ -889,9 +884,7 @@ int knd_class_copy(struct kndClass *self,
 int knd_class_entry_clone(struct kndClassEntry *self, struct kndRepo *repo,
                           struct kndClassEntry **result, struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->mempool;
-    if (task->user_ctx)
-        mempool = task->shard->user->mempool;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndClassEntry *entry;
     struct kndSharedDict *name_idx = repo->class_name_idx;
     struct kndSharedDictItem *item = NULL;

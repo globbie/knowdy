@@ -68,12 +68,12 @@ struct kndClassIdx
     struct kndSharedIdx * _Atomic idx;
     struct kndTextLoc * _Atomic locs;
     atomic_size_t num_locs;
-
     atomic_size_t total_locs;
 
-    // struct kndProcArgRef *arg_roles;
+    struct kndProcArgRef *arg_roles;
 
     struct kndClassRef * _Atomic children;
+    atomic_size_t num_children;
 };
 
 struct kndClassRef
@@ -201,7 +201,7 @@ struct kndClass
 };
 
 void knd_class_entry_str(struct kndClassEntry *self, size_t depth);
-int knd_get_class_entry(struct kndRepo *self, const char *name, size_t name_size,
+int knd_get_class_entry(struct kndRepo *self, const char *name, size_t name_size, bool check_ancestors,
                         struct kndClassEntry **result, struct kndTask *task);
 int knd_get_class(struct kndRepo *self, const char *name, size_t name_size, struct kndClass **result, struct kndTask *task);
 int knd_get_class_by_id(struct kndRepo *self, const char *id, size_t id_size, struct kndClass **result, struct kndTask *task);
@@ -238,18 +238,15 @@ int knd_export_gloss_GSL(struct kndText *tr, struct kndTask *task);
 int knd_class_facets_export(struct kndTask *task);
 
 int knd_class_set_export(struct kndSet *self, knd_format format, struct kndTask *task);
-int knd_empty_set_export(struct kndClass *self,
-                                knd_format format,
-                                struct kndTask *task);
-int knd_class_set_export_GSL(struct kndSet *set,
-                                    struct kndTask *task);
+int knd_empty_set_export(struct kndClass *self, knd_format format, struct kndTask *task);
+int knd_class_set_export_GSL(struct kndSet *set, struct kndTask *task);
 
-int knd_class_export_GSP(struct kndClass *self,
-                                struct kndTask *task);
+// knd_class.gsp.c
+int knd_class_name_marshall(void *elem, size_t *output_size, struct kndTask *task);
+int knd_class_export_GSP(struct kndClass *self, struct kndTask *task);
 
-int knd_class_export_commits_GSP(struct kndClass *self,
-                                        struct kndClassCommit *commit,
-                                        struct kndTask *task);
+int knd_class_export_commits_GSP(struct kndClass *self, struct kndClassCommit *commit, struct kndTask *task);
+
 
 gsl_err_t knd_class_import(struct kndRepo *repo, const char *rec, size_t *total_size, struct kndTask *task);
 

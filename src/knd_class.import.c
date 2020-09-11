@@ -415,7 +415,7 @@ static gsl_err_t parse_uniq_attr_constraint(void *obj, const char *rec, size_t *
 
 gsl_err_t knd_class_import(struct kndRepo *repo, const char *rec, size_t *total_size, struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->mempool;
+    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
     struct kndClass *c;
     struct kndClassEntry *entry;
     int err;
@@ -423,9 +423,6 @@ gsl_err_t knd_class_import(struct kndRepo *repo, const char *rec, size_t *total_
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
         knd_log("..worker \"%zu\" to import class: \"%.*s\"", task->id, 128, rec);
-
-    if (task->user_ctx)
-        mempool = task->shard->user->mempool;
 
     err = knd_class_new(mempool, &c);
     if (err) {

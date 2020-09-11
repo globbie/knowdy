@@ -58,7 +58,7 @@ typedef enum knd_task_spec_type {
     KND_INNER_STATE,
     KND_INNER_COMMIT_STATE,
     KND_LIQUID_STATE,
-    KND_SYNC_STATE,
+    KND_SNAPSHOT_STATE,
     KND_DELTA_STATE,
     KND_LOAD_STATE,
     KND_RESTORE_STATE,
@@ -247,22 +247,13 @@ struct kndTask
 };
 
 // knd_task.c
-int knd_task_new(struct kndShard *shard,
-                 struct kndMemPool *mempool,
-                 int task_id,
-                 struct kndTask **task);
-int knd_task_mem(struct kndMemPool *mempool,
-                 struct kndTask **result);
-int knd_task_context_new(struct kndMemPool *mempool,
-                         struct kndTaskContext **ctx);
-int knd_task_block_new(struct kndMemPool *mempool,
-                       struct kndTask **result);
-int knd_task_copy_block(struct kndTask *self,
-                        const char *input, size_t input_size,
+int knd_task_new(struct kndShard *shard, struct kndMemPool *mempool, int task_id, struct kndTask **task);
+int knd_task_context_new(struct kndMemPool *mempool, struct kndTaskContext **ctx);
+int knd_task_block_new(struct kndMemPool *mempool, struct kndTask **result);
+int knd_task_copy_block(struct kndTask *self, const char *input, size_t input_size,
                         const char **output, size_t *output_size);
 
-int knd_task_read_file_block(struct kndTask *self,
-                             const char *filename, size_t filename_size,
+int knd_task_read_file_block(struct kndTask *self, const char *filename, size_t filename_size,
                              struct kndMemBlock **result);
 void knd_task_free_blocks(struct kndTask *self);
 

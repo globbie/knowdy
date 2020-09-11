@@ -28,9 +28,7 @@ static int index_class_inst(struct kndClassEntry *entry, struct kndClassDeclarat
 {
     struct kndClassRef *ref = NULL;
     struct kndTextLoc *loc = NULL;
-    struct kndMemPool *mempool = task->mempool;
-    if (task->user_ctx)
-        mempool = task->shard->user->mempool;
+    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
     int err;
 
     if (DEBUG_TEXT_IDX_LEVEL_2) {
@@ -82,12 +80,10 @@ static int index_class_inst(struct kndClassEntry *entry, struct kndClassDeclarat
 
 static int append_child_idx(struct kndClassIdx *idx, struct kndClassIdx *child_idx, struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->user_ctx ? task->shard->user->mempool : task->mempool;
+    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
     struct kndClassRef *orig_children, *ref = NULL;
+    size_t num_children;
     int err;
-
-    knd_log(">>  \"%.*s\" => \"%.*s\"",
-            idx->entry->name_size, idx->entry->name, child_idx->entry->name_size, child_idx->entry->name);
 
     do {
         // CAS failed: concurrent competitor was quicker than us
@@ -95,6 +91,12 @@ static int append_child_idx(struct kndClassIdx *idx, struct kndClassIdx *child_i
             // free resources
         }
         orig_children = atomic_load_explicit(&idx->children, memory_order_relaxed);
+        num_children = atomic_load_explicit(&idx->num_children, memory_order_relaxed);
+
+        knd_log(">>  \"%.*s\" %p (num children:%zu)  => \"%.*s\"",
+                idx->entry->name_size, idx->entry->name, idx, num_children,
+                child_idx->entry->name_size, child_idx->entry->name);
+        
         FOREACH (ref, orig_children) {
             // idx is already registered
             if (ref->entry == child_idx->entry) return knd_OK;
@@ -102,17 +104,18 @@ static int append_child_idx(struct kndClassIdx *idx, struct kndClassIdx *child_i
         err = knd_class_ref_new(mempool, &ref);
         if (err) return err;
         ref->entry = child_idx->entry;
-        ref->idx = child_idx;
-        ref->next = orig_children;
-    }
-    while (!atomic_compare_exchange_weak(&idx->children, &orig_children, ref));
+        ref->idx =   child_idx;
+        ref->next =  orig_children;
+    } while (!atomic_compare_exchange_weak(&idx->children, &orig_children, ref));
+
+    atomic_fetch_add_explicit(&idx->num_children, 1, memory_order_relaxed);
     return knd_OK;
 }
 
 static int get_class_idx(struct kndClassEntry *entry, struct kndAttrVar *var, struct kndClassInst *src,
                          struct kndClassIdx **result, struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->user_ctx ? task->shard->user->mempool : task->mempool;
+    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
     struct kndClassRef *orig_idxs, *ref = NULL;
     int err;
 
@@ -151,7 +154,8 @@ static int update_ancestor_idx(struct kndClassEntry *base, struct kndClassDeclar
     struct kndClassIdx *idx, *child_idx;
     int err;
 
-    knd_log(">> ancestor \"%.*s\" to update its class idx", base->name_size, base->name);
+    if (DEBUG_TEXT_IDX_LEVEL_2)
+        knd_log(">> ancestor \"%.*s\" to update its class idx", base->name_size, base->name);
 
     err = get_class_idx(base, var, src, &idx, task);
     KND_TASK_ERR("failed to get a class idx");
@@ -160,7 +164,7 @@ static int update_ancestor_idx(struct kndClassEntry *base, struct kndClassDeclar
         if (ref->class == entry->class) {
             err = append_child_idx(idx, term_idx, task);
             KND_TASK_ERR("failed to append terminal child idx");
-            return knd_OK;
+            break;
         }
         err = knd_is_base(ref->class, entry->class);
         if (err) continue;
@@ -182,7 +186,7 @@ static int index_class_declar(struct kndClassDeclaration *decl, struct kndSenten
 {
     struct kndClassRef *ref;
     struct kndClassIdx *idx;
-    // struct kndMemPool *mempool = task->user_ctx ? task->shard->user->mempool : task->mempool;
+    // struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
     //struct kndTextLoc *loc;
     struct kndClassEntry *entry;
     int err;
@@ -214,8 +218,11 @@ static int index_class_declar(struct kndClassDeclaration *decl, struct kndSenten
     /* global concept index */
     entry = decl->entry;
     if (decl->entry->repo != repo) {
-        err = knd_class_entry_clone(decl->entry, repo, &entry, task);
-        KND_TASK_ERR("failed to clone class entry");
+        err = knd_get_class_entry(repo, decl->entry->name, decl->entry->name_size, false, &entry, task);
+        if (err) {
+            err = knd_class_entry_clone(decl->entry, repo, &entry, task);
+            KND_TASK_ERR("failed to clone class entry");
+        }
         decl->entry = entry;
     }
     
@@ -224,8 +231,11 @@ static int index_class_declar(struct kndClassDeclaration *decl, struct kndSenten
 
     for (ref = decl->entry->ancestors; ref; ref = ref->next) {
         if (ref->entry->repo != repo) {
-            err = knd_class_entry_clone(ref->entry, repo, &entry, task);
-            KND_TASK_ERR("failed to clone class entry");
+            err = knd_get_class_entry(repo, ref->entry->name, ref->entry->name_size, false, &entry, task);
+            if (err) {
+                err = knd_class_entry_clone(ref->entry, repo, &entry, task);
+                KND_TASK_ERR("failed to clone class entry");
+            }
             ref->entry = entry;
         }
         err = update_ancestor_idx(ref->entry, decl, var, inst, idx, task);
@@ -240,7 +250,7 @@ static int index_proc_inst(struct kndProcEntry *entry, struct kndProcDeclaration
 {
     struct kndClassRef *ref = NULL;
     struct kndTextLoc *loc = NULL;
-    struct kndMemPool *mempool = task->user_ctx ? task->shard->user->mempool : task->mempool;
+    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
     int err;
 
     if (DEBUG_TEXT_IDX_LEVEL_3) {
@@ -348,7 +358,7 @@ int knd_text_index(struct kndText *self, struct kndRepo *repo, struct kndTask *t
 {
     struct kndAttrVar *var = self->attr_var;
     struct kndClassInst *inst = var->class_var->inst;
-    struct kndMemPool *mempool = task->user_ctx ? task->shard->user->mempool : task->mempool;
+    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
     struct kndPar *par;
     struct kndSentence *sent;
     struct kndClassDeclaration *decl;

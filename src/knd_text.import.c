@@ -49,15 +49,11 @@ static gsl_err_t set_text_seq(void *obj, const char *val, size_t val_size)
     struct kndText *self = ctx->text;
 
     //struct kndTask *task = ctx->task;
-    // struct kndMemPool *mempool = task->mempool;
+    // struct kndMemPool *mempool = task->user_ctx->mempool;
     //struct kndState *state;
     //struct kndStateVal *state_val;
     //struct kndStateRef *state_ref;
     // int err;
-
-    //if (task->user_ctx) {
-    //    mempool = task->shard->user->mempool;
-    //}
 
     if (DEBUG_TEXT_IMPORT_LEVEL_2)
         knd_log("++ text val set: \"%.*s\"",
@@ -142,9 +138,7 @@ static gsl_err_t parse_synode_spec(void *obj, const char *rec, size_t *total_siz
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndMemPool *mempool = task->mempool;
-    if (task->user_ctx)
-        mempool = task->shard->user->mempool;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
 
     struct kndSyNode *topic_synode = ctx->synode;
     struct kndSyNodeSpec *spec;
@@ -177,9 +171,7 @@ static gsl_err_t parse_term_synode(void *obj, const char *rec, size_t *total_siz
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndMemPool *mempool = task->mempool;
-    if (task->user_ctx)
-        mempool = task->shard->user->mempool;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndSyNode *synode;
     gsl_err_t parser_err;
     int err;
@@ -246,9 +238,7 @@ static gsl_err_t parse_synode(void *obj,
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
     // struct kndSentence *sent = ctx->sent;
-    struct kndMemPool *mempool = task->mempool;
-    if (task->user_ctx)
-        mempool = task->shard->user->mempool;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndSyNode *synode;
     gsl_err_t parser_err;
     int err;
@@ -309,9 +299,7 @@ static gsl_err_t parse_subj(void *obj, const char *rec, size_t *total_size)
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
     struct kndClause *clause = ctx->clause;
-    struct kndMemPool *mempool = task->mempool;
-    if (task->user_ctx)
-        mempool = task->shard->user->mempool;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndSyNode *synode;
     gsl_err_t parser_err;
     int err;
@@ -356,9 +344,7 @@ static gsl_err_t parse_pred(void *obj,
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
     struct kndClause *clause = ctx->clause;
-    struct kndMemPool *mempool = task->mempool;
-    if (task->user_ctx)
-        mempool = task->shard->user->mempool;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndSyNode *synode;
     gsl_err_t parser_err;
     int err;
@@ -399,9 +385,7 @@ static gsl_err_t parse_clause(void *obj,
     struct kndSentence *sent = ctx->sent;
     // struct kndClause *parent_clause = ctx->clause;
     struct kndClause *clause;
-    struct kndMemPool *mempool = task->mempool;
-    if (task->user_ctx)
-        mempool = task->shard->user->mempool;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
     gsl_err_t parser_err;
     int err;
 
@@ -491,9 +475,7 @@ static gsl_err_t parse_statement(void *obj, const char *rec, size_t *total_size)
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
     struct kndSentence *sent = ctx->sent;
-    struct kndMemPool *mempool = task->mempool;
-    if (task->user_ctx)
-        mempool = task->shard->user->mempool;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndStatement *stm;
     gsl_err_t parser_err;
     int err;
@@ -520,9 +502,7 @@ static gsl_err_t parse_sentence(void *obj, const char *rec, size_t *total_size)
     struct kndTask *task = ctx->task;
     struct kndPar *par = ctx->par;
     struct kndSentence *sent;
-    struct kndMemPool *mempool = task->mempool;
-    if (task->user_ctx)
-        mempool = task->shard->user->mempool;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
     gsl_err_t parser_err;
     int err;
 
@@ -623,9 +603,7 @@ static gsl_err_t parse_par(void *obj, const char *rec, size_t *total_size)
     struct kndTask *task = ctx->task;
     struct kndText *text = ctx->text;
     struct kndPar *par;
-    struct kndMemPool *mempool = task->mempool;
-    if (task->user_ctx)
-        mempool = task->shard->user->mempool;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
     gsl_err_t parser_err;
     int err;
 

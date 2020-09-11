@@ -314,13 +314,13 @@ static int build_dir_footer(struct kndSetDir *dir,
 
         if (!entry->payload_size) {
             if (use_positional_indexing) {
-                knd_pack_int(buf, 0);
+                knd_pack_u32(buf, 0);
                 err = out->write(out, (const char*)buf, buf_size);
                 KND_TASK_ERR("set output failed");
             }
         } else {
             numval = entry->payload_size;
-            knd_pack_int(buf, numval);
+            knd_pack_u32(buf, numval);
             err = out->write(out, (const char*)buf, buf_size);
             KND_TASK_ERR("set output failed");
         }

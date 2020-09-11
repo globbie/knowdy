@@ -77,7 +77,7 @@ struct kndRepo
     struct kndClassEntry *tail_class_entry;
 
     struct kndSharedDict *class_name_idx;
-    struct kndSet *class_idx;
+    struct kndSharedSet *class_idx;
     atomic_size_t num_classes;
     atomic_size_t class_id_count;
 
@@ -99,33 +99,29 @@ struct kndRepo
     atomic_size_t   proc_arg_id_count;
     atomic_size_t   num_proc_args;
 
+    struct kndSharedSet *str_idx;
+
     struct kndRepoSnapshot snapshot;
+
+    struct kndMemBlock *blocks;
+    size_t num_blocks;
+    size_t total_block_size;
 
     struct kndRepo *next;
 };
 
-int knd_present_repo_state(struct kndRepo *self,
-                           struct kndTask *task);
+int knd_present_repo_state(struct kndRepo *self, struct kndTask *task);
 int knd_confirm_commit(struct kndRepo *self, struct kndTask *task);
-
 gsl_err_t knd_parse_repo(void *obj, const char *rec, size_t *total_size);
-
-int knd_conc_folder_new(struct kndMemPool *mempool,
-                        struct kndConcFolder **result);
-
-int knd_repo_index_proc_arg(struct kndRepo *repo,
-                            struct kndProc *self,
-                            struct kndProcArg *arg,
-                            struct kndTask *task);
-int knd_repo_commit_indices(struct kndRepo *self,
-                            struct kndTaskContext *ctx);
-int knd_repo_check_conflicts(struct kndRepo *self,
-                             struct kndTaskContext *ctx);
+int knd_conc_folder_new(struct kndMemPool *mempool, struct kndConcFolder **result);
+int knd_repo_index_proc_arg(struct kndRepo *repo, struct kndProc *self, struct kndProcArg *arg, struct kndTask *task);
+int knd_repo_commit_indices(struct kndRepo *self, struct kndTaskContext *ctx);
+int knd_repo_check_conflicts(struct kndRepo *self, struct kndTaskContext *ctx);
 gsl_err_t knd_parse_repo_commit(void *obj, const char *rec, size_t *total_size);
 
 int knd_repo_open(struct kndRepo *self, struct kndTask *task);
-int knd_repo_sync(struct kndRepo *self, struct kndTask *task);
-void knd_repo_del(struct kndRepo *self);
+int knd_repo_snapshot(struct kndRepo *self, struct kndTask *task);
 
+void knd_repo_del(struct kndRepo *self);
 int knd_repo_new(struct kndRepo **self, const char *name, size_t name_size,
                  const char *schema_path, size_t schema_path_size, struct kndMemPool *mempool);

@@ -45,16 +45,16 @@ struct kndClassInstEntry
     size_t id_size;
     size_t numid;
     knd_state_phase phase;
+
     const char *name;
     size_t name_size;
 
-    struct kndClassInst *inst;
-
+    struct kndClassInst * _Atomic inst;
     atomic_size_t cache_cell_num;
 
-    char *block;
-    size_t block_size;
-    size_t offset;
+    //char *block;
+    //size_t block_size;
+    //size_t offset;
 
     struct kndSharedDictItem *dict_item;
     struct kndAttrIdx *attr_idxs;
@@ -131,6 +131,7 @@ int knd_class_inst_update_indices(struct kndRepo *repo,
 
 // knd_class_inst.gsp.c
 int knd_class_inst_export_GSP(struct kndClassInst *self,  struct kndTask *task);
+int knd_class_inst_marshall_GSP(void *obj, size_t *output_size, struct kndTask *task);
 
 // knd_class_inst.gsl.c
 int knd_class_inst_export_GSL(struct kndClassInst *self, bool is_list_item, knd_state_phase phase, struct kndTask *task,

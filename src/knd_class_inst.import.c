@@ -209,7 +209,7 @@ static int generate_uniq_inst_name(struct kndClassInst *inst, struct kndTask *ta
 
 int knd_import_class_inst(struct kndClassEntry *self, const char *rec, size_t *total_size, struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->mempool;
+    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
     struct kndClass *c = self->class;
     struct kndClassEntry *entry = self;
     struct kndClassInst *inst;
@@ -221,11 +221,6 @@ int knd_import_class_inst(struct kndClassEntry *self, const char *rec, size_t *t
     struct kndClassDeclaration *declar = NULL;
     int err;
     gsl_err_t parser_err;
-
-    if (task->user_ctx) {
-        // use non-ephemeral mempool
-        mempool = task->shard->user->mempool;
-    }
 
     if (DEBUG_INST_IMPORT_LEVEL_2)
         knd_log(".. class \"%.*s\" (repo:%.*s) to import inst \"%.*s\"",

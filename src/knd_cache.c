@@ -120,13 +120,12 @@ int knd_cache_release(struct kndCache *self, size_t cell_num, void *data)
     }
     do {
         num_readers = atomic_load_explicit(&cell->num_readers, memory_order_relaxed);
-        knd_log(">> curr num readers: %d", num_readers);
         if (num_readers == -1 || num_readers == 0) return knd_CONFLICT;
     } while (!atomic_compare_exchange_weak(&cell->num_readers, &num_readers, num_readers - 1));
     return knd_OK;
 }
 
-int knd_cache_new(struct kndCache **result, size_t num_cells, size_t max_mem_size, cache_free_cb cb)
+int knd_cache_new(struct kndCache **result, size_t num_cells, size_t max_mem_size, cell_free_cb cb)
 {
     struct kndCache *self;
     assert(num_cells > 0);

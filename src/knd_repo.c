@@ -8,6 +8,7 @@
 #include "knd_repo.h"
 #include "knd_attr.h"
 #include "knd_set.h"
+#include "knd_shared_set.h"
 #include "knd_user.h"
 #include "knd_query.h"
 #include "knd_task.h"
@@ -37,6 +38,19 @@ struct LocalContext {
 
 static int update_indices(struct kndRepo *self, struct kndCommit *commit, struct kndTask *task);
 
+static void free_blocks(struct kndRepo *repo)
+{
+    struct kndMemBlock *block, *next_block = NULL;
+    for (block = repo->blocks; block; block = next_block) {
+        next_block = block->next;
+        if (block->buf)
+            free(block->buf);
+        free(block);
+    }
+    repo->total_block_size = 0;
+    repo->num_blocks = 0;
+}
+
 void knd_repo_del(struct kndRepo *self)
 {
     knd_shared_dict_del(self->class_name_idx);
@@ -49,6 +63,10 @@ void knd_repo_del(struct kndRepo *self)
             free(self->source_files[i]);
         free(self->source_files);
     }
+
+    if (self->num_blocks)
+        free_blocks(self);
+    
     free(self);
 }
 
@@ -193,9 +211,7 @@ static gsl_err_t parse_WAL(void *obj, const char *rec, size_t *total_size)
     return make_gsl_err(gsl_OK);
 }
 
-static int restore_commits(struct kndRepo *repo,
-                           struct kndMemBlock *memblock,
-                           struct kndTask *task)
+static int restore_commits(struct kndRepo *repo, struct kndMemBlock *memblock, struct kndTask *task)
 {
     size_t total_size;
 
@@ -224,8 +240,7 @@ static int restore_commits(struct kndRepo *repo,
     return knd_OK;
 }
 
-static int restore_journals(struct kndRepo *self,
-                            struct kndTask *task)
+static int restore_journals(struct kndRepo *self, struct kndTask *task)
 {
     struct kndOutput *out = task->file_out;
     char buf[KND_TEMP_BUF_SIZE];
@@ -260,6 +275,31 @@ static int restore_journals(struct kndRepo *self,
         out->rtrim(out, buf_size);
     }
 
+    return knd_OK;
+}
+
+static int fetch_name_idx(struct kndRepo *self, struct kndTask *task)
+{
+    struct kndOutput *out = task->file_out;
+    struct stat st;
+    const char *filename = "names.gsp";
+    size_t filename_size = strlen(filename);
+    int err;
+
+    OUT(filename, filename_size);
+    if (stat(out->buf, &st)) {
+        out->rtrim(out, filename_size);
+        return knd_NO_MATCH;
+    }
+
+    if (DEBUG_REPO_LEVEL_TMP)
+        knd_log(".. reading name idx: %.*s [%zu]", out->buf_size, out->buf, (size_t)st.st_size);
+
+    err = knd_shared_set_unmarshall_file(self->str_idx, out->buf, (size_t)st.st_size, knd_charseq_unmarshall, task);
+    KND_TASK_ERR("failed to unmarshall name idx file");
+
+    /* restore prev path */
+    out->rtrim(out, filename_size);
     return knd_OK;
 }
 
@@ -372,16 +412,24 @@ static int restore_state(struct kndRepo *self, struct kndTask *task)
     err = out->writef(out, "snapshot_%d/", latest_snapshot_id);
     KND_TASK_ERR("snapshot path construction failed");
 
-    // NB: agent count starts from 1
-    for (size_t i = 1; i < KND_MAX_TASKS; i++) {
+    for (size_t i = 0; i < KND_MAX_TASKS; i++) {
         buf_size = snprintf(buf, KND_TEMP_BUF_SIZE, "agent_%zu/", i);
         OUT(buf, buf_size);
-
         if (stat(out->buf, &st)) {
-            if (DEBUG_REPO_LEVEL_2)
+            if (DEBUG_REPO_LEVEL_3)
                 knd_log("-- no such folder: %.*s", out->buf_size, out->buf);
+
+            // sys agent 0 folder is optional
+            if (i == 0) {
+                out->rtrim(out, buf_size);
+                continue;
+            }
             break;
         }
+
+        err = fetch_name_idx(self, task);
+        if (err && err != knd_NO_MATCH) return err;
+
         err = restore_journals(self, task);
         KND_TASK_ERR("failed to restore journals in %.*s", out->buf_size, out->buf);
         out->rtrim(out, buf_size);
@@ -404,7 +452,7 @@ static int restore_state(struct kndRepo *self, struct kndTask *task)
 
     atomic_store_explicit(&self->snapshot.num_commits, self->snapshot.commit_idx->num_elems, memory_order_relaxed);
 
-    if (DEBUG_REPO_LEVEL_2)
+    if (DEBUG_REPO_LEVEL_TMP)
         knd_log("== repo \"%.*s\", total commits applied: %zu",
                 self->name_size, self->name, self->snapshot.num_commits);
     return knd_OK;
@@ -1031,24 +1079,21 @@ static int resolve_classes(struct kndRepo *self,
     return knd_OK;
 }
 
-static int index_classes(struct kndRepo *self,
-                         struct kndTask *task)
+static int index_classes(struct kndRepo *self, struct kndTask *task)
 {
     struct kndClass *c;
     struct kndClassEntry *entry;
     struct kndSharedDictItem *item;
     struct kndSharedDict *name_idx = self->class_name_idx;
-    struct kndSet *class_idx = self->class_idx;
+    struct kndSharedSet *class_idx = self->class_idx;
     int err;
 
     if (DEBUG_REPO_LEVEL_2)
-        knd_log(".. indexing classes in \"%.*s\"..",
-                self->name_size, self->name);
+        knd_log(".. indexing classes in \"%.*s\"..", self->name_size, self->name);
 
     // TODO iterate func
     for (size_t i = 0; i < name_idx->size; i++) {
-        item = atomic_load_explicit(&name_idx->hash_array[i],
-                                    memory_order_relaxed);
+        item = atomic_load_explicit(&name_idx->hash_array[i], memory_order_relaxed);
         for (; item; item = item->next) {
             entry = item->data;
             if (!entry->class) {
@@ -1060,21 +1105,18 @@ static int index_classes(struct kndRepo *self,
 
             err = knd_class_index(c, task);
             if (err) {
-                knd_log("-- couldn't index the \"%.*s\" class",
-                        c->entry->name_size, c->entry->name);
+                knd_log("-- couldn't index the \"%.*s\" class", c->entry->name_size, c->entry->name);
                 return err;
             }
 
-            err = class_idx->add(class_idx,
-                                 entry->id, entry->id_size, (void*)entry);
+            err = knd_shared_set_add(class_idx, entry->id, entry->id_size, (void*)entry);
             if (err) return err;
         }
     }
     return knd_OK;
 }
 
-static int resolve_procs(struct kndRepo *self,
-                         struct kndTask *task)
+static int resolve_procs(struct kndRepo *self, struct kndTask *task)
 {
     struct kndProcEntry *entry;
     struct kndSharedDictItem *item;
@@ -1087,8 +1129,7 @@ static int resolve_procs(struct kndRepo *self,
                 self->name_size, self->name);
 
     for (size_t i = 0; i < proc_name_idx->size; i++) {
-        item = atomic_load_explicit(&proc_name_idx->hash_array[i],
-                                    memory_order_relaxed);
+        item = atomic_load_explicit(&proc_name_idx->hash_array[i], memory_order_relaxed);
         for (; item; item = item->next) {
             entry = item->data;
 
@@ -1251,7 +1292,7 @@ static int update_indices(struct kndRepo *self, struct kndCommit *commit, struct
     struct kndClassEntry *entry;
     struct kndProcEntry *proc_entry;
     struct kndSharedDictItem *item = NULL;
-    struct kndMemPool *mempool = task->mempool;
+    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
     struct kndRepo *repo = self;
     struct kndSharedDict *name_idx = repo->class_name_idx;
     int err;
@@ -1261,7 +1302,6 @@ static int update_indices(struct kndRepo *self, struct kndCommit *commit, struct
                 commit->numid, self->name_size, self->name, task->role);
 
     if (task->user_ctx) {
-        mempool = task->shard->user->mempool;
         repo = task->user_ctx->repo;
         name_idx = repo->class_name_idx;
     }
@@ -1533,7 +1573,7 @@ int knd_confirm_commit(struct kndRepo *self, struct kndTask *task)
 
     if (DEBUG_REPO_LEVEL_2)
         knd_log(".. \"%.*s\" repo to confirm commit #%zu", self->name_size, self->name, commit->numid);
-    
+
     commit->repo = self;
 
     err = knd_resolve_commit(commit, task);
@@ -1567,8 +1607,7 @@ int knd_present_repo_state(struct kndRepo *self, struct kndTask *task)
     int err;
 
     // TODO: choose format
-    err = present_latest_state_JSON(self,
-                                    task->out);                                   RET_ERR();
+    err = present_latest_state_JSON(self, task->out);                                   RET_ERR();
     return knd_OK;
 }
 
@@ -1634,10 +1673,13 @@ int knd_repo_new(struct kndRepo **repo, const char *name, size_t name_size,
     c->entry->repo = self;
     self->root_class = c;
 
-    /* global name indices */
-    err = knd_set_new(mempool, &self->class_idx);
+    err = knd_shared_set_new(NULL, &self->str_idx);
     if (err) goto error;
 
+    err = knd_shared_set_new(NULL, &self->class_idx);
+    if (err) goto error;
+
+    /* global name indices */
     err = knd_shared_dict_new(&self->class_name_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
 

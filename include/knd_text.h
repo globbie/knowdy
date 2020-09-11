@@ -31,6 +31,18 @@ struct kndStatement;
 struct kndRepo;
 struct kndAttrVar;
 
+typedef enum knd_charseq_enc_type {
+    KND_CHARSEQ_UTF8,
+    KND_ASCII
+} knd_charseq_enc_type;
+
+struct kndCharSeq
+{
+    knd_charseq_enc_type enc;
+    const char *val;
+    size_t val_size;
+};
+
 struct kndDiscourseContext
 {
     struct kndStatement *stms;
@@ -56,9 +68,12 @@ struct kndTextSearchReport
     struct kndAttr *attr;
     struct kndStatement *stm;
 
-    struct kndSet *idx;
+    struct kndClassIdx *idx;
+
     struct kndTextLoc *locs;
     size_t num_locs;
+    size_t total_locs;
+
     struct kndTextSearchReport *next;
 };
 
@@ -208,9 +223,13 @@ int knd_par_export_GSL(struct kndPar *par, struct kndTask *task);
 int knd_text_export_query_report(struct kndTask *task);
 int knd_text_export_query_report_GSL(struct kndTask *task);
 
+int knd_charseq_unmarshall(const char *elem_id, size_t elem_id_size, const char *val, size_t val_size,
+                           void **result, struct kndTask *task);
+
 int knd_text_new(struct kndMemPool *mempool, struct kndText **result);
 int knd_synode_new(struct kndMemPool *mempool, struct kndSyNode **result);
 int knd_synode_spec_new(struct kndMemPool *mempool, struct kndSyNodeSpec **result);
+int knd_charseq_new(struct kndMemPool *mempool, struct kndCharSeq **result);
 
 int knd_par_new(struct kndMemPool *mempool, struct kndPar **result);
 int knd_class_declar_new(struct kndMemPool *mempool, struct kndClassDeclaration **result);

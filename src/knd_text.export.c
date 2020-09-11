@@ -187,38 +187,70 @@ int knd_par_export_GSL(struct kndPar *par, struct kndTask *task)
     return knd_OK;
 }
 
-int knd_text_export_query_report_GSL(struct kndTask *task)
+static int export_class_idx_GSL(struct kndClassIdx *self, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
-    struct kndTextSearchReport *report;
-    struct kndClassEntry *entry;
     struct kndTextLoc *loc;
+    struct kndClassRef *ref;
+    struct kndClassRef *sub_idxs = atomic_load_explicit(&self->children, memory_order_relaxed);
     int err;
-    OUT("[report ", strlen("[report "));
 
-    for (report = task->ctx->reports; report; report = report->next) {
-        entry = report->entry;
-        OUT("{", 1);
-        OUT(entry->name, entry->name_size);
+    OUT("{tot ", strlen("{tot "));
+    err = out->writef(out, "%zu", self->total_locs);
+    RET_ERR();
+    OUT("}", 1);
 
-        if (report->num_locs) {
-            OUT("{tot ", strlen("{tot "));
-            err = out->writef(out, "%zu", report->num_locs);         RET_ERR();
+    OUT("{num-children ", strlen("{num-children "));
+    err = out->writef(out, "%zu", self->num_children);
+    RET_ERR();
+    OUT("}", 1);
+
+    if (sub_idxs) {
+        OUT("[sub ", strlen("[sub "));
+        FOREACH (ref, sub_idxs) {
+            OUT("{", 1);
+            OUT(ref->entry->name, ref->entry->name_size);
+            //err = export_class_idx_GSL(ref->idx, task);
+            //KND_TASK_ERR("failed to export class idx");
             OUT("}", 1);
         }
+        OUT("]", 1);
+    }
+
+    if (self->locs) {
         OUT("[loc ", strlen("[loc "));
-        for (loc = report->locs; loc; loc = loc->next) {
+        FOREACH (loc, self->locs) {
             OUT("{", 1);
             err = out->writef(out, "%zu:%zu", loc->par_id, loc->sent_id);         RET_ERR();
             OUT("}", 1);
         }
         OUT("]", 1);
+    }
+    return knd_OK;
+}
+
+int knd_text_export_query_report_GSL(struct kndTask *task)
+{
+    struct kndOutput *out = task->out;
+    struct kndTextSearchReport *report;
+    struct kndClassEntry *entry;
+    int err;
+
+    OUT("[report ", strlen("[report "));
+    FOREACH (report, task->ctx->reports) {
+        entry = report->entry;
+        OUT("{", 1);
+        OUT(entry->name, entry->name_size);
+
+        if (report->idx) {
+            err = export_class_idx_GSL(report->idx, task);
+            KND_TASK_ERR("failed to export class idx");
+        }
         OUT("}", 1);
     }
     OUT("]", 1);
     return knd_OK;
 }
-
 
 int knd_text_export_query_report(struct kndTask *task)
 {

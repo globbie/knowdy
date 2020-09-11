@@ -32,6 +32,18 @@ struct LocalContext {
     struct kndStatement  *stm;
 };
 
+int knd_charseq_new(struct kndMemPool *mempool, struct kndCharSeq **result)
+{
+    void *page;
+    int err;
+    assert(mempool->tiny_page_size >= sizeof(struct kndCharSeq));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
+    if (err) return err;
+    memset(page, 0, sizeof(struct kndCharSeq));
+    *result = page;
+    return knd_OK;
+}
+
 int knd_text_search_report_new(struct kndMemPool *mempool, struct kndTextSearchReport **result)
 {
     void *page;

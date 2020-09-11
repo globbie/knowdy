@@ -25,15 +25,13 @@ struct kndUserContext
     struct kndClassInst *inst;
     struct kndRepo *repo;
     struct kndRepo *base_repo;
+    struct kndMemPool *mempool;
 
     struct kndRepoAccess *repo_acl;
 
     /* usage statistics */
     atomic_size_t total_tasks;
     size_t cache_cell_num;
-
-    struct kndUserContext *prev;
-    struct kndUserContext *next;
 };
 
 struct kndUser

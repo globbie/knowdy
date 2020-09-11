@@ -5,7 +5,7 @@
 #include <stdatomic.h>
 #include "knd_config.h"
 
-typedef void (*cache_free_cb)(void *obj);
+typedef void (*cell_free_cb)(void *obj);
 
 struct kndCacheCell
 {
@@ -22,10 +22,10 @@ struct kndCache
     size_t num_cells;
     size_t max_mem_size;
     atomic_size_t state;
-    cache_free_cb cb;
+    cell_free_cb cb;
 };
 
-int knd_cache_new(struct kndCache **self, size_t num_cells, size_t max_mem_size, cache_free_cb cb);
+int knd_cache_new(struct kndCache **self, size_t num_cells, size_t max_mem_size, cell_free_cb cb);
 void knd_cache_del(struct kndCache *self);
 
 int knd_cache_set(struct kndCache *self, void *data, size_t *cell_num);

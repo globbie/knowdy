@@ -166,26 +166,62 @@ knd_num_to_str(size_t numval, char *buf, size_t *buf_size, size_t base)
     *buf_size = curr_size;
 }
 
-unsigned char * knd_pack_int(unsigned char *buf,
-                             unsigned int val)
+size_t knd_min_bytes(size_t val)
+{
+    if (val < 256) return 1;
+    if (val < 256 * 256) return 2;
+    if (val < 256 * 256 * 256) return 3;
+    return 4;
+}
+
+unsigned char * knd_pack_u32(unsigned char *buf, size_t val)
 {
     buf[0] = val >> 24;
     buf[1] = val >> 16;
     buf[2] = val >> 8;
     buf[3] = val;
-
     return buf + 4;
 }
 
-unsigned long knd_unpack_int(const unsigned char *buf)
+unsigned char * knd_pack_u24(unsigned char *buf, size_t val)
+{
+    buf[0] = val >> 16;
+    buf[1] = val >> 8;
+    buf[2] = val;
+    return buf + 3;
+}
+
+unsigned char * knd_pack_u16(unsigned char *buf, size_t val)
+{
+    buf[0] = val >> 8;
+    buf[1] = val;
+    return buf + 2;
+}
+
+unsigned long knd_unpack_u32(const unsigned char *buf)
 {
     unsigned long result = 0;
-
     result =  buf[3];
     result |= buf[2] << 8;
     result |= buf[1] << 16;
     result |= buf[0] << 24;
+    return result;
+}
 
+unsigned long knd_unpack_u24(const unsigned char *buf)
+{
+    unsigned long result = 0;
+    result =  buf[2];
+    result |= buf[1] << 8;
+    result |= buf[0] << 16;
+    return result;
+}
+
+unsigned long knd_unpack_u16(const unsigned char *buf)
+{
+    unsigned long result = 0;
+    result =  buf[1];
+    result |= buf[0] << 8;
     return result;
 }
 
