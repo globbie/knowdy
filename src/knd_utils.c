@@ -225,6 +225,24 @@ unsigned long knd_unpack_u16(const unsigned char *buf)
     return result;
 }
 
+void knd_pack_int(unsigned char *buf, size_t numval, size_t byte_size)
+{
+    switch (byte_size) {
+    case 4:
+        knd_pack_u32(buf, numval);
+        break;
+    case 3:
+        knd_pack_u24(buf, numval);
+        break;
+    case 2:
+        knd_pack_u16(buf, numval);
+        break;
+    default:
+        *buf = numval;
+        break;
+    }
+}
+
 static int knd_mkdir(const char *path, mode_t mode)
 {
     struct stat st;

@@ -54,8 +54,9 @@ struct kndSharedSetDir
     size_t payload_size;
     size_t payload_footer_size;
 
-    size_t dir_entry_offset;
+    //size_t dir_entry_offset;
     size_t num_subdirs;
+    size_t subdir_area_size;
 
     size_t total_elems;
     size_t total_size;

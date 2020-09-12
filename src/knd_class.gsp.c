@@ -1408,7 +1408,7 @@ int knd_class_name_marshall(void *elem, size_t *output_size, struct kndTask *tas
 
     OUT(entry->class->name, entry->class->name_size);
 
-    if (DEBUG_CLASS_GSP_LEVEL_TMP)
+    if (DEBUG_CLASS_GSP_LEVEL_2)
         knd_log("** %.*s => %.*s (size:%zu)",  entry->id_size, entry->id,
                 entry->class->name_size,  entry->class->name, out->buf_size - orig_size);
 

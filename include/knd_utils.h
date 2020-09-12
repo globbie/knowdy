@@ -32,6 +32,7 @@ size_t knd_min_bytes(size_t val);
 unsigned char * knd_pack_u32(unsigned char *buf, size_t val);
 unsigned char * knd_pack_u24(unsigned char *buf, size_t val);
 unsigned char * knd_pack_u16(unsigned char *buf, size_t val);
+void knd_pack_int(unsigned char *buf, size_t numval, size_t byte_size);
 
 unsigned long knd_unpack_u32(const unsigned char *buf);
 unsigned long knd_unpack_u24(const unsigned char *buf);
