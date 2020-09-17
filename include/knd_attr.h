@@ -219,7 +219,6 @@ struct kndAttr
     bool is_implied;
     bool is_unique;
 
-    /* if refclass is empty: assume self reference by default */
     const char *ref_classname;
     size_t ref_classname_size;
     struct kndClass *ref_class;

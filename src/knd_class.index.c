@@ -263,8 +263,7 @@ int knd_class_index(struct kndClass *self, struct kndTask *task)
     }
 
     if (self->indexing_in_progress) {
-        knd_log("-- vicious circle detected in \"%.*s\" while indexing",
-                self->name_size, self->name);
+        knd_log("-- vicious circle detected in \"%.*s\" while indexing", self->name_size, self->name);
         return knd_FAIL;
     }
 

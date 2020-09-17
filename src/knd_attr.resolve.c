@@ -158,8 +158,6 @@ static int resolve_inner_var(struct kndClass *self,
     if (!c->is_resolved) {
         err = knd_class_resolve(c, task);                                         RET_ERR();
     }
-
-
     classname = parent_item->val;
     classname_size = parent_item->val_size;
     if (parent_item->is_list_item) {

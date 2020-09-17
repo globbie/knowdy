@@ -536,7 +536,7 @@ extern int knd_attr_export_GSL(struct kndAttr *self, struct kndTask *task, size_
         if (err) return err;
         err = out->write(out, "{t ", 3);
         if (err) return err;
-        err = out->write(out, tr->seq,  tr->seq_size);
+        err = out->write(out, tr->seq->val,  tr->seq->val_size);
         if (err) return err;
         err = out->write(out, "}}", 2);
         if (err) return err;

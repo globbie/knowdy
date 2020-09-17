@@ -267,18 +267,18 @@ int knd_shared_set_map(struct kndSharedSet *self, map_cb_func cb, void *obj)
 static int build_elems_footer(struct kndSharedSetDir *dir, bool use_keys, size_t cell_size, struct kndTask *task)
 {
     unsigned char buf[KND_NAME_SIZE];
-    struct kndSharedSetDirEntry *entry;
     struct kndOutput *out = task->out;
+    size_t block_size;
     int err;
 
     for (size_t i = 0; i < KND_RADIX_BASE; i++) {
-        entry = &dir->entries[i];
+        block_size = dir->elem_block_sizes[i];
         if (use_keys) {
-            if (!entry->payload_size) continue;
+            if (!block_size) continue;
             err = out->writec(out, obj_id_seq[i]);
             KND_TASK_ERR("output failure");
         }
-        knd_pack_int(buf, entry->payload_size, cell_size);
+        knd_pack_int(buf, block_size, cell_size);
         err = out->write(out, (const char*)buf, cell_size);
         KND_TASK_ERR("set dir output failed");
     }
@@ -293,25 +293,31 @@ static int build_subdirs_footer(struct kndSharedSetDir *dir, char *idbuf, size_t
                                 bool use_keys, size_t cell_size, struct kndTask *task)
 {
     unsigned char buf[KND_NAME_SIZE];
-    struct kndSharedSetDirEntry *entry;
     struct kndSharedSetDir *subdir;
     struct kndOutput *out = task->out;
+    size_t subdir_block_size;
     int err;
 
     for (size_t i = 0; i < KND_RADIX_BASE; i++) {
-        entry = &dir->entries[i];
-        subdir = entry->subdir;
+        subdir = dir->subdirs[i];
+
+        if (!subdir)
+            subdir_block_size = 0;
+        else
+            subdir_block_size = subdir->total_size;
+
         if (use_keys) {
-            if (!subdir->total_size) continue;
+            if (!subdir_block_size) continue;
             err = out->writec(out, obj_id_seq[i]);
             KND_TASK_ERR("subdir output failure");
         }
-        if (DEBUG_SHARED_SET_LEVEL_TMP) {
+
+        if (DEBUG_SHARED_SET_LEVEL_3) {
             idbuf[idbuf_size] = obj_id_seq[i];
-            knd_log(">> \"%.*s\" subdir size: %zu", idbuf_size + 1, idbuf, subdir->total_size);
+            knd_log(">> \"%.*s\" subdir size: %zu", idbuf_size + 1, idbuf, subdir_block_size);
         }
 
-        knd_pack_int(buf, subdir->total_size, cell_size);
+        knd_pack_int(buf, subdir_block_size, cell_size);
         err = out->write(out, (const char*)buf, cell_size);
         KND_TASK_ERR("set dir output failed");
     }
@@ -332,29 +338,30 @@ static int marshall_elems(struct kndSharedSetElemIdx *parent_idx, struct kndShar
 {
     struct kndOutput *out = task->out;
     void *elem;
-    struct kndSharedSetDirEntry *entry;
+    size_t block_size;
     int err;
 
     for (size_t i = 0; i < KND_RADIX_BASE; i++) {
         if (parent_idx->idxs[i]) dir->num_subdirs++;
         elem = parent_idx->elems[i];
         if (!elem) continue;
-        entry = &dir->entries[i];
-        entry->elem = elem;
 
         if (use_keys) {
             if (dir->num_elems) {
-                err = out->writec(out, (char)'{');
+                // add rec separator
+                err = out->writec(out, (char)'\0');
                 KND_TASK_ERR("output failure");
             }
             err = out->writec(out, obj_id_seq[i]);
             KND_TASK_ERR("output failure");
         }
-        err = cb(elem, &entry->payload_size, task);
+        err = cb(elem, &block_size, task);
         if (err) return err;
 
-        if (entry->payload_size > dir->cell_max_val)
-            dir->cell_max_val = entry->payload_size;
+        if (block_size > dir->cell_max_val)
+            dir->cell_max_val = block_size;
+
+        dir->elem_block_sizes[i] = block_size;
         dir->num_elems++;
     }
     return knd_OK;
@@ -366,7 +373,6 @@ static int marshall_subdirs(struct kndSharedSetElemIdx *parent_idx, struct kndSh
     struct kndOutput *out = task->out;
     struct kndSharedSetElemIdx *idx;
     struct kndSharedSetDir *subdir;
-    struct kndSharedSetDirEntry *entry;
     size_t cell_size = 1;
     bool use_keys = false;
     int err;
@@ -376,20 +382,19 @@ static int marshall_subdirs(struct kndSharedSetElemIdx *parent_idx, struct kndSh
     for (size_t i = 0; i < KND_RADIX_BASE; i++) {
         idx = parent_idx->idxs[i];
         if (!idx) continue;
-        entry = &dir->entries[i];
 
         idbuf[idbuf_size] = obj_id_seq[i];
-
         subdir = NULL;
         err = traverse_marshall(idx, idbuf, idbuf_size + 1, cb, &subdir, task);
         KND_TASK_ERR("failed to traverse a subdir");
-        entry->subdir = subdir;
+
+        dir->subdirs[i] = subdir;
 
         if (subdir->total_size > dir->cell_max_val)
             dir->cell_max_val = subdir->total_size;
 
         dir->total_elems += subdir->total_elems;
-        dir->subdir_area_size += subdir->total_size;
+        dir->subdir_block_size += subdir->total_size;
         dir->num_subdirs++;
     }
 
@@ -405,11 +410,11 @@ static int marshall_subdirs(struct kndSharedSetElemIdx *parent_idx, struct kndSh
     err = knd_append_file((const char*)task->filepath, out->buf, out->buf_size);
     KND_TASK_ERR("set idx write failure");
 
-    dir->subdir_area_size += out->buf_size;
-    dir->total_size += dir->subdir_area_size;
+    dir->subdir_block_size += out->buf_size;
+    dir->total_size += dir->subdir_block_size;
 
     if (DEBUG_SHARED_SET_LEVEL_TMP)
-        knd_log(">> \"%.*s\" total subdir area size:%zu", idbuf_size, idbuf, dir->subdir_area_size);
+        knd_log(">> \"%.*s\" total subdir block size:%zu", idbuf_size, idbuf, dir->subdir_block_size);
 
     return knd_OK;
 }
@@ -456,12 +461,12 @@ static int traverse_marshall(struct kndSharedSetElemIdx *parent_idx, char *idbuf
             KND_TASK_ERR("failed to build set dir footer");
         }
 
-        dir->payload_size = out->buf_size;
+        dir->payload_block_size = out->buf_size;
         dir->total_elems = dir->num_elems;
-        dir->total_size = dir->payload_size;
+        dir->total_size = dir->payload_block_size;
 
         knd_log(">> \"%.*s\" payload block \"%.*s\" payload size:%zu",
-                idbuf_size, idbuf, out->buf_size, out->buf, dir->payload_size);
+                idbuf_size, idbuf, out->buf_size, out->buf, dir->payload_block_size);
 
         err = knd_append_file((const char*)task->filepath, out->buf, out->buf_size);
         KND_TASK_ERR("set idx write failure");
@@ -475,18 +480,18 @@ static int traverse_marshall(struct kndSharedSetElemIdx *parent_idx, char *idbuf
         KND_TASK_ERR("failed to marshall subdirs");
     }
 
-    // elems area size
+    // payload block size
     out->reset(out);
     if (DEBUG_SHARED_SET_LEVEL_TMP) {
-        knd_log("== \"%.*s\" payload size:%zu  subdir area size:%zu  total:%zu",
-                idbuf_size, idbuf, dir->payload_size, dir->subdir_area_size, dir->total_size);
+        knd_log("== \"%.*s\" payload size:%zu  subdir block size:%zu  total:%zu",
+                idbuf_size, idbuf, dir->payload_block_size, dir->subdir_block_size, dir->total_size);
     }
 
-    if (dir->payload_size) {
-        byte_size = knd_min_bytes(dir->payload_size);
-        knd_pack_int(buf, dir->payload_size, byte_size);
+    if (dir->payload_block_size) {
+        byte_size = knd_min_bytes(dir->payload_block_size);
+        knd_pack_int(buf, dir->payload_block_size, byte_size);
         err = out->write(out, (const char*)buf, byte_size);
-        KND_TASK_ERR("elem area size output failed");
+        KND_TASK_ERR("elem block size output failed");
         err = out->writec(out, (char)byte_size);
         KND_TASK_ERR("output failure");
         dir->total_size += byte_size + 1;
@@ -558,6 +563,22 @@ int knd_shared_set_elem_idx_new(struct kndMemPool *mempool, struct kndSharedSetE
     err = knd_mempool_page(mempool, KND_MEMPAGE_BASE, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndSharedSetElemIdx));
+    *result = page;
+    return knd_OK;
+}
+
+int knd_shared_set_dir_new(struct kndMemPool *mempool, struct kndSharedSetDir **result)
+{
+    void *page;
+    int err;
+    if (!mempool) {
+        *result = calloc(1, sizeof(struct kndSharedSetDir));
+        return *result ? 0 : knd_NOMEM;
+    }
+    assert(mempool->small_page_size >= sizeof(struct kndSharedSetDir));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
+    if (err) return err;
+    memset(page, 0, sizeof(struct kndSharedSetDir));
     *result = page;
     return knd_OK;
 }

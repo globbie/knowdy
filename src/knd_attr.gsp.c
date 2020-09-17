@@ -39,18 +39,12 @@
 #define DEBUG_ATTR_GSP_LEVEL_5 0
 #define DEBUG_ATTR_GSP_LEVEL_TMP 1
 
-static int ref_item_export_GSP(struct kndAttrVar *item,
-                               struct kndOutput *out)
+static int ref_item_export_GSP(struct kndAttrVar *item, struct kndOutput *out)
 {
-    struct kndClass *c;
+    struct kndClass *c = item->class;
     int err;
-
-    assert(item->class != NULL);
-    c = item->class;
-    //err = out->write(out, c->name, c->name_size);                                 RET_ERR();
+    assert(c != NULL);
     err = out->write(out, c->entry->id, c->entry->id_size);                       RET_ERR();
-    //err = out->writec(out, '}');                                                  RET_ERR();
-
     return knd_OK;
 }
 
@@ -126,86 +120,66 @@ static int attr_var_list_export_GSP(struct kndAttrVar *parent_item,
     struct kndClass *c;
     int err;
 
-    if (DEBUG_ATTR_GSP_LEVEL_2) {
+    if (DEBUG_ATTR_GSP_LEVEL_2)
         knd_log(".. export GSP list: %.*s\n\n",
                 parent_item->name_size, parent_item->name);
-    }
 
-    err = out->writec(out, '[');                                                  RET_ERR();
-    err = out->writec(out, '!');                                                  RET_ERR();
-
-    err = out->write(out, parent_item->name, parent_item->name_size);             RET_ERR();
-
-    for (item = parent_item->list; item; item = item->next) {
-        err = out->writec(out, '{');                                              RET_ERR();
+    OUT("[", 1);
+    OUT(parent_item->name, parent_item->name_size);
+    FOREACH (item, parent_item->list) {
+        OUT("{", 1);
         switch (item->attr->type) {
         case KND_ATTR_REF:
             c = item->class;
-            err = out->write(out,
-                             c->entry->id,
-                             c->entry->id_size);                        RET_ERR();
+            OUT(c->entry->id, c->entry->id_size);
             break;
         case KND_ATTR_INNER:
             /* check implied field */
-            
-            if (item->class) {
-                c = item->class;
-                err = out->write(out,
-                                 c->entry->id,
-                                 c->entry->id_size);                              RET_ERR();
-            } else {
-                err = out->write(out,
-                                 item->name,
-                                 item->name_size);                                RET_ERR();
-            }
-            err = knd_attr_var_export_GSP(item, task, out);                             RET_ERR();
+            c = item->class;
+            assert(c != NULL);
+            OUT(c->entry->id, c->entry->id_size);
+            err = knd_attr_var_export_GSP(item, task, out);
+            KND_TASK_ERR("failed to export inner attr var");
             break;
         default:
-            err = out->write(out,
-                             item->name,
-                             item->name_size);                                    RET_ERR();
-            err = knd_attr_var_export_GSP(item, task, out);                             RET_ERR();
+            OUT(item->name, item->name_size);
+            err = knd_attr_var_export_GSP(item, task, out);
+            KND_TASK_ERR("failed to export attr var");
         }
-        err = out->writec(out, '}');                                              RET_ERR();
+        OUT("}", 1);
     }
-    err = out->writec(out, ']');                                                  RET_ERR();
-
+    OUT("]", 1);
     return knd_OK;
 }
 
-extern int knd_attr_vars_export_GSP(struct kndAttrVar *items,
-                                    struct kndOutput *out,
-                                    struct kndTask *task,
-                                    size_t unused_var(depth),
-                                    bool is_concise)
+int knd_attr_vars_export_GSP(struct kndAttrVar *items, struct kndOutput *out, struct kndTask *task,
+                             size_t unused_var(depth), bool is_concise)
 {
     struct kndAttrVar *item;
     struct kndAttr *attr;
     int err;
 
-    for (item = items; item; item = item->next) {
+    FOREACH (item, items) {
         if (!item->attr) continue;
         attr = item->attr;
         if (is_concise && !attr->concise_level) continue;
 
         if (attr->is_a_set) {
             err = attr_var_list_export_GSP(item, task, out);
-            if (err) return err;
+            KND_TASK_ERR("failed to export attr var list");
             continue;
         }
-
-        err = out->writec(out, '{');                                                  RET_ERR();
-        err = out->write(out, item->name, item->name_size);                           RET_ERR();
-        err = out->writec(out, ' ');                                                  RET_ERR();
-        err = knd_attr_var_export_GSP(item, task, out);                               RET_ERR();
-        err = out->writec(out, '}');                                                  RET_ERR();
+        OUT("{", 1);
+        OUT(attr->id, attr->id_size);
+        OUT(" ", 1);
+        err = knd_attr_var_export_GSP(item, task, out);
+        KND_TASK_ERR("failed to export attr var");
+        OUT("}", 1);
     }
     return knd_OK;
 }
 
-extern int knd_attr_var_export_GSP(struct kndAttrVar *item,
-                                   struct kndTask *task,
-                                   struct kndOutput *out)
+int knd_attr_var_export_GSP(struct kndAttrVar *item, struct kndTask *task, struct kndOutput *out)
 {
     int err;
     
@@ -214,8 +188,8 @@ extern int knd_attr_var_export_GSP(struct kndAttrVar *item,
         err = out->write(out, item->val, item->val_size);                         RET_ERR();
         break;
     case KND_ATTR_REF:
-        //err = ref_item_export_GSP(item, out);
-        //if (err) return err;
+        err = ref_item_export_GSP(item, out);
+        KND_TASK_ERR("failed to export ref attr var");
         break;
     case KND_ATTR_PROC_REF:
         err = proc_item_export_GSP(item, task, out);                              RET_ERR();
@@ -226,6 +200,5 @@ extern int knd_attr_var_export_GSP(struct kndAttrVar *item,
     default:
         err = out->write(out, item->val, item->val_size);                     RET_ERR();
     }
-    
     return knd_OK;
 }

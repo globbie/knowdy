@@ -226,6 +226,8 @@ int knd_import_class_inst(struct kndClassEntry *self, const char *rec, size_t *t
         knd_log(".. class \"%.*s\" (repo:%.*s) to import inst \"%.*s\"",
                 entry->name_size, entry->name, entry->repo->name_size, entry->repo->name, 128, rec);
 
+    assert(self->class != NULL);
+
     switch (task->type) {
     case KND_RESTORE_STATE:
         break;

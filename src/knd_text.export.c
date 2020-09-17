@@ -102,21 +102,20 @@ static int export_GSL(struct kndText *self, struct kndTask *task)
     struct kndPar *par;
     struct kndSentence *sent;
     struct kndState *state;
-    const char *seq = self->seq;
-    size_t seq_size = self->seq_size;
+    struct kndCharSeq *seq = self->seq;
     //struct kndStateVal *val;
     // struct kndText *t;
     int err;
 
     state = atomic_load_explicit(&self->states, memory_order_relaxed);
     if (state) {
-        seq = state->val->val;
-        seq_size = state->val->val_size;
+        seq->val = state->val->val;
+        seq->val_size = state->val->val_size;
         return knd_OK;
     }
 
-    if (seq_size) {
-        err = out->write(out, seq, seq_size);                   RET_ERR();
+    if (seq->val_size) {
+        err = out->write(out, seq->val, seq->val_size);                   RET_ERR();
     }
     if (self->locale_size) {
         err = out->writec(out, '{');                            RET_ERR();
@@ -152,7 +151,7 @@ static int export_JSON(struct kndText *self,
     state = atomic_load_explicit(&self->states,
                                  memory_order_relaxed);
     if (!state) {
-        err = out->write_escaped(out, self->seq, self->seq_size);
+        err = out->write_escaped(out, self->seq->val, self->seq->val_size);
         if (err) return err;
         if (self->locale_size) {
             err = out->write(out, "\"_lang\":\"", strlen("\"_lang:\""));          RET_ERR();

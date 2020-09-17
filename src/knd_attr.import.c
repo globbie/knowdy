@@ -72,87 +72,6 @@ static gsl_err_t parse_text(void *obj, const char *rec, size_t *total_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t set_gloss_locale(void *obj, const char *name, size_t name_size)
-{
-    struct kndText *self = obj;
-    if (name_size >= KND_SHORT_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
-    self->locale = name;
-    self->locale_size = name_size;
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t set_gloss_value(void *obj, const char *name, size_t name_size)
-{
-    struct kndText *self = obj;
-    if (!name_size) return make_gsl_err(gsl_FORMAT);
-    self->seq = name;
-    self->seq_size = name_size;
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_gloss_item(void *obj, const char *rec, size_t *total_size)
-{
-    struct LocalContext *ctx = obj;
-    struct kndTask *task = ctx->task;
-    struct kndAttr *self = ctx->attr;
-    struct kndText *tr;
-    struct kndMemPool *mempool = task->mempool;
-    int err;
-
-    if (DEBUG_ATTR_LEVEL_2)
-        knd_log(".. %.*s: allocate gloss translation",
-                self->name_size, self->name);
-
-    err = knd_text_new(mempool, &tr);
-    if (err) return *total_size = 0, make_gsl_err_external(knd_NOMEM);
-    memset(tr, 0, sizeof(struct kndText));
-
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = set_gloss_locale,
-          .obj = tr
-        },
-        { .name = "t",
-          .name_size = strlen("t"),
-          .run = set_gloss_value,
-          .obj = tr
-        }
-    };
-    gsl_err_t parser_err;
-
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return parser_err;
-
-    if (tr->locale_size == 0 || tr->seq_size == 0)
-        return make_gsl_err(gsl_FORMAT);  // error: both of them are required
-
-    tr->locale = tr->locale;
-    tr->locale_size = tr->locale_size;
-
-    if (DEBUG_ATTR_LEVEL_2)
-        knd_log(".. read gloss translation: \"%.*s\",  text: \"%.*s\"",
-                tr->locale_size, tr->locale, tr->seq_size, tr->seq);
-
-    // append
-    tr->next = self->tr;
-    self->tr = tr;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_gloss(void *obj, const char *rec, size_t *total_size)
-{
-    struct LocalContext *ctx = obj;
-
-    struct gslTaskSpec item_spec = {
-        .is_list_item = true,
-        .parse = parse_gloss_item,
-        .obj = ctx
-    };
-
-    return gsl_parse_array(&item_spec, rec, total_size);
-}
-
 static gsl_err_t set_ref_class(void *obj, const char *name, size_t name_size)
 {
     struct kndAttr *self = obj;
@@ -738,8 +657,8 @@ gsl_err_t knd_import_attr(struct kndAttr *self, struct kndTask *task,
         { .type = GSL_GET_ARRAY_STATE,
           .name = "_gloss",
           .name_size = strlen("_gloss"),
-          .parse = parse_gloss,
-          .obj = &ctx
+          .parse = knd_parse_gloss_array,
+          .obj = task
         },
         { .name = "c",
           .name_size = strlen("c"),

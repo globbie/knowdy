@@ -30,6 +30,7 @@
 #include "knd_proc.h"
 #include "knd_proc_arg.h"
 #include "knd_set.h"
+#include "knd_shared_set.h"
 #include "knd_utils.h"
 #include "knd_output.h"
 #include "knd_http_codes.h"
@@ -56,8 +57,12 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     struct kndClass *self = ctx->class;
     struct kndTask *task = ctx->task;
     struct kndRepo *repo = ctx->repo;
+    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
     struct kndClassEntry *entry;
     struct kndClass *c;
+    char idbuf[KND_ID_SIZE];
+    size_t idbuf_size;
+    struct kndCharSeq *seq;
     int err;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
@@ -66,7 +71,6 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     /* initial bulk load in progress */
     switch (task->type) {
     case KND_LOAD_STATE:
-
         knd_build_conc_abbr(name, name_size, self->abbr, &self->abbr_size);
         entry = knd_shared_dict_get(repo->class_name_idx, name, name_size);
         if (!entry) {
@@ -76,19 +80,39 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
             self->name = name;
             self->name_size = name_size;
 
-            /* register globally */
-            err = knd_shared_dict_set(repo->class_name_idx,
-                                      name, name_size,
-                                      (void*)entry,
-                                      task->mempool,
-                                      NULL, NULL, false);
+            /* register as a uniq class name */
+            err = knd_shared_dict_set(repo->class_name_idx, name, name_size, (void*)entry, task->mempool, NULL, NULL, false);
             if (err) {
                 knd_log("failed to register a class name");
                 return make_gsl_err_external(err);
             }
+
+            /* register as a normal charseq */
+            seq = knd_shared_dict_get(repo->str_dict, name, name_size);
+            if (!seq) {
+                err = knd_charseq_new(mempool, &seq);
+                seq->val = name;
+                seq->val_size = name_size;
+                seq->numid = atomic_fetch_add_explicit(&repo->num_strs, 1, memory_order_relaxed);
+
+                err = knd_shared_dict_set(repo->str_dict, name, name_size, (void*)seq,
+                                          mempool, NULL, &seq->item, false);
+                if (err) {
+                    KND_TASK_LOG("failed to register a class name charseq");
+                    return make_gsl_err_external(err);
+                }
+                knd_uid_create(seq->numid, idbuf, &idbuf_size);
+                err = knd_shared_set_add(repo->str_idx, idbuf, idbuf_size, (void*)seq);
+                if (err) {
+                    KND_TASK_LOG("failed to register a charseq by numid");
+                    return make_gsl_err_external(err);
+                }
+                entry->seq = seq;
+                // knd_log(">> class name as a str: \"%.*s\"", name_size, name);
+            }
             return make_gsl_err(gsl_OK);
         }
-        /* class entry has no class body */
+        /* no class body so far */
         if (!entry->class) {
             entry->class =    self;
             self->entry =     entry;
@@ -422,7 +446,7 @@ gsl_err_t knd_class_import(struct kndRepo *repo, const char *rec, size_t *total_
     gsl_err_t parser_err;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log("..worker \"%zu\" to import class: \"%.*s\"", task->id, 128, rec);
+        knd_log(".. worker \"%zu\" to import class: \"%.*s\"", task->id, 128, rec);
 
     err = knd_class_new(mempool, &c);
     if (err) {

@@ -29,6 +29,7 @@
 #include "knd_shared_dict.h"
 #include "knd_proc_arg.h"
 #include "knd_set.h"
+#include "knd_shared_set.h"
 #include "knd_utils.h"
 #include "knd_output.h"
 #include "knd_http_codes.h"
@@ -44,34 +45,29 @@
 
 struct LocalContext {
     struct kndTask *task;
+    struct kndRepo *repo;
     struct kndAttrVar *attr_var;
     struct kndClass *class;
     struct kndClassInst *class_inst;
     struct kndClassVar *class_var;
 };
 
-static int export_glosses(struct kndClass *self,
-                          struct kndOutput *out)
+static int export_glosses(struct kndClass *self, struct kndOutput *out)
 {
-    struct kndText *tr;
-    int err;
-    err = out->write(out, "[!_g", strlen("[!_g"));
-    if (err) return err;
-
-    for (tr = self->tr; tr; tr = tr->next) {
-        err = out->write(out, "{", 1);
-        if (err) return err;
-        err = out->write(out, tr->locale, tr->locale_size);
-        if (err) return err;
-        err = out->write(out, "{t ", 3);
-        if (err) return err;
-        err = out->write(out, tr->seq, tr->seq_size);
-        if (err) return err;
-        err = out->write(out, "}}", 2);
-        if (err) return err;
+    char idbuf[KND_ID_SIZE];
+    size_t id_size = 0;
+    struct kndText *t;
+    OUT("[_g", strlen("[_g"));
+    FOREACH (t, self->tr) {
+        OUT("{", 1);
+        OUT(t->locale, t->locale_size);
+        OUT("{t ", strlen("{t "));
+        knd_uid_create(t->seq->numid, idbuf, &id_size);
+        OUT(idbuf, id_size);
+        // OUT(t->seq, t->seq_size);
+        OUT("}}", 2);
     }
-    err = out->write(out, "]", 1);
-    if (err) return err;
+    OUT("]", 1);
     return knd_OK;
 }
 
@@ -102,15 +98,13 @@ static int export_glosses(struct kndClass *self,
 }
 */
 
-static int export_baseclass_vars(struct kndClass *self,
-                                 struct kndTask *task,
-                                 struct kndOutput *out)
+static int export_baseclass_vars(struct kndClass *self, struct kndTask *task, struct kndOutput *out)
 {
     struct kndClassVar *item;
     struct kndClass *c;
     int err;
 
-    err = out->write(out, "[!_is", strlen("[!_is"));                              RET_ERR();
+    err = out->write(out, "[_is", strlen("[_is"));                              RET_ERR();
     for (item = self->baseclass_vars; item; item = item->next) {
         err = out->writec(out, '{');                                              RET_ERR();
         c = item->entry->class;
@@ -200,35 +194,8 @@ static int export_baseclass_vars(struct kndClass *self,
 }
 */
 
-static int export_conc_id_GSP(void *obj,
-                              const char *unused_var(elem_id),
-                              size_t unused_var(elem_id_size),
-                              size_t unused_var(count),
-                              void *elem)
-{
-    struct kndOutput *out = obj;
-    struct kndClassEntry *entry = elem;
-    int err;
-    err = out->writec(out, ' ');                                                  RET_ERR();
-    err = out->write(out, entry->id, entry->id_size);                                 RET_ERR();
-    return knd_OK;
-}
-
-/*static int export_facets_GSP(struct kndSet *unused_var(set),
-                             struct kndTask *task)
-{
-    struct kndOutput *out = task->out;
-    int err;
-
-    err = out->write(out,  "[fc ", strlen("[fc "));                               RET_ERR();
-
-    err = out->write(out,  "]", 1);                                               RET_ERR();
-    return knd_OK;
-}
-*/
-
-static int export_descendants_GSP(struct kndClass *self,
-                                  struct kndTask *task)
+#if 0
+static int export_descendants_GSP(struct kndClass *self, struct kndTask *task)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size;
@@ -255,175 +222,7 @@ static int export_descendants_GSP(struct kndClass *self,
 
     return knd_OK;
 }
-
-/*static int ref_list_export_GSP(struct kndClass *self,
-                               struct kndAttrVar *parent_item)
-{
-    struct kndAttrVar *item;
-    struct kndOutput *out;
-    struct kndClass *c;
-    int err;
-
-    out = self->entry->repo->out;
-
-    err = out->writec(out, '{');
-    if (err) return err;
-    err = out->write(out, parent_item->name, parent_item->name_size);
-    if (err) return err;
-
-    err = out->write(out, "[r", strlen("[r"));
-    if (err) return err;
-
-    if (parent_item->val_size) {
-        c = parent_item->class;
-        if (c) {
-            err = out->writec(out, ' ');
-            if (err) return err;
-            err = out->write(out, c->entry->id, c->entry->id_size);
-            if (err) return err;
-        }
-    }
-
-    for (item = parent_item->list; item; item = item->next) {
-        c = item->class;
-        if (!c) continue;
-
-        err = out->writec(out, ' ');
-        if (err) return err;
-        err = out->write(out, c->entry->id, c->entry->id_size);
-        if (err) return err;
-    }
-    err = out->writec(out, ']');
-    if (err) return err;
-
-    err = out->writec(out, '}');
-    if (err) return err;
-
-    return knd_OK;
-}
-*/
-
- /*static int inner_item_export_GSP(struct kndClass *self,
-                                struct kndAttrVar *parent_item)
-{
-    struct kndOutput *out = self->entry->repo->out;
-    struct kndClass *c = parent_item->class;
-    struct kndAttrVar *item;
-    struct kndAttr *attr;
-    int err;
-
-    if (DEBUG_CLASS_GSP_LEVEL_2)
-        knd_log("== GSP export of inner item: %.*s val:%.*s",
-                parent_item->name_size, parent_item->name,
-                parent_item->val_size, parent_item->val);
-
-    err = out->writec(out, '{');
-    if (err) return err;
-
-    if (c) {
-        err = out->write(out, c->entry->id, c->entry->id_size);
-        if (err) return err;
-    } else {
-
-        if (parent_item->val_size) {
-            c = parent_item->attr->ref_class;
-            if (c && c->implied_attr) {
-                attr = c->implied_attr;
-                err = out->writec(out, ' ');
-                if (err) return err;
-                err = out->write(out,
-                                 parent_item->val,
-                                 parent_item->val_size);
-                if (err) return err;
-            } else {
-                err = out->writec(out, ' ');
-                if (err) return err;
-                err = out->write(out,
-                                 parent_item->val,
-                                 parent_item->val_size);
-                if (err) return err;
-            }
-        } else {
-            err = out->write(out,
-                             parent_item->id,
-                             parent_item->id_size);
-            if (err) return err;
-        }
-    }
-
-    c = parent_item->attr->ref_class;
-
-    for (item = parent_item->children; item; item = item->next) {
-        err = out->writec(out, '{');
-        if (err) return err;
-
-        err = out->write(out, item->name, item->name_size);
-        if (err) return err;
-
-        switch (item->attr->type) {
-        case KND_ATTR_REF:
-            //knd_log("ref item: %.*s", item->name_size, item->name);
-            break;
-        case KND_ATTR_INNER:
-            err = inner_item_export_GSP(self, item);
-            if (err) return err;
-            break;
-        default:
-            err = out->writec(out, ' ');
-            if (err) return err;
-            err = out->write(out, item->val, item->val_size);
-            if (err) return err;
-            break;
-        }
-
-        err = out->writec(out, '}');
-        if (err) return err;
-    }
-
-    //if (parent_item->class) {
-    err = out->writec(out, '}');
-    if (err) return err;
-
-    return knd_OK;
-}
- */
- 
-/*static int inner_list_export_GSP(struct kndClass *self,
-                                struct kndAttrVar *parent_item)
-{
-    struct kndAttrVar *item;
-    struct kndOutput *out = self->entry->repo->out;
-    struct kndClass *c;
-    int err;
-
-    if (DEBUG_CLASS_GSP_LEVEL_1) {
-        knd_log(".. export inner list: %.*s  val:%.*s",
-                parent_item->name_size, parent_item->name,
-                parent_item->val_size, parent_item->val);
-    }
-
-    err = out->writec(out, '[');
-    if (err) return err;
-    err = out->write(out, parent_item->name, parent_item->name_size);
-    if (err) return err;
-
-    if (parent_item->class) {
-        err = inner_item_export_GSP(self, parent_item);
-        if (err) return err;
-    }
-
-    for (item = parent_item->list; item; item = item->next) {
-        c = item->class;
-        err = inner_item_export_GSP(self, item);
-        if (err) return err;
-    }
-
-    err = out->writec(out, ']');
-    if (err) return err;
-
-    return knd_OK;
-}
-*/
+#endif
 
 static int export_class_body_commits(struct kndClass *self,
                                      struct kndClassCommit *unused_var(class_commit),
@@ -531,58 +330,46 @@ extern int knd_class_export_commits_GSP(struct kndClass *self,
     return knd_OK;
 }
 
-extern int knd_class_export_GSP(struct kndClass *self,
-                                struct kndTask *task)
+int knd_class_export_GSP(struct kndClass *self, struct kndTask *task)
 {
+    char idbuf[KND_ID_SIZE];
+    size_t idbuf_size = 0;
     struct kndOutput *out = task->out;
     struct kndAttr *attr;
+    struct kndClassEntry *entry = self->entry;
     int err;
+
+    assert(entry->seq != NULL);
 
     if (DEBUG_CLASS_GSP_LEVEL_2)
         knd_log(".. GSP export of \"%.*s\" [%.*s]",
-                self->entry->name_size, self->entry->name,
-                self->entry->id_size, self->entry->id);
+                entry->name_size, entry->name, entry->id_size, entry->id);
 
-    err = out->writec(out, '{');
-    if (err) return err;
-    err = out->write(out, self->entry->id, self->entry->id_size);
-    if (err) return err;
-    err = out->write(out, "{_n ", strlen("{_n "));
-    if (err) return err;
-    err = out->write(out, self->entry->name, self->entry->name_size);
-    if (err) return err;
-    err = out->writec(out, '}');
-    if (err) return err;
+    knd_uid_create(entry->seq->numid, idbuf, &idbuf_size);
+    OUT(idbuf, idbuf_size);
 
     if (self->tr) {
-        err = export_glosses(self, out);                                          RET_ERR();
+        err = export_glosses(self, out);
+        KND_TASK_ERR("failed to export glosses");
     }
-
-    /*if (self->summary) {
-        err = export_summary(self, out);                                          RET_ERR();
-        }*/
-
     if (self->baseclass_vars) {
-        err = export_baseclass_vars(self, task, out);                                   RET_ERR();
+        err = export_baseclass_vars(self, task, out);
+        KND_TASK_ERR("failed to export baseclass vars");
     }
-
     if (self->attrs) {
         for (attr = self->attrs; attr; attr = attr->next) {
-            err = knd_attr_export(attr, KND_FORMAT_GSP, task);                        RET_ERR();
+            err = knd_attr_export(attr, KND_FORMAT_GSP, task);
+            KND_TASK_ERR("failed to export attr");
         }
     }
-
-    if (self->entry->descendants) {
+    /*if (self->entry->descendants) {
         err = export_descendants_GSP(self, task);                                     RET_ERR();
     }
-
-    err = out->writec(out, '}');
-    if (err) return err;
-
+    */
     return knd_OK;
 }
 
-
+#if 0
 static gsl_err_t attr_var_alloc(void *accu, struct kndAttrVar **result)
 {
     struct LocalContext *ctx = accu;
@@ -837,48 +624,6 @@ static gsl_err_t parse_attr_var_item(void *obj,
     return attr_var_append(ctx->attr_var, attr_var);
 }
 
-
-/*static gsl_err_t attr_var_alloc(void *obj,
-                                 const char *name,
-                                 size_t name_size,
-                                 size_t unused_var(count),
-                                 void **result)
-{
-    struct kndAttrVar *self = obj;
-    struct kndAttrVar *attr_var;
-    struct kndSet *class_idx;
-    struct kndClassEntry *entry;
-    struct kndMemPool *mempool = self->attr->parent_class->entry->repo->mempool;
-    void *elem;
-    int err;
-
-    if (DEBUG_CLASS_GSP_LEVEL_2) {
-        knd_log(".. alloc attr item conc id: \"%.*s\" attr:%p",
-                name_size, name, self->attr);
-    }
-
-    class_idx = self->attr->parent_class->class_idx;
-
-    err = class_idx->get(class_idx, name, name_size, &elem);
-    if (err) {
-        knd_log("-- couldn't resolve class id: \"%.*s\" [size:%zu] :(",
-                name_size, name, name_size);
-        return make_gsl_err_external(knd_NO_MATCH);
-    }
-
-    entry = elem;
-
-    err = mempool->new_attr_var(mempool, &attr_var);
-    if (err) return make_gsl_err_external(err);
-
-    attr_var->class_entry = entry;
-    attr_var->attr = self->attr;
-
-    *result = attr_var;
-    return make_gsl_err(gsl_OK);
-}
-*/
-
 static gsl_err_t alloc_class_inst_item(struct LocalContext *ctx, struct kndClassInst **item)
 {
     struct kndClass *self = ctx->class;
@@ -990,7 +735,6 @@ static gsl_err_t set_class_inst_name(void *obj, const char *name, size_t name_si
     return make_gsl_err(gsl_OK);
 }
 
-#if 0
 static gsl_err_t parse_class_inst_state(void *obj,
                                         const char *rec,
                                         size_t *total_size)
@@ -998,7 +742,6 @@ static gsl_err_t parse_class_inst_state(void *obj,
     struct LocalContext *ctx = obj;
     return kndClassInst_read_state(ctx->class_inst, rec, total_size, ctx->task);
 }
-#endif
 
 static gsl_err_t parse_class_inst_item(void *obj,
                                        const char *rec,
@@ -1033,30 +776,7 @@ static gsl_err_t parse_class_inst_item(void *obj,
     return append_class_inst_item(ctx, ctx->class_inst);
 }
 
-static gsl_err_t set_class_state(void *obj,
-                                 const char *unused_var(name),
-                                 size_t unused_var(name_size))
-{
-    struct LocalContext *ctx = obj;
-    struct kndClass *self = ctx->class;
-    struct kndMemPool *mempool = ctx->task->mempool;
-    struct kndState *state;
-    int err;
-
-    err = knd_state_new(mempool, &state);
-    if (err) {
-        knd_log("-- state alloc failed :(");
-        return make_gsl_err_external(err);
-    }
-
-    state->next = self->entry->states;
-    self->entry->states = state;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static void append_attr_var(struct kndClassVar *ci,
-                            struct kndAttrVar *attr_var)
+static void append_attr_var(struct kndClassVar *ci, struct kndAttrVar *attr_var)
 {
     struct kndAttrVar *curr_var;
 
@@ -1087,9 +807,7 @@ static void append_attr_var(struct kndClassVar *ci,
     ci->num_attrs++;
 }
 
-static gsl_err_t validate_attr_var(void *obj,
-                                   const char *name, size_t name_size,
-                                   const char *rec, size_t *total_size)
+static gsl_err_t validate_attr_var(void *obj, const char *name, size_t name_size, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndClassVar *class_var = ctx->class_var;
@@ -1250,9 +968,7 @@ static gsl_err_t validate_attr_var_list(void *obj,
     return gsl_parse_array(&attr_var_spec, rec, total_size);
 }
 
-
-static gsl_err_t set_class_var_baseclass(void *obj,
-                                         const char *id, size_t id_size)
+static gsl_err_t set_class_var_baseclass(void *obj, const char *id, size_t id_size)
 {
     struct LocalContext *ctx = obj;
     struct kndClassVar *class_var = ctx->class_var;
@@ -1269,7 +985,6 @@ static gsl_err_t set_class_var_baseclass(void *obj,
     if (err) {
         return make_gsl_err(gsl_FAIL);
     }
-
     class_var->entry = c->entry;
 
     if (DEBUG_CLASS_GSP_LEVEL_2)
@@ -1278,9 +993,9 @@ static gsl_err_t set_class_var_baseclass(void *obj,
 
     return make_gsl_err(gsl_OK);
 }
+#endif
 
-static gsl_err_t parse_baseclass_array_item(void *obj,
-                                            const char *rec, size_t *total_size)
+static gsl_err_t parse_baseclass_array_item(void *obj, const char *unused_var(rec), size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndClass *self = ctx->class;
@@ -1292,7 +1007,7 @@ static gsl_err_t parse_baseclass_array_item(void *obj,
     if (err) return *total_size = 0, make_gsl_err_external(err);
     ctx->class_var = class_var;
 
-    struct gslTaskSpec specs[] = {
+    /*struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_class_var_baseclass,
           .obj = ctx
@@ -1305,26 +1020,22 @@ static gsl_err_t parse_baseclass_array_item(void *obj,
           .obj = ctx
         }
     };
-
     gsl_err_t parser_err;
 
-    parser_err = gsl_parse_task(rec, total_size,
-                                specs, sizeof specs / sizeof specs[0]);
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return parser_err;
 
     knd_calc_num_id(class_var->id, class_var->id_size, &class_var->numid);
+    */
 
     // append
     class_var->next = self->baseclass_vars;
     self->baseclass_vars = class_var;
     self->num_baseclass_vars++;
-
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_baseclass_array(void *obj,
-                                       const char *rec,
-                                       size_t *total_size)
+static gsl_err_t parse_baseclass_array(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
 
@@ -1333,86 +1044,173 @@ static gsl_err_t parse_baseclass_array(void *obj,
         .parse = parse_baseclass_array_item,
         .obj = ctx
     };
-
     return gsl_parse_array(&cvar_spec, rec, total_size);
 }
 
-extern gsl_err_t knd_read_class_state(struct kndClass *self,
-                                      struct kndClassCommit *unused_var(class_commit),
-                                      const char *rec,
-                                      size_t *total_size)
+static gsl_err_t check_class_name(void *obj, const char *name, size_t name_size)
 {
-    if (DEBUG_CLASS_GSP_LEVEL_2)
-        knd_log(".. reading %.*s class state GSP: \"%.*s\"..",
-                self->name_size, self->name, 256, rec);
+    struct LocalContext *ctx      = obj;
+    struct kndRepo *repo          = ctx->repo;
+    // struct kndClassEntry *entry = NULL;
+
+    if (DEBUG_CLASS_GSP_LEVEL_TMP)
+        knd_log(".. repo \"%.*s\" to check a class name: \"%.*s\" (size:%zu)",
+                repo->name_size, repo->name, name_size, name, name_size);
+
+    if (!name_size) return make_gsl_err(gsl_FORMAT);
+    if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
+    return make_gsl_err(gsl_OK);
+}
+
+int knd_class_read(struct kndClass *self, const char *rec, size_t *total_size, struct kndTask *task)
+{
+    if (DEBUG_CLASS_GSP_LEVEL_TMP)
+        knd_log(".. reading class GSP: \"%.*s\"..", 64, rec);
 
     struct LocalContext ctx = {
-        .task = 0,
+        .task = task,
         .class = self,
+        .repo = task->repo
     };
 
-    assert(ctx.task);
-    return make_gsl_err_external(knd_FAIL);
-
-    struct gslTaskSpec inst_commit_spec = {
+    /*struct gslTaskSpec inst_commit_spec = {
         .is_list_item = true,
         .parse  = parse_class_inst_item,
         .obj = &ctx
     };
-
+    */
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = set_class_state,
+          .run = check_class_name,
           .obj = &ctx
         },
-        { .type = GSL_SET_ARRAY_STATE,
+        { .type = GSL_GET_ARRAY_STATE,
           .name = "_g",
           .name_size = strlen("_g"),
           .parse = knd_parse_gloss_array,
-          .obj = ctx.task,
+          .obj = ctx.task
         },
-        { .type = GSL_SET_ARRAY_STATE,
+        { .type = GSL_GET_ARRAY_STATE,
           .name = "_is",
           .name_size = strlen("_is"),
           .parse = parse_baseclass_array,
           .obj = &ctx
-        },
-        { .type = GSL_SET_ARRAY_STATE,
-          .name = "inst",
+        }/*,
+        { .name = "inst",
           .name_size = strlen("inst"),
           .parse = gsl_parse_array,
           .obj = &inst_commit_spec
-        }
+          }*/
     };
-    gsl_err_t err;
+    gsl_err_t parser_err;
 
-    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (err.code) return err;
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) return parser_err.code;
 
-    // TODO
-    //self->str(self);
-    /*state = self->states;
-    state->val = (void*)class_commit;
-    state->commit = class_commit->commit;
-    */
-    return make_gsl_err(gsl_OK);
+    // glosses
+
+    return knd_OK;
 }
 
-int knd_class_name_marshall(void *elem, size_t *output_size, struct kndTask *task)
+int knd_class_marshall(void *elem, size_t *output_size, struct kndTask *task)
 {
     struct kndClassEntry *entry = elem;
     struct kndOutput *out = task->out;
     size_t orig_size = out->buf_size;
+    int err;
+
+    knd_log(".. marshall class entry: %.*s", entry->name_size, entry->name);
 
     assert(entry->class != NULL);
 
-    OUT(entry->class->name, entry->class->name_size);
+    err = knd_class_export_GSP(entry->class, task);
+    KND_TASK_ERR("failed to export class GSP");
 
-    if (DEBUG_CLASS_GSP_LEVEL_2)
-        knd_log("** %.*s => %.*s (size:%zu)",  entry->id_size, entry->id,
-                entry->class->name_size,  entry->class->name, out->buf_size - orig_size);
+    if (DEBUG_CLASS_GSP_LEVEL_TMP)
+        knd_log("== GSP of %.*s (%.*s)  size:%zu", 
+                entry->class->name_size,  entry->class->name, entry->id_size, entry->id,
+                out->buf_size - orig_size);
 
     *output_size = out->buf_size - orig_size;
+    return knd_OK;
+}
+
+int knd_class_entry_unmarshall(const char *elem_id, size_t elem_id_size,
+                               const char *rec, size_t rec_size, void **result, struct kndTask *task)
+{
+    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndClassEntry *entry = NULL;
+    struct kndRepo *repo = task->repo;
+    struct kndCharSeq *seq;
+    struct kndSharedDictItem *item;
+    const char *c, *name = rec;
+    size_t name_size;
+    int err;
+
+    if (DEBUG_CLASS_GSP_LEVEL_TMP)
+        knd_log(">> GSP class entry \"%.*s\" => \"%.*s\"", elem_id_size, elem_id, rec_size, rec);
+
+    err = knd_class_entry_new(mempool, &entry);
+    KND_TASK_ERR("failed to alloc a class entry");
+    entry->repo = task->repo;
+    memcpy(entry->id, elem_id, elem_id_size);
+    entry->id_size = elem_id_size;
+
+    /* get name numid */
+    c = name;
+    while (*c) {
+        if (*c == '{' || *c == '[') break;
+        c++;
+    }
+    name_size = c - name;
+    if (!name_size) {
+        err = knd_FORMAT;
+        KND_TASK_ERR("anonymous class entry in GSP");
+    }
+    if (name_size > KND_ID_SIZE) {
+        err = knd_FORMAT;
+        KND_TASK_ERR("invalid class name numid in GSP");
+    }
+    err = knd_shared_set_get(repo->str_idx, name, name_size, (void**)&seq);
+    if (err) {
+        err = knd_FAIL;
+        KND_TASK_ERR("failed to decode class name numid \"%.*s\"", name_size, name);
+    }
+    entry->name = seq->val;
+    entry->name_size = seq->val_size;
+    entry->seq = seq;
+
+    err = knd_shared_dict_set(repo->class_name_idx, entry->name, entry->name_size,
+                              (void*)entry, task->mempool, NULL, &item, false);
+    KND_TASK_ERR("failed to register class name");
+    entry->dict_item = item;
+
+    if (DEBUG_CLASS_GSP_LEVEL_TMP)
+        knd_log("== class name decoded \"%.*s\" => \"%.*s\"",
+                elem_id_size, elem_id, entry->name_size, entry->name);
+
+    *result = entry;
+    return knd_OK;
+}
+
+int knd_class_unmarshall(const char *elem_id, size_t elem_id_size,
+                         const char *rec, size_t rec_size, void **result, struct kndTask *task)
+{
+    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndClass *c = NULL;
+    size_t total_size = rec_size;
+    int err;
+
+    if (DEBUG_CLASS_GSP_LEVEL_TMP)
+        knd_log(">> GSP class \"%.*s\" => \"%.*s\"", elem_id_size, elem_id, rec_size, rec);
+
+    err = knd_class_new(mempool, &c);
+    KND_TASK_ERR("failed to alloc a class");
+
+    err = knd_class_read(c, rec, &total_size, task);
+    KND_TASK_ERR("failed to read GSP class rec");
+
+    *result = c;
     return knd_OK;
 }
 

@@ -367,7 +367,7 @@ int knd_text_index(struct kndText *self, struct kndRepo *repo, struct kndTask *t
     int err;
 
     // max threshold
-    if (self->total_props) {
+    if (self->num_pars) {
         err = knd_attr_idx_new(mempool, &idx);
         if (err) return err;
         idx->attr = var->attr;

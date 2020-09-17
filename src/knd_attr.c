@@ -55,7 +55,7 @@ void knd_attr_str(struct kndAttr *self, size_t depth)
     tr = self->tr;
     while (tr) {
         knd_log("%*s   ~ %s %.*s",
-                depth * KND_OFFSET_SIZE, "", tr->locale, tr->seq_size, tr->seq);
+                depth * KND_OFFSET_SIZE, "", tr->locale, tr->seq->val_size, tr->seq->val);
         tr = tr->next;
     }
 
@@ -223,7 +223,7 @@ static int export_JSON(struct kndAttr *self,
                          ",\"_gloss\":\"", strlen(",\"_gloss\":\""));
         if (err) return err;
 
-        err = out->write(out, tr->seq,  tr->seq_size);
+        err = out->write(out, tr->seq->val,  tr->seq->val_size);
         if (err) return err;
 
         err = out->write(out, "\"", 1);
@@ -302,13 +302,10 @@ static int export_GSP(struct kndAttr *self, struct kndOutput *out)
         if (err) return err;
     }
 
-    if (self->ref_classname_size) {
-        err = out->write(out, "{c ", strlen("{c "));
-        if (err) return err;
-        err = out->write(out, self->ref_classname, self->ref_classname_size);
-        if (err) return err;
-        err = out->write(out, "}", 1);
-        if (err) return err;
+    if (self->ref_class) {
+        OUT("{c ", strlen("{c "));
+        OUT(self->ref_class->entry->id, self->ref_class->entry->id_size);
+        OUT("}", 1);
     }
 
     if (self->ref_procname_size) {
@@ -334,7 +331,7 @@ static int export_GSP(struct kndAttr *self, struct kndOutput *out)
         if (err) return err;
         err = out->write(out, "{t ", 3);
         if (err) return err;
-        err = out->write(out, tr->seq,  tr->seq_size);
+        err = out->write(out, tr->seq->val,  tr->seq->val_size);
         if (err) return err;
         err = out->write(out, "}}", 2);
         if (err) return err;

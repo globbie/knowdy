@@ -46,6 +46,7 @@ struct LocalContext {
     struct kndRepo *repo;
     struct kndClass *class;
     struct kndClassVar *class_var;
+    struct kndText *text;
 };
 
 static gsl_err_t set_gloss_locale(void *obj, const char *name, size_t name_size)
@@ -57,39 +58,83 @@ static gsl_err_t set_gloss_locale(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t set_gloss_value(void *obj, const char *name, size_t name_size)
+static gsl_err_t set_gloss_value(void *obj, const char *val, size_t val_size)
 {
-    struct kndText *self = obj;
-    if (!name_size) return make_gsl_err(gsl_FAIL);
-    self->seq = name;
-    self->seq_size = name_size;
+    struct LocalContext *ctx = obj;
+    char idbuf[KND_ID_SIZE];
+    size_t idbuf_size;
+    struct kndTask *task = ctx->task;
+    struct kndRepo *repo = ctx->repo;
+    struct kndText *text = ctx->text;
+    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndCharSeq *seq;
+    int err;
+
+    assert(val_size != 0);
+
+    switch (task->type) {
+    case KND_UNFREEZE_STATE:
+        err = knd_shared_set_get(repo->str_idx, val, val_size, (void**)&seq);
+        if (err) {
+            KND_TASK_LOG("failed to decode a gloss");
+            return make_gsl_err_external(err);
+        }
+        text->seq = seq;
+        knd_log(">> gloss decoded \"%.*s\" => \"%.*s\"", val_size, val, text->seq->val_size, text->seq->val);
+        return make_gsl_err(gsl_OK);
+    default:
+        break;
+    }
+
+    seq = knd_shared_dict_get(repo->str_dict, val, val_size);
+    if (!seq) {
+        err = knd_charseq_new(mempool, &seq);
+        seq->val = val;
+        seq->val_size = val_size;
+        seq->numid = atomic_fetch_add_explicit(&repo->num_strs, 1, memory_order_relaxed);
+
+        err = knd_shared_dict_set(repo->str_dict, val, val_size, (void*)seq, mempool, NULL, &seq->item, false);
+        if (err) {
+            KND_TASK_LOG("failed to register a gloss by name");
+            return make_gsl_err_external(err);
+        }
+        knd_uid_create(seq->numid, idbuf, &idbuf_size);
+        err = knd_shared_set_add(repo->str_idx, idbuf, idbuf_size, (void*)seq);
+        if (err) {
+            KND_TASK_LOG("failed to register a gloss by numid");
+            return make_gsl_err_external(err);
+        }
+        // knd_log(">> new str %.*s", val_size, val);
+    }
+    text->seq = seq;
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_gloss_item(void *obj,
-                                  const char *rec,
-                                  size_t *total_size)
+static gsl_err_t parse_gloss_item(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
-    struct kndText *tr;
+    struct kndText *t;
     int err;
-
-    err = knd_text_new(task->mempool, &tr);
+    err = knd_text_new(task->mempool, &t);
     if (err) {
+        KND_TASK_LOG("failed to alloc a text");
         return *total_size = 0, make_gsl_err_external(err);
     }
-
-    //memset(tr, 0, sizeof(struct kndText));
+    struct LocalContext ctx = {
+        .task = task,
+        .repo = task->repo,
+        .text = t
+    };
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_gloss_locale,
-          .obj = tr
+          .obj = t
         },
         { .name = "t",
           .name_size = strlen("t"),
           .run = set_gloss_value,
-          .obj = tr
+          .obj = &ctx
         }
     };
     gsl_err_t parser_err;
@@ -97,26 +142,20 @@ static gsl_err_t parse_gloss_item(void *obj,
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return parser_err;
 
-    if (tr->locale_size == 0 || tr->seq_size == 0)
+    if (t->locale_size == 0 || t->seq == NULL)
         return make_gsl_err(gsl_FORMAT);  // error: both of them are required
-
-    tr->locale = tr->locale;
-    tr->locale_size = tr->locale_size;
 
     if (DEBUG_GSL_LEVEL_2)
         knd_log(".. read gloss translation: \"%.*s\",  text: \"%.*s\"",
-                tr->locale_size, tr->locale, tr->seq_size, tr->seq);
+                t->locale_size, t->locale, t->seq->val_size, t->seq->val);
 
     // append
-    tr->next = task->ctx->tr;
-    task->ctx->tr = tr;
-
+    t->next = task->ctx->tr;
+    task->ctx->tr = t;
     return make_gsl_err(gsl_OK);
 }
 
-gsl_err_t knd_parse_gloss_array(void *obj,
-                                const char *rec,
-                                size_t *total_size)
+gsl_err_t knd_parse_gloss_array(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
 
@@ -125,7 +164,6 @@ gsl_err_t knd_parse_gloss_array(void *obj,
         .parse = parse_gloss_item,
         .obj = task
     };
-
     return gsl_parse_array(&item_spec, rec, total_size);
 }
 
@@ -174,8 +212,6 @@ static gsl_err_t check_class_id(void *obj, const char *name, size_t name_size)
 */
     return make_gsl_err(gsl_OK);
 }
-
-
 
 static gsl_err_t read_attr_var(void *obj,
                                const char *name, size_t name_size,
@@ -449,13 +485,12 @@ int knd_export_gloss_GSL(struct kndText *tr,
         err = out->writec(out, '{');                                              RET_ERR();
         err = out->write_escaped(out, tr->locale, tr->locale_size);               RET_ERR();
         err = out->write(out, "{t ", strlen("{t "));                              RET_ERR();
-        err = out->write_escaped(out, tr->seq,  tr->seq_size);                    RET_ERR();
+        err = out->write_escaped(out, tr->seq->val,  tr->seq->val_size);                    RET_ERR();
         err = out->writec(out, '}');                                              RET_ERR();
         err = out->writec(out, '}');                                              RET_ERR();
         err = out->writec(out, ']');                                              RET_ERR();
         break;
     }
-
     return knd_OK;
 }
 
@@ -1009,10 +1044,7 @@ int knd_class_export_GSL(struct kndClassEntry *entry,
     return knd_OK;
 }
 
-int knd_class_read_GSL(const char *rec,
-                       size_t *total_size,
-                       struct kndClassEntry **result,
-                       struct kndTask *task)
+int knd_class_read_GSL(const char *rec, size_t *total_size, struct kndClassEntry **result, struct kndTask *task)
 {
     struct kndClass *c;
     struct kndClassEntry *entry;

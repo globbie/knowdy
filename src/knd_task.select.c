@@ -334,12 +334,8 @@ gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
           .obj = self
         }
     };
-
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) {
-        knd_log("-- task err: %.*s", self->log->buf_size, self->log->buf);
-        goto final;
-    }
+    if (parser_err.code) goto final;
 
     /* any commits? */
     switch (self->type) {
@@ -349,7 +345,7 @@ gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
         err = knd_confirm_commit(repo, self);
         if (err) return make_gsl_err_external(err);
         // TODO
-        knd_log(".. building report for commit %zu", self->ctx->commit->numid);
+        // knd_log(".. building report for commit %zu", self->ctx->commit->numid);
         break;
     default:
         self->ctx->phase = KND_COMPLETE;

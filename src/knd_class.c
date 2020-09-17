@@ -113,8 +113,7 @@ static void str(struct kndClass *self, size_t depth)
     for (tr = self->tr; tr; tr = tr->next) {
         knd_log("%*s~ %.*s %.*s",
                 (depth + 1) * KND_OFFSET_SIZE, "",
-                tr->locale_size, tr->locale,
-                tr->seq_size, tr->seq);
+                tr->locale_size, tr->locale, tr->seq->val_size, tr->seq->val);
     }
 
     if (self->baseclass_vars) {

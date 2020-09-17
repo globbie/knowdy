@@ -58,6 +58,7 @@ typedef enum knd_task_spec_type {
     KND_INNER_STATE,
     KND_INNER_COMMIT_STATE,
     KND_LIQUID_STATE,
+    KND_UNFREEZE_STATE,
     KND_SNAPSHOT_STATE,
     KND_DELTA_STATE,
     KND_LOAD_STATE,

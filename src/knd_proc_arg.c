@@ -65,7 +65,7 @@ static int export_gloss_JSON(struct kndText *tr,
             err = out->write(out, ",", 1);                                        RET_ERR();
         }
         err = out->write(out, "\"_gloss\":\"", strlen("\"_gloss\":\""));          RET_ERR();
-        err = out->write(out, tr->seq,  tr->seq_size);                            RET_ERR();
+        err = out->write(out, tr->seq->val,  tr->seq->val_size);                            RET_ERR();
         err = out->write(out, "\"", 1);                                           RET_ERR();
         break;
     next_tr:
@@ -135,9 +135,7 @@ static int export_JSON(struct kndProcArg *self,
     return knd_OK;
 }
 
-
-static int export_GSP(struct kndProcArg *self,
-                      struct kndOutput *out)
+static int export_GSP(struct kndProcArg *self, struct kndOutput *out)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size;
@@ -154,7 +152,7 @@ static int export_GSP(struct kndProcArg *self,
         err = out->write(out, "{", 1);                                            RET_ERR();
         err = out->write(out, tr->locale,  tr->locale_size);                      RET_ERR();
         err = out->write(out, "{t ", 3);                                          RET_ERR();
-        err = out->write(out, tr->seq,  tr->seq_size);                            RET_ERR();
+        err = out->write(out, tr->seq->val,  tr->seq->val_size);                            RET_ERR();
         err = out->write(out, "}}", 2);                                           RET_ERR();
     }
     if (self->tr) {

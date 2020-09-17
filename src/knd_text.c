@@ -192,9 +192,9 @@ void knd_text_str(struct kndText *self, size_t depth)
 
     state = atomic_load_explicit(&self->states, memory_order_relaxed);
     if (!state) {
-        if (self->seq_size) {
+        if (self->seq) {
             knd_log("%*stext: \"%.*s\" (lang:%.*s)", depth * KND_OFFSET_SIZE, "",
-                    self->seq_size, self->seq, self->locale_size, self->locale);
+                    self->seq->val_size, self->seq->val, self->locale_size, self->locale);
             return;
         }
         if (self->num_pars) {

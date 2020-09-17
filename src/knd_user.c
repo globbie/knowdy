@@ -424,6 +424,21 @@ static gsl_err_t parse_class_array(void *obj, const char *rec, size_t *total_siz
     return gsl_parse_array(&item_spec, rec, total_size);
 }
 
+static gsl_err_t parse_snapshot_task(void *obj, const char *unused_var(rec), size_t *total_size)
+{
+    struct kndTask *task = obj;
+    struct kndRepo *repo = task->user_ctx ? task->user_ctx->repo : task->shard->user->repo;
+    int err;
+
+    task->type = KND_SNAPSHOT_STATE;
+    err = knd_repo_snapshot(repo, task);
+    if (err) {
+        KND_TASK_LOG("failed to build a snapshot of user repo");
+        return *total_size = 0, make_gsl_err(gsl_FAIL);
+    }
+    return *total_size = 0, make_gsl_err(gsl_OK);
+}
+
 gsl_err_t knd_parse_select_user(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
@@ -436,7 +451,6 @@ gsl_err_t knd_parse_select_user(void *obj, const char *rec, size_t *total_size)
         task->user_ctx   = NULL;
         task->type = KND_GET_STATE;
     }
-
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .is_selector = true,
@@ -495,6 +509,11 @@ gsl_err_t knd_parse_select_user(void *obj, const char *rec, size_t *total_size)
         { .name = "_state",
           .name_size = strlen("_state"),
           .run = run_present_state,
+          .obj = task
+        },
+        { .name = "_snapshot",
+          .name_size = strlen("_snapshot"),
+          .parse = parse_snapshot_task,
           .obj = task
         },
         { .is_default = true,

@@ -84,8 +84,8 @@ static gsl_err_t set_text_seq(void *obj, const char *val, size_t val_size)
     state->commit = task->ctx->commit;
     */
 
-    self->seq_size = val_size;
-    self->seq = val;
+    self->seq->val_size = val_size;
+    self->seq->val = val;
     return make_gsl_err(gsl_OK);
 }
 

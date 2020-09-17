@@ -652,13 +652,21 @@ static gsl_err_t parse_import_class_inst(void *obj, const char *rec, size_t *tot
     struct kndCommit *commit = task->ctx->commit;
     struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
     struct kndClassEntry *entry = ctx->class_entry;
+    struct kndRepo *repo = task->repo;
     int err;
 
     if (!entry) {
         KND_TASK_LOG("class entry not selected");
         return *total_size = 0, make_gsl_err_external(knd_FORMAT);
     }
-
+    if (!entry->class) {
+        err = knd_shared_set_unmarshall_elem(repo->class_idx, entry->id, entry->id_size,
+                                             knd_class_unmarshall, (void**)&entry->class, task);
+        if (err) {
+            KND_TASK_LOG("failed to unfreeze class entry %.*s", entry->id_size, entry->id);
+            return *total_size = 0, make_gsl_err_external(err);
+        }
+    }
     if (task->user_ctx) {
         if (entry->repo != task->user_ctx->repo) {
             err = knd_class_entry_clone(ctx->class_entry, task->user_ctx->repo, &entry, task);
@@ -751,6 +759,8 @@ static gsl_err_t present_class_selection(void *obj, const char *unused_var(val),
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
     struct kndClassDeclaration *declar;
+    struct kndClassEntry *entry = ctx->class_entry;
+    struct kndClass *c;
     int err;
 
     switch (task->type) {
@@ -770,8 +780,7 @@ static gsl_err_t present_class_selection(void *obj, const char *unused_var(val),
         break;
     }
 
-    // knd_log(".. present selected class: %.*s",
-    //        ctx->selected_class->name_size, ctx->selected_class->name);
+    knd_log(".. present selected class: %.*s", ctx->class_entry->name_size, ctx->class_entry->name);
 
     /* select a set of classes by base class */
     if (ctx->selected_base) {
@@ -845,9 +854,14 @@ static gsl_err_t present_class_selection(void *obj, const char *unused_var(val),
         return make_gsl_err(gsl_OK);
     }
     
-    /* get one class by name */
-    if (ctx->selected_class) {
-        err = knd_class_export(ctx->selected_class, task->ctx->format, task);
+    /* present a single class */
+    if (entry) {
+        c = atomic_load_explicit(&entry->class, memory_order_relaxed);
+        if (!c) {
+            knd_log("-- unresolved class entry: %.*s", entry->name_size, entry->name);
+            return make_gsl_err(gsl_FAIL);
+        }
+        err = knd_class_export(c, task->ctx->format, task);
         if (err) {
             KND_TASK_LOG("class export failed");
             return make_gsl_err_external(err);

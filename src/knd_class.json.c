@@ -226,7 +226,7 @@ static int export_gloss_JSON(struct kndClass *self,
             continue;
         }
         err = out->write(out, ",\"_gloss\":\"", strlen(",\"_gloss\":\""));        RET_ERR();
-        err = out->write_escaped(out, tr->seq,  tr->seq_size);                    RET_ERR();
+        err = out->write_escaped(out, tr->seq->val,  tr->seq->val_size);                    RET_ERR();
         err = out->write(out, "\"", 1);                                           RET_ERR();
         break;
     }

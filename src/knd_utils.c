@@ -27,7 +27,7 @@
 #define DEBUG_UTILS_LEVEL_TMP 1
 
 /* base name to integer value mapping */
-int obj_id_base[256] = {
+const int obj_id_base[256] = {
     -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
     -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,  0, 1, 2, 3, 4, 5, 6, 7, 8, 9,-1,-1,-1,-1,-1,-1,
     -1,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24, 25,26,27,28,29,30,31,32,33,34,35,-1,-1,-1,-1,-1,
@@ -240,6 +240,20 @@ void knd_pack_int(unsigned char *buf, size_t numval, size_t byte_size)
     default:
         *buf = numval;
         break;
+    }
+}
+
+size_t knd_unpack_int(const unsigned char *buf, size_t byte_size)
+{
+    switch (byte_size) {
+    case 4:
+        return knd_unpack_u32(buf);
+    case 3:
+        return knd_unpack_u24(buf);
+    case 2:
+        return knd_unpack_u16(buf);
+    default:
+        return *buf;
     }
 }
 

@@ -37,6 +37,7 @@ void knd_pack_int(unsigned char *buf, size_t numval, size_t byte_size);
 unsigned long knd_unpack_u32(const unsigned char *buf);
 unsigned long knd_unpack_u24(const unsigned char *buf);
 unsigned long knd_unpack_u16(const unsigned char *buf);
+size_t knd_unpack_int(const unsigned char *buf, size_t byte_size);
 
 int knd_mkpath(const char *path, size_t path_size, mode_t mode, bool has_filename);
 int knd_write_file(const char *filename, void *buf, size_t buf_size);
@@ -48,21 +49,12 @@ int knd_get_elem_suffix(const char *name, char *buf);
 void knd_remove_nonprintables(char *data);
 void knd_log(const char *fmt, ...);
 
-extern int obj_id_base[256];
+extern const int obj_id_base[256];
 extern const char *obj_id_seq;
 
-extern int knd_read_UTF8_char(const char *rec,
-                              size_t rec_size,
-                              size_t *val,
-                              size_t *len);
-
-extern int knd_parse_num(const char *val,
-                         long *result);
-
-extern int knd_read_name(char *output,
-                         size_t *output_size,
-                         const char *rec,
-                         size_t rec_size);
+extern int knd_read_UTF8_char(const char *rec, size_t rec_size, size_t *val, size_t *len);
+extern int knd_parse_num(const char *val, long *result);
+extern int knd_read_name(char *output, size_t *output_size, const char *rec, size_t rec_size);
 
 extern int knd_parse_IPV4(char *ip, unsigned long *ip_val);
 
@@ -76,10 +68,4 @@ extern int knd_parse_incipit(const char *rec,
                              size_t *result_tag_name_size,
                              char *result_name,
                              size_t *result_name_size);
-
-extern int knd_parse_dir_size(const char *rec,
-                              size_t rec_size,
-                              const char **val,
-                              size_t *val_size,
-                              size_t *total_trailer_size);
 

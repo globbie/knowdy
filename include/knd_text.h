@@ -41,6 +41,8 @@ struct kndCharSeq
     knd_charseq_enc_type enc;
     const char *val;
     size_t val_size;
+    size_t numid;
+    struct kndSharedDictItem *item;
 };
 
 struct kndDiscourseContext
@@ -190,15 +192,14 @@ struct kndText
     size_t locale_size;
 
     struct kndAttrVar *attr_var;
-    const char *seq;
-    size_t seq_size;
+    struct kndCharSeq *seq;
+
     struct kndSyNode *synodes;
     struct kndStatement *stms;
 
     struct kndPar *pars;
     struct kndPar *last_par;
     size_t num_pars;
-    size_t total_props;
 
     /* translated renderings of deep semantics: manual or automatic */
     struct kndText *trs;
@@ -223,6 +224,7 @@ int knd_par_export_GSL(struct kndPar *par, struct kndTask *task);
 int knd_text_export_query_report(struct kndTask *task);
 int knd_text_export_query_report_GSL(struct kndTask *task);
 
+int knd_charseq_marshall(void *elem, size_t *output_size, struct kndTask *task);
 int knd_charseq_unmarshall(const char *elem_id, size_t elem_id_size, const char *val, size_t val_size,
                            void **result, struct kndTask *task);
 
