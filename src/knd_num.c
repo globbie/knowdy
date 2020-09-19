@@ -6,9 +6,9 @@
 
 #include "knd_num.h"
 #include "knd_repo.h"
-#include "knd_attr_inst.h"
 #include "knd_task.h"
 #include "knd_user.h"
+#include "knd_utils.h"
 
 #define DEBUG_NUM_LEVEL_0 0
 #define DEBUG_NUM_LEVEL_1 0
@@ -24,9 +24,8 @@ kndNum_del(struct kndNum *self)
 
 static void str(struct kndNum *self)
 {
-    knd_log("%*s%.*s => %.*s",
-                self->depth * KND_OFFSET_SIZE, "",
-            self->attr_inst->attr->name_size, self->attr_inst->attr->name,
+    knd_log("%*s %.*s",
+            self->depth * KND_OFFSET_SIZE, "",
             self->states->val_size, self->states->val);
 }
 

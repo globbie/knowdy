@@ -6,7 +6,6 @@
 #include "knd_class.h"
 #include "knd_mempool.h"
 #include "knd_attr.h"
-#include "knd_attr_inst.h"
 #include "knd_repo.h"
 #include "knd_shard.h"
 
@@ -26,9 +25,7 @@
 #define DEBUG_INST_IMPORT_LEVEL_4 0
 #define DEBUG_INST_IMPORT_LEVEL_TMP 1
 
-static gsl_err_t import_class_inst(struct kndClassInst *self,
-                                   const char *rec, size_t *total_size,
-                                   struct kndTask *task);
+static gsl_err_t import_class_inst(struct kndClassInst *self, const char *rec, size_t *total_size, struct kndTask *task);
 
 struct LocalContext {
     struct kndClassInst *class_inst;
@@ -137,7 +134,7 @@ static gsl_err_t check_empty_inst(void *obj, const char *unused_var(name), size_
 
 static gsl_err_t import_class_inst(struct kndClassInst *self, const char *rec, size_t *total_size, struct kndTask *task)
 {
-    if (DEBUG_INST_IMPORT_LEVEL_2)
+    if (DEBUG_INST_IMPORT_LEVEL_TMP)
         knd_log(".. class inst import REC: %.*s", 128, rec);
 
     struct LocalContext ctx = {
@@ -207,11 +204,10 @@ static int generate_uniq_inst_name(struct kndClassInst *inst, struct kndTask *ta
     return knd_OK;
 }
 
-int knd_import_class_inst(struct kndClassEntry *self, const char *rec, size_t *total_size, struct kndTask *task)
+int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *total_size, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
-    struct kndClass *c = self->class;
-    struct kndClassEntry *entry = self;
+    struct kndClass *c = entry->class;
     struct kndClassInst *inst;
     struct kndClassInstEntry *inst_entry;
     struct kndClassVar *class_var;
@@ -222,11 +218,11 @@ int knd_import_class_inst(struct kndClassEntry *self, const char *rec, size_t *t
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_INST_IMPORT_LEVEL_2)
+    assert(entry->class != NULL);
+
+    if (DEBUG_INST_IMPORT_LEVEL_TMP)
         knd_log(".. class \"%.*s\" (repo:%.*s) to import inst \"%.*s\"",
                 entry->name_size, entry->name, entry->repo->name_size, entry->repo->name, 128, rec);
-
-    assert(self->class != NULL);
 
     switch (task->type) {
     case KND_RESTORE_STATE:
@@ -250,8 +246,8 @@ int knd_import_class_inst(struct kndClassEntry *self, const char *rec, size_t *t
 
     err = knd_class_var_new(mempool, &class_var);
     KND_TASK_ERR("failed to alloc a class var");
-    class_var->entry = self;
-    class_var->parent = self->class;
+    class_var->entry = entry;
+    class_var->parent = c;
     class_var->inst = inst;
     inst->class_var = class_var;
     parser_err = import_class_inst(inst, rec, total_size, task);
@@ -306,7 +302,7 @@ int knd_import_class_inst(struct kndClassEntry *self, const char *rec, size_t *t
 
     if (DEBUG_INST_IMPORT_LEVEL_2)
         knd_log("++ class inst \"%.*s::%.*s\" numid:%zu initial import  OK (num inst states:%zu)",
-                self->name_size, self->name, inst->name_size, inst->name, inst->entry->numid,
+                entry->name_size, entry->name, inst->name_size, inst->name, inst->entry->numid,
                 ctx->num_class_inst_state_refs);
     return knd_OK;
 }

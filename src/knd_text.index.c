@@ -160,7 +160,8 @@ static int update_ancestor_idx(struct kndClassEntry *base, struct kndClassDeclar
     err = get_class_idx(base, var, src, &idx, task);
     KND_TASK_ERR("failed to get a class idx");
 
-    FOREACH (ref, base->children) {
+    // TODO
+    FOREACH (ref, base->class->children) {
         if (ref->class == entry->class) {
             err = append_child_idx(idx, term_idx, task);
             KND_TASK_ERR("failed to append terminal child idx");
@@ -229,7 +230,8 @@ static int index_class_declar(struct kndClassDeclaration *decl, struct kndSenten
     err = index_class_inst(entry, decl, sent, par, var, inst, &idx, task);
     KND_TASK_ERR("failed to index text class inst");
 
-    for (ref = decl->entry->ancestors; ref; ref = ref->next) {
+    // TODO
+    FOREACH (ref, decl->entry->class->ancestors) {
         if (ref->entry->repo != repo) {
             err = knd_get_class_entry(repo, ref->entry->name, ref->entry->name_size, false, &entry, task);
             if (err) {

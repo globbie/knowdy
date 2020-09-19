@@ -10,6 +10,7 @@
 #include "knd_class.h"
 #include "knd_proc.h"
 #include "knd_shard.h"
+#include "knd_shared_set.h"
 #include "knd_user.h"
 #include "knd_utils.h"
 #include "knd_mempool.h"
@@ -23,6 +24,7 @@
 
 struct LocalContext {
     struct kndTask       *task;
+    struct kndRepo       *repo;
     struct kndText       *text;
     struct kndPar        *par;
     struct kndSentence   *sent;
@@ -33,6 +35,123 @@ struct LocalContext {
 };
 
 static gsl_err_t parse_synode(void *obj, const char *rec, size_t *total_size);
+
+static gsl_err_t set_gloss_locale(void *obj, const char *name, size_t name_size)
+{
+    struct kndText *self = obj;
+    if (name_size >= KND_SHORT_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
+    self->locale = name;
+    self->locale_size = name_size;
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t set_gloss_value(void *obj, const char *val, size_t val_size)
+{
+    struct LocalContext *ctx = obj;
+    char idbuf[KND_ID_SIZE];
+    size_t idbuf_size;
+    struct kndTask *task = ctx->task;
+    struct kndRepo *repo = ctx->repo;
+    struct kndText *text = ctx->text;
+    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndCharSeq *seq;
+    int err;
+
+    assert(val_size != 0);
+
+    switch (task->type) {
+    case KND_UNFREEZE_STATE:
+        err = knd_shared_set_get(repo->str_idx, val, val_size, (void**)&seq);
+        if (err) {
+            KND_TASK_LOG("failed to decode a gloss");
+            return make_gsl_err_external(err);
+        }
+        text->seq = seq;
+        knd_log(">> gloss decoded \"%.*s\" => \"%.*s\"", val_size, val, text->seq->val_size, text->seq->val);
+        return make_gsl_err(gsl_OK);
+    default:
+        break;
+    }
+    seq = knd_shared_dict_get(repo->str_dict, val, val_size);
+    if (!seq) {
+        err = knd_charseq_new(mempool, &seq);
+        seq->val = val;
+        seq->val_size = val_size;
+        seq->numid = atomic_fetch_add_explicit(&repo->num_strs, 1, memory_order_relaxed);
+
+        err = knd_shared_dict_set(repo->str_dict, val, val_size, (void*)seq, mempool, NULL, &seq->item, false);
+        if (err) {
+            KND_TASK_LOG("failed to register a gloss by name");
+            return make_gsl_err_external(err);
+        }
+        knd_uid_create(seq->numid, idbuf, &idbuf_size);
+        err = knd_shared_set_add(repo->str_idx, idbuf, idbuf_size, (void*)seq);
+        if (err) {
+            KND_TASK_LOG("failed to register a gloss by numid");
+            return make_gsl_err_external(err);
+        }
+        // knd_log(">> new str %.*s", val_size, val);
+    }
+    text->seq = seq;
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_gloss_item(void *obj, const char *rec, size_t *total_size)
+{
+    struct kndTask *task = obj;
+    struct kndText *t;
+    int err;
+    err = knd_text_new(task->mempool, &t);
+    if (err) {
+        KND_TASK_LOG("failed to alloc a text");
+        return *total_size = 0, make_gsl_err_external(err);
+    }
+    struct LocalContext ctx = {
+        .task = task,
+        .repo = task->repo,
+        .text = t
+    };
+
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = set_gloss_locale,
+          .obj = t
+        },
+        { .name = "t",
+          .name_size = strlen("t"),
+          .run = set_gloss_value,
+          .obj = &ctx
+        }
+    };
+    gsl_err_t parser_err;
+
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) return parser_err;
+
+    if (t->locale_size == 0 || t->seq == NULL)
+        return make_gsl_err(gsl_FORMAT);  // error: both of them are required
+
+    if (DEBUG_TEXT_IMPORT_LEVEL_2)
+        knd_log(".. read gloss translation: \"%.*s\",  text: \"%.*s\"",
+                t->locale_size, t->locale, t->seq->val_size, t->seq->val);
+
+    // append
+    t->next = task->ctx->tr;
+    task->ctx->tr = t;
+    return make_gsl_err(gsl_OK);
+}
+
+gsl_err_t knd_parse_gloss_array(void *obj, const char *rec, size_t *total_size)
+{
+    struct kndTask *task = obj;
+
+    struct gslTaskSpec item_spec = {
+        .is_list_item = true,
+        .parse = parse_gloss_item,
+        .obj = task
+    };
+    return gsl_parse_array(&item_spec, rec, total_size);
+}
 
 static gsl_err_t set_text_lang(void *obj, const char *val, size_t val_size)    
 {

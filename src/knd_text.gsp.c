@@ -7,6 +7,7 @@
 #include "knd_text.h"
 #include "knd_task.h"
 #include "knd_repo.h"
+#include "knd_shared_set.h"
 #include "knd_user.h"
 #include "knd_mempool.h"
 #include "knd_output.h"
@@ -39,13 +40,16 @@ int knd_charseq_unmarshall(const char *elem_id, size_t elem_id_size,
     struct kndCharSeq *seq;
     int err;
 
-    if (DEBUG_TEXT_GSP_LEVEL_2)
+    if (DEBUG_TEXT_GSP_LEVEL_TMP)
         knd_log("charseq \"%.*s\" => \"%.*s\"", elem_id_size, elem_id, val_size, val);
 
     err = knd_charseq_new(mempool, &seq);
     KND_TASK_ERR("charseq alloc failed");
     seq->val = val;
     seq->val_size = val_size;
+
+    err = knd_shared_set_add(task->repo->str_idx, elem_id, elem_id_size, (void*)seq);
+    KND_TASK_ERR("failed to register charseq \"%.*s\"", val_size, val);
 
     *result = seq;
     return knd_OK;

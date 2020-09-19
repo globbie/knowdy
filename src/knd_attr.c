@@ -105,11 +105,11 @@ void knd_attr_var_str(struct kndAttrVar *var, size_t depth)
         switch (attr->type) {
         case KND_ATTR_INNER:
             knd_log("%*s* inner \"%.*s\":", depth * KND_OFFSET_SIZE, "",
-                    attr->ref_class->name_size, attr->ref_class->name);
+                    attr->ref_class_entry->name_size, attr->ref_class_entry->name);
             break;
         case KND_ATTR_REF:
             knd_log("%*s* ref \"%.*s\":", depth * KND_OFFSET_SIZE, "",
-                    attr->ref_class->name_size, attr->ref_class->name);
+                    attr->ref_class_entry->name_size, attr->ref_class_entry->name);
             break;
         default:
             knd_log("%*s* %s: \"%.*s\"", depth * KND_OFFSET_SIZE, "",
@@ -141,18 +141,18 @@ void knd_attr_var_str(struct kndAttrVar *var, size_t depth)
         case KND_ATTR_INNER:
             knd_log("%*s%.*s (inner \"%.*s\")", depth * KND_OFFSET_SIZE, "",
                     var->name_size, var->name,
-                    attr->ref_class->name_size, attr->ref_class->name);
+                    attr->ref_class_entry->name_size, attr->ref_class_entry->name);
             break;
         case KND_ATTR_REF:
             knd_log("%*s%.*s (\"%.*s\" class ref) => %.*s", depth * KND_OFFSET_SIZE, "",
                     var->name_size, var->name,
-                    attr->ref_class->name_size, attr->ref_class->name,
+                    attr->ref_class_entry->name_size, attr->ref_class_entry->name,
                     var->class->name_size, var->class->name);
             break;
         case KND_ATTR_REL:
             knd_log("%*s%.*s (\"%.*s\" class inst rel) => \"%.*s\"", depth * KND_OFFSET_SIZE, "",
                     var->name_size, var->name,
-                    attr->ref_class->name_size, attr->ref_class->name,
+                    attr->ref_class_entry->name_size, attr->ref_class_entry->name,
                     var->class_inst_entry->name_size, var->class_inst_entry->name);
             break;
         case KND_ATTR_TEXT:
@@ -302,9 +302,9 @@ static int export_GSP(struct kndAttr *self, struct kndOutput *out)
         if (err) return err;
     }
 
-    if (self->ref_class) {
+    if (self->ref_class_entry) {
         OUT("{c ", strlen("{c "));
-        OUT(self->ref_class->entry->id, self->ref_class->entry->id_size);
+        OUT(self->ref_class_entry->id, self->ref_class_entry->id_size);
         OUT("}", 1);
     }
 
@@ -554,14 +554,13 @@ static int compute_attr_var(struct kndAttrVar *unused_var(parent_item),
     return knd_OK;
 }
 
-extern int knd_get_arg_value(struct kndAttrVar *src,
-                             struct kndAttrVar *query,
-                             struct kndProcCallArg *result_arg)
+int knd_get_arg_value(struct kndAttrVar *src, struct kndAttrVar *query, struct kndProcCallArg *result_arg)
 {
     struct kndAttrVar *curr_var;
     struct kndAttr *attr;
     struct kndAttrRef *ref;
     struct kndClass *parent_class = src->class_var->parent;
+    struct kndClass *c;
     int err;
 
     if (DEBUG_ATTR_LEVEL_2) {
@@ -571,15 +570,16 @@ extern int knd_get_arg_value(struct kndAttrVar *src,
                 src->attr->is_a_set,
                 query->name_size, query->name);
         knd_log("ref class: %.*s",
-                src->attr->ref_class->name_size,
-                src->attr->ref_class->name);
+                src->attr->ref_class_entry->name_size,
+                src->attr->ref_class_entry->name);
         knd_attr_var_str(src, 1);
     }
     
-    if (src->attr->ref_class) {
-        err = knd_class_get_attr(src->attr->ref_class,
-                                 query->name,
-                                 query->name_size, &ref);
+    if (src->attr->ref_class_entry) {
+        // TODO atomic
+        c = src->attr->ref_class_entry->class;
+
+        err = knd_class_get_attr(c, query->name, query->name_size, &ref);
         if (err) return err;
         attr = ref->attr;
 

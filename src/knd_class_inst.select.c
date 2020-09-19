@@ -6,7 +6,6 @@
 #include "knd_class.h"
 #include "knd_mempool.h"
 #include "knd_attr.h"
-#include "knd_attr_inst.h"
 #include "knd_repo.h"
 
 #include "knd_text.h"

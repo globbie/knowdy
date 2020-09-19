@@ -111,13 +111,12 @@ static int update_subset(struct kndClassFacet *parent_facet,
     facet->num_elems++;
 
     /* any subclasses? */
-    if (facet_entry->num_children) {
+    if (facet_entry->class->num_children) {
         /* find immediate child */
-        for (child_ref = facet_entry->children; child_ref;
-             child_ref = child_ref->next) {
+        FOREACH (child_ref, facet_entry->class->children) {
             if (child_ref->entry == elem) break;
 
-            for (ref = elem->ancestors; ref; ref = ref->next) {
+            FOREACH (ref, elem->class->ancestors) {
                 if (child_ref->entry != ref->entry) continue;
                 err = update_subset(facet, ref->entry, elem, task);              RET_ERR();
                 return knd_OK;
@@ -158,11 +157,9 @@ static int facetize_class(void *obj,
                 entry->name_size, entry->name);
 
     /* facetize by base class */
-    for (ref = entry->ancestors; ref; ref = ref->next) {
-
+    FOREACH (ref, entry->class->ancestors) {
         /* find immediate child */
-        for (child_ref = base->entry->children; child_ref;
-             child_ref = child_ref->next) {
+        FOREACH (child_ref, base->children) {
 
             if (child_ref->entry != ref->entry) continue;
 
@@ -590,7 +587,7 @@ present_class_desc(void *obj, const char *unused_var(name), size_t unused_var(na
 
     assert(ctx->selected_class);
 
-    if (!ctx->selected_class->entry->descendants) {
+    if (!ctx->selected_class->descendants) {
         // FIXME(k15tfu): Why it's empty??
         // DD: the index of descendants is not created for every class,
         // only for the non-terminal classes with actual children, grandchildren etc.
@@ -600,7 +597,7 @@ present_class_desc(void *obj, const char *unused_var(name), size_t unused_var(na
         return make_gsl_err_external(knd_FAIL);
     }
 
-    err = knd_class_set_export(ctx->selected_class->entry->descendants, ctx->task->ctx->format, ctx->task);
+    err = knd_class_set_export(ctx->selected_class->descendants, ctx->task->ctx->format, ctx->task);
     if (err) return make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);
@@ -652,21 +649,20 @@ static gsl_err_t parse_import_class_inst(void *obj, const char *rec, size_t *tot
     struct kndCommit *commit = task->ctx->commit;
     struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
     struct kndClassEntry *entry = ctx->class_entry;
-    struct kndRepo *repo = task->repo;
+    struct kndClass *c;
     int err;
 
     if (!entry) {
         KND_TASK_LOG("class entry not selected");
         return *total_size = 0, make_gsl_err_external(knd_FORMAT);
     }
-    if (!entry->class) {
-        err = knd_shared_set_unmarshall_elem(repo->class_idx, entry->id, entry->id_size,
-                                             knd_class_unmarshall, (void**)&entry->class, task);
-        if (err) {
-            KND_TASK_LOG("failed to unfreeze class entry %.*s", entry->id_size, entry->id);
-            return *total_size = 0, make_gsl_err_external(err);
-        }
+
+    err = knd_class_acquire(entry, &c, task);
+    if (err) {
+        KND_TASK_LOG("failed to acquire class \"%.*s\"", entry->id_size, entry->id);
+        return *total_size = 0, make_gsl_err_external(err);
     }
+
     if (task->user_ctx) {
         if (entry->repo != task->user_ctx->repo) {
             err = knd_class_entry_clone(ctx->class_entry, task->user_ctx->repo, &entry, task);
@@ -725,7 +721,7 @@ run_remove_class(void *obj, const char *unused_var(name), size_t name_size)
         return make_gsl_err_external(knd_FAIL);
     }
 
-    if (ctx->selected_class->entry->num_children) {
+    if (ctx->selected_class->num_children) {
         knd_log("-- descendants exist");
         err = ctx->task->log->writef(ctx->task->log, "descendants exist");
         if (err) return make_gsl_err_external(err);
@@ -791,7 +787,7 @@ static gsl_err_t present_class_selection(void *obj, const char *unused_var(val),
         if (!task->num_sets) {
             // FIXME(k15tfu): remove this case
 
-            if (!ctx->selected_base->entry->descendants) {
+            if (!ctx->selected_base->descendants) {
                 err = knd_empty_set_export(ctx->selected_base, task->ctx->format, task);
                 if (err) return make_gsl_err_external(err);
                 return make_gsl_err(gsl_OK);
@@ -799,7 +795,7 @@ static gsl_err_t present_class_selection(void *obj, const char *unused_var(val),
 
             /* result set subdivision required? */
             if (ctx->create_subsets) {
-                err = create_subsets(ctx->selected_base->entry->descendants, ctx->selected_base, task);
+                err = create_subsets(ctx->selected_base->descendants, ctx->selected_base, task);
                 if (err) return make_gsl_err_external(err);
                 
                 err = knd_class_facets_export(task);
@@ -810,7 +806,7 @@ static gsl_err_t present_class_selection(void *obj, const char *unused_var(val),
                 return make_gsl_err(gsl_OK);
             }
 
-            err = knd_class_set_export(ctx->selected_base->entry->descendants, task->ctx->format, task);
+            err = knd_class_set_export(ctx->selected_base->descendants, task->ctx->format, task);
             if (err) return make_gsl_err_external(err);
             return make_gsl_err(gsl_OK);
         }
@@ -818,7 +814,7 @@ static gsl_err_t present_class_selection(void *obj, const char *unused_var(val),
         /* add base set */
         assert(task->num_sets + 1 <= KND_MAX_CLAUSES);  // FIXME(k15tfu): <<
 
-        task->sets[task->num_sets] = ctx->selected_base->entry->descendants;
+        task->sets[task->num_sets] = ctx->selected_base->descendants;
         task->num_sets++;
 
         /* intersection result set */

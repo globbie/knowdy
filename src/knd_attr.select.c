@@ -297,7 +297,7 @@ static gsl_err_t select_by_attr(void *obj, const char *val, size_t val_size)
     if (!val_size) return make_gsl_err(gsl_FORMAT);
     if (val_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    c = attr->ref_class;
+    c = attr->ref_class_entry->class;
 
     if (DEBUG_ATTR_SELECT_LEVEL_TMP) {
         knd_log("\n\n== _is class:%.*s  select %.*s attr (idx:%d) "

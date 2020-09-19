@@ -138,7 +138,7 @@ static void str(struct kndClass *self, size_t depth)
         }
     }
 
-    for (ref = self->entry->ancestors; ref; ref = ref->next) {
+    for (ref = self->ancestors; ref; ref = ref->next) {
         c = ref->class;
         knd_log("%*s = %.*s (repo:%.*s)", depth * KND_OFFSET_SIZE, "",
                 c->entry->name_size, c->entry->name,
@@ -313,11 +313,10 @@ static int update_ancestor_state(struct kndClass *self,
 }
 #endif
 
-static int commit_state(struct kndClassEntry *self, struct kndStateRef *children,
-                        knd_state_phase phase, struct kndState **result, struct kndTask *task)
+static int commit_state(struct kndStateRef *children, knd_state_phase phase, struct kndState **result, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
-    struct kndState *head, *state;
+    struct kndState *state;
     int err;
 
     err = knd_state_new(mempool, &state);
@@ -329,14 +328,14 @@ static int commit_state(struct kndClassEntry *self, struct kndStateRef *children
     state->children = children;
     state->next = NULL;
 
-    do {
+    /*do {
        head = atomic_load_explicit(&self->states, memory_order_relaxed);
        if (head) {
            state->next = head;
            state->numid = head->numid + 1;
        }
     } while (!atomic_compare_exchange_weak(&self->states, &head, state));
- 
+    */
     // inform your ancestors
     /*for (ref = self->entry->ancestors; ref; ref = ref->next) {
         c = ref->entry->class;
@@ -368,7 +367,7 @@ int knd_class_commit_state(struct kndClassEntry *self, knd_state_phase phase, st
         knd_log(".. \"%.*s\" class (repo:%.*s) to commit its state (phase:%d) ",
                 self->name_size, self->name, self->repo->name_size, self->repo->name, phase);
 
-    err = commit_state(self, NULL, phase, &state, task);
+    err = commit_state(NULL, phase, &state, task);
     KND_TASK_ERR("failed to alloc kndState");
 
     if (phase == KND_SELECTED) {
@@ -449,10 +448,9 @@ int knd_class_export_state(struct kndClassEntry *self,
     return knd_FAIL;
 }
 
-int knd_is_base(struct kndClass *self,
-                struct kndClass *child)
+int knd_is_base(struct kndClass *self, struct kndClass *child)
 {
-    struct kndClassEntry *entry = child->entry;
+    //struct kndClassEntry *entry = child->entry;
     struct kndClassRef *ref;
     struct kndClass *c;
     size_t count = 0;
@@ -465,11 +463,11 @@ int knd_is_base(struct kndClass *self,
                 child->is_resolved,
                 self->entry->name_size, self->entry->name,
                 self->entry->repo->name_size, self->entry->repo->name,
-                self->entry->num_ancestors,
+                self->num_ancestors,
                 self->base_is_resolved, self->is_resolved);
     }
 
-    for (ref = entry->ancestors; ref; ref = ref->next) {
+    for (ref = child->ancestors; ref; ref = ref->next) {
          c = ref->class;
          if (DEBUG_CLASS_LEVEL_2) {
              knd_log("  => is %zu): %.*s (repo:%.*s)  base resolved:%d",
@@ -504,12 +502,11 @@ int knd_class_get_attr(struct kndClass *self, const char *name, size_t name_size
     struct kndAttr    *attr = NULL;
     int err;
 
-    if (DEBUG_CLASS_LEVEL_2) {
+    if (DEBUG_CLASS_LEVEL_2)
         knd_log(".. \"%.*s\" class (repo: %.*s) to select attr \"%.*s\"",
                 self->entry->name_size, self->entry->name,
                 self->entry->repo->name_size, self->entry->repo->name,
                 name_size, name);
-    }
 
     ref = knd_shared_dict_get(attr_name_idx, name, name_size);
     if (!ref) {
@@ -518,7 +515,7 @@ int knd_class_get_attr(struct kndClass *self, const char *name, size_t name_size
             ref = knd_shared_dict_get(attr_name_idx, name, name_size);
         }
         if (!ref) {
-            if (DEBUG_CLASS_LEVEL_2)
+            if (DEBUG_CLASS_LEVEL_TMP)
                 knd_log("-- no such attr: \"%.*s\"", name_size, name);
             return knd_NO_MATCH;
         }
@@ -528,7 +525,7 @@ int knd_class_get_attr(struct kndClass *self, const char *name, size_t name_size
     for (; ref; ref = ref->next) {
         attr = ref->attr;
 
-        if (DEBUG_CLASS_LEVEL_2) {
+        if (DEBUG_CLASS_LEVEL_TMP) {
             knd_log("== attr %.*s is used in class: %.*s (repo:%.*s)",
                     name_size, name,
                     ref->class_entry->name_size,
@@ -541,12 +538,10 @@ int knd_class_get_attr(struct kndClass *self, const char *name, size_t name_size
         err = knd_is_base(attr->parent_class, self);
         if (!err) break;
     }
-
     if (!attr) {
         err = knd_NO_MATCH;
         goto final;
     }
-
     err = attr_idx->get(attr_idx, attr->id, attr->id_size, (void**)&ref);
     if (err) {
         goto final;
@@ -564,9 +559,7 @@ int knd_class_get_attr(struct kndClass *self, const char *name, size_t name_size
     return err;
 }
 
-int knd_class_get_attr_var(struct kndClass *self,
-                           const char *name, size_t name_size,
-                           struct kndAttrVar **result)
+int knd_class_get_attr_var(struct kndClass *self, const char *name, size_t name_size, struct kndAttrVar **result)
 {
     struct kndAttrRef *ref;
     struct kndAttr *attr;
@@ -603,11 +596,13 @@ int knd_class_set_export(struct kndSet *self, knd_format format, struct kndTask 
     return knd_FAIL;
 }
 
-int knd_get_class(struct kndRepo *self, const char *name, size_t name_size, struct kndClass **result, struct kndTask *task)
+int knd_get_class(struct kndRepo *self, const char *name, size_t name_size,
+                  struct kndClass **result, struct kndTask *task)
 {
     struct kndClassEntry *entry;
     struct kndSharedDict *class_name_idx = self->class_name_idx;
     struct kndState *state;
+    struct kndClass *c;
     int err;
 
     if (DEBUG_CLASS_LEVEL_2)
@@ -628,24 +623,16 @@ int knd_get_class(struct kndRepo *self, const char *name, size_t name_size, stru
         return knd_NO_MATCH;
     }
 
-    if (entry->num_states) {
-        state = entry->states;
+    err = knd_class_acquire(entry, &c, task);
+    KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
+    if (c->num_states) {
+        state = c->states;
         if (state->phase == KND_REMOVED) {
             err = knd_NO_MATCH;
             KND_TASK_ERR("\"%s\" class was removed", name);
         }
-        *result = entry->class;
-        return knd_OK;
     }
-
-    /*err = unfreeze_class(self, entry, &c);
-    if (err) {
-        knd_log("-- failed to unfreeze class: %.*s",
-                entry->name_size, entry->name);
-        return err;
-        }*/
-
-    *result = entry->class;
+    *result = c;
     return knd_OK;
 }
 
@@ -682,16 +669,16 @@ int knd_get_class_by_id(struct kndRepo *repo, const char *id, size_t id_size,
 {
     struct kndClassEntry *entry;
     struct kndSharedSet *class_idx = repo->class_idx;
-    void *elem;
     struct kndState *state;
+    struct kndClass *c;
     int err;
 
     if (DEBUG_CLASS_LEVEL_TMP) {
-        knd_log(".. repo \"%.*s\" to get class by id: \"%.*s\"..",
+        knd_log(".. repo \"%.*s\" to get class by id \"%.*s\"",
                 repo->name_size, repo->name, id_size, id);
     }
-
-    err = knd_shared_set_get(class_idx, id, id_size, &elem);
+    
+    err = knd_shared_set_get(class_idx, id, id_size, (void**)&entry);
     if (err) {
         /* check parent schema */
         if (repo->base) {
@@ -703,35 +690,17 @@ int knd_get_class_by_id(struct kndRepo *repo, const char *id, size_t id_size,
         KND_TASK_ERR("no such class: \"%.*s\"", id_size, id);
     }
 
-    entry = elem;
-    if (entry->num_states) {
-        state = entry->states;
+    err = knd_class_acquire(entry, &c, task);
+    KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
+    if (c->num_states) {
+        state = c->states;
         if (state->phase == KND_REMOVED) {
             err = knd_NO_MATCH;
             KND_TASK_ERR("\"%s\" class was removed", id);
         }
-        *result = entry->class;
-        return knd_OK;
     }
-
-    if (repo->base) {
-        err = knd_get_class_by_id(repo->base, id, id_size, result, task);
-        if (err) return err;
-        return knd_OK;
-    }
-
-    if (DEBUG_CLASS_LEVEL_1)
-        knd_log(".. unfreezing the \"%.*s\" class ..", id_size, id);
-
-    /*err = unfreeze_class(self, entry, &c);
-    if (err) {
-        knd_log("-- failed to unfreeze class: %.*s",
-                entry->name_size, entry->name);
-        return err;
-        }*/
-    //*result = c;
-
-    return knd_FAIL;
+    *result = c;
+    return knd_OK;
 }
 
 int knd_unregister_class_inst(struct kndClass *self, struct kndClassInstEntry *entry, struct kndTask *task)
@@ -743,7 +712,7 @@ int knd_unregister_class_inst(struct kndClass *self, struct kndClassInstEntry *e
     int err;
 
     /* skip the root class */
-    if (!self->entry->ancestors) return knd_OK;
+    if (!self->ancestors) return knd_OK;
     if (!inst_idx) return knd_OK;
 
     // remove
@@ -769,7 +738,7 @@ int knd_unregister_class_inst(struct kndClass *self, struct kndClassInstEntry *e
 
     if (entry->inst->blueprint != self->entry) return knd_OK;
 
-    for (struct kndClassRef *ref = self->entry->ancestors; ref; ref = ref->next) {
+    for (struct kndClassRef *ref = self->ancestors; ref; ref = ref->next) {
         c = ref->entry->class;
         if (self->entry->repo != ref->entry->repo) continue;
 
@@ -902,11 +871,6 @@ int knd_class_entry_clone(struct kndClassEntry *self, struct kndRepo *repo,
     entry->class = self->class;
     entry->name = self->name;
     entry->name_size = self->name_size;
-    entry->children = self->children;
-    entry->num_children = self->num_children;
-    entry->ancestors = self->ancestors;
-    entry->num_ancestors = self->num_ancestors;
-    entry->descendants = self->descendants;
 
     err = knd_shared_dict_set(name_idx, entry->name,  entry->name_size,
                               (void*)entry, mempool, task->ctx->commit, &item, false);

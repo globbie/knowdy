@@ -134,7 +134,7 @@ int knd_index_attr(struct kndClass *self,
                           item, attr, task, false);                               RET_ERR();
 
     /* update the ancestors */
-    for (ref = c->entry->ancestors; ref; ref = ref->next) {
+    for (ref = c->ancestors; ref; ref = ref->next) {
         curr_class = ref->class;
         err = knd_is_base(base, curr_class);
         if (err) continue;
@@ -162,11 +162,10 @@ int knd_index_attr_var_list(struct kndClass *self, struct kndAttr *attr, struct 
     if (DEBUG_ATTR_INDEX_LEVEL_2) {
         knd_log("\n.. attr item list indexing.. (class:%.*s) "
                 ".. index attr: \"%.*s\" [type:%d]"
-                " refclass: \"%.*s\" %p (name:%.*s val:%.*s)",
+                " refclass: \"%.*s\" (name:%.*s val:%.*s)",
                 self->entry->name_size, self->entry->name,
                 attr->name_size, attr->name, attr->type,
                 attr->ref_classname_size, attr->ref_classname,
-                attr->ref_class,
                 item->name_size, item->name, item->val_size, item->val);
     }
 
@@ -181,13 +180,15 @@ int knd_index_attr_var_list(struct kndClass *self, struct kndAttr *attr, struct 
     if (!attr->ref_classname) return knd_OK;
 
     /* template base class */
-    base = attr->ref_class;
+    // TODO atomic
+    base = attr->ref_class_entry->class;
     if (!base) {
         err = knd_get_class(self->entry->repo, attr->ref_classname, attr->ref_classname_size,
                             &base, task);                                             RET_ERR();
+
         if (!base->is_resolved) {
             err = knd_class_resolve(base, task);                                      RET_ERR();
-            attr->ref_class = base;
+            attr->ref_class_entry = base->entry;
         }
     }
 
@@ -226,7 +227,7 @@ int knd_index_attr_var_list(struct kndClass *self, struct kndAttr *attr, struct 
         err = update_attr_hub(self, c, c->entry,
                               item, item->attr, task, false);                     RET_ERR();
         /* update the ancestors */
-        for (ref = c->entry->ancestors; ref; ref = ref->next) {
+        for (ref = c->ancestors; ref; ref = ref->next) {
             curr_class = ref->class;
             if (base == curr_class) goto update_hub;
 
@@ -348,7 +349,8 @@ static int index_inner_class_ref(struct kndClass   *self,
                                  struct kndAttr *attr,
                                  struct kndTask *task)
 {
-    struct kndClass *base = attr->ref_class;
+    // TODO atomic
+    struct kndClass *base = attr->ref_class_entry->class;
     struct kndClass *topic = NULL; // task->attr->parent_class;
     struct kndClass *spec = item->class;
     struct kndClassRef *ref;
@@ -370,7 +372,7 @@ static int index_inner_class_ref(struct kndClass   *self,
                           item, attr, task, false);                               RET_ERR();
 
     /* update the ancestors */
-    for (ref = spec->entry->ancestors; ref; ref = ref->next) {
+    for (ref = spec->ancestors; ref; ref = ref->next) {
         curr_class = ref->class;
         err = knd_is_base(base, curr_class);
         if (err) continue;

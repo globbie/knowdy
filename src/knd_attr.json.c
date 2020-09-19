@@ -74,7 +74,8 @@ static int inner_item_export_JSON(struct kndAttrVar *parent_item,
         if (err) return err;
         in_list = true;
 
-        c = parent_item->attr->ref_class;
+        // TODO atomic
+        c = parent_item->attr->ref_class_entry->class;
 
         /*if (c->num_computed_attrs) {
             if (DEBUG_ATTR_JSON_LEVEL_2)
@@ -90,7 +91,8 @@ static int inner_item_export_JSON(struct kndAttrVar *parent_item,
     /* export a class ref */
     if (parent_item->class) {
         attr = parent_item->attr;
-        c = parent_item->attr->ref_class;
+        // TODO atomic
+        c = parent_item->attr->ref_class_entry->class;
 
         /* TODO: check assignment */
         if (parent_item->implied_attr) {
@@ -126,7 +128,8 @@ static int inner_item_export_JSON(struct kndAttrVar *parent_item,
     if (!parent_item->class) {
         /* terminal string value */
         if (parent_item->val_size) {
-            c = parent_item->attr->ref_class;
+            // TODO atomic
+            c = parent_item->attr->ref_class_entry->class;
             attr = parent_item->attr;
 
             if (c->implied_attr) {

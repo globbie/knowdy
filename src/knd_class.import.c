@@ -311,19 +311,13 @@ static gsl_err_t import_attr_var_list(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_class_var(const char *rec,
-                                 size_t *total_size,
-                                 struct LocalContext *ctx)
+static gsl_err_t parse_class_var(const char *rec, size_t *total_size, struct LocalContext *ctx)
 {
     gsl_err_t parser_err;
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_class_var,
-          .obj = ctx
-        },
-        { .type = GSL_SET_STATE,
-          .validate = import_attr_var,
           .obj = ctx
         },
         { .validate = import_attr_var,

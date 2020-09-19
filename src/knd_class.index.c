@@ -117,12 +117,12 @@ static int index_ancestor(struct kndClass *self,
         }
     }
 
-    desc_idx = base->entry->descendants;
+    desc_idx = base->descendants;
     if (!desc_idx) {
         err = knd_set_new(mempool, &desc_idx);                                    RET_ERR();
         desc_idx->type = KND_SET_CLASS;
         desc_idx->base = base->entry;
-        base->entry->descendants = desc_idx;
+        base->descendants = desc_idx;
     }
  
     err = desc_idx->get(desc_idx, entry->id, entry->id_size, &result);
@@ -136,23 +136,20 @@ static int index_ancestor(struct kndClass *self,
                     base->entry->name);
         return knd_OK;
     }
-
-    base->entry->num_terminals++;
+    base->num_terminals++;
 
     /* register as a descendant */
-    err = desc_idx->add(desc_idx,
-                        entry->id, entry->id_size,
-                        (void*)entry);                                            RET_ERR();
+    err = desc_idx->add(desc_idx, entry->id, entry->id_size, (void*)entry);
+    KND_TASK_ERR("failed to register a descendant");
 
     return knd_OK;
 }
 
-static inline void set_child_ref(struct kndClassEntry *self,
-                                 struct kndClassRef *child_ref)
+static inline void set_child_ref(struct kndClassEntry *self, struct kndClassRef *child_ref)
 {
-    child_ref->next = self->children;
+    child_ref->next = self->class->children;
     // atomic
-    self->children = child_ref;
+    self->class->children = child_ref;
 }
 
 static int index_baseclass(struct kndClass *self,
@@ -190,16 +187,16 @@ static int index_baseclass(struct kndClass *self,
     set_child_ref(base->entry, ref);
 
     if (task->type == KND_LOAD_STATE)
-        base->entry->num_children++;
+        base->num_children++;
 
     /* update ancestors' indices */
-    for (baseref = base->entry->ancestors; baseref; baseref = baseref->next) {
+    for (baseref = base->ancestors; baseref; baseref = baseref->next) {
         if (baseref->entry->class && baseref->entry->class->state_top) continue;
         err = index_ancestor(self, baseref->entry, task);                          RET_ERR();
     }
 
     if (!parent_linked) {
-        base->entry->num_terminals++;
+        base->num_terminals++;
 
         if (DEBUG_CLASS_INDEX_LEVEL_2)
             knd_log(".. add \"%.*s\" (repo:%.*s) as a child of \"%.*s\" (repo:%.*s)..",
@@ -209,14 +206,13 @@ static int index_baseclass(struct kndClass *self,
                     base->entry->repo->name_size, base->entry->repo->name);
 
         /* register a descendant */
-        desc_idx = base->entry->descendants;
+        desc_idx = base->descendants;
         if (!desc_idx) {
             err = knd_set_new(mempool, &desc_idx);                                RET_ERR();
             desc_idx->type = KND_SET_CLASS;
             desc_idx->base = base->entry;
-            base->entry->descendants = desc_idx;
+            base->descendants = desc_idx;
         }
-
         err = desc_idx->add(desc_idx, entry->id, entry->id_size,
                             (void*)entry);                                        RET_ERR();
     }

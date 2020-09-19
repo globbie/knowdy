@@ -166,9 +166,9 @@ extern int knd_class_get_updates(struct kndClass *self,
                 self->name_size, self->name,
                 self->entry->repo->name_size, self->entry->repo->name);
 
-    if (!lt) lt = self->entry->states->numid + 1;
+    if (!lt) lt = self->states->numid + 1;
 
-    for (state = self->entry->states; state; state = state->next) {
+    FOREACH (state, self->states) {
         if (state->numid >= lt) continue;
         if (state->numid <= gt) continue;
 
