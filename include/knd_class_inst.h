@@ -52,10 +52,6 @@ struct kndClassInstEntry
     struct kndClassInst * _Atomic inst;
     atomic_size_t cache_cell_num;
 
-    //char *block;
-    //size_t block_size;
-    //size_t offset;
-
     struct kndSharedDictItem *dict_item;
     struct kndAttrIdx *attr_idxs;
 
@@ -84,12 +80,6 @@ struct kndClassInst
 
     size_t linear_pos;
     size_t linear_len;
-
-    //struct kndAttrInst *parent;
-    //struct kndAttrInst *attr_insts;
-    //struct kndAttrInst *tail;
-    //size_t num_attr_insts;
-    //struct kndStateRef *attr_inst_state_refs;
 
     bool resolving_in_progress;
     bool is_resolved;
@@ -131,7 +121,7 @@ int knd_class_inst_update_indices(struct kndRepo *repo,
 
 // knd_class_inst.gsp.c
 int knd_class_inst_export_GSP(struct kndClassInst *self,  struct kndTask *task);
-int knd_class_inst_marshall_GSP(void *obj, size_t *output_size, struct kndTask *task);
+int knd_class_inst_marshall(void *obj, size_t *output_size, struct kndTask *task);
 
 // knd_class_inst.gsl.c
 int knd_class_inst_export_GSL(struct kndClassInst *self, bool is_list_item, knd_state_phase phase, struct kndTask *task,
@@ -144,13 +134,9 @@ gsl_err_t knd_class_inst_read_state(struct kndClassInst *self, const char *rec, 
 // knd_class_inst.json.c
 int knd_class_inst_export_JSON(struct kndClassInst *self, bool is_list_item, struct kndTask *task);
 
-//int knd_class_inst_set_export_JSON(struct kndSet *set, struct kndTask *task);
-
 // knd_class_inst.select.c
-gsl_err_t knd_select_class_inst(struct kndClassEntry *c,
-                                const char *rec, size_t *total_size,
-                                struct kndTask *task);
+gsl_err_t knd_select_class_inst(struct kndClass *c, const char *rec, size_t *total_size, struct kndTask *task);
+
 // knd_class_inst.resolve.c
-int knd_class_inst_resolve(struct kndClassInst *self,
-                           struct kndTask *task);
+int knd_class_inst_resolve(struct kndClassInst *self, struct kndTask *task);
 

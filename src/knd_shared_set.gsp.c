@@ -25,7 +25,8 @@ static int unmarshall_block(struct kndSharedSet *self, struct kndSharedSetDir *d
                             int fd, size_t block_size,
                             char *idbuf, size_t idbuf_size, elem_unmarshall_cb cb, struct kndTask *task);
 
-static int payload_linear_scan(const char *block, size_t block_size, char *idbuf, size_t idbuf_size,
+static int payload_linear_scan(struct kndSharedSetDir *dir,
+                               const char *block, size_t block_size, char *idbuf, size_t idbuf_size,
                                elem_unmarshall_cb cb, struct kndTask *task)
 {
     const char *b, *c;
@@ -49,6 +50,7 @@ static int payload_linear_scan(const char *block, size_t block_size, char *idbuf
             val_size = c - b;
             err = cb(idbuf, idbuf_size, b, val_size, &result, task);
             KND_TASK_ERR("failed to unmarshall elem \"%.*s\"", idbuf_size, idbuf);
+            dir->num_elems++;
             c++;
             idbuf[idbuf_size - 1] = *c++;
             remainder -= 2;
@@ -63,6 +65,7 @@ static int payload_linear_scan(const char *block, size_t block_size, char *idbuf
     val_size = c - b;
     err = cb(idbuf, idbuf_size, b, val_size, &result, task);
     KND_TASK_ERR("failed to unmarshall elem \"%.*s\"", idbuf_size, idbuf);
+    dir->num_elems++;
     return knd_OK;
 }
 
@@ -75,7 +78,7 @@ static int fetch_elem_linear_scan(const char *block, size_t block_size, const ch
     bool in_tag = true;
     size_t val_size;
     int err;
-    if (DEBUG_SHARED_SET_GSP_LEVEL_TMP)
+    if (DEBUG_SHARED_SET_GSP_LEVEL_2)
         knd_log(".. linear scan of block \"%.*s\" [size:%zu] to fetch elem \"%.*s\"",
                 block_size, block, block_size, id_size, id);
 
@@ -150,7 +153,7 @@ static int unmarshall_elems(struct kndSharedSetDir *dir, const char *block, size
 
     // linear scan needed
     if (use_keys) {
-        err = payload_linear_scan(block, block_size - footer_size, idbuf, idbuf_size, cb, task);
+        err = payload_linear_scan(dir, block, block_size - footer_size, idbuf, idbuf_size, cb, task);
         KND_TASK_ERR("failed to scan payload");
         dir->elems_linear_scan = true;
     } else {
@@ -173,6 +176,7 @@ static int unmarshall_elems(struct kndSharedSetDir *dir, const char *block, size
 
             err = cb(idbuf, idbuf_size + 1, e, numval, &result, task);
             KND_TASK_ERR("failed to unmarshall elem \"%.*s\"", idbuf_size + 1, idbuf);
+            dir->num_elems++;
 
             e += numval;
             remainder -= numval;
@@ -293,6 +297,7 @@ static int read_subdirs(struct kndSharedSet *self, struct kndSharedSetDir *dir,
         KND_TASK_ERR("failed to unmarshall subdir block %.*s", idbuf_size + 1, idbuf);
 
         dir->subdirs[i] = subdir;
+        dir->total_elems += subdir->total_elems;
         block_offset += numval;
     }
     return knd_OK;
@@ -342,6 +347,7 @@ static int unmarshall_block(struct kndSharedSet *self, struct kndSharedSetDir *d
 
         err = unmarshall_elems(dir, block->buf, dir->payload_block_size, idbuf, idbuf_size, cb, task);
         KND_TASK_ERR("failed to unmarshall elems");
+        dir->total_elems = dir->num_elems;
     }
     subdir_block_size = block_size - (dir->payload_block_size + dir->payload_footer_size);
     if (subdir_block_size) {
@@ -382,6 +388,9 @@ int knd_shared_set_unmarshall_file(struct kndSharedSet *self, const char *filena
     err = unmarshall_block(self, dir, fd, filesize - offset, idbuf, idbuf_size, cb, task);
     if (err) goto final;
     self->dir = dir;
+    self->num_elems = dir->total_elems;
+
+    knd_log("== total elems: %zu", self->num_elems);
 
  final:
     close(fd);
@@ -469,6 +478,9 @@ int knd_shared_set_unmarshall_elem(struct kndSharedSet *self, const char *id, si
     knd_task_spec_type orig_task_type = task->type;
     int err;
 
+    if (DEBUG_SHARED_SET_GSP_LEVEL_2)
+        knd_log(".. unmarshall elem \"%.*s\" from GSP \"%s\"", id_size, id, self->path);
+
     // TODO: check cache
 
     fd = open(self->path, O_RDONLY);
@@ -477,7 +489,6 @@ int knd_shared_set_unmarshall_elem(struct kndSharedSet *self, const char *id, si
         KND_TASK_ERR("failed to open file %s", self->path);
     }
 
-    knd_log(".. unmarshall elem \"%.*s\" from GSP \"%s\"", id_size, id, self->path);
     task->type = KND_UNFREEZE_STATE;
     err = read_elem(self, fd, self->dir, id, id_size, cb, result, task);
     if (err) {

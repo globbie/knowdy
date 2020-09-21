@@ -101,7 +101,7 @@ struct kndAttrFacet
 struct kndAttrHub
 {
     struct kndAttr     *attr;
-    struct kndClassEntry *owner;
+    struct kndClass    *owner;
 
     struct kndSet      *topics;
     struct kndSet      *specs;

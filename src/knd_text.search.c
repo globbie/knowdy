@@ -69,7 +69,7 @@ static gsl_err_t build_search_plan(void *obj, const char *unused_var(name), size
             knd_log(">> class declar: %.*s (repo:%.*s)",
                     entry->name_size, entry->name, entry->repo->name_size, entry->repo->name);
 
-        text_idxs = atomic_load_explicit(&entry->text_idxs, memory_order_relaxed);
+        text_idxs = atomic_load_explicit(&entry->class->text_idxs, memory_order_relaxed);
         FOREACH (ref, text_idxs) {
             if (DEBUG_TEXT_SEARCH_LEVEL_TMP)
                 knd_log("** text idx: \"%.*s\" (repo:%.*s) text idx:%p class idx:%p",

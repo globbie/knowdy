@@ -258,9 +258,8 @@ static gsl_err_t import_attr_var_list_item(void *obj, const char *rec, size_t *t
     attr_var->parent = self;
     ctx->attr_var = attr_var;
 
-    if (DEBUG_ATTR_VAR_LEVEL_TMP)
-        knd_log("== importing a list item of %.*s: %.*s",
-                self->name_size, self->name, 32, rec);
+    if (DEBUG_ATTR_VAR_LEVEL_2)
+        knd_log("== importing a list item of %.*s: %.*s", self->name_size, self->name, 32, rec);
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -311,15 +310,14 @@ int knd_import_attr_var_list(struct kndClassVar *self, const char *name, size_t 
         return knd_FAIL;
     }
 
-    if (DEBUG_ATTR_VAR_LEVEL_TMP)
-        knd_log("== import attr attr_var list: \"%.*s\" REC: %.*s",
-                name_size, name, 32, rec);
+    if (DEBUG_ATTR_VAR_LEVEL_2)
+        knd_log("== import attr attr_var list: \"%.*s\" REC: %.*s", name_size, name, 32, rec);
 
-    err = knd_attr_var_new(mempool, &attr_var);                                   RET_ERR();
+    err = knd_attr_var_new(mempool, &attr_var);
+    KND_TASK_ERR("failed to alloc an attr var");
     attr_var->class_var = self;
     attr_var->name = name;
     attr_var->name_size = name_size;
-
     append_attr_var(self, attr_var);
 
     struct LocalContext ctx = {

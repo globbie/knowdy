@@ -233,15 +233,13 @@ static int resolve_inner_var(struct kndClass *self, struct kndAttrVar *parent_it
             if (err) return err;
             break;
         case KND_ATTR_REL:
-            err = knd_get_class_inst(item->attr->ref_class_entry,
-                                     item->val, item->val_size, task, &ci);
+            err = knd_get_class_inst(item->attr->ref_class_entry->class, item->val, item->val_size, task, &ci);
             if (err) return err;
             item->class_inst_entry = ci->entry;
             break;
         case KND_ATTR_PROC_REF:
             proc = attr->proc;
-            err = knd_resolve_proc_ref(self, item->val, item->val_size,
-                                       proc, &item->proc, task);
+            err = knd_resolve_proc_ref(self, item->val, item->val_size, proc, &item->proc, task);
             if (err) return err;
             break;
         default:
@@ -316,28 +314,8 @@ static int resolve_attr_var_list(struct kndClass *self, struct kndAttrVar *var, 
             c = local_class;
     }
 
-    if (DEBUG_ATTR_RESOLVE_LEVEL_TMP)
+    if (DEBUG_ATTR_RESOLVE_LEVEL_2)
         c->str(c, 1);
-
-    /* first item */
-    /*if (var->val_size) {
-        var->attr = parent_attr;
-        switch (parent_attr->type) {
-        case KND_ATTR_INNER:
-            err = resolve_inner_var(self, var, task);
-            if (err) {
-                knd_log("-- first inner item not resolved :(");
-                return err;
-            }
-            break;
-        case KND_ATTR_REF:
-            err = knd_resolve_class_ref(self, var->val, var->val_size, c, &var->class, task);
-            if (err) return err;
-            break;
-        default:
-            break;
-        }
-        }*/
 
     for (item = var->list; item; item = item->next) {
         item->attr = parent_attr;
@@ -374,8 +352,8 @@ static int register_attr(struct kndClass *self, struct kndAttr *attr, struct knd
     size_t name_size = attr->name_size;
     int err;
 
-    if (DEBUG_ATTR_RESOLVE_LEVEL_TMP)
-        knd_log(".. register new attr: %.*s (host class: %.*s) task type:%d",
+    if (DEBUG_ATTR_RESOLVE_LEVEL_2)
+        knd_log(".. register attr: %.*s (host class: %.*s) task type:%d",
                 name_size, name, self->name_size, self->name, task->type);
 
     err = knd_attr_ref_new(mempool, &attr_ref);
@@ -408,12 +386,11 @@ static int register_attr(struct kndClass *self, struct kndAttr *attr, struct knd
     default:
         break;
     }
-
     /* local task name idx */
     err = knd_dict_set(task->attr_name_idx, name, name_size, (void*)attr_ref);
     KND_TASK_ERR("failed to register attr name %.*s", name_size, name);
 
-    if (DEBUG_ATTR_RESOLVE_LEVEL_TMP)
+    if (DEBUG_ATTR_RESOLVE_LEVEL_2)
         knd_log("++ commit import: new primary attr registered: \"%.*s\" (id:%.*s)",
                 name_size, name, attr->id_size, attr->id);
 
@@ -674,7 +651,7 @@ int knd_resolve_primary_attrs(struct kndClass *self, struct kndTask *task)
     struct kndSharedDict *class_name_idx = repo->class_name_idx;
     int err;
 
-    if (DEBUG_ATTR_RESOLVE_LEVEL_TMP)
+    if (DEBUG_ATTR_RESOLVE_LEVEL_2)
         knd_log(".. resolving primary attrs of %.*s [total:%zu]",
                 self->name_size, self->name, self->num_attrs);
 

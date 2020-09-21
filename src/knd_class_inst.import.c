@@ -42,7 +42,9 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     struct kndRepo *repo = ctx->task->repo;
     struct kndTask *task = ctx->task;
     struct kndSharedDict *class_name_idx = repo->class_name_idx;
-    struct kndSharedDict *name_idx = self->blueprint->inst_name_idx;
+
+    assert(self->blueprint->class != NULL);
+    struct kndSharedDict *name_idx = self->blueprint->class->inst_name_idx;
     struct kndClass *c;
     int err;
 
@@ -134,7 +136,7 @@ static gsl_err_t check_empty_inst(void *obj, const char *unused_var(name), size_
 
 static gsl_err_t import_class_inst(struct kndClassInst *self, const char *rec, size_t *total_size, struct kndTask *task)
 {
-    if (DEBUG_INST_IMPORT_LEVEL_TMP)
+    if (DEBUG_INST_IMPORT_LEVEL_2)
         knd_log(".. class inst import REC: %.*s", 128, rec);
 
     struct LocalContext ctx = {
@@ -178,7 +180,7 @@ static gsl_err_t import_class_inst(struct kndClassInst *self, const char *rec, s
 
 static int generate_uniq_inst_name(struct kndClassInst *inst, struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->mempool;
+    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
     struct kndOutput *out = task->out;
     struct kndNameBuf *namebuf;
     int err;
@@ -187,15 +189,7 @@ static int generate_uniq_inst_name(struct kndClassInst *inst, struct kndTask *ta
     KND_TASK_ERR("name buf alloc failed");
 
     out->reset(out);
-    OUT("_", 1);
-    OUT(task->shard->name, task->shard->name_size);
-    OUT(":", 1);
-    
-    memcpy(namebuf->name, out->buf, out->buf_size);
-    namebuf->name_size = out->buf_size;
-
-    namebuf->name_size += knd_generate_random_id(namebuf->name + out->buf_size,
-                                                 KND_RAND_CHUNK_SIZE, KND_NUM_RAND_CHUNKS, '-');
+    namebuf->name_size = knd_generate_random_id(namebuf->name, KND_RAND_CHUNK_SIZE, KND_NUM_RAND_CHUNKS, '-');
 
     inst->name = namebuf->name;
     inst->name_size = namebuf->name_size;
@@ -217,10 +211,9 @@ int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *
     struct kndClassDeclaration *declar = NULL;
     int err;
     gsl_err_t parser_err;
-
     assert(entry->class != NULL);
 
-    if (DEBUG_INST_IMPORT_LEVEL_TMP)
+    if (DEBUG_INST_IMPORT_LEVEL_2)
         knd_log(".. class \"%.*s\" (repo:%.*s) to import inst \"%.*s\"",
                 entry->name_size, entry->name, entry->repo->name_size, entry->repo->name, 128, rec);
 
@@ -254,7 +247,7 @@ int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *
     if (parser_err.code) return parser_err.code;
 
     /* generate unique inst id */
-    inst->entry->numid = atomic_fetch_add_explicit(&c->entry->inst_id_count, 1, memory_order_relaxed);
+    inst->entry->numid = atomic_fetch_add_explicit(&c->inst_id_count, 1, memory_order_relaxed);
     inst->entry->numid++;
     knd_uid_create(inst->entry->numid, inst->entry->id, &inst->entry->id_size);
 

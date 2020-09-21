@@ -502,10 +502,8 @@ static gsl_err_t read_attr_var_list_item(void *obj,
     return append_attr_var_list_item(self, attr_var);
 }
 
-int knd_read_attr_var_list(struct kndClassVar *self,
-                           const char *name, size_t name_size,
-                           const char *rec, size_t *total_size,
-                           struct kndTask *task)
+int knd_read_attr_var_list(struct kndClassVar *self, const char *name, size_t name_size,
+                           const char *rec, size_t *total_size, struct kndTask *task)
 {
     struct kndAttrVar *attr_var;
     struct kndMemPool *mempool = task->mempool;
@@ -545,10 +543,8 @@ int knd_read_attr_var_list(struct kndClassVar *self,
         .parse = read_attr_var_list_item,
         .obj = &ctx
     };
-
     parser_err = gsl_parse_array(&read_attr_var_spec, rec, total_size);
     if (parser_err.code) return parser_err.code;
-
     return knd_OK;
 }
 
@@ -560,7 +556,7 @@ int knd_read_attr_var(struct kndClassVar *self, const char *name, size_t name_si
     gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_ATTR_VAR_GSP_LEVEL_TMP)
+    if (DEBUG_ATTR_VAR_GSP_LEVEL_2)
         knd_log(".. reading attr var \"%.*s\" of class: \"%.*s\"",
                 name_size, name, self->entry->name_size, self->entry->name);
 
@@ -603,15 +599,11 @@ int knd_read_attr_var(struct kndClassVar *self, const char *name, size_t name_si
           .obj = attr_var
         }
     };
-
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
         knd_log("-- attr var parsing failed: %d", parser_err.code);
         return parser_err.code;
     }
-
     append_attr_var(self, attr_var);
     return knd_OK;
 }
-
-

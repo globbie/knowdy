@@ -6,6 +6,7 @@
 #include "knd_shard.h"
 #include "knd_user.h"
 #include "knd_commit.h"
+#include "knd_cache.h"
 #include "knd_utils.h"
 
 #include <gsl-parser.h>
@@ -183,7 +184,7 @@ static gsl_err_t parse_class_import(void *obj,
         err = knd_commit_new(task->mempool, &task->ctx->commit);
         if (err) return make_gsl_err_external(err);
 
-        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot.num_commits,
+        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot->num_commits,
                                                                 memory_order_relaxed);
     }
 
@@ -218,8 +219,7 @@ static gsl_err_t parse_proc_import(void *obj,
         err = knd_commit_new(task->mempool, &task->ctx->commit);
         if (err) return make_gsl_err_external(err);
 
-        task->ctx->commit->orig_state_id = atomic_load_explicit(&repo->snapshot.num_commits,
-                                                                memory_order_relaxed);
+        task->ctx->commit->orig_state_id = atomic_load_explicit(&repo->snapshot->num_commits, memory_order_relaxed);
     }
     return knd_proc_import(task->repo, rec, total_size, task);
 }
@@ -269,7 +269,7 @@ static gsl_err_t parse_snapshot_task(void *obj, const char *unused_var(rec), siz
 
 gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndTask *self = obj;
+    struct kndTask *task = obj;
     struct kndRepo *repo;
     gsl_err_t parser_err;
     int err;
@@ -278,82 +278,99 @@ gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
         { .name = "locale",
           .name_size = strlen("locale"),
           .parse = parse_locale,
-          .obj = self
+          .obj = task
         },
         { .name = "format",
           .name_size = strlen("format"),
           .parse = parse_format,
-          .obj = self
+          .obj = task
         },
         { .type = GSL_SET_STATE,
           .name = "user",
           .name_size = strlen("user"),
           .parse = knd_create_user,
-          .obj = self
+          .obj = task
         },
         { .name = "user",
           .name_size = strlen("user"),
           .parse = knd_parse_select_user,
-          .obj = self
+          .obj = task
         },
         { .type = GSL_SET_STATE,
           .name = "class",
           .name_size = strlen("class"),
           .parse = parse_class_import,
-          .obj = self
+          .obj = task
         },
         { .name = "class",
           .name_size = strlen("class"),
           .parse = parse_class_select,
-          .obj = self
+          .obj = task
         },
         { .type = GSL_SET_STATE,
           .name = "proc",
           .name_size = strlen("proc"),
           .parse = parse_proc_import,
-          .obj = self
+          .obj = task
         },
         { .name = "proc",
           .name_size = strlen("proc"),
           .parse = parse_proc_select,
-          .obj = self
+          .obj = task
         },
         { .name = "repo",
           .name_size = strlen("repo"),
           .parse = knd_parse_repo,
-          .obj = self
+          .obj = task
         },
         { .name = "update",
           .name_size = strlen("update"),
           .parse = parse_update,
-          .obj = self
+          .obj = task
         },
         { .name = "_snapshot",
           .name_size = strlen("_snapshot"),
           .parse = parse_snapshot_task,
-          .obj = self
+          .obj = task
         }
     };
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) goto final;
 
     /* any commits? */
-    switch (self->type) {
+    switch (task->type) {
     case KND_COMMIT_STATE:
-        repo = self->repo;
-        if (self->user_ctx) repo = self->user_ctx->repo;
-        err = knd_confirm_commit(repo, self);
-        if (err) return make_gsl_err_external(err);
+        repo = task->repo;
+        if (task->user_ctx) repo = task->user_ctx->repo;
+
+        err = knd_confirm_commit(repo, task);
+        if (err) {
+            parser_err = make_gsl_err_external(err);
+            goto final;
+        }
         // TODO
-        // knd_log(".. building report for commit %zu", self->ctx->commit->numid);
+        // knd_log(".. building report for commit %zu", task->ctx->commit->numid);
         break;
     default:
-        self->ctx->phase = KND_COMPLETE;
+        task->ctx->phase = KND_COMPLETE;
         break;
     }
-    return make_gsl_err(gsl_OK);
+    parser_err = make_gsl_err(gsl_OK);
 
  final:
+    /*
+    if (task->user_ctx && task->user_ctx->cache_cell_num) {
+        struct kndUser *user = task->shard->user;
+        if (DEBUG_TASK_LEVEL_TMP)
+            knd_log(".. done reading user ctx, cell idx:%zu", task->user_ctx->cache_cell_num - 1);
+        int err = knd_cache_release(user->cache, task->user_ctx->cache_cell_num - 1, task->user_ctx);
+        if (err) {
+            KND_TASK_LOG("failed to release user ctx");
+            return make_gsl_err_external(err);
+        }
+        atomic_fetch_add_explicit(&task->user_ctx->total_tasks, 1, memory_order_relaxed);
+        task->user_ctx = NULL;
+        }*/
     return parser_err;
 }
 

@@ -52,6 +52,7 @@ int knd_export_class_state_JSON(struct kndClassEntry *self, struct kndTask *task
 {
     struct kndOutput *out = task->out;
     struct kndState *state = self->class->states;
+    struct kndClass *c = self->class;
     size_t latest_state_numid = self->class->init_state + self->class->num_states;
     size_t total;
     int err;
@@ -82,9 +83,9 @@ int knd_export_class_state_JSON(struct kndClassEntry *self, struct kndTask *task
         }
     }
 
-    state = self->desc_states;
+    state = c->desc_states;
     if (state) {
-        latest_state_numid = self->init_desc_state + self->num_desc_states;
+        latest_state_numid = c->init_desc_state + c->num_desc_states;
         total = 0;
         if (state->val)
             total = state->val->val_size;
@@ -98,15 +99,15 @@ int knd_export_class_state_JSON(struct kndClassEntry *self, struct kndTask *task
         err = out->writec(out, '}');                                              RET_ERR();
     }
 
-    state = self->inst_states;
+    state = c->inst_states;
     if (state) {
-        latest_state_numid = self->init_inst_state + self->num_inst_states;
+        latest_state_numid = c->init_inst_state + c->num_inst_states;
         total = 0;
         if (state->val)
             total = state->val->val_size;
 
-        err = out->write(out, ",\"instances\":{",
-                         strlen(",\"instances\":{"));                             RET_ERR();
+        err = out->write(out, ",\"insts\":{",
+                         strlen(",\"insts\":{"));                             RET_ERR();
         err = out->write(out, "\"_state\":", strlen("\"_state\":"));              RET_ERR();
         err = out->writef(out, "%zu", latest_state_numid);                        RET_ERR();
         err = out->write(out, ",\"total\":", strlen(",\"total\":"));              RET_ERR();
@@ -125,8 +126,7 @@ int knd_export_class_state_JSON(struct kndClassEntry *self, struct kndTask *task
     return knd_OK;
 }
 
-int knd_export_class_inst_state_JSON(struct kndClassEntry *self,
-                                     struct kndTask *task)
+int knd_export_class_inst_state_JSON(struct kndClass *self, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     size_t latest_state_id = 0;
@@ -577,10 +577,7 @@ static int export_inverse_attrs(struct kndClass *self,
                      ",\"_inverse_attrs\":[",
                      strlen(",\"_inverse_attrs\":["));                            RET_ERR();
 
-    for (attr_hub = self->entry->attr_hubs;
-         attr_hub;
-         attr_hub = attr_hub->next) {
-
+    FOREACH (attr_hub, self->attr_hubs) {
         if (in_list) {
                 err = out->writec(out, ',');                                      RET_ERR();
         }
@@ -785,8 +782,8 @@ int knd_class_export_JSON(struct kndClass *self, struct kndTask *task)
     //if (err && err != knd_RANGE) return err;
 
     num_children = entry->class->num_children;
-    if (entry->desc_states) {
-        state = entry->desc_states;
+    if (self->desc_states) {
+        state = self->desc_states;
         if (state->val) 
             num_children = state->val->val_size;
     }
@@ -799,12 +796,12 @@ int knd_class_export_JSON(struct kndClass *self, struct kndTask *task)
     }
 
     /* instances */
-    if (entry->inst_idx) {
-        err = out->write(out, ",\"_instances\":{",
-                         strlen(",\"_instances\":{"));                            RET_ERR();
+    if (self->inst_idx) {
+        err = out->write(out, ",\"_insts\":{",
+                         strlen(",\"_insts\":{"));                            RET_ERR();
 
-        if (self->entry->inst_states) {
-            err = knd_export_class_inst_state_JSON(self->entry, task);                         RET_ERR();
+        if (self->inst_states) {
+            err = knd_export_class_inst_state_JSON(self, task);                         RET_ERR();
         }
 
         // TODO navigation facets?
@@ -814,7 +811,7 @@ int knd_class_export_JSON(struct kndClass *self, struct kndTask *task)
     }
 
     /* inverse relations */
-    if (entry->attr_hubs) {
+    if (self->attr_hubs) {
         err = export_inverse_attrs(self, task);                         RET_ERR();
     }
     

@@ -22,7 +22,7 @@
 #define DEBUG_TEXT_IDX_LEVEL_3 0
 #define DEBUG_TEXT_IDX_LEVEL_TMP 1
 
-static int index_class_inst(struct kndClassEntry *entry, struct kndClassDeclaration *decl,
+static int index_class_inst(struct kndClass *c, struct kndClassDeclaration *decl,
                             struct kndSentence *sent, struct kndPar *par, struct kndAttrVar *var,
                             struct kndClassInst *inst, struct kndClassIdx **result, struct kndTask *task)
 {
@@ -31,15 +31,16 @@ static int index_class_inst(struct kndClassEntry *entry, struct kndClassDeclarat
     struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
     int err;
 
+    assert(c != NULL);
+
     if (DEBUG_TEXT_IDX_LEVEL_2) {
         knd_log(">> index class inst of \"%.*s\" (repo:%.*s)  => %.*s::%.*s par:%zu sent:%zu decl:%.*s",
-                entry->name_size, entry->name,  entry->repo->name_size, entry->repo->name,
+                c->name_size, c->name,  c->entry->repo->name_size, c->entry->repo->name,
                 inst->blueprint->name_size, inst->blueprint->name, inst->name_size, inst->name,
                 par->numid, sent->numid, decl->entry->name_size, decl->entry->name);
-        knd_class_entry_str(entry, 1);
     }
 
-    FOREACH (ref, entry->text_idxs) {
+    FOREACH (ref, c->text_idxs) {
         if (ref->entry == inst->blueprint) break;
     }
     if (!ref) {
@@ -47,13 +48,13 @@ static int index_class_inst(struct kndClassEntry *entry, struct kndClassDeclarat
         if (err) return err;
         ref->entry = inst->blueprint;
         ref->attr = var->attr;
-        ref->next = entry->text_idxs;
+        ref->next = c->text_idxs;
         err = knd_class_idx_new(mempool, &ref->idx);
-        ref->idx->entry = entry;
+        ref->idx->entry = c->entry;
         if (err) return err;
 
         // TODO atomic
-        entry->text_idxs = ref;
+        c->text_idxs = ref;
     }
 
     *result = ref->idx;
@@ -93,7 +94,8 @@ static int append_child_idx(struct kndClassIdx *idx, struct kndClassIdx *child_i
         orig_children = atomic_load_explicit(&idx->children, memory_order_relaxed);
         num_children = atomic_load_explicit(&idx->num_children, memory_order_relaxed);
 
-        knd_log(">>  \"%.*s\" %p (num children:%zu)  => \"%.*s\"",
+        if (DEBUG_TEXT_IDX_LEVEL_2)
+            knd_log(">>  \"%.*s\" %p (num children:%zu)  => \"%.*s\"",
                 idx->entry->name_size, idx->entry->name, idx, num_children,
                 child_idx->entry->name_size, child_idx->entry->name);
         
@@ -112,19 +114,21 @@ static int append_child_idx(struct kndClassIdx *idx, struct kndClassIdx *child_i
     return knd_OK;
 }
 
-static int get_class_idx(struct kndClassEntry *entry, struct kndAttrVar *var, struct kndClassInst *src,
+static int get_class_idx(struct kndClass *c, struct kndAttrVar *var, struct kndClassInst *src,
                          struct kndClassIdx **result, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
     struct kndClassRef *orig_idxs, *ref = NULL;
     int err;
 
+    assert(c != NULL);
+
     do {
         // CAS failed: concurrent competitor was quicker than us
         if (ref) {
             // free resources
         }
-        orig_idxs = atomic_load_explicit(&entry->text_idxs, memory_order_relaxed);
+        orig_idxs = atomic_load_explicit(&c->text_idxs, memory_order_relaxed);
         FOREACH (ref, orig_idxs) {
             if (ref->entry == src->blueprint) break;
         }
@@ -136,16 +140,16 @@ static int get_class_idx(struct kndClassEntry *entry, struct kndAttrVar *var, st
             ref->next = orig_idxs;
 
             err = knd_class_idx_new(mempool, &ref->idx);
-            ref->idx->entry = entry;
+            ref->idx->entry = c->entry;
         }
     }
-    while (!atomic_compare_exchange_weak(&entry->text_idxs, &orig_idxs, ref));
+    while (!atomic_compare_exchange_weak(&c->text_idxs, &orig_idxs, ref));
 
     *result = ref->idx;
     return knd_OK;
 }
 
-static int update_ancestor_idx(struct kndClassEntry *base, struct kndClassDeclaration *decl,
+static int update_ancestor_idx(struct kndClass *base, struct kndClassDeclaration *decl,
                                struct kndAttrVar *var, struct kndClassInst *src,
                                struct kndClassIdx *term_idx, struct kndTask *task)
 {
@@ -154,6 +158,8 @@ static int update_ancestor_idx(struct kndClassEntry *base, struct kndClassDeclar
     struct kndClassIdx *idx, *child_idx;
     int err;
 
+    assert(base != NULL);
+
     if (DEBUG_TEXT_IDX_LEVEL_2)
         knd_log(">> ancestor \"%.*s\" to update its class idx", base->name_size, base->name);
 
@@ -161,7 +167,7 @@ static int update_ancestor_idx(struct kndClassEntry *base, struct kndClassDeclar
     KND_TASK_ERR("failed to get a class idx");
 
     // TODO
-    FOREACH (ref, base->class->children) {
+    FOREACH (ref, base->children) {
         if (ref->class == entry->class) {
             err = append_child_idx(idx, term_idx, task);
             KND_TASK_ERR("failed to append terminal child idx");
@@ -170,7 +176,7 @@ static int update_ancestor_idx(struct kndClassEntry *base, struct kndClassDeclar
         err = knd_is_base(ref->class, entry->class);
         if (err) continue;
 
-        err = get_class_idx(ref->entry, var, src, &child_idx, task);
+        err = get_class_idx(ref->entry->class, var, src, &child_idx, task);
         KND_TASK_ERR("failed to get a class idx");
 
         err = append_child_idx(idx, child_idx, task);
@@ -227,7 +233,7 @@ static int index_class_declar(struct kndClassDeclaration *decl, struct kndSenten
         decl->entry = entry;
     }
     
-    err = index_class_inst(entry, decl, sent, par, var, inst, &idx, task);
+    err = index_class_inst(entry->class, decl, sent, par, var, inst, &idx, task);
     KND_TASK_ERR("failed to index text class inst");
 
     // TODO
@@ -240,7 +246,7 @@ static int index_class_declar(struct kndClassDeclaration *decl, struct kndSenten
             }
             ref->entry = entry;
         }
-        err = update_ancestor_idx(ref->entry, decl, var, inst, idx, task);
+        err = update_ancestor_idx(ref->entry->class, decl, var, inst, idx, task);
         if (err) return err;
     }
     return knd_OK;
@@ -381,6 +387,7 @@ int knd_text_index(struct kndText *self, struct kndRepo *repo, struct kndTask *t
         for (sent = par->sents; sent; sent = sent->next) {
             if (!sent->stm) continue;
 
+        if (DEBUG_TEXT_IDX_LEVEL_3)
             knd_log(">> repo \"%.*s\" to add a text idx rec: %.*s/%.*s/%.*s/P:%zu/S:%zu  \"%.*s\"",
                     repo->name_size, repo->name, inst->blueprint->name_size, inst->blueprint->name,
                     inst->name_size, inst->name,

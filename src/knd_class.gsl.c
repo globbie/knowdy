@@ -86,7 +86,7 @@ int knd_export_class_state_GSL(struct kndClassEntry *self, struct kndTask *task)
         timestamp = state->commit->timestamp;
     } else {
         err = out->writec(out, '0');                                              RET_ERR();
-        timestamp = self->repo->snapshot.timestamp;
+        timestamp = self->repo->snapshot->timestamp;
     }
     
     err = out->write(out, "{time ", strlen("{time "));                            RET_ERR();
@@ -97,23 +97,21 @@ int knd_export_class_state_GSL(struct kndClassEntry *self, struct kndTask *task)
     return knd_OK;
 }
 
-static int export_class_inst_state_GSL(struct kndClass *self,
-                                       struct kndTask *task)
+static int export_class_inst_state_GSL(struct kndClass *self, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     size_t latest_state_id = 0;
     int err;
 
-    if (self->entry->inst_states)
-        latest_state_id = self->entry->inst_states->numid;
+    if (self->inst_states)
+        latest_state_id = self->inst_states->numid;
 
-    err = out->write(out, "\"_state\":",
-                     strlen("\"_state\":"));                                      RET_ERR();
+    err = out->write(out, "\"_state\":", strlen("\"_state\":"));                                      RET_ERR();
     err = out->writef(out, "%zu", latest_state_id);                               RET_ERR();
 
-    if (self->entry->inst_idx) {
+    if (self->inst_idx) {
         err = out->write(out, ",\"_tot\":", strlen(",\"_tot\":"));                  RET_ERR();
-        err = out->writef(out, "%zu", self->entry->inst_idx->num_valid_elems);      RET_ERR();
+        err = out->writef(out, "%zu", self->inst_idx->num_elems);      RET_ERR();
     } else {
         err = out->write(out, ",\"_tot\":0", strlen(",\"_tot\":"));                  RET_ERR();
     }
@@ -522,10 +520,7 @@ static int export_baseclass_vars(struct kndClass *self,
     return knd_OK;
 }
 
-static int export_attr_hub_GSL(struct kndAttrHub *hub,
-                               struct kndOutput *out,
-                               struct kndTask *task,
-                               size_t depth)
+static int export_attr_hub_GSL(struct kndAttrHub *hub, struct kndOutput *out, struct kndTask *task, size_t depth)
 {
     struct kndSet *set;
     int err;
@@ -698,8 +693,8 @@ int knd_class_export_GSL(struct kndClassEntry *entry, struct kndTask *task, bool
     */
 
     num_children = self->num_children;
-    if (entry->desc_states) {
-        state = entry->desc_states;
+    if (self->desc_states) {
+        state = self->desc_states;
         if (state->val) 
             num_children = state->val->val_size;
     }
@@ -717,11 +712,11 @@ int knd_class_export_GSL(struct kndClassEntry *entry, struct kndTask *task, bool
     }
 
     /* instances */
-    if (entry->inst_idx) {
+    if (self->inst_idx) {
         err = out->write(out, "{instance-state",
                          strlen("{instance-state"));                                   RET_ERR();
 
-        if (self->entry->inst_states) {
+        if (self->inst_states) {
             err = export_class_inst_state_GSL(self, task);                          RET_ERR();
         }
 
@@ -732,14 +727,13 @@ int knd_class_export_GSL(struct kndClassEntry *entry, struct kndTask *task, bool
     }
 
     /* reverse attr paths */
-    if (entry->attr_hubs) {
+    if (self->attr_hubs) {
         if (task->ctx->format_offset) {
             err = out->writec(out, '\n');                                         RET_ERR();
             err = knd_print_offset(out, (depth + 1) * task->ctx->format_offset);  RET_ERR();
         }
         err = out->write(out, "[_rev_attrs", strlen("[_rev_attrs"));              RET_ERR();
-        for (attr_hub = entry->attr_hubs; attr_hub;
-             attr_hub = attr_hub->next) {
+        FOREACH (attr_hub, self->attr_hubs) {
             if (task->ctx->format_offset) {
                 err = out->writec(out, '\n');                                     RET_ERR();
                 err = knd_print_offset(out,

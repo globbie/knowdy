@@ -309,7 +309,6 @@ int knd_class_resolve(struct kndClass *self, struct kndTask *task)
     struct kndRepo *repo = entry->repo;
     struct kndAttrRef *attr_ref, *ref;
     int err;
-
     assert(!self->is_resolved);
 
     if (self->resolving_in_progress) {
@@ -318,7 +317,7 @@ int knd_class_resolve(struct kndClass *self, struct kndTask *task)
     }
     self->resolving_in_progress = true;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
         knd_log(".. resolving class \"%.*s\"", entry->name_size, entry->name);
 
     /* primary attrs */
@@ -331,11 +330,9 @@ int knd_class_resolve(struct kndClass *self, struct kndTask *task)
     if (!self->baseclass_vars) {
         err = link_baseclass(self, repo->root_class, task);                       RET_ERR();
     } else {
-
         if (!self->base_is_resolved) {
             err = resolve_baseclasses(self, task);                                RET_ERR();
         }
-
         for (cvar = self->baseclass_vars; cvar; cvar = cvar->next) {
             err = inherit_attrs(self, cvar->entry->class, task);                  RET_ERR();
             
@@ -346,13 +343,12 @@ int knd_class_resolve(struct kndClass *self, struct kndTask *task)
     }
 
     /* uniq attr constraints */
-    for (ref = self->uniq; ref; ref = ref->next) {
+    FOREACH (ref, self->uniq) {
         err = knd_class_get_attr(self, ref->name, ref->name_size, &attr_ref);
         KND_TASK_ERR("no uniq attr \"%.*s\" in class \"%.*s\"",
                      ref->name_size, ref->name, self->name_size, self->name);
         ref->attr = attr_ref->attr;
     }
-    
     self->is_resolved = true;
 
     /* this class is good to go: 
@@ -362,9 +358,9 @@ int knd_class_resolve(struct kndClass *self, struct kndTask *task)
     entry->numid++;
     knd_uid_create(entry->numid, entry->id, &entry->id_size);
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
         entry->class->str(entry->class, 1);
-    }
+
     return knd_OK;
 }
 

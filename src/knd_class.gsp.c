@@ -71,33 +71,6 @@ static int export_glosses(struct kndClass *self, struct kndOutput *out)
     return knd_OK;
 }
 
-/*static int export_summary(struct kndClass *self,
-                          struct kndOutput *out)
-{
-    struct kndText *tr;
-    int err;
-
-    err = out->write(out, "[!_summary", strlen("[!_summary"));
-    if (err) return err;
-
-    for (tr = self->tr; tr; tr = tr->next) {
-        err = out->write(out, "{", 1);
-        if (err) return err;
-        err = out->write(out, tr->locale, tr->locale_size);
-        if (err) return err;
-        err = out->write(out, "{t ", 3);
-        if (err) return err;
-        err = out->write(out, tr->seq, tr->seq_size);
-        if (err) return err;
-        err = out->write(out, "}}", 2);
-        if (err) return err;
-    }
-    err = out->write(out, "]", 1);
-    if (err) return err;
-    return knd_OK;
-}
-*/
-
 static int export_baseclass_vars(struct kndClass *self, struct kndTask *task, struct kndOutput *out)
 {
     struct kndClassVar *item;
@@ -189,8 +162,7 @@ static int export_class_body_commits(struct kndClass *self,
     return knd_OK;
 }
 
-static int export_class_inst_commits(struct kndClass *unused_var(self),
-                                     struct kndClassCommit *class_commit,
+static int export_class_inst_commits(struct kndClass *unused_var(self), struct kndClassCommit *class_commit,
                                      struct kndTask *task)
 {
     struct kndOutput *out = task->out;
@@ -215,9 +187,7 @@ static int export_class_inst_commits(struct kndClass *unused_var(self),
     return knd_OK;
 }
 
-extern int knd_class_export_commits_GSP(struct kndClass *self,
-                                        struct kndClassCommit *class_commit,
-                                        struct kndTask *task)
+int knd_class_export_commits_GSP(struct kndClass *self, struct kndClassCommit *class_commit, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndCommit *commit = class_commit->commit;
@@ -241,9 +211,8 @@ extern int knd_class_export_commits_GSP(struct kndClass *self,
         /* any commits of the class body? */
         err = export_class_body_commits(self, class_commit, task);                 RET_ERR();
     }
-
-    if (self->entry->inst_states) {
-        state = self->entry->inst_states;
+    if (self->inst_states) {
+        state = self->inst_states;
         /* any commits of the class insts? */
         if (state->commit == commit) {
             err = export_class_inst_commits(self, class_commit, task);             RET_ERR();
@@ -287,10 +256,16 @@ int knd_class_export_GSP(struct kndClass *self, struct kndTask *task)
             KND_TASK_ERR("failed to export attr");
         }
     }
+
     /*if (self->entry->descendants) {
         err = export_descendants_GSP(self, task);                                     RET_ERR();
     }
     */
+
+    // marshall insts
+
+
+    
     return knd_OK;
 }
 
@@ -305,8 +280,7 @@ static gsl_err_t set_baseclass(void *obj, const char *id, size_t id_size)
 
     if (!id_size) return make_gsl_err(gsl_FORMAT);
     if (id_size > KND_ID_SIZE) return make_gsl_err(gsl_LIMIT);
-
-    knd_log(">> baseclass: %.*s", id_size, id);
+    // knd_log(">> baseclass: %.*s", id_size, id);
 
     memcpy(class_var->id, id, id_size);
     class_var->id_size = id_size;
@@ -318,7 +292,7 @@ static gsl_err_t set_baseclass(void *obj, const char *id, size_t id_size)
     }
     class_var->entry = entry;
 
-    if (DEBUG_CLASS_GSP_LEVEL_TMP)
+    if (DEBUG_CLASS_GSP_LEVEL_3)
         knd_log("== conc item baseclass: %.*s (id:%.*s)", entry->name_size, entry->name, id_size, id);
     
     return make_gsl_err(gsl_OK);
@@ -391,7 +365,7 @@ static gsl_err_t check_class_name(void *obj, const char *name, size_t name_size)
     struct kndRepo *repo          = ctx->repo;
     // struct kndClassEntry *entry = NULL;
 
-    if (DEBUG_CLASS_GSP_LEVEL_TMP)
+    if (DEBUG_CLASS_GSP_LEVEL_2)
         knd_log(".. repo \"%.*s\" to check a class name: \"%.*s\" (size:%zu)",
                 repo->name_size, repo->name, name_size, name, name_size);
 
@@ -411,7 +385,7 @@ static gsl_err_t read_attr(void *obj, const char *name, size_t name_size, const 
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_CLASS_GSP_LEVEL_TMP)
+    if (DEBUG_CLASS_GSP_LEVEL_2)
         knd_log(".. reading attr: \"%.*s\" rec:\"%.*s\"", name_size, name, 32, rec);
 
     err = knd_attr_new(mempool, &attr);
@@ -450,7 +424,7 @@ static gsl_err_t read_attr(void *obj, const char *name, size_t name_size, const 
 
 int knd_class_read(struct kndClass *self, const char *rec, size_t *total_size, struct kndTask *task)
 {
-    if (DEBUG_CLASS_GSP_LEVEL_TMP)
+    if (DEBUG_CLASS_GSP_LEVEL_2)
         knd_log(".. reading class GSP: \"%.*s\"..", 64, rec);
 
     struct LocalContext ctx = {
@@ -485,7 +459,8 @@ int knd_class_read(struct kndClass *self, const char *rec, size_t *total_size, s
         { .validate = read_attr,
           .obj = &ctx
         }/*,
-        { .name = "inst",
+        { .type = GSL_GET_ARRAY_STATE,
+          .name = "inst",
           .name_size = strlen("inst"),
           .parse = gsl_parse_array,
           .obj = &inst_commit_spec
@@ -496,8 +471,11 @@ int knd_class_read(struct kndClass *self, const char *rec, size_t *total_size, s
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return parser_err.code;
 
-    // assign glosses if any
-
+    // assign glosses
+    if (task->ctx->tr) {
+        self->tr = task->ctx->tr;
+        task->ctx->tr = NULL;
+    }
     return knd_OK;
 }
 
@@ -512,7 +490,7 @@ int knd_class_marshall(void *elem, size_t *output_size, struct kndTask *task)
     err = knd_class_export_GSP(entry->class, task);
     KND_TASK_ERR("failed to export class GSP");
 
-    if (DEBUG_CLASS_GSP_LEVEL_TMP)
+    if (DEBUG_CLASS_GSP_LEVEL_2)
         knd_log("== GSP of %.*s (%.*s)  size:%zu", 
                 entry->class->name_size,  entry->class->name, entry->id_size, entry->id, out->buf_size - orig_size);
 
@@ -532,7 +510,7 @@ int knd_class_entry_unmarshall(const char *elem_id, size_t elem_id_size, const c
     size_t name_size;
     int err;
 
-    if (DEBUG_CLASS_GSP_LEVEL_TMP)
+    if (DEBUG_CLASS_GSP_LEVEL_2)
         knd_log(">> GSP class entry \"%.*s\" => \"%.*s\"", elem_id_size, elem_id, rec_size, rec);
 
     err = knd_class_entry_new(mempool, &entry);
@@ -573,7 +551,7 @@ int knd_class_entry_unmarshall(const char *elem_id, size_t elem_id_size, const c
     err = knd_shared_set_add(repo->class_idx, entry->id, entry->id_size, (void*)entry);
     KND_TASK_ERR("failed to register class entry \"%.*s\"", entry->id_size, entry->id);
 
-    if (DEBUG_CLASS_GSP_LEVEL_TMP)
+    if (DEBUG_CLASS_GSP_LEVEL_3)
         knd_log("== class name decoded \"%.*s\" => \"%.*s\" (repo:%.*s)",
                 entry->id_size, entry->id, entry->name_size, entry->name, repo->name_size, repo->name);
 
@@ -588,8 +566,7 @@ int knd_class_unmarshall(const char *elem_id, size_t elem_id_size, const char *r
     struct kndClass *c = NULL;
     size_t total_size = rec_size;
     int err;
-
-    if (DEBUG_CLASS_GSP_LEVEL_TMP)
+    if (DEBUG_CLASS_GSP_LEVEL_2)
         knd_log(">> GSP class \"%.*s\" => \"%.*s\"", elem_id_size, elem_id, rec_size, rec);
 
     err = knd_class_new(mempool, &c);

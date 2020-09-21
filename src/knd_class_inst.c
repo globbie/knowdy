@@ -64,8 +64,7 @@ int knd_class_inst_export(struct kndClassInst *self, knd_format format, bool is_
     }
 }
 
-int knd_class_inst_commit_state(struct kndClass *self, struct kndStateRef *children, size_t num_children,
-                                struct kndTask *task)
+int knd_class_inst_commit_state(struct kndClass *self, struct kndStateRef *children, size_t num_children, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
     struct kndCommit *commit = task->ctx->commit;
@@ -78,14 +77,13 @@ int knd_class_inst_commit_state(struct kndClass *self, struct kndStateRef *child
     state->phase = KND_SELECTED;
     state->children = children;
     state->num_children = num_children;
-
     do {
-        head = atomic_load_explicit(&self->entry->inst_states, memory_order_relaxed);
+        head = atomic_load_explicit(&self->inst_states, memory_order_relaxed);
         if (head) {
             state->next = head;
             state->numid = head->numid + 1;
         }
-    } while (!atomic_compare_exchange_weak(&self->entry->inst_states, &head, state));
+    } while (!atomic_compare_exchange_weak(&self->inst_states, &head, state));
 
     /* inform our repo */
     err = knd_state_ref_new(mempool, &ref);                                 RET_ERR();
@@ -96,7 +94,6 @@ int knd_class_inst_commit_state(struct kndClass *self, struct kndStateRef *child
     ref->next = commit->class_state_refs;
     commit->class_state_refs = ref;
     commit->num_class_state_refs++;
-
     return knd_OK;
 }
 

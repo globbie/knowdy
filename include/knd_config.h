@@ -283,6 +283,7 @@ typedef enum knd_logic { KND_LOGIC_AND,
 #define KND_SMALL_BUF_SIZE 64
 #define KND_LABEL_SIZE 8
 #define KND_PATH_SIZE 1024
+#define KND_USER_PATH_PREFIX_SIZE 2
 
 #define KND_NAME_SIZE 1024 - 8 // to fit into a struct with explicit name size
 #define KND_SHORT_NAME_SIZE 48

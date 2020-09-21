@@ -126,25 +126,6 @@ struct kndClassEntry
     struct kndSharedDictItem *dict_item;
 
     knd_state_phase phase;
-
-
-    struct kndState * _Atomic desc_states;
-    size_t init_desc_state;
-    size_t num_desc_states;
-    
-    struct kndState * _Atomic inst_states;
-    size_t init_inst_state;
-    size_t num_inst_states;
-
-    struct kndSharedSet  * _Atomic inst_idx;
-    struct kndSharedDict * _Atomic inst_name_idx;
-    atomic_size_t    num_insts;
-    atomic_size_t    inst_id_count;
-
-    struct kndAttrHub *attr_hubs;
-
-    /* text indices grouped by source type (messages, posts, articles, books etc.) */
-    struct kndClassRef * _Atomic text_idxs;
 };
 
 struct kndClass
@@ -184,6 +165,25 @@ struct kndClass
     struct kndClassRef *ancestors;
     size_t num_ancestors;
     struct kndSet *descendants;
+
+    struct kndState * _Atomic desc_states;
+    size_t init_desc_state;
+    size_t num_desc_states;
+
+    struct kndAttrHub *attr_hubs;
+
+    /* text indices grouped by source type (messages, posts, articles, books etc.) */
+    struct kndClassRef * _Atomic text_idxs;
+    
+    struct kndState * _Atomic inst_states;
+    size_t init_inst_state;
+    size_t num_inst_states;
+
+    struct kndSharedSet  * _Atomic inst_idx;
+    struct kndSharedDict * _Atomic inst_name_idx;
+    atomic_size_t    num_insts;
+    atomic_size_t    inst_id_count;
+
     
     /* detect vicious circles */
     bool resolving_in_progress;
@@ -267,16 +267,11 @@ gsl_err_t knd_read_class_inst_state(struct kndClass *self, struct kndClassCommit
                                     const char *rec, size_t *total_size);
 
 
-int knd_get_class_inst(struct kndClassEntry *self, const char *name, size_t name_size, struct kndTask *task,
-                       struct kndClassInst **result);
+int knd_get_class_inst(struct kndClass *self, const char *name, size_t name_size, struct kndTask *task, struct kndClassInst **result);
 
-int knd_register_class_inst(struct kndClass *self,
-                            struct kndClassInstEntry *entry,
-                            struct kndTask *task);
+int knd_register_class_inst(struct kndClass *self, struct kndClassInstEntry *entry, struct kndTask *task);
 
-int knd_unregister_class_inst(struct kndClass *self,
-                              struct kndClassInstEntry *entry,
-                              struct kndTask *task);
+int knd_unregister_class_inst(struct kndClass *self, struct kndClassInstEntry *entry, struct kndTask *task);
 
 int knd_class_clone(struct kndClass *self, struct kndRepo *target_repo, struct kndClass **result, struct kndTask *task);
 int knd_class_entry_clone(struct kndClassEntry *self, struct kndRepo *target_repo, struct kndClassEntry **result, struct kndTask *task);
@@ -287,7 +282,7 @@ int knd_register_state(struct kndClass *self);
 int knd_register_descendant_states(struct kndClass *self);
 int knd_register_inst_states(struct kndClass *self);
 
-int knd_export_class_inst_state_JSON(struct kndClassEntry *self, struct kndTask *task);
+int knd_export_class_inst_state_JSON(struct kndClass *self, struct kndTask *task);
 
 int knd_get_class_attr_value(struct kndClass *src, struct kndAttrVar *query, struct kndProcCallArg *arg);
 
@@ -314,7 +309,7 @@ int knd_class_get_desc_updates(struct kndClass *self,
                                size_t unused_var(eq),
                                struct kndSet *set);
 
-int knd_class_get_inst_updates(struct kndClassEntry *self, size_t gt, size_t lt, size_t eq, struct kndSet *set);
+int knd_class_get_inst_updates(struct kndClass *self, size_t gt, size_t lt, size_t eq, struct kndSet *set);
 
 // knd_class.resolve.c
 int knd_class_resolve(struct kndClass *self, struct kndTask *task);

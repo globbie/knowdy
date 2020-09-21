@@ -22,6 +22,9 @@ struct kndRepoAccess
 
 struct kndUserContext
 {
+    char path[KND_PATH_SIZE + 1];
+    size_t path_size;
+
     struct kndClassInst *inst;
     struct kndRepo *repo;
     struct kndRepo *base_repo;
@@ -36,7 +39,7 @@ struct kndUserContext
 
 struct kndUser
 {
-    char path[KND_PATH_SIZE];
+    char path[KND_PATH_SIZE + 1];
     size_t path_size;
 
     const char *classname;
@@ -72,4 +75,4 @@ gsl_err_t knd_create_user(void *obj, const char *rec, size_t *total_size);
 int knd_create_user_repo(struct kndTask *task);
 gsl_err_t knd_parse_select_user(void *obj, const char *rec, size_t *total_size);
 
-int knd_user_context_new(struct kndMemPool *mempool, struct kndUserContext **result);
+int knd_user_context_new(struct kndUserContext **result);

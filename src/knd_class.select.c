@@ -633,13 +633,20 @@ static gsl_err_t parse_select_class_inst(void *obj, const char *rec, size_t *tot
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
+    struct kndClass *c;
+    int err;
 
     if (!ctx->class_entry) {
         KND_TASK_LOG("no class entry selected");
         return *total_size = 0, make_gsl_err_external(knd_FAIL);
     }
 
-    return knd_select_class_inst(ctx->class_entry, rec, total_size, ctx->task);
+    err = knd_class_acquire(ctx->class_entry, &c, task);
+    if (err) {
+        KND_TASK_LOG("failed to acquire class \"%.*s\"", ctx->class_entry->id_size, ctx->class_entry->id);
+        return *total_size = 0, make_gsl_err_external(err);
+    }
+    return knd_select_class_inst(c, rec, total_size, ctx->task);
 }
 
 static gsl_err_t parse_import_class_inst(void *obj, const char *rec, size_t *total_size)
@@ -679,7 +686,7 @@ static gsl_err_t parse_import_class_inst(void *obj, const char *rec, size_t *tot
         if (!commit) {
             err = knd_commit_new(mempool, &commit);
             if (err) return make_gsl_err_external(err);
-            commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot.num_commits, memory_order_relaxed);
+            commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot->num_commits, memory_order_relaxed);
             task->ctx->commit = commit;
         }
         break;
@@ -729,7 +736,7 @@ run_remove_class(void *obj, const char *unused_var(name), size_t name_size)
         return make_gsl_err_external(knd_FAIL);
     }
 
-    if (ctx->selected_class->entry->num_insts) {
+    if (ctx->selected_class->num_insts) {
         knd_log("-- instances exist");
         err = ctx->task->log->writef(ctx->task->log, "instances exist");
         if (err) return make_gsl_err_external(err);

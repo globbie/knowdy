@@ -51,7 +51,7 @@ static gsl_err_t parse_proc_import(void *obj, const char *rec, size_t *total_siz
     task->type = KND_COMMIT_STATE;
 
     if (!task->ctx->commit->orig_state_id)
-        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot.num_commits,
+        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot->num_commits,
                                                                 memory_order_relaxed);
     return knd_proc_import(task->repo, rec, total_size, task);
 }
@@ -106,101 +106,9 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
         err = knd_commit_new(task->mempool, &task->ctx->commit);
         if (err) return make_gsl_err_external(err);
         
-        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot.num_commits, memory_order_relaxed);
+        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot->num_commits, memory_order_relaxed);
     }
     return knd_class_import(user_ctx->repo, rec, total_size, task);
-}
-
-static gsl_err_t parse_sync_task(void *obj, const char *unused_var(rec), size_t *total_size)
-{
-    struct kndTask *task = obj;
-    struct kndUser *self = task->shard->user;
-    struct kndOutput *out = task->out;
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
-    struct stat st;
-    char *s, *n;
-    size_t path_size;
-    int err;
-
-    if (DEBUG_USER_LEVEL_2)
-        knd_log(".. got sync task..");
-
-    s = self->path;
-    memcpy(s, self->path, self->path_size);
-    s += self->path_size;
-    self->path_size += self->path_size;
-
-    path_size =  strlen("/frozen_merge.gsp");
-    memcpy(s, "/frozen_merge.gsp", path_size);
-    self->path_size += path_size;
-    self->path[self->path_size] = '\0';
-
-    /* file exists, remove it */
-    if (!stat(self->path, &st)) {
-        err = remove(self->path);
-        if (err) return *total_size = 0, make_gsl_err_external(err);
-        knd_log("-- existing frozen DB file removed..");
-    }
-
-    /* name IDX */
-    n = buf;
-    buf_size = 0;
-    memcpy(n, self->path, self->path_size);
-    n += self->path_size;
-    buf_size += self->path_size;
-    path_size =  strlen("/frozen_name.gsi");
-    memcpy(n, "/frozen_name.gsi", path_size);
-    buf_size += path_size;
-    buf[buf_size] = '\0';
-
-    task->type = KND_SNAPSHOT_STATE;
-
-    //err = knd_class_freeze(self->repo->root_class);
-    /*if (err) {
-        knd_log("-- failed to freeze class: \"%s\" :(", out->buf);
-        return *total_size = 0, make_gsl_err_external(err);
-        }*/
-
-    /* bump frozen count */
-
-    /* temp: simply rename the GSP file */
-    out->reset(out);
-    err = out->write(out, self->path, self->path_size);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-    err = out->write(out, "/frozen.gsp", strlen("/frozen.gsp"));
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-
-    /* null-termination is needed to call rename */
-    out->buf[out->buf_size] = '\0';
-
-    err = rename(self->path, out->buf);
-    if (err) {
-        knd_log("-- failed to rename GSP output file: \"%s\" :(", out->buf);
-        return *total_size = 0, make_gsl_err_external(err);
-    }
-
-    /* TODO: inform retrievers */
-
-    /* release resources */
-    if (!stat(out->buf, &st)) {
-        if (DEBUG_USER_LEVEL_TMP)
-            knd_log("++ frozen DB file sync'ed OK, total bytes: %lu",
-                    (unsigned long)st.st_size);
-    }
-
-    /*out->reset(out);
-    err = out->write(out,
-                           "{\"file_size\":",
-                           strlen("{\"file_size\":"));
-    if (err) return make_gsl_err_external(err);
-    buf_size = sprintf(buf, "%lu", (unsigned long)st.st_size);
-    err = out->write(out, buf, buf_size);
-    if (err) return make_gsl_err_external(err);
-    err = out->write(out, "}", 1);
-    if (err) return make_gsl_err_external(err);
-    */
-    return *total_size = 0, make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_size)
@@ -242,12 +150,28 @@ static int build_user_ctx(struct kndUser *self, struct kndClassInst *inst,
                           struct kndUserContext **result, struct kndTask *task)
 {
     struct kndUserContext *ctx;
+    struct kndOutput *out = task->out;
     int err;
-    err = knd_user_context_new(self->mempool, &ctx);
+    err = knd_user_context_new(&ctx);
     KND_TASK_ERR("failed to alloc user ctx");
     ctx->inst = inst;
     ctx->base_repo = self->repo;
     ctx->mempool = self->mempool;
+
+    out->reset(out);
+    OUT("users/", strlen("users/"));
+
+    /* user dir prefix */
+    if (inst->name_size >= KND_USER_PATH_PREFIX_SIZE) {
+        OUT(inst->name, KND_USER_PATH_PREFIX_SIZE);
+        OUT("/", 1);
+    }
+    OUT(inst->name, inst->name_size);
+    OUT("/", 1);
+
+    if (out->buf_size > KND_PATH_SIZE) return knd_LIMIT;
+    memcpy(ctx->path, out->buf, out->buf_size);
+    ctx->path_size = out->buf_size;
 
     task->user_ctx = ctx;
     err = knd_create_user_repo(task);
@@ -270,7 +194,7 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
     assert(name_size != 0);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    err = knd_get_class_inst(self->class->entry, name, name_size, task, &inst);
+    err = knd_get_class_inst(self->class, name, name_size, task, &inst);
     if (err) {
         KND_TASK_LOG("no such user: %.*s", name_size, name);
         return make_gsl_err_external(err);
@@ -501,11 +425,6 @@ gsl_err_t knd_parse_select_user(void *obj, const char *rec, size_t *total_size)
           .parse = parse_text_search,
           .obj = task
         },
-        { .name = "_sync",
-          .name_size = strlen("_sync"),
-          .parse = parse_sync_task,
-          .obj = task
-        },
         { .name = "_state",
           .name_size = strlen("_state"),
           .run = run_present_state,
@@ -529,19 +448,6 @@ gsl_err_t knd_parse_select_user(void *obj, const char *rec, size_t *total_size)
     default:
         break;
     }
-
-    if (task->user_ctx) {
-        struct kndUser *self = task->shard->user;
-        if (DEBUG_USER_LEVEL_2)
-            knd_log(".. done reading user ctx, cell idx:%zu", task->user_ctx->cache_cell_num - 1);
-        int err = knd_cache_release(self->cache, task->user_ctx->cache_cell_num - 1, task->user_ctx);
-        if (err) {
-            KND_TASK_LOG("cache reading release failed");
-            return make_gsl_err_external(err);
-        }
-        atomic_fetch_add_explicit(&task->user_ctx->total_tasks, 1, memory_order_relaxed);
-        task->user_ctx = NULL;
-    }
     return parser_err;
 }
 
@@ -555,22 +461,17 @@ gsl_err_t knd_create_user(void *obj, const char *rec, size_t *total_size)
         err = knd_commit_new(task->mempool, &task->ctx->commit);
         if (err) return make_gsl_err_external(err);
 
-        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot.num_commits,
-                                                                memory_order_relaxed);
+        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot->num_commits, memory_order_relaxed);
     }
-
     err = knd_import_class_inst(self->class->entry, rec, total_size, task);
     if (err) {
-        knd_log("failed to import a User class inst: %.*s", task->log->buf_size, task->log->buf);
         return *total_size = 0, make_gsl_err_external(err);
     }
-
     err = knd_class_inst_commit_state(self->class, task->ctx->class_inst_state_refs,
                                       task->ctx->num_class_inst_state_refs, task);
     if (err) {
         return make_gsl_err_external(err);
     }
-    
     return make_gsl_err(gsl_OK);
 }
 
@@ -646,14 +547,11 @@ int knd_user_new(struct kndUser **user, const char *classname, size_t classname_
     return err;
 }
 
-int knd_user_context_new(struct kndMemPool *mempool, struct kndUserContext **result)
+int knd_user_context_new(struct kndUserContext **result)
 {
-    void *page;
-    int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndUserContext));
-    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
-    if (err) return err;
-    memset(page, 0, sizeof(struct kndUserContext));
-    *result = page;
+    struct kndUserContext *self;
+    self = calloc(1, sizeof(struct kndUserContext));
+    if (!self) return knd_NOMEM;
+    *result = self;
     return knd_OK;
 }

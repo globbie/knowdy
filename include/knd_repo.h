@@ -31,6 +31,8 @@ struct kndConcFolder
 struct kndRepoSnapshot
 {
     size_t numid;
+    time_t timestamp;
+
     struct kndCommit * _Atomic commits;
     struct kndSet *commit_idx;
     atomic_size_t  num_commits;
@@ -41,7 +43,8 @@ struct kndRepoSnapshot
     size_t num_journals[KND_MAX_TASKS];
     size_t max_journals;
     size_t max_journal_size;
-    time_t timestamp;
+
+    struct kndRepoSnapshot *prev;
 };
 
 struct kndRepo
@@ -103,7 +106,7 @@ struct kndRepo
     struct kndSharedDict *str_dict;
     atomic_size_t num_strs;
 
-    struct kndRepoSnapshot snapshot;
+    struct kndRepoSnapshot * _Atomic snapshot;
 
     struct kndMemBlock *blocks;
     size_t num_blocks;
@@ -115,7 +118,7 @@ struct kndRepo
 int knd_present_repo_state(struct kndRepo *self, struct kndTask *task);
 int knd_confirm_commit(struct kndRepo *self, struct kndTask *task);
 gsl_err_t knd_parse_repo(void *obj, const char *rec, size_t *total_size);
-int knd_conc_folder_new(struct kndMemPool *mempool, struct kndConcFolder **result);
+
 int knd_repo_index_proc_arg(struct kndRepo *repo, struct kndProc *self, struct kndProcArg *arg, struct kndTask *task);
 int knd_repo_commit_indices(struct kndRepo *self, struct kndTaskContext *ctx);
 int knd_repo_check_conflicts(struct kndRepo *self, struct kndTaskContext *ctx);
@@ -125,5 +128,8 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task);
 int knd_repo_snapshot(struct kndRepo *self, struct kndTask *task);
 
 void knd_repo_del(struct kndRepo *self);
+
+int knd_repo_snapshot_new(struct kndMemPool *mempool, struct kndRepoSnapshot **result);
+int knd_conc_folder_new(struct kndMemPool *mempool, struct kndConcFolder **result);
 int knd_repo_new(struct kndRepo **self, const char *name, size_t name_size,
                  const char *schema_path, size_t schema_path_size, struct kndMemPool *mempool);

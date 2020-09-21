@@ -50,14 +50,14 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
     struct kndAttr *self = ctx->attr;
-
-    knd_log(">> attr code name: %.*s", name_size, name);
+    // TODO decode
+    //knd_log(">> attr code name: %.*s", name_size, name);
     self->name = name;
     self->name_size = name_size;
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t set_ref_class(void *obj, const char *name, size_t name_size)
+static gsl_err_t set_ref_class(void *obj, const char *id, size_t id_size)
 {
     struct LocalContext *ctx = obj;
     struct kndAttr *self = ctx->attr;
@@ -65,14 +65,12 @@ static gsl_err_t set_ref_class(void *obj, const char *name, size_t name_size)
     struct kndClassEntry *entry;
     struct kndTask *task = ctx->task;
     int err;
-    if (!name_size) return make_gsl_err(gsl_FORMAT);
-    if (name_size > KND_ID_SIZE) return make_gsl_err(gsl_FORMAT);
+    if (!id_size) return make_gsl_err(gsl_FORMAT);
+    if (id_size > KND_ID_SIZE) return make_gsl_err(gsl_FORMAT);
 
-    knd_log(">> class template: %.*s", name_size, name);
-
-    err = knd_shared_set_get(repo->class_idx, name, name_size, (void**)&entry);
+    err = knd_shared_set_get(repo->class_idx, id, id_size, (void**)&entry);
     if (err) {
-        KND_TASK_LOG("failed to link class entry \"%.*s\"", name_size, name);
+        KND_TASK_LOG("failed to link class entry \"%.*s\"", id_size, id);
         return make_gsl_err_external(err);
     }
     self->ref_classname = entry->name;

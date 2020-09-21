@@ -66,7 +66,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     int err;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log(".. set class name: \"%.*s\"..", name_size, name);
+        knd_log(".. set class name: \"%.*s\" num strs:%zu", name_size, name, repo->num_strs);
 
     /* initial bulk load in progress */
     switch (task->type) {
@@ -93,6 +93,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
                 err = knd_charseq_new(mempool, &seq);
                 seq->val = name;
                 seq->val_size = name_size;
+
                 seq->numid = atomic_fetch_add_explicit(&repo->num_strs, 1, memory_order_relaxed);
 
                 err = knd_shared_dict_set(repo->str_dict, name, name_size, (void*)seq,
@@ -107,11 +108,12 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
                     KND_TASK_LOG("failed to register a charseq by numid");
                     return make_gsl_err_external(err);
                 }
-                entry->seq = seq;
                 // knd_log(">> class name as a str: \"%.*s\"", name_size, name);
             }
+            entry->seq = seq;
             return make_gsl_err(gsl_OK);
         }
+
         /* no class body so far */
         if (!entry->class) {
             entry->class =    self;

@@ -42,7 +42,7 @@
 
 static int update_attr_hub(struct kndClass   *topic,
                            struct kndClass   *spec,
-                           struct kndClassEntry *hub_owner,
+                           struct kndClass   *hub_owner,
                            struct kndAttrVar *item,
                            struct kndAttr    *attr,
                            struct kndTask    *task,
@@ -130,8 +130,7 @@ int knd_index_attr(struct kndClass *self,
     }
     err = knd_is_base(base, c);                                                   RET_ERR();
     
-    err = update_attr_hub(self, c, c->entry,
-                          item, attr, task, false);                               RET_ERR();
+    err = update_attr_hub(self, c, c, item, attr, task, false);                               RET_ERR();
 
     /* update the ancestors */
     for (ref = c->ancestors; ref; ref = ref->next) {
@@ -143,8 +142,7 @@ int knd_index_attr(struct kndClass *self,
             knd_log(".. update spec ancestor: %.*s",
                     curr_class->name_size, curr_class->name);
 
-        err = update_attr_hub(self, c, curr_class->entry,
-                              item, attr, task, true);                            RET_ERR();
+        err = update_attr_hub(self, c, curr_class, item, attr, task, true);                            RET_ERR();
     }
     return knd_OK;
 }
@@ -224,8 +222,7 @@ int knd_index_attr_var_list(struct kndClass *self, struct kndAttr *attr, struct 
         /*** index inverse rels ***/
 
         /* update immediate hub */
-        err = update_attr_hub(self, c, c->entry,
-                              item, item->attr, task, false);                     RET_ERR();
+        err = update_attr_hub(self, c, c, item, item->attr, task, false);                     RET_ERR();
         /* update the ancestors */
         for (ref = c->ancestors; ref; ref = ref->next) {
             curr_class = ref->class;
@@ -238,8 +235,7 @@ int knd_index_attr_var_list(struct kndClass *self, struct kndAttr *attr, struct 
             if (DEBUG_ATTR_INDEX_LEVEL_2)
                 knd_log(".. updating the attr hub of \"%.*s\"",
                         curr_class->name_size, curr_class->name);
-            err = update_attr_hub(self, c, curr_class->entry,
-                                  item, item->attr, task, true);                  RET_ERR();
+            err = update_attr_hub(self, c, curr_class, item, item->attr, task, true);                  RET_ERR();
         }
 
     }
@@ -255,7 +251,7 @@ static void str_hub_path(struct kndAttrVar *item)
 
 static int update_attr_hub(struct kndClass   *topic,
                            struct kndClass   *spec,
-                           struct kndClassEntry *hub_owner,
+                           struct kndClass   *hub_owner,
                            struct kndAttrVar *unused_var(item),
                            struct kndAttr    *attr,
                            struct kndTask    *task,
@@ -344,10 +340,7 @@ static int update_attr_hub(struct kndClass   *topic,
     return knd_OK;
 }
 
-static int index_inner_class_ref(struct kndClass   *self,
-                                 struct kndAttrVar *item,
-                                 struct kndAttr *attr,
-                                 struct kndTask *task)
+static int index_inner_class_ref(struct kndClass   *self, struct kndAttrVar *item, struct kndAttr *attr, struct kndTask *task)
 {
     // TODO atomic
     struct kndClass *base = attr->ref_class_entry->class;
@@ -368,15 +361,14 @@ static int index_inner_class_ref(struct kndClass   *self,
                 topic->name_size, topic->name);
     }
 
-    err = update_attr_hub(self, spec, spec->entry,
-                          item, attr, task, false);                               RET_ERR();
+    err = update_attr_hub(self, spec, spec, item, attr, task, false);                               RET_ERR();
 
     /* update the ancestors */
     for (ref = spec->ancestors; ref; ref = ref->next) {
         curr_class = ref->class;
         err = knd_is_base(base, curr_class);
         if (err) continue;
-        err = update_attr_hub(self, spec, curr_class->entry,
+        err = update_attr_hub(self, spec, curr_class,
                               item, attr, task, true);                            RET_ERR();
     }
     return knd_OK;

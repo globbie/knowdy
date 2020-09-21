@@ -81,7 +81,9 @@ int knd_shared_set_get(struct kndSharedSet *self, const char *key, size_t key_si
 int knd_shared_set_add(struct kndSharedSet *self, const char *key, size_t key_size, void *elem);
 int knd_shared_set_map(struct kndSharedSet *self, map_cb_func cb, void *obj);
 int knd_shared_set_intersect(struct kndSharedSet *self, struct kndSharedSet **sets, size_t num_sets);
-int knd_shared_set_marshall(struct kndSharedSet *self, elem_marshall_cb cb, size_t *total_size, struct kndTask *task);
+
+int knd_shared_set_marshall(struct kndSharedSet *self, const char *filename, size_t filename_size,
+                            elem_marshall_cb cb, size_t *total_size, struct kndTask *task);
 int knd_shared_set_unmarshall_file(struct kndSharedSet *self, const char *filename, size_t filename_size,
                                    size_t filesize, elem_unmarshall_cb cb, struct kndTask *task);
 int knd_shared_set_unmarshall_elem(struct kndSharedSet *self, const char *id, size_t id_size,

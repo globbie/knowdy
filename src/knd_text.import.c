@@ -56,7 +56,6 @@ static gsl_err_t set_gloss_value(void *obj, const char *val, size_t val_size)
     struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
     struct kndCharSeq *seq;
     int err;
-
     assert(val_size != 0);
 
     switch (task->type) {
@@ -67,7 +66,9 @@ static gsl_err_t set_gloss_value(void *obj, const char *val, size_t val_size)
             return make_gsl_err_external(err);
         }
         text->seq = seq;
-        knd_log(">> gloss decoded \"%.*s\" => \"%.*s\"", val_size, val, text->seq->val_size, text->seq->val);
+
+        if (DEBUG_TEXT_IMPORT_LEVEL_2)
+            knd_log(">> gloss decoded \"%.*s\" => \"%.*s\"", val_size, val, text->seq->val_size, text->seq->val);
         return make_gsl_err(gsl_OK);
     default:
         break;

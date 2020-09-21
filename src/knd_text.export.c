@@ -108,13 +108,13 @@ static int export_GSL(struct kndText *self, struct kndTask *task)
     int err;
 
     state = atomic_load_explicit(&self->states, memory_order_relaxed);
-    if (state) {
+    if (seq && state) {
         seq->val = state->val->val;
         seq->val_size = state->val->val_size;
         return knd_OK;
     }
 
-    if (seq->val_size) {
+    if (seq && seq->val_size) {
         err = out->write(out, seq->val, seq->val_size);                   RET_ERR();
     }
     if (self->locale_size) {

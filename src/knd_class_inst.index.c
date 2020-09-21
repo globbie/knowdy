@@ -28,17 +28,15 @@
 #define DEBUG_INST_IDX_LEVEL_4 0
 #define DEBUG_INST_IDX_LEVEL_TMP 1
 
-static int update_attr_var_indices(struct kndClassEntry *blueprint, struct kndClassInstEntry *entry,
-                                   struct kndRepo *repo, struct kndTask *task)
+static int update_attr_var_indices(struct kndClassInstEntry *entry, struct kndRepo *repo, struct kndTask *task)
 {
     struct kndAttrVar *var;
     int err;
     
     if (DEBUG_INST_IDX_LEVEL_2)
-        knd_log(".. class inst \"%.*s::%.*s\" attr var indexing",
-                blueprint->name_size, blueprint->name, entry->name_size, entry->name);
+        knd_log(".. class inst \"%.*s\" attr var indexing", entry->name_size, entry->name);
 
-    for (var = entry->inst->class_var->attrs; var; var = var->next) {
+    FOREACH (var, entry->inst->class_var->attrs) {
         switch (var->attr->type) {
         case KND_ATTR_TEXT:
             if (DEBUG_INST_IDX_LEVEL_3)
@@ -56,7 +54,8 @@ static int update_attr_var_indices(struct kndClassEntry *blueprint, struct kndCl
 int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *blueprint,
                                   struct kndStateRef *state_refs, struct kndTask *task)
 {
-    struct kndClassEntry *c = blueprint;
+    struct kndClass *c = blueprint->class;
+    struct kndClassEntry *class_entry = blueprint;
     struct kndStateRef *ref;
     struct kndClassInstEntry *entry;
     struct kndSharedDict *name_idx = NULL;
@@ -69,6 +68,7 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *bl
     int err;
 
     assert(commit != NULL);
+    assert(c != NULL);
 
     if (DEBUG_INST_IDX_LEVEL_2)
         knd_log(".. repo \"%.*s\" to update inst indices of class \"%.*s\" (repo:%.*s)",
@@ -77,21 +77,20 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *bl
 
     /* user repo selected: activate copy-on-write */
     if (task->user_ctx) {
-        c = knd_shared_dict_get(repo->class_name_idx, blueprint->name, blueprint->name_size);
+        class_entry = knd_shared_dict_get(repo->class_name_idx, blueprint->name, blueprint->name_size);
         if (blueprint->repo != repo) {
-            if (!c) {
+            if (!class_entry) {
                 if (DEBUG_INST_IDX_LEVEL_TMP) {
                     knd_log("NB: copy-on-write of class entry \"%.*s\" activated in repo %.*s",
-                            c->name_size, c->name,
-                            repo->name_size, repo->name);
+                            class_entry->name_size, c->name, repo->name_size, repo->name);
                 }
-                err = knd_class_entry_clone(blueprint, repo, &c, task);
+                err = knd_class_entry_clone(blueprint, repo, &class_entry, task);
                 KND_TASK_ERR("failed to clone class entry");
             }
         }
     }
 
-    if (!c) {
+    if (!class_entry) {
         err = knd_FAIL;
         KND_TASK_ERR("class entry not found: %.*s", blueprint->name_size, blueprint->name);
     }
@@ -137,7 +136,7 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *bl
             KND_TASK_ERR("class inst idx failed to register \"%.*s\"", entry->name_size, entry->name);
 
             if (entry->inst->class_var->attrs) {
-                err = update_attr_var_indices(c, entry, repo, task);
+                err = update_attr_var_indices(entry, repo, task);
                 KND_TASK_ERR("failed to update attr inst indices with \"%.*s\"", entry->id_size, entry->id);
             }
             break;
