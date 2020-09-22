@@ -44,8 +44,8 @@ func New(conf string, parentAddress string, concurrencyFactor int) (*kndProc, er
 	}
 	proc.Name = C.GoStringN(&shard.name[0], C.int(shard.name_size))
         switch C.int(shard.role) {
-	case C.KND_WRITER:
-		proc.Role = "Writer"
+	case C.KND_ARBITER:
+		proc.Role = "Arbiter"
 		break
 	case C.KND_READER:
 		proc.Role = "Reader"
@@ -105,6 +105,9 @@ func (p *kndProc) RunTask(task string, task_len int) (string, string, error) {
 		}
 		return "", "", errors.New(msg)
 	}
+
+	// any thresholds reached?
+
 	// TODO check what replication level is needed for new commits
 	
 	return C.GoStringN((*C.char)(worker.output), C.int(worker.output_size)), "meta", nil
