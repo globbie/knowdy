@@ -270,7 +270,6 @@ int knd_text_export_query_report(struct kndTask *task)
 int knd_text_export(struct kndText *self, knd_format format, struct kndTask *task)
 {
     int err;
-
     switch (format) {
     case KND_FORMAT_JSON:
         err = export_JSON(self, task);                           RET_ERR();

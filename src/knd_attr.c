@@ -104,8 +104,8 @@ void knd_attr_var_str(struct kndAttrVar *var, size_t depth)
     if (var->is_list_item) {
         switch (attr->type) {
         case KND_ATTR_INNER:
-            knd_log("%*s* inner \"%.*s\":", depth * KND_OFFSET_SIZE, "",
-                    attr->ref_class_entry->name_size, attr->ref_class_entry->name);
+            knd_log("%*s* inner \"%.*s\" (class:%p):", depth * KND_OFFSET_SIZE, "",
+                    attr->ref_class_entry->name_size, attr->ref_class_entry->name, attr->ref_class_entry->class);
             break;
         case KND_ATTR_REF:
             knd_log("%*s* ref \"%.*s\":", depth * KND_OFFSET_SIZE, "",

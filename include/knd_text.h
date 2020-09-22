@@ -224,6 +224,8 @@ int knd_par_export_GSL(struct kndPar *par, struct kndTask *task);
 int knd_text_export_query_report(struct kndTask *task);
 int knd_text_export_query_report_GSL(struct kndTask *task);
 
+int knd_text_export_GSP(struct kndText *self, struct kndTask *task);
+
 int knd_charseq_marshall(void *elem, size_t *output_size, struct kndTask *task);
 int knd_charseq_unmarshall(const char *elem_id, size_t elem_id_size, const char *val, size_t val_size,
                            void **result, struct kndTask *task);

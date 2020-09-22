@@ -127,16 +127,16 @@ struct kndAttrVarRef
 
 struct kndAttrVar
 {
-    struct kndAttr *attr;
-
     char id[KND_ID_SIZE];
     size_t id_size;
+    struct kndAttr *attr;
 
     const char *name;
     size_t name_size;
 
     const char *val;
     size_t val_size;
+    struct kndCharSeq *seq;
 
     long numval;
     bool is_cached; // for computed fields

@@ -136,11 +136,6 @@ int knd_repo_snapshot(struct kndRepo *self, struct kndTask *task)
     err = knd_mkpath((const char*)path, path_size, 0755, false);
     KND_TASK_ERR("mkpath %.*s failed", path_size, path);
 
-    /* global string dict */
-    err = marshall_idx(self->str_idx, path, path_size, "strings.gsp", strlen("strings.gsp"),
-                       knd_charseq_marshall, task);
-    KND_TASK_ERR("failed to build the string idx");
-
     /* class storage */
     err = marshall_idx(self->class_idx, path, path_size, "classes.gsp", strlen("classes.gsp"),
                        knd_class_marshall, task);
@@ -154,5 +149,10 @@ int knd_repo_snapshot(struct kndRepo *self, struct kndTask *task)
     err = knd_shared_set_map(self->class_idx, export_class_insts, (void*)task);
     KND_TASK_ERR("failed to build the class inst storage");
 
+    /* global string dict */
+    err = marshall_idx(self->str_idx, path, path_size, "strings.gsp", strlen("strings.gsp"),
+                       knd_charseq_marshall, task);
+    KND_TASK_ERR("failed to build the string idx");
+    
     return knd_OK;
 }

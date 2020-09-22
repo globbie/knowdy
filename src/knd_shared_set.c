@@ -334,15 +334,12 @@ static int build_subdirs_footer(struct kndSharedSetDir *dir, char *idbuf, size_t
 }
 
 static int marshall_elems(struct kndSharedSetElemIdx *parent_idx, struct kndSharedSetDir *dir,
-                          const char *idbuf, size_t idbuf_size,
-                          elem_marshall_cb cb, bool use_keys, struct kndTask *task)
+                          const char *idbuf, size_t idbuf_size, elem_marshall_cb cb, bool use_keys, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     void *elem;
     size_t block_size;
     int err;
-
-    knd_log(".. marshall elems..");
 
     for (size_t i = 0; i < KND_RADIX_BASE; i++) {
         if (parent_idx->idxs[i]) dir->num_subdirs++;
@@ -358,8 +355,7 @@ static int marshall_elems(struct kndSharedSetElemIdx *parent_idx, struct kndShar
             err = out->writec(out, obj_id_seq[i]);
             KND_TASK_ERR("output failure");
         }
-
-        if (DEBUG_SHARED_SET_LEVEL_TMP)
+        if (DEBUG_SHARED_SET_LEVEL_2)
             knd_log(">> marshall elem %.*s", idbuf_size, idbuf);
 
         err = cb(elem, &block_size, task);
@@ -454,7 +450,7 @@ static int traverse_marshall(struct kndSharedSetElemIdx *parent_idx, char *idbuf
         // calc footer overhead
         if ((float)KND_SET_MIN_FOOTER_SIZE / (float)out->buf_size > KND_MAX_IDX_OVERHEAD) {
 
-            if (DEBUG_SHARED_SET_LEVEL_TMP)
+            if (DEBUG_SHARED_SET_LEVEL_3)
                 knd_log("NB: another run to optimize elem packing (use explicit field keys)");
 
             out->reset(out);

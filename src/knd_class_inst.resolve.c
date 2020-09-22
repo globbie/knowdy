@@ -34,7 +34,8 @@ int knd_class_inst_resolve(struct kndClassInst *self, struct kndTask *task)
         KND_TASK_ERR("failed to resolve class inst %.*s::%.*s", c->entry->name_size, c->entry->name,
                      self->name_size, self->name);
     }
-    if (DEBUG_INST_RESOLVE_LEVEL_1)
+
+    if (DEBUG_INST_RESOLVE_LEVEL_TMP)
         knd_class_inst_str(self, 0);
 
     self->is_resolved = true;

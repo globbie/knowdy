@@ -41,7 +41,7 @@ static int resolve_class_inst_commit(struct kndStateRef *state_refs, struct kndC
     struct kndStateRef *ref;
     int err;
 
-    for (ref = state_refs; ref; ref = ref->next) {
+    FOREACH (ref, state_refs) {
         entry = ref->obj;
         state = ref->state;
         state->commit = commit;
