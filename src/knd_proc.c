@@ -16,12 +16,15 @@
 #include "knd_attr.h"
 #include "knd_task.h"
 #include "knd_state.h"
+#include "knd_commit.h"
 #include "knd_mempool.h"
 #include "knd_set.h"
 #include "knd_utils.h"
 #include "knd_text.h"
 #include "knd_dict.h"
 #include "knd_repo.h"
+#include "knd_shard.h"
+#include "knd_user.h"
 #include "knd_output.h"
 
 #define DEBUG_PROC_LEVEL_0 0
@@ -57,7 +60,7 @@ void knd_proc_str(struct kndProc *self, size_t depth)
 
     for (tr = self->tr; tr; tr = tr->next) {
         knd_log("%*s  {%.*s %.*s}", (depth + 1) * KND_OFFSET_SIZE, "",
-                tr->locale_size, tr->locale, tr->seq_size, tr->seq);
+                tr->locale_size, tr->locale, tr->seq->val_size, tr->seq->val);
     }
 
     for (base = self->bases; base; base = base->next) {
@@ -89,172 +92,7 @@ void knd_proc_str(struct kndProc *self, size_t depth)
             depth * KND_OFFSET_SIZE, "");
 }
 
-static gsl_err_t run_get_proc(void *obj, const char *name, size_t name_size)
-{
-    struct LocalContext *ctx = obj;
-    struct kndRepo *repo = ctx->repo;
-    struct kndProc *proc;
-    int err;
-
-    if (!name_size) return make_gsl_err(gsl_FORMAT);
-    if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
-
-    ctx->proc = NULL;
-
-    err = knd_get_proc(repo, name, name_size, &proc, ctx->task);
-    if (err) return make_gsl_err_external(err);
-    ctx->proc = proc;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t present_proc_selection(void *obj,
-                                        const char *unused_var(val),
-                                        size_t unused_var(val_size))
-{
-    struct LocalContext *ctx = obj;
-    struct kndTask *task = ctx->task;
-    struct kndProc *proc = ctx->proc;
-    knd_format format = task->ctx->format;
-    struct kndOutput *out = task->out;
-    int err;
-
-    if (DEBUG_PROC_LEVEL_2)
-        knd_log(".. presenting proc selection..");
-
-    if (!proc) return make_gsl_err(gsl_FAIL);
-
-    out->reset(out);
-    
-    /* export BODY */
-    err = knd_proc_export(proc, format, task, out);
-    if (err) return make_gsl_err_external(err);
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t remove_proc(void *obj, const char *name, size_t name_size)
-{
-    struct LocalContext *ctx = obj;
-    struct kndProc *proc = ctx->proc;
-    struct kndTask *task = ctx->task;
-    int err;
-
-    if (DEBUG_PROC_LEVEL_TMP)
-        knd_log(".. removing proc: %.*s", name_size, name);
-
-    if (!proc) {
-        knd_log("-- remove operation: no proc selected");
-        /*repo->log->reset(repo->log);
-        err = repo->log->write(repo->log, name, name_size);
-        if (err) return make_gsl_err_external(err);
-        err = repo->log->write(repo->log, " class name not specified",
-                               strlen(" class name not specified"));
-                               if (err) return make_gsl_err_external(err);*/
-        return make_gsl_err(gsl_NO_MATCH);
-    }
-
-    if (DEBUG_PROC_LEVEL_TMP)
-        knd_log("== proc to remove: \"%.*s\"\n",
-                proc->name_size, proc->name);
-
-    task->type = KND_COMMIT_STATE;
-    if (!task->ctx->commit) {
-        err = knd_commit_new(task->mempool, &task->ctx->commit);
-        if (err) return make_gsl_err_external(err);
-
-        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot.num_commits,
-                                                                memory_order_relaxed);
-    }
-
-    err = knd_proc_commit_state(proc, KND_REMOVED, task);
-    if (err) return make_gsl_err_external(err);
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t
-parse_proc_inst_import(void *obj, const char *rec, size_t *total_size)
-{
-    struct LocalContext *ctx = obj;
-    struct kndTask *task = ctx->task;
-    if (!ctx->proc) {
-        KND_TASK_LOG("no proc selected");
-        return *total_size = 0, make_gsl_err_external(knd_FAIL);
-    }
-    return knd_proc_inst_parse_import(ctx->proc, ctx->repo, rec, total_size, ctx->task);
-}
-
-gsl_err_t knd_proc_select(struct kndRepo *repo,
-                          const char *rec,
-                          size_t *total_size,
-                          struct kndTask *task)
-{
-    struct LocalContext ctx = {
-        .task = task,
-        .repo = repo
-    };
-    gsl_err_t parser_err;
-    int err;
-
-    if (DEBUG_PROC_LEVEL_2)
-        knd_log(".. proc selection: \"%.*s\"", 16, rec);
-
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .is_selector = true,
-          .run = run_get_proc,
-          .obj = &ctx
-        },
-        { .type = GSL_SET_STATE,
-          .name = "_rm",
-          .name_size = strlen("_rm"),
-          .run = remove_proc,
-          .obj = &ctx
-        },
-        { .type = GSL_SET_STATE,
-          .name = "inst",
-          .name_size = strlen("inst"),
-          .parse = parse_proc_inst_import,
-          .obj = &ctx
-        },
-        { .is_default = true,
-          .run = present_proc_selection,
-          .obj = &ctx
-        }
-    };
-
-    parser_err = gsl_parse_task(rec, total_size, specs,
-                                sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return parser_err;
-
-    if (!ctx.proc) {
-        KND_TASK_LOG("no proc selected");
-        return make_gsl_err(gsl_FAIL);
-    }
-
-    knd_state_phase phase;
-
-    /* any commits happened? */
-    switch (task->type) {
-    case KND_COMMIT_STATE:
-        phase = KND_UPDATED;
-        if (task->phase == KND_REMOVED)
-            phase = KND_REMOVED;
-        err = knd_proc_commit_state(ctx.proc, phase, task);
-        if (err) return make_gsl_err_external(err);
-        break;
-    default:
-        break;
-    }
-
-    return make_gsl_err(gsl_OK);
-}
-
-int knd_proc_export(struct kndProc *self,
-                    knd_format format,
-                    struct kndTask *task,
-                    struct kndOutput *out)
+int knd_proc_export(struct kndProc *self, knd_format format, struct kndTask *task, struct kndOutput *out)
 {
     int err;
 
@@ -279,9 +117,7 @@ int knd_proc_export(struct kndProc *self,
     return knd_OK;
 }
 
-int knd_proc_get_arg(struct kndProc *self,
-                     const char *name, size_t name_size,
-                     struct kndProcArgRef **result)
+int knd_proc_get_arg(struct kndProc *self, const char *name, size_t name_size, struct kndProcArgRef **result)
 {
     struct kndProcArgRef *ref;
     struct kndProcArg *arg = NULL;
@@ -289,19 +125,16 @@ int knd_proc_get_arg(struct kndProc *self,
     struct kndSet *arg_idx = self->arg_idx;
     int err;
 
-    if (DEBUG_PROC_LEVEL_2) {
-        knd_log("\n.. \"%.*s\" proc (repo: %.*s) to select arg \"%.*s\" arg_idx:%p",
-                self->name_size, self->name,
-                self->entry->repo->name_size, self->entry->repo->name,
-                name_size, name, arg_idx);
-    }
+    if (DEBUG_PROC_LEVEL_2)
+        knd_log(".. \"%.*s\" proc (repo: %.*s) to select arg \"%.*s\"",
+                self->name_size, self->name, self->entry->repo->name_size, self->entry->repo->name, name_size, name);
 
     ref = knd_shared_dict_get(arg_name_idx, name, name_size);
     if (!ref) {
-        /* if (self->entry->repo->base) {
-            arg_name_idx = self->entry->repo->base->arg_name_idx;
-            ref = arg_name_idx->get(arg_name_idx, name, name_size);
-        }*/
+        if (self->entry->repo->base) {
+            arg_name_idx = self->entry->repo->base->proc_arg_name_idx;
+            ref = knd_shared_dict_get(arg_name_idx, name, name_size);
+        }
         if (!ref) {
             knd_log("-- no such proc arg: \"%.*s\"", name_size, name);
             return knd_NO_MATCH;
@@ -311,35 +144,29 @@ int knd_proc_get_arg(struct kndProc *self,
     /* iterating over synonymous attrs */
     for (; ref; ref = ref->next) {
         arg = ref->arg;
-        if (DEBUG_PROC_LEVEL_2) {
+        if (DEBUG_PROC_LEVEL_3) {
             knd_log("== arg %.*s is used in proc: %.*s",
-                    name_size, name,
-                    ref->proc->name_size,
-                    ref->proc->name);
+                    name_size, name, ref->proc->name_size, ref->proc->name);
         }
-
         if (ref->proc == self) break;
 
         err = knd_proc_is_base(ref->proc, self);
         if (!err) break;
     }
     if (!arg) return knd_NO_MATCH;
-    
-    err = arg_idx->get(arg_idx,
-                       arg->id, arg->id_size, (void**)&ref);            RET_ERR();
+
+    err = arg_idx->get(arg_idx, arg->id, arg->id_size, (void**)&ref);
     if (err) return knd_NO_MATCH;
 
     *result = ref;
     return knd_OK;
 }
 
-int knd_proc_is_base(struct kndProc *self,
-                     struct kndProc *child)
+int knd_proc_is_base(struct kndProc *self, struct kndProc *child)
 {
     struct kndProcEntry *entry = child->entry;
     struct kndProcRef *ref;
     struct kndProc *proc;
-    size_t count = 0;
 
     if (DEBUG_PROC_LEVEL_2) {
         knd_log(".. check inheritance: %.*s (repo:%.*s) [resolved: %d] => "
@@ -355,16 +182,12 @@ int knd_proc_is_base(struct kndProc *self,
 
     for (ref = entry->ancestors; ref; ref = ref->next) {
          proc = ref->proc;
-
          if (DEBUG_PROC_LEVEL_2) {
-             knd_log("  => is %zu): %.*s (repo:%.*s)  base resolved:%d",
-                     count,
+             knd_log("  => is: %.*s (repo:%.*s)  base resolved:%d",
                      proc->name_size, proc->name,
                      proc->entry->repo->name_size, proc->entry->repo->name,
                      proc->base_is_resolved);
          }
-         count++;
-
          if (proc == self) {
              return knd_OK;
          }
@@ -381,10 +204,7 @@ int knd_proc_is_base(struct kndProc *self,
     return knd_FAIL;
 }
 
-int knd_get_proc(struct kndRepo *repo,
-                 const char *name, size_t name_size,
-                 struct kndProc **result,
-                 struct kndTask *task)
+int knd_get_proc(struct kndRepo *repo, const char *name, size_t name_size, struct kndProc **result, struct kndTask *task)
 {
     struct kndProcEntry *entry;
     struct kndProc *proc;
@@ -394,8 +214,7 @@ int knd_get_proc(struct kndRepo *repo,
         knd_log(".. \"%.*s\" repo to get proc: \"%.*s\"..",
                 repo->name_size, repo->name, name_size, name);
 
-    entry = knd_shared_dict_get(repo->proc_name_idx,
-                                name, name_size);
+    entry = knd_shared_dict_get(repo->proc_name_idx, name, name_size);
     if (!entry) {
         if (repo->base) {
             err = knd_get_proc(repo->base, name, name_size, result, task);
@@ -420,6 +239,34 @@ int knd_get_proc(struct kndRepo *repo,
 
     // TODO: defreeze
     return knd_FAIL;
+}
+
+int knd_get_proc_entry(struct kndRepo *repo, const char *name, size_t name_size,
+                       struct kndProcEntry **result, struct kndTask *task)
+{
+    struct kndProcEntry *entry;
+    struct kndSharedDict *proc_name_idx = repo->proc_name_idx;
+    int err;
+
+    if (DEBUG_PROC_LEVEL_2)
+        knd_log(".. \"%.*s\" repo to get proc entry: \"%.*s\"", repo->name_size, repo->name, name_size, name);
+
+    entry = knd_shared_dict_get(proc_name_idx, name, name_size);
+    if (!entry) {
+        if (DEBUG_PROC_LEVEL_2)
+            knd_log("-- no local proc \"%.*s\" found in repo %.*s",
+                    name_size, name, repo->name_size, repo->name);
+        /* check base repo */
+        if (repo->base) {
+            err = knd_get_proc_entry(repo->base, name, name_size, result, task);
+            if (err) return err;
+            return knd_OK;
+        }
+        return knd_NO_MATCH;
+    }
+
+    *result = entry;
+    return knd_OK;
 }
 
 static int commit_state(struct kndProc *self,
@@ -447,6 +294,42 @@ static int commit_state(struct kndProc *self,
     // TODO inform your ancestors 
 
     *result = state;
+    return knd_OK;
+}
+
+int knd_proc_entry_clone(struct kndProcEntry *self, struct kndRepo *repo, struct kndProcEntry **result, struct kndTask *task)
+{
+    struct kndMemPool *mempool = task->mempool;
+    if (task->user_ctx)
+        mempool = task->shard->user->mempool;
+    struct kndProcEntry *entry;
+    struct kndSharedDict *name_idx = repo->proc_name_idx;
+    struct kndSharedDictItem *item = NULL;
+    //struct kndProcRef *ref, *tail_ref, *r;
+    // struct kndSet *proc_idx = repo->proc_idx;
+    int err;
+
+    if (DEBUG_PROC_LEVEL_2)
+        knd_log(".. cloning proc entry %.*s (%.*s) to repo \"%.*s\"",
+                self->name_size, self->name, self->repo->name_size, self->repo->name, repo->name_size, repo->name);
+
+    err = knd_proc_entry_new(mempool, &entry);
+    KND_TASK_ERR("failed to alloc a proc entry");
+    entry->repo = repo;
+    entry->orig = self;
+    entry->proc = self->proc;
+    entry->name = self->name;
+    entry->name_size = self->name_size;
+    entry->ancestors = self->ancestors;
+    entry->num_ancestors = self->num_ancestors;
+    entry->descendants = self->descendants;
+
+    err = knd_shared_dict_set(name_idx, entry->name,  entry->name_size,
+                              (void*)entry, mempool, task->ctx->commit, &item, false);
+    KND_TASK_ERR("failed to register proc \"%.*s\"", entry->name_size, entry->name);
+    entry->dict_item = item;
+
+    *result = entry;
     return knd_OK;
 }
 
@@ -490,74 +373,62 @@ int knd_proc_commit_state(struct kndProc *self,
     return knd_OK;
 }
 
-
-int knd_proc_var_new(struct kndMemPool *mempool,
-                            struct kndProcVar **result)
+int knd_proc_var_new(struct kndMemPool *mempool, struct kndProcVar **result)
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
-                            sizeof(struct kndProcVar), &page);          RET_ERR();
-    *result = page;
-    return knd_OK;
-}
-
-int knd_proc_arg_var_new(struct kndMemPool *mempool,
-                                struct kndProcArgVar **result)
-{
-    void *page;
-    int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
-                            sizeof(struct kndProcArgVar), &page);                 RET_ERR();
-    *result = page;
-    return knd_OK;
-}
-
-
-int knd_proc_entry_new(struct kndMemPool *mempool,
-                       struct kndProcEntry **result)
-{
-    void *page;
-    int err;
-
-    switch (mempool->type) {
-    case KND_ALLOC_LIST:
-        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
-                                sizeof(struct kndProcEntry), &page);                  RET_ERR();
-        break;
-    default:
-        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL_X2,
-                                     sizeof(struct kndProcEntry), &page);                  RET_ERR();
-    }
-    *result = page;
-    return knd_OK;
-}
-
-int knd_proc_ref_new(struct kndMemPool *mempool,
-                     struct kndProcRef **result)
-{
-    void *page;
-    int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY, sizeof(struct kndProcRef), &page);
+    assert(mempool->tiny_page_size >= sizeof(struct kndProcVar));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
+    memset(page, 0, sizeof(struct kndProcVar));
     *result = page;
     return knd_OK;
 }
 
-int knd_proc_new(struct kndMemPool *mempool,
-                 struct kndProc **result)
+int knd_proc_idx_new(struct kndMemPool *mempool, struct kndProcIdx **result)
 {
     void *page;
     int err;
-    switch (mempool->type) {
-    case KND_ALLOC_LIST:
-        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
-                                sizeof(struct kndProc), &page);                       RET_ERR();
-        break;
-    default:
-        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL_X2,
-                                     sizeof(struct kndProc), &page);                       RET_ERR();
-    }
+    assert(mempool->tiny_page_size >= sizeof(struct kndProcIdx));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
+    if (err) return err;
+    memset(page, 0, sizeof(struct kndProcIdx));
+    *result = page;
+    return knd_OK;
+}
+
+int knd_proc_entry_new(struct kndMemPool *mempool, struct kndProcEntry **result)
+{
+    void *page;
+    int err;
+    assert(mempool->small_x2_page_size >= sizeof(struct kndProcEntry));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL_X2, &page);
+    if (err) return err;
+    memset(page, 0, sizeof(struct kndProcEntry));
+    *result = page;
+    return knd_OK;
+}
+
+int knd_proc_ref_new(struct kndMemPool *mempool, struct kndProcRef **result)
+{
+    void *page;
+    int err;
+    assert(mempool->tiny_page_size >= sizeof(struct kndProcRef));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
+    if (err) return err;
+    memset(page, 0, sizeof(struct kndProcRef));
+    *result = page;
+    return knd_OK;
+}
+
+int knd_proc_new(struct kndMemPool *mempool, struct kndProc **result)
+{
+    void *page;
+    int err;
+    assert(mempool->small_x2_page_size >= sizeof(struct kndProc));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL_X2, &page);
+    if (err) return err;
+    memset(page, 0, sizeof(struct kndProc));
     *result = page;
     return knd_OK;
 }

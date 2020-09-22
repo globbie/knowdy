@@ -61,7 +61,7 @@ static int knd_interact(struct kndShard *shard)
     if (err) return err;
     writer_task->ctx = calloc(1, sizeof(struct kndTaskContext));
     if (!writer_task->ctx) return knd_NOMEM;
-    writer_task->role = KND_WRITER;
+    writer_task->role = KND_ARBITER;
 
     err = knd_task_new(shard, NULL, 1, &reader_task);
     if (err) return err;
@@ -88,15 +88,13 @@ static int knd_interact(struct kndShard *shard)
                     reader_task->output_size, reader_task->output);
             goto next_line;
         }
-        knd_log("== READER RESULT ==\n%.*s",
-                reader_task->output_size, reader_task->output);
+        knd_log("== READER RESULT ==\n%.*s", reader_task->output_size, reader_task->output);
 
         /* update tasks require another run,
            possibly involving network communication */
         switch (reader_task->ctx->phase) {
         case KND_CONFIRM_COMMIT:
-            err = knd_task_copy_block(reader_task,
-                                      reader_task->output, reader_task->output_size,
+            err = knd_task_copy_block(reader_task, reader_task->output, reader_task->output_size,
                                       &block, &block_size);
             if (err != knd_OK) {
                 knd_log("-- update block allocation failed");
@@ -109,7 +107,7 @@ static int knd_interact(struct kndShard *shard)
                         writer_task->output_size, writer_task->output);
                 goto next_line;
             }
-            knd_log("== WRITER RESULT ==\n%.*s",
+            knd_log("== ARBITER RESULT ==\n%.*s",
                     writer_task->output_size, writer_task->output);
             break;
         default:

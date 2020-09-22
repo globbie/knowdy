@@ -14,6 +14,7 @@
 #include "knd_task.h"
 #include "knd_state.h"
 
+#if 0
 static int proc_call_arg_export_GSL(struct kndProcCallArg *call_arg,
                                     struct kndOutput *out)
 {
@@ -25,15 +26,24 @@ static int proc_call_arg_export_GSL(struct kndProcCallArg *call_arg,
     err = out->write(out, "\"}", strlen("\"}"));                                  RET_ERR();
     return knd_OK;
 }
+#endif
 
-int knd_proc_arg_export_GSL(struct kndProcArg *self,
-                            struct kndTask *task,
-                            bool is_list_item,
-                            size_t depth)
+int knd_proc_arg_var_export_GSL(struct kndProcArgVar *self, struct kndTask *task, size_t unused_var(depth))
+{
+    struct kndOutput *out = task->out;
+    OUT("{", 1);
+    OUT(self->arg->name, self->arg->name_size);
+    OUT(" ", 1);
+    OUT(self->val, self->val_size);
+    OUT("}", 1);
+    return knd_OK;
+}
+
+int knd_proc_arg_export_GSL(struct kndProcArg *self, struct kndTask *task, bool is_list_item, size_t depth)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size;
-    struct kndProcCallArg *arg;
+    //struct kndProcCallArg *arg;
     struct kndOutput  *out = task->out;
     int err;
 
@@ -89,14 +99,14 @@ int knd_proc_arg_export_GSL(struct kndProcArg *self,
         err = out->writec(out, '}');                                              RET_ERR();
     }
     
-    if (self->proc_call->name_size) {
+    /*if (self->proc_call) {
         err = out->write(out, "{do ", strlen("{do "));                          RET_ERR();
         err = out->write(out, self->proc_call->name, self->proc_call->name_size); RET_ERR();
         for (arg = self->proc_call->args; arg; arg = arg->next) {
             err = proc_call_arg_export_GSL(arg, out);                   RET_ERR();
         }
         err = out->write(out, "}", 1);                                            RET_ERR();
-    }
+        }*/
 
  final:
     err = out->writec(out, '}');                                                RET_ERR();

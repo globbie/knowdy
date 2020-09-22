@@ -15,9 +15,12 @@
 #include "knd_class.h"
 #include "knd_class_inst.h"
 #include "knd_proc.h"
+#include "knd_text.h"
 #include "knd_set.h"
 #include "knd_mempool.h"
+#include "knd_cache.h"
 #include "knd_state.h"
+#include "knd_commit.h"
 #include "knd_output.h"
 
 #define DEBUG_USER_LEVEL_0 0
@@ -33,25 +36,29 @@ void knd_user_del(struct kndUser *self)
     free(self);
 }
 
-static gsl_err_t parse_proc_import(void *obj,
-                                   const char *rec,
-                                   size_t *total_size)
+static void free_user_ctx(void *obj)
+{
+    struct kndUserContext *ctx = obj;
+
+    atomic_store_explicit(&ctx->inst->entry->cache_cell_num, 0, memory_order_relaxed);
+
+    knd_log(".. freeing user ctx \"%.*s\"", ctx->inst->name_size, ctx->inst->name);
+}
+
+static gsl_err_t parse_proc_import(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
     task->type = KND_COMMIT_STATE;
 
     if (!task->ctx->commit->orig_state_id)
-        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot.num_commits,
+        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot->num_commits,
                                                                 memory_order_relaxed);
     return knd_proc_import(task->repo, rec, total_size, task);
 }
 
-static gsl_err_t parse_proc_select(void *obj,
-                                   const char *rec,
-                                   size_t *total_size)
+static gsl_err_t parse_proc_select(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
-
     return knd_proc_select(task->repo, rec, total_size, task);
 }
 
@@ -63,9 +70,9 @@ int knd_create_user_repo(struct kndTask *task)
 
     assert(ctx->repo == NULL);
 
-    err = knd_repo_new(&repo, "~", 1, NULL, 0, task->shard->user->mempool);
+    err = knd_repo_new(&repo, "~", 1, NULL, 0, ctx->mempool);
     KND_TASK_ERR("failed to alloc new repo");
-    repo->base = task->shard->user->repo;
+    repo->base = ctx->base_repo;
     ctx->repo = repo;
 
     err = knd_repo_open(repo, task);
@@ -83,9 +90,7 @@ int knd_create_user_repo(struct kndTask *task)
     return knd_OK;
 }
 
-static gsl_err_t parse_class_import(void *obj,
-                                    const char *rec,
-                                    size_t *total_size)
+static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
     struct kndUserContext *user_ctx = task->user_ctx;
@@ -93,131 +98,28 @@ static gsl_err_t parse_class_import(void *obj,
 
     assert(user_ctx->repo);
 
-    if (DEBUG_USER_LEVEL_2) {
-        knd_log(".. parsing user class import: \"%.*s\"..",
-                64, rec);
-    }
+    if (DEBUG_USER_LEVEL_2)
+        knd_log(".. parsing user class import: \"%.*s\"..", 64, rec);
 
     task->type = KND_COMMIT_STATE;
-
     if (!task->ctx->commit) {
         err = knd_commit_new(task->mempool, &task->ctx->commit);
         if (err) return make_gsl_err_external(err);
         
-        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot.num_commits,
-                                                                memory_order_relaxed);
+        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot->num_commits, memory_order_relaxed);
     }
-
     return knd_class_import(user_ctx->repo, rec, total_size, task);
 }
 
-static gsl_err_t parse_sync_task(void *obj,
-                                 const char *unused_var(rec),
-                                 size_t *total_size)
-{
-    struct kndTask *task = obj;
-    struct kndUser *self = task->shard->user;
-    struct kndOutput *out = task->out;
-    char buf[KND_TEMP_BUF_SIZE];
-    size_t buf_size;
-    struct stat st;
-    char *s, *n;
-    size_t path_size;
-    int err;
-
-    if (DEBUG_USER_LEVEL_2)
-        knd_log(".. got sync task..");
-
-    s = self->path;
-    memcpy(s, self->path, self->path_size);
-    s += self->path_size;
-    self->path_size += self->path_size;
-
-    path_size =  strlen("/frozen_merge.gsp");
-    memcpy(s, "/frozen_merge.gsp", path_size);
-    self->path_size += path_size;
-    self->path[self->path_size] = '\0';
-
-    /* file exists, remove it */
-    if (!stat(self->path, &st)) {
-        err = remove(self->path);
-        if (err) return *total_size = 0, make_gsl_err_external(err);
-        knd_log("-- existing frozen DB file removed..");
-    }
-
-    /* name IDX */
-    n = buf;
-    buf_size = 0;
-    memcpy(n, self->path, self->path_size);
-    n += self->path_size;
-    buf_size += self->path_size;
-    path_size =  strlen("/frozen_name.gsi");
-    memcpy(n, "/frozen_name.gsi", path_size);
-    buf_size += path_size;
-    buf[buf_size] = '\0';
-
-    task->type = KND_SYNC_STATE;
-
-    //err = knd_class_freeze(self->repo->root_class);
-    /*if (err) {
-        knd_log("-- failed to freeze class: \"%s\" :(", out->buf);
-        return *total_size = 0, make_gsl_err_external(err);
-        }*/
-
-    /* bump frozen count */
-
-    /* temp: simply rename the GSP file */
-    out->reset(out);
-    err = out->write(out, self->path, self->path_size);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-    err = out->write(out, "/frozen.gsp", strlen("/frozen.gsp"));
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-
-    /* null-termination is needed to call rename */
-    out->buf[out->buf_size] = '\0';
-
-    err = rename(self->path, out->buf);
-    if (err) {
-        knd_log("-- failed to rename GSP output file: \"%s\" :(", out->buf);
-        return *total_size = 0, make_gsl_err_external(err);
-    }
-
-    /* TODO: inform retrievers */
-
-    /* release resources */
-    if (!stat(out->buf, &st)) {
-        if (DEBUG_USER_LEVEL_TMP)
-            knd_log("++ frozen DB file sync'ed OK, total bytes: %lu",
-                    (unsigned long)st.st_size);
-    }
-
-    /*out->reset(out);
-    err = out->write(out,
-                           "{\"file_size\":",
-                           strlen("{\"file_size\":"));
-    if (err) return make_gsl_err_external(err);
-    buf_size = sprintf(buf, "%lu", (unsigned long)st.st_size);
-    err = out->write(out, buf, buf_size);
-    if (err) return make_gsl_err_external(err);
-    err = out->write(out, "}", 1);
-    if (err) return make_gsl_err_external(err);
-    */
-    return *total_size = 0, make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_class_select(void *obj,
-                                    const char *rec,
-                                    size_t *total_size)
+static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
     gsl_err_t parser_err;
-
     if (!task->user_ctx) {
         KND_TASK_LOG("no user selected");
         task->http_code = HTTP_BAD_REQUEST;
         return make_gsl_err(gsl_FAIL);
     }
-
     /* check private repo first */
     if (task->user_ctx->repo) {
         parser_err = knd_class_select(task->user_ctx->repo, rec, total_size, task);
@@ -229,9 +131,53 @@ static gsl_err_t parse_class_select(void *obj,
             return make_gsl_err(gsl_FAIL);
         }
     }
-
     /* shared read-only repo */
     return knd_class_select(task->user_ctx->base_repo, rec, total_size, task);
+}
+
+static gsl_err_t parse_text_search(void *obj, const char *rec, size_t *total_size)
+{
+    struct kndTask *task = obj;
+    if (!task->user_ctx) {
+        KND_TASK_LOG("no user selected");
+        task->http_code = HTTP_BAD_REQUEST;
+        return make_gsl_err(gsl_FAIL);
+    }
+    return knd_text_search(task->user_ctx->repo, rec, total_size, task);
+}
+
+static int build_user_ctx(struct kndUser *self, struct kndClassInst *inst,
+                          struct kndUserContext **result, struct kndTask *task)
+{
+    struct kndUserContext *ctx;
+    struct kndOutput *out = task->out;
+    int err;
+    err = knd_user_context_new(&ctx);
+    KND_TASK_ERR("failed to alloc user ctx");
+    ctx->inst = inst;
+    ctx->base_repo = self->repo;
+    ctx->mempool = self->mempool;
+
+    out->reset(out);
+    OUT("users/", strlen("users/"));
+
+    /* user dir prefix */
+    if (inst->name_size >= KND_USER_PATH_PREFIX_SIZE) {
+        OUT(inst->name, KND_USER_PATH_PREFIX_SIZE);
+        OUT("/", 1);
+    }
+    OUT(inst->name, inst->name_size);
+    OUT("/", 1);
+
+    if (out->buf_size > KND_PATH_SIZE) return knd_LIMIT;
+    memcpy(ctx->path, out->buf, out->buf_size);
+    ctx->path_size = out->buf_size;
+
+    task->user_ctx = ctx;
+    err = knd_create_user_repo(task);
+    KND_TASK_ERR("failed to create user repo");
+    *result = ctx;
+    return knd_OK;
 }
 
 static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
@@ -240,6 +186,7 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
     struct kndUser *self = task->shard->user;
     struct kndUserContext *ctx;
     struct kndClassInst *inst;
+    size_t cell_num = 0;
     int err;
 
     if (task->user_ctx) return make_gsl_err(gsl_OK);
@@ -247,35 +194,55 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
     assert(name_size != 0);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    err = knd_get_class_inst(self->class->entry,
-                             name, name_size, task, &inst);
+    err = knd_get_class_inst(self->class, name, name_size, task, &inst);
     if (err) {
         KND_TASK_LOG("no such user: %.*s", name_size, name);
         return make_gsl_err_external(err);
     }
 
-    err = self->user_idx->get(self->user_idx,
-                              inst->entry->id, inst->entry->id_size,
-                              (void**)&ctx);
-    if (err) {
-        // TODO atomic mempool
-        err = knd_user_context_new(self->mempool, &ctx);
-        if (err) return make_gsl_err_external(err);
+    do {
+        cell_num = atomic_load_explicit(&inst->entry->cache_cell_num, memory_order_relaxed);
+        if (DEBUG_USER_LEVEL_TMP)
+            knd_log("== user inst %.*s (cache cell:%zu)", name_size, name, cell_num);
+        if (!cell_num) {
+            err = build_user_ctx(self, inst, &ctx, task);
+            if (err) {
+                knd_log("failed to build user ctx");
+                return make_gsl_err_external(err);
+            }
+            err = knd_cache_set(self->cache, (void*)ctx, &cell_num);
+            if (err) {
+                knd_log("failed to set a cache cell: %d", err);
+                if (err == knd_CONFLICT) {
+                    // free resources
+                    free_user_ctx(ctx);
+                    ctx = NULL;
+                    // make another attempt to read / create ctx
+                    continue;
+                }
+                return make_gsl_err_external(err);
+            }
+            // 0 cell num denotes NULL so add 1 to store the cache cell idx
+            cell_num++;
+            atomic_store_explicit(&inst->entry->cache_cell_num, cell_num, memory_order_relaxed);
+            ctx->cache_cell_num = cell_num;
+        }
 
-        err = self->user_idx->add(self->user_idx,
-                                  inst->entry->id, inst->entry->id_size,
-                                  (void*)ctx);
-        if (err) return make_gsl_err_external(err);
-    }
+        // make sure we mark the cache cell as engaged by another reader
+        err = knd_cache_get(self->cache, cell_num - 1, (void**)&ctx);
+        if (err) {
+            knd_log("failed to mark cell num %zu as read mode", cell_num - 1);
+            return make_gsl_err_external(err);
+        }
 
-    ctx->user_inst = inst;
-    ctx->base_repo = self->repo;
-    task->user_ctx = ctx;
-
-    if (!ctx->repo) {
-        err = knd_create_user_repo(task);
-        if (err) return make_gsl_err_external(err);
-    }
+        // stale cache cell?
+        if (ctx->inst != inst) {
+            knd_log("cell num %zu contains ref to some other ctx, retrying..", cell_num - 1);
+            continue;
+        }
+        task->user_ctx = ctx;
+        break;
+    } while (1);
     return make_gsl_err(gsl_OK);
 }
 
@@ -326,7 +293,7 @@ static gsl_err_t run_present_user(void *obj,
     err = user_header_export(task);
     if (err) return make_gsl_err_external(err);
 
-    user_inst = task->user_ctx->user_inst;
+    user_inst = task->user_ctx->inst;
     err = knd_class_inst_export(user_inst, task->ctx->format, false, task);
     if (err) return make_gsl_err_external(err);
 
@@ -336,9 +303,7 @@ static gsl_err_t run_present_user(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t run_present_state(void *obj,
-                                   const char *unused_var(val),
-                                   size_t unused_var(val_size))
+static gsl_err_t run_present_state(void *obj, const char *unused_var(val), size_t unused_var(val_size))
 {
     struct kndTask *task = obj;
     struct kndRepo *repo;
@@ -365,9 +330,7 @@ static gsl_err_t parse_class_array_item(void *obj,
     return knd_class_import(task->repo, rec, total_size, task);
 }
 
-static gsl_err_t parse_class_array(void *obj,
-                                   const char *rec,
-                                   size_t *total_size)
+static gsl_err_t parse_class_array(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
 
@@ -385,9 +348,22 @@ static gsl_err_t parse_class_array(void *obj,
     return gsl_parse_array(&item_spec, rec, total_size);
 }
 
-gsl_err_t knd_parse_select_user(void *obj,
-                                const char *rec,
-                                size_t *total_size)
+static gsl_err_t parse_snapshot_task(void *obj, const char *unused_var(rec), size_t *total_size)
+{
+    struct kndTask *task = obj;
+    struct kndRepo *repo = task->user_ctx ? task->user_ctx->repo : task->shard->user->repo;
+    int err;
+
+    task->type = KND_SNAPSHOT_STATE;
+    err = knd_repo_snapshot(repo, task);
+    if (err) {
+        KND_TASK_LOG("failed to build a snapshot of user repo");
+        return *total_size = 0, make_gsl_err(gsl_FAIL);
+    }
+    return *total_size = 0, make_gsl_err(gsl_OK);
+}
+
+gsl_err_t knd_parse_select_user(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
     gsl_err_t parser_err;
@@ -399,7 +375,6 @@ gsl_err_t knd_parse_select_user(void *obj,
         task->user_ctx   = NULL;
         task->type = KND_GET_STATE;
     }
-
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .is_selector = true,
@@ -445,9 +420,9 @@ gsl_err_t knd_parse_select_user(void *obj,
           .parse = parse_proc_select,
           .obj = task
         },
-        { .name = "_sync",
-          .name_size = strlen("_sync"),
-          .parse = parse_sync_task,
+        { .name = "text",
+          .name_size = strlen("text"),
+          .parse = parse_text_search,
           .obj = task
         },
         { .name = "_state",
@@ -455,28 +430,28 @@ gsl_err_t knd_parse_select_user(void *obj,
           .run = run_present_state,
           .obj = task
         },
+        { .name = "_snapshot",
+          .name_size = strlen("_snapshot"),
+          .parse = parse_snapshot_task,
+          .obj = task
+        },
         { .is_default = true,
           .run = run_present_user,
           .obj = task
         }
     };
-
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) {
-        KND_TASK_LOG("user select failed");
-        goto cleanup;
+
+    switch (task->type) {
+    case KND_RESTORE_STATE:
+        return parser_err;
+    default:
+        break;
     }
-
-    return make_gsl_err(gsl_OK);
-
- cleanup:
-
     return parser_err;
 }
 
-gsl_err_t knd_create_user(void *obj,
-                          const char *rec,
-                          size_t *total_size)
+gsl_err_t knd_create_user(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
     struct kndUser *self = task->shard->user;
@@ -486,35 +461,23 @@ gsl_err_t knd_create_user(void *obj,
         err = knd_commit_new(task->mempool, &task->ctx->commit);
         if (err) return make_gsl_err_external(err);
 
-        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot.num_commits,
-                                                                memory_order_relaxed);
+        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot->num_commits, memory_order_relaxed);
     }
-
-    err = knd_import_class_inst(self->class, rec, total_size, task);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-
-    err = knd_class_inst_commit_state(self->class,
-                                      task->ctx->class_inst_state_refs,
-                                      task->ctx->num_class_inst_state_refs,
-                                      task);
+    err = knd_import_class_inst(self->class->entry, rec, total_size, task);
+    if (err) {
+        return *total_size = 0, make_gsl_err_external(err);
+    }
+    err = knd_class_inst_commit_state(self->class, task->ctx->class_inst_state_refs,
+                                      task->ctx->num_class_inst_state_refs, task);
     if (err) {
         return make_gsl_err_external(err);
     }
-    
     return make_gsl_err(gsl_OK);
 }
 
-int knd_user_new(struct kndUser **user,
-                 const char *classname,
-                 size_t classname_size,
-                 const char *path,
-                 size_t path_size,
-                 const char *reponame,
-                 size_t reponame_size,
-                 const char *schema_path,
-                 size_t schema_path_size,
-                 struct kndShard *shard,
-                 struct kndTask *task)
+int knd_user_new(struct kndUser **user, const char *classname, size_t classname_size,
+                 const char *path, size_t path_size, const char *reponame, size_t reponame_size,
+                 const char *schema_path, size_t schema_path_size, struct kndShard *shard, struct kndTask *task)
 {
     struct kndUser *self;
     struct kndMemPool *mempool = NULL;
@@ -526,10 +489,7 @@ int knd_user_new(struct kndUser **user,
     self->classname = classname;
     self->classname_size = classname_size;
 
-    err = knd_get_class(repo,
-                        classname,
-                        classname_size,
-                        &self->class, task);
+    err = knd_get_class(repo, classname, classname_size, &self->class, task);
     if (err) {
         knd_log("no such user class: %.*s", classname_size, classname);
         goto error;
@@ -553,8 +513,7 @@ int knd_user_new(struct kndUser **user,
         goto error;
     }
 
-    /* mempool */
-    err = knd_mempool_new(&mempool, 0);
+    err = knd_mempool_new(&mempool, KND_ALLOC_SHARED, 0);
     if (err) goto error;
     mempool->num_pages = shard->mem_config.num_pages;
     mempool->num_small_x4_pages = shard->mem_config.num_small_x4_pages;
@@ -568,20 +527,19 @@ int knd_user_new(struct kndUser **user,
     /* read-only base repo for all users */
     self->reponame = reponame;
     self->reponame_size = reponame_size;
-    err = knd_repo_new(&self->repo,
-                       reponame, reponame_size,
-                       schema_path, schema_path_size,
-                       mempool);
+    err = knd_repo_new(&self->repo, reponame, reponame_size, schema_path, schema_path_size, shard->mempool);
     if (err) goto error;
 
     task->repo = self->repo;
-    task->mempool = mempool;
-    
+    task->mempool = shard->mempool;
     err = knd_repo_open(self->repo, task);
     if (err) goto error;
+    err = knd_set_new(shard->mempool, &self->user_idx);
+    if (err) goto error;
 
-    err = knd_set_new(mempool, &self->user_idx);                                  RET_ERR();
-
+    err = knd_cache_new(&self->cache, KND_CACHE_NUM_CELLS, KND_CACHE_MAX_MEM_SIZE, free_user_ctx);
+    if (err) goto error;
+    
     *user = self;
     return knd_OK;
  error:
@@ -589,20 +547,11 @@ int knd_user_new(struct kndUser **user,
     return err;
 }
 
-int knd_user_context_new(struct kndMemPool *mempool,
-                         struct kndUserContext **result)
+int knd_user_context_new(struct kndUserContext **result)
 {
-    void *page;
-    int err;
-    switch (mempool->type) {
-    case KND_ALLOC_LIST:
-        err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL,
-                                sizeof(struct kndUserContext), &page);                RET_ERR();
-        break;
-    default:
-        err = knd_mempool_incr_alloc(mempool, KND_MEMPAGE_SMALL,
-                                     sizeof(struct kndUserContext), &page);           RET_ERR();
-    }
-    *result = page;
+    struct kndUserContext *self;
+    self = calloc(1, sizeof(struct kndUserContext));
+    if (!self) return knd_NOMEM;
+    *result = self;
     return knd_OK;
 }

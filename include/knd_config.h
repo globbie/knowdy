@@ -51,7 +51,17 @@ typedef enum knd_logic { KND_LOGIC_AND,
 #define RET_ERR(S)  if (err) { printf("%s", "" #S);                               \
                               printf ("-- <%s> failed at line %d of file \"%s\"\n",\
                                       __func__, __LINE__, __FILE__); return err; } 
-#define MEMPOOL_ERR(S) if (err) { printf("-- mempool failed to alloc \"%s\"\n", "" #S);                               \
+
+#define OUT(...) \
+    { \
+        int e = out->write(out, __VA_ARGS__); \
+        if (e) return e; \
+    }
+
+#define FOREACH(item, list) \
+    for (item = list; item != NULL; item = item->next)
+
+#define MEMPOOL_ERR(S) if (err) { printf("-- mempool failed to alloc \"%s\"\n", "" #S); \
         printf ("-- <%s> failed at line %d of file \"%s\"\n",           \
                 __func__, __LINE__, __FILE__); return err; } 
 #define ALLOC_ERR(V) if (!(V)) { return knd_NOMEM; }
@@ -218,7 +228,7 @@ typedef enum knd_logic { KND_LOGIC_AND,
 #define KND_MAX_ATTRS 264
 #define KND_MAX_COMPUTED_ATTRS 16
 #define KND_MAX_CLAUSES 32
-#define KND_MAX_ELEMLOCS 128
+#define KND_MAX_TEXT_LOCS 64
 
 #define KND_LEAF_SIZE 10
 
@@ -239,6 +249,10 @@ typedef enum knd_logic { KND_LOGIC_AND,
 #define KND_MEDIUM_DICT_SIZE 1000
 #define KND_SMALL_DICT_SIZE 100
 #define KND_TINY_DICT_SIZE 10
+
+#define KND_CACHE_NUM_CELLS 64
+#define KND_CACHE_MAX_MEM_SIZE 1024 * 1024 * 10
+#define KND_CACHE_STATE_INTERVAL 32
 
 #define KND_OBJ_STORAGE_SIZE 100
 #define KND_TRN_STORAGE_SIZE 10000
@@ -269,9 +283,15 @@ typedef enum knd_logic { KND_LOGIC_AND,
 #define KND_SMALL_BUF_SIZE 64
 #define KND_LABEL_SIZE 8
 #define KND_PATH_SIZE 1024
+#define KND_USER_PATH_PREFIX_SIZE 2
 
-#define KND_NAME_SIZE 900
+#define KND_NAME_SIZE 1024 - 8 // to fit into a struct with explicit name size
 #define KND_SHORT_NAME_SIZE 48
+
+#define KND_RAND_CHUNK_SIZE 4
+#define KND_NUM_RAND_CHUNKS 4
+#define KND_RAND_NAME_SIZE 4 * KND_RAND_CHUNK_SIZE
+
 #define KND_VAL_SIZE 1024 * 2
 
 #define KND_UID_SIZE 7
@@ -335,6 +355,9 @@ typedef enum knd_logic { KND_LOGIC_AND,
 #define KND_SET_INBOX_SIZE 8
 #define KND_SET_MIN_SIZE KND_MAX_INBOX_SIZE / 10
 #define KND_INBOX_RESERVE_RATIO 1.4
+
+#define KND_SET_MIN_FOOTER_SIZE 64
+#define KND_MAX_IDX_OVERHEAD 0.125
 
 #define KND_FEATURED_SIZE 5
 #define KND_FEATURED_MAX_SIZE 10

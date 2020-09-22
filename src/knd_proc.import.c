@@ -3,6 +3,7 @@
 
 #include <gsl-parser.h>
 
+#include "knd_commit.h"
 #include "knd_proc.h"
 #include "knd_proc_arg.h"
 #include "knd_proc_call.h"
@@ -31,9 +32,7 @@ struct LocalContext {
     struct kndProcVar *proc_var;
 };
 
-static gsl_err_t parse_proc_arg_item(void *obj,
-                                     const char *rec,
-                                     size_t *total_size)
+static gsl_err_t parse_proc_arg_item(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndProc *self = ctx->proc;
@@ -53,9 +52,7 @@ static gsl_err_t parse_proc_arg_item(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_proc_call_item(void *obj,
-                                      const char *rec,
-                                      size_t *total_size)
+static gsl_err_t parse_proc_call_item(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndProc *self = ctx->proc;
@@ -79,8 +76,8 @@ static gsl_err_t set_base_arg_classname(void *obj, const char *name, size_t name
 {
     struct kndProcArgVar *self = obj;
     if (!name_size) return make_gsl_err(gsl_FORMAT);
-    self->name = name;
-    self->name_size = name_size;
+    self->val = name;
+    self->val_size = name_size;
     return make_gsl_err(gsl_OK);
 }
 
@@ -88,16 +85,12 @@ static gsl_err_t set_result_classname(void *obj, const char *name, size_t name_s
 {
     struct kndProc *self = obj;
     if (!name_size) return make_gsl_err(gsl_FORMAT);
-    self->name = name;
-    self->name_size = name_size;
+    self->result_classname = name;
+    self->result_classname_size = name_size;
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t validate_base_arg(void *obj,
-                                   const char *name,
-                                   size_t name_size,
-                                   const char *rec,
-                                   size_t *total_size)
+static gsl_err_t validate_base_arg(void *obj, const char *name, size_t name_size, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndProcVar *base = ctx->proc_var;
@@ -110,21 +103,16 @@ static gsl_err_t validate_base_arg(void *obj,
 
     err = knd_proc_arg_var_new(ctx->task->mempool, &proc_arg_var);
     if (err) return *total_size = 0, make_gsl_err_external(err);
-
     proc_arg_var->name = name;
     proc_arg_var->name_size = name_size;
+    proc_arg_var->parent = base;
+
+    if (DEBUG_PROC_IMPORT_LEVEL_2)
+        knd_log(".. assign proc arg var \"%.*s\"", name_size, name);
 
     struct gslTaskSpec specs[] = {
-// FIXME(k15tfu): ?? switch to something like this
-//        {
-//            .is_implied = true,
-//            .buf = base_arg->name,
-//            .buf_size = &base_arg->name_size,
-//            .max_buf_size = sizeof base_arg->name
-//        },
         {
-            .name = "c",
-            .name_size = strlen("c"),
+            .is_implied = true,
             .run = set_base_arg_classname,
             .obj = proc_arg_var
         }
@@ -151,9 +139,7 @@ static gsl_err_t set_proc_var_name(void *obj, const char *name, size_t name_size
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_base(void *obj,
-                            const char *rec,
-                            size_t *total_size)
+static gsl_err_t parse_base(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndProc *self = ctx->proc;
@@ -162,7 +148,7 @@ static gsl_err_t parse_base(void *obj,
 
     err = knd_proc_var_new(ctx->task->mempool, &proc_var);
     if (err) return *total_size = 0, make_gsl_err_external(err);
-    proc_var->proc = self;
+    proc_var->parent = self->entry;
     ctx->proc_var = proc_var;
 
     struct gslTaskSpec specs[] = {
@@ -170,9 +156,8 @@ static gsl_err_t parse_base(void *obj,
             .run = set_proc_var_name,
             .obj = proc_var
         },
-        {   .type = GSL_SET_STATE,
-            .validate = validate_base_arg,
-            .obj = &ctx
+        {   .validate = validate_base_arg,
+            .obj = obj
         }
     };
     gsl_err_t parser_err;
@@ -287,16 +272,14 @@ static gsl_err_t set_proc_name(void *obj, const char *name, size_t name_size)
         return make_gsl_err(gsl_FAIL);
     }
 
-    /* import comit in progress */
+    /* import commit in progress */
+
     err = knd_get_proc(repo, name, name_size, &proc, task);
     if (!err) goto doublet;
-
     entry = knd_dict_get(task->proc_name_idx, name, name_size);
     if (!entry) {
         entry = self->entry;
-        err = knd_dict_set(task->proc_name_idx,
-                           name, name_size,
-                           (void*)entry);
+        err = knd_dict_set(task->proc_name_idx, name, name_size, (void*)entry);
         if (err) return make_gsl_err_external(err);
         return make_gsl_err(gsl_OK);
     }
@@ -308,15 +291,10 @@ static gsl_err_t set_proc_name(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_FAIL);
 }
 
-int knd_inner_proc_import(struct kndProc *proc,
-                          const char *rec,
-                          size_t *total_size,
-                          struct kndRepo *repo,
-                          struct kndTask *task)
+int knd_inner_proc_import(struct kndProc *proc, const char *rec, size_t *total_size, struct kndRepo *repo, struct kndTask *task)
 {
     if (DEBUG_PROC_IMPORT_LEVEL_2)
-        knd_log(".. import an anonymous inner proc: %.*s..",
-                64, rec);
+        knd_log(".. import an anonymous inner proc: %.*s..", 64, rec);
 
     struct LocalContext ctx = {
         .task = task,
@@ -378,137 +356,7 @@ int knd_inner_proc_import(struct kndProc *proc,
     return knd_OK;
 }
 
-gsl_err_t knd_proc_inst_parse_import(struct kndProc *self,
-                                     struct kndRepo *repo,
-                                     const char *rec,
-                                     size_t *total_size,
-                                     struct kndTask *task)
-{
-    struct kndMemPool *mempool = task->mempool;
-    if (task->user_ctx)
-        mempool = task->shard->user->mempool;
-
-    struct kndProcInst *inst;
-    struct kndProcInstEntry *entry;
-    // struct kndDict *name_idx;
-    struct kndState *state;
-    struct kndStateRef *state_ref;
-    struct kndTaskContext *ctx = task->ctx;
-    gsl_err_t parser_err;
-    int err;
-
-    if (DEBUG_PROC_IMPORT_LEVEL_TMP) {
-        knd_log(".. import \"%.*s\" proc inst.. (repo:%.*s)",
-                128, rec,
-                repo->name_size, repo->name);
-    }
-
-    switch (task->type) {
-    case KND_INNER_COMMIT_STATE:
-        // fall through
-    case KND_INNER_STATE:
-        task->type = KND_INNER_COMMIT_STATE;
-        break;
-    default:
-        task->type = KND_COMMIT_STATE;
-    }
-
-    err = knd_proc_inst_new(mempool, &inst);
-    if (err) {
-        knd_log("-- proc inst alloc failed");
-        return *total_size = 0, make_gsl_err_external(err);
-    }
-
-    err = knd_proc_inst_entry_new(mempool, &entry);
-    if (err) return make_gsl_err_external(err);
-
-    inst->entry = entry;
-    entry->inst = inst;
-    inst->blueprint = self;
-
-    parser_err = knd_proc_inst_import(inst, repo, rec, total_size, task);
-    if (parser_err.code) return parser_err;
-
-    inst->entry->numid = atomic_fetch_add_explicit(&self->entry->inst_id_count, 1, \
-                                                   memory_order_relaxed);
-    inst->entry->numid++;
-    knd_uid_create(inst->entry->numid, inst->entry->id, &inst->entry->id_size);
-
-    /* automatic name assignment if no explicit name given */
-    if (!inst->name_size) {
-        inst->name = inst->entry->id;
-        inst->name_size = inst->entry->id_size;
-    }
-
-    switch (task->type) {
-    case KND_INNER_COMMIT_STATE:
-        entry->next = ctx->stm_proc_insts;
-        ctx->stm_proc_insts = entry;
-        ctx->num_stm_proc_insts++;
-        return parser_err;
-    default:
-        break;
-    }
-
-    err = knd_state_new(mempool, &state);
-    if (err) {
-        knd_log("-- state alloc failed");
-        return *total_size = 0, make_gsl_err_external(err);
-    }
-    state->phase = KND_CREATED;
-    state->numid = 1;
-    inst->states = state;
-    inst->num_states = 1;
-
-    err = knd_state_ref_new(mempool, &state_ref);
-    if (err) {
-        knd_log("-- state ref alloc for imported inst failed");
-        return make_gsl_err_external(err);
-    }
-    state_ref->state = state;
-    state_ref->type = KND_STATE_PROC_INST;
-    state_ref->obj = (void*)entry;
-
-    state_ref->next = ctx->proc_inst_state_refs;
-    ctx->proc_inst_state_refs = state_ref;
-
-
-    if (DEBUG_PROC_IMPORT_LEVEL_TMP)
-        knd_log("++ \"%.*s\" (%.*s) proc inst parse OK!",
-                inst->name_size, inst->name,
-                inst->entry->id_size, inst->entry->id,
-                self->name_size, self->name);
-
-    //name_idx = repo->proc_inst_name_idx;
-
-    // TODO  lookup prev inst ref
-    /*err = name_idx->set(name_idx,
-                        inst->name, inst->name_size,
-                        (void*)entry);
-    if (err) return make_gsl_err_external(err);
-    */
-
-    // err = knd_register_proc_inst(self, entry, mempool);
-    //if (err) return make_gsl_err_external(err);
-
-    task->type = KND_COMMIT_STATE;
-
-    if (!ctx->commit) {
-        err = knd_commit_new(task->mempool, &ctx->commit);
-        if (err) return make_gsl_err_external(err);
-
-        ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot.num_commits,
-                                                                memory_order_relaxed);
-    }
-    state->commit = ctx->commit;
-
-    return make_gsl_err(gsl_OK);
-}
-
-gsl_err_t knd_proc_import(struct kndRepo *repo,
-                          const char *rec,
-                          size_t *total_size,
-                          struct kndTask *task)
+gsl_err_t knd_proc_import(struct kndRepo *repo, const char *rec, size_t *total_size, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
     struct kndProcEntry *entry;
@@ -575,8 +423,8 @@ gsl_err_t knd_proc_import(struct kndRepo *repo,
             .obj = &proc_arg_spec
         },
         {
-            .name = "result",
-            .name_size = strlen("result"),
+            .name = "effect",
+            .name_size = strlen("effect"),
             .run = set_result_classname,
             .obj = proc
         },

@@ -1,4 +1,5 @@
 #include "knd_output.h"
+#include "knd_mempool.h"
 #include "knd_utils.h"
 
 #include <assert.h>
@@ -40,8 +41,7 @@ kndOutput_rtrim(struct kndOutput *self,
 }
 
 static int
-kndOutput_writec(struct kndOutput *self,
-                 char ch)
+kndOutput_writec(struct kndOutput *self, char ch)
 {
     if (self->buf_size >= self->capacity - 1)
         return knd_NOMEM;
@@ -72,10 +72,7 @@ kndOutput_writef(struct kndOutput *self,
     return knd_OK;
 }
 
-static int
-kndOutput_write(struct kndOutput *self,
-                const char *buf,
-                size_t buf_size)
+static int kndOutput_write(struct kndOutput *self, const char *buf, size_t buf_size)
 {
     if (buf_size > self->capacity - self->buf_size - 1)
         return knd_NOMEM;
@@ -223,9 +220,19 @@ kndOutput_init(struct kndOutput *self,
     return knd_OK;
 }
 
-int knd_output_new(struct kndOutput **output,
-                   char *buf,
-                   size_t capacity)
+int knd_name_buf_new(struct kndMemPool *mempool, struct kndNameBuf **result)
+{
+    void *page;
+    int err;
+    assert(mempool->page_size >= sizeof(struct kndNameBuf));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_BASE, &page);
+    if (err) return err;
+    memset(page, 0,  sizeof(struct kndNameBuf));
+    *result = page;
+    return knd_OK;
+}
+
+int knd_output_new(struct kndOutput **output, char *buf, size_t capacity)
 {
     int err;
     struct kndOutput *self;

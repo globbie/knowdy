@@ -297,7 +297,7 @@ static gsl_err_t select_by_attr(void *obj, const char *val, size_t val_size)
     if (!val_size) return make_gsl_err(gsl_FORMAT);
     if (val_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    c = attr->ref_class;
+    c = attr->ref_class_entry->class;
 
     if (DEBUG_ATTR_SELECT_LEVEL_TMP) {
         knd_log("\n\n== _is class:%.*s  select %.*s attr (idx:%d) "
@@ -622,7 +622,7 @@ int knd_attr_select_clause(struct kndAttr *attr,
     if (DEBUG_ATTR_SELECT_LEVEL_TMP) {
         knd_log(".. select by attr \"%.*s\"..",
                 attr->name_size, attr->name);
-        attr->str(attr, 1);
+        knd_attr_str(attr, 1);
     }
 
     struct LocalContext ctx = {
@@ -671,7 +671,7 @@ int knd_attr_select_clause(struct kndAttr *attr,
             // task->attr_var = attr_var;
         }
     }
-     return knd_OK;
+    return knd_OK;
 }
 
 extern int knd_attr_var_match(struct kndAttrVar *self,
@@ -684,11 +684,10 @@ extern int knd_attr_var_match(struct kndAttrVar *self,
     return knd_OK;
 }
 
-gsl_err_t
-knd_select_attr_var(struct kndClass *class,
-                    const char *name, size_t name_size,
-                    const char *rec, size_t *total_size,
-                    struct kndTask *task)
+gsl_err_t knd_select_attr_var(struct kndClass *class,
+                              const char *name, size_t name_size,
+                              const char *rec, size_t *total_size,
+                              struct kndTask *task)
 {
     struct kndAttrRef *selected_attr_ref;
     int err;

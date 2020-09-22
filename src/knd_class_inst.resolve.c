@@ -17,22 +17,26 @@
 
 #include "knd_config.h"
 #include "knd_mempool.h"
+#include "knd_attr.h"
 #include "knd_class_inst.h"
-#include "knd_attr_inst.h"
 
-int knd_class_inst_resolve(struct kndClassInst *self,
-                           struct kndTask *task)
+#define DEBUG_INST_RESOLVE_LEVEL_1 0
+#define DEBUG_INST_RESOLVE_LEVEL_TMP 1
+
+int knd_class_inst_resolve(struct kndClassInst *self, struct kndTask *task)
 {
-    struct kndAttrInst *attr_inst;
+    struct kndClass *c = self->blueprint->class;
     int err;
-
     self->resolving_in_progress = true;
 
-    for (attr_inst = self->attr_insts; attr_inst; attr_inst = attr_inst->next) {
-        err = knd_attr_inst_resolve(attr_inst, task);
-        KND_TASK_ERR("failed to resolve the \"%.*s\" attr inst",
-                     attr_inst->attr->name_size, attr_inst->attr->name);
+    if (self->class_var->attrs) {
+        err = knd_resolve_attr_vars(c, self->class_var, task);
+        KND_TASK_ERR("failed to resolve class inst %.*s::%.*s", c->entry->name_size, c->entry->name,
+                     self->name_size, self->name);
     }
+
+    if (DEBUG_INST_RESOLVE_LEVEL_TMP)
+        knd_class_inst_str(self, 0);
 
     self->is_resolved = true;
     return knd_OK;

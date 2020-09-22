@@ -25,7 +25,7 @@ struct kndShard
 
     char name[KND_NAME_SIZE + 1];
     size_t name_size;
-    
+
     char path[KND_PATH_SIZE + 1];
     size_t path_size;
 

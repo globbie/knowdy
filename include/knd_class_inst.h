@@ -19,6 +19,8 @@
  */
 #pragma once
 
+#include <stdatomic.h>
+
 #include "knd_config.h"
 #include "knd_state.h"
 #include "knd_class.h"
@@ -27,8 +29,7 @@ struct kndState;
 struct kndSortTag;
 struct kndAttrInstRef;
 struct kndTask;
-struct kndAttrInst;
-
+struct kndRepo;
 struct kndClassEntry;
 struct kndOutput;
 struct kndMemPool;
@@ -48,13 +49,12 @@ struct kndClassInstEntry
     const char *name;
     size_t name_size;
 
-    char *block;
-    size_t block_size;
-    size_t offset;
+    struct kndClassInst * _Atomic inst;
+    atomic_size_t cache_cell_num;
 
-    struct kndSharedDictItem   *dict_item;
+    struct kndSharedDictItem *dict_item;
+    struct kndAttrIdx *attr_idxs;
 
-    struct kndClassInst *inst;
     struct kndClassInstEntry *next;
 };
 
@@ -73,18 +73,17 @@ struct kndClassInst
     size_t num_states;
 
     struct kndClassInstEntry *entry;
-    struct kndClass *blueprint;
     struct kndClassInst *root;
+    struct kndClassEntry *blueprint;
 
-    struct kndAttrInst *parent;
+    struct kndClassVar *class_var;
 
-    struct kndAttrInst *attr_insts;
-    struct kndAttrInst *tail;
-    size_t num_attr_insts;
-    struct kndStateRef *attr_inst_state_refs;
+    size_t linear_pos;
+    size_t linear_len;
 
     bool resolving_in_progress;
     bool is_resolved;
+    bool autogenerate_name;
 
     struct kndClassInst *next;
 };
@@ -107,7 +106,7 @@ int knd_class_inst_export(struct kndClassInst *self,
                           bool is_list_item,
                           struct kndTask *task);
 int knd_class_inst_set_export(struct kndClassInst *self, knd_format format,
-                                     struct kndTask *task);
+                              struct kndTask *task);
 
 int knd_class_inst_commit_state(struct kndClass *self,
                                 struct kndStateRef *children,
@@ -122,35 +121,22 @@ int knd_class_inst_update_indices(struct kndRepo *repo,
 
 // knd_class_inst.gsp.c
 int knd_class_inst_export_GSP(struct kndClassInst *self,  struct kndTask *task);
+int knd_class_inst_marshall(void *obj, size_t *output_size, struct kndTask *task);
 
 // knd_class_inst.gsl.c
-int knd_class_inst_export_GSL(struct kndClassInst *self,
-                              bool is_list_item, struct kndTask *task);
+int knd_class_inst_export_GSL(struct kndClassInst *self, bool is_list_item, knd_state_phase phase, struct kndTask *task,
+                              size_t depth);
 
 // knd_class_inst.import.c
-//gsl_err_t knd_import_class_inst(struct kndClassInst *self,
-//                                const char *rec, size_t *total_size,
-//                                struct kndTask *task);
-gsl_err_t kndClassInst_read_state(struct kndClassInst *self,
-                                  const char *rec, size_t *total_size,
-                                  struct kndTask *task);
-int knd_import_class_inst(struct kndClass *self,
-                          const char *rec,
-                          size_t *total_size,
-                          struct kndTask *task);
+int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *total_size, struct kndTask *task);
+gsl_err_t knd_class_inst_read_state(struct kndClassInst *self, const char *rec, size_t *total_size, struct kndTask *task);
 
 // knd_class_inst.json.c
-int knd_class_inst_export_JSON(struct kndClassInst *self,
-                               bool is_list_item,
-                               struct kndTask *task);
-
-int knd_class_inst_set_export_JSON(struct kndSet *set, struct kndTask *task);
+int knd_class_inst_export_JSON(struct kndClassInst *self, bool is_list_item, struct kndTask *task);
 
 // knd_class_inst.select.c
-gsl_err_t knd_select_class_inst(struct kndClassEntry *c,
-                                const char *rec, size_t *total_size,
-                                struct kndTask *task);
+gsl_err_t knd_select_class_inst(struct kndClass *c, const char *rec, size_t *total_size, struct kndTask *task);
+
 // knd_class_inst.resolve.c
-int knd_class_inst_resolve(struct kndClassInst *self,
-                           struct kndTask *task);
+int knd_class_inst_resolve(struct kndClassInst *self, struct kndTask *task);
 

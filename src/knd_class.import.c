@@ -30,6 +30,7 @@
 #include "knd_proc.h"
 #include "knd_proc_arg.h"
 #include "knd_set.h"
+#include "knd_shared_set.h"
 #include "knd_utils.h"
 #include "knd_output.h"
 #include "knd_http_codes.h"
@@ -50,24 +51,27 @@ struct LocalContext {
     struct kndClassVar *class_var;
 };
 
-
 static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
     struct kndClass *self = ctx->class;
     struct kndTask *task = ctx->task;
     struct kndRepo *repo = ctx->repo;
+    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
     struct kndClassEntry *entry;
     struct kndClass *c;
+    char idbuf[KND_ID_SIZE];
+    size_t idbuf_size;
+    struct kndCharSeq *seq;
     int err;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_2) {
-        knd_log(".. set class name: \"%.*s\"..",
-                name_size, name);
-    }
+    if (DEBUG_CLASS_IMPORT_LEVEL_2)
+        knd_log(".. set class name: \"%.*s\" num strs:%zu", name_size, name, repo->num_strs);
 
     /* initial bulk load in progress */
-    if (task->type == KND_LOAD_STATE) {
+    switch (task->type) {
+    case KND_LOAD_STATE:
+        knd_build_conc_abbr(name, name_size, self->abbr, &self->abbr_size);
         entry = knd_shared_dict_get(repo->class_name_idx, name, name_size);
         if (!entry) {
             entry = self->entry;
@@ -76,16 +80,41 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
             self->name = name;
             self->name_size = name_size;
 
-            /* register globally */
-            err = knd_shared_dict_set(repo->class_name_idx,
-                                      name, name_size,
-                                      (void*)entry,
-                                      task->mempool,
-                                      NULL, NULL, false);
-            if (err) return make_gsl_err_external(err);
+            /* register as a uniq class name */
+            err = knd_shared_dict_set(repo->class_name_idx, name, name_size, (void*)entry, task->mempool, NULL, NULL, false);
+            if (err) {
+                knd_log("failed to register a class name");
+                return make_gsl_err_external(err);
+            }
+
+            /* register as a normal charseq */
+            seq = knd_shared_dict_get(repo->str_dict, name, name_size);
+            if (!seq) {
+                err = knd_charseq_new(mempool, &seq);
+                seq->val = name;
+                seq->val_size = name_size;
+
+                seq->numid = atomic_fetch_add_explicit(&repo->num_strs, 1, memory_order_relaxed);
+
+                err = knd_shared_dict_set(repo->str_dict, name, name_size, (void*)seq,
+                                          mempool, NULL, &seq->item, false);
+                if (err) {
+                    KND_TASK_LOG("failed to register a class name charseq");
+                    return make_gsl_err_external(err);
+                }
+                knd_uid_create(seq->numid, idbuf, &idbuf_size);
+                err = knd_shared_set_add(repo->str_idx, idbuf, idbuf_size, (void*)seq);
+                if (err) {
+                    KND_TASK_LOG("failed to register a charseq by numid");
+                    return make_gsl_err_external(err);
+                }
+                // knd_log(">> class name as a str: \"%.*s\"", name_size, name);
+            }
+            entry->seq = seq;
             return make_gsl_err(gsl_OK);
         }
-        /* class entry has no class body */
+
+        /* no class body so far */
         if (!entry->class) {
             entry->class =    self;
             self->entry =     entry;
@@ -98,6 +127,8 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
         task->ctx->http_code = HTTP_CONFLICT;
         task->ctx->error = KND_CONFLICT;
         return make_gsl_err(gsl_FAIL);
+    default:
+        break;
     }
 
     /* commit in progress */
@@ -157,10 +188,8 @@ static gsl_err_t set_class_var(void *obj, const char *name, size_t name_size)
     int err;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log(".. repo \"%.*s\" to check class var name: %.*s [task id:%zu]",
-                repo->name_size,
-                repo->name,
-                name_size, name, task->id);
+        knd_log(".. repo \"%.*s\" to check a class var name: %.*s [task id:%zu]",
+                repo->name_size, repo->name, name_size, name, task->id);
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
@@ -176,9 +205,7 @@ static gsl_err_t set_class_var(void *obj, const char *name, size_t name_size)
     entry->name = name;
     entry->name_size = name_size;
 
-    err = knd_dict_set(class_name_idx,
-                              entry->name, name_size,
-                              (void*)entry);
+    err = knd_dict_set(class_name_idx, entry->name, name_size, (void*)entry);
     if (err) return make_gsl_err_external(err);
 
     entry->repo = repo;
@@ -250,7 +277,7 @@ static gsl_err_t parse_attr(void *obj,
     self->num_attrs++;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        attr->str(attr, 1);
+        knd_attr_str(attr, 1);
 
     if (attr->is_implied)
         self->implied_attr = attr;
@@ -286,19 +313,13 @@ static gsl_err_t import_attr_var_list(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_class_var(const char *rec,
-                                 size_t *total_size,
-                                 struct LocalContext *ctx)
+static gsl_err_t parse_class_var(const char *rec, size_t *total_size, struct LocalContext *ctx)
 {
     gsl_err_t parser_err;
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_class_var,
-          .obj = ctx
-        },
-        { .type = GSL_SET_STATE,
-          .validate = import_attr_var,
           .obj = ctx
         },
         { .validate = import_attr_var,
@@ -320,48 +341,7 @@ static gsl_err_t parse_class_var(const char *rec,
     return make_gsl_err(gsl_OK);
 }
 
-gsl_err_t knd_import_class_var(struct kndClassVar *self,
-                               const char *rec,
-                               size_t *total_size,
-                               struct kndTask *task)
-{
-    gsl_err_t parser_err;
-
-    if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log(".. import class var: %.*s", 32, rec);
-
-    struct LocalContext ctx = {
-        .task = task,
-        .class_var = self
-    };
-
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = set_class_var,
-          .obj = &ctx
-        },
-        { .type = GSL_SET_STATE,
-          .validate = import_attr_var,
-          .obj = &ctx
-        },
-        { .validate = import_attr_var,
-          .obj = &ctx
-        },
-        { .type = GSL_SET_ARRAY_STATE,
-          .validate = import_attr_var_list,
-          .obj = &ctx
-        }
-    };
-
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return parser_err;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_baseclass(void *obj,
-                                 const char *rec,
-                                 size_t *total_size)
+static gsl_err_t parse_baseclass(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
@@ -394,23 +374,75 @@ static gsl_err_t parse_baseclass(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-gsl_err_t knd_class_import(struct kndRepo *repo,
-                           const char *rec,
-                           size_t *total_size,
-                           struct kndTask *task)
+static gsl_err_t set_uniq_type(void *obj, const char *name, size_t name_size)
 {
+    struct LocalContext *ctx = obj;
+    struct kndClass *self = ctx->class;
+
+    if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
+        knd_log(".. set uniq type: \"%.*s\" for \"%.*s\"",
+                name_size, name, self->name_size, self->name);
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t add_uniq_attr(void *obj, const char *name, size_t name_size,
+                               const char *unused_var(rec), size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+    struct kndClass *self = ctx->class;
+    struct kndTask *task = ctx->task;
     struct kndMemPool *mempool = task->mempool;
+    struct kndAttrRef *ref;
+    int err;
+
+    if (DEBUG_CLASS_IMPORT_LEVEL_2)
+        knd_log(">> add uniq attr: \"%.*s\"", name_size, name);
+
+    err = knd_attr_ref_new(mempool, &ref);
+    if (err) {
+        KND_TASK_LOG("failed to alloc kndAttrRef");
+        return *total_size = 0, make_gsl_err_external(err);
+    }
+    ref->name = name;
+    ref->name_size = name_size;
+
+    ref->next = self->uniq;
+    self->uniq = ref;
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_uniq_attr_constraint(void *obj, const char *rec, size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+    gsl_err_t parser_err;
+
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = set_uniq_type,
+          .obj = ctx
+        },
+        { .validate = add_uniq_attr,
+          .obj = ctx
+        }
+    };
+
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) return parser_err;
+
+    return make_gsl_err(gsl_OK);
+}
+
+gsl_err_t knd_class_import(struct kndRepo *repo, const char *rec, size_t *total_size, struct kndTask *task)
+{
+    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
     struct kndClass *c;
     struct kndClassEntry *entry;
     int err;
     gsl_err_t parser_err;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log("..worker \"%zu\" to import class: \"%.*s\"",
-                task->id, 128, rec);
-
-    if (task->user_ctx)
-        mempool = task->shard->user->mempool;
+        knd_log(".. worker \"%zu\" to import class: \"%.*s\"", task->id, 128, rec);
 
     err = knd_class_new(mempool, &c);
     if (err) {
@@ -447,17 +479,22 @@ gsl_err_t knd_class_import(struct kndRepo *repo,
           .name_size = strlen("_gloss"),
           .parse = knd_parse_gloss_array,
           .obj = task
-        },
+        }/*,
         { .type = GSL_GET_ARRAY_STATE,
           .name = "_summary",
           .name_size = strlen("_summary"),
           .parse = knd_parse_summary_array,
           .obj = task
-        },
+          }*/,
         { .name = "_state_top",
           .name_size = strlen("_state_top"),
           .run = set_state_top_option,
           .obj = c
+        },
+        { .name = "uniq",
+          .name_size = strlen("uniq"),
+          .parse = parse_uniq_attr_constraint,
+          .obj = &ctx
         },
         { .validate = parse_attr,
           .obj = &ctx
@@ -466,8 +503,7 @@ gsl_err_t knd_class_import(struct kndRepo *repo,
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
-        KND_TASK_LOG("\"%.*s\" class parsing error",
-                     c->name_size, c->name);
+        KND_TASK_LOG("\"%.*s\" class parsing error: %d", c->name_size, c->name, parser_err.code);
         goto final;
     }
 
@@ -485,8 +521,7 @@ gsl_err_t knd_class_import(struct kndRepo *repo,
     }
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2) {
-        knd_log("++  \"%.*s\" class import completed!",
-                c->name_size, c->name);
+        knd_log("++  \"%.*s\" class import completed!", c->name_size, c->name);
         c->str(c, 1);
     }
 
@@ -494,7 +529,7 @@ gsl_err_t knd_class_import(struct kndRepo *repo,
     case KND_RESTORE_STATE:
         // fall through
     case KND_COMMIT_STATE:
-        err = knd_class_commit_state(c, KND_CREATED, task);
+        err = knd_class_commit_state(c->entry, KND_CREATED, task);
         if (err) {
             return make_gsl_err_external(err);
         }

@@ -19,24 +19,69 @@
  */
 #pragma once
 
+#include <stdatomic.h>
+
 #include "knd_config.h"
 #include "knd_state.h"
+#include "knd_shared_idx.h"
 
 struct kndTask;
-struct kndClass;
-struct kndProc;
 struct kndSyNode;
 struct kndStatement;
+struct kndRepo;
+struct kndAttrVar;
+
+typedef enum knd_charseq_enc_type {
+    KND_CHARSEQ_UTF8,
+    KND_ASCII
+} knd_charseq_enc_type;
+
+struct kndCharSeq
+{
+    knd_charseq_enc_type enc;
+    const char *val;
+    size_t val_size;
+    size_t numid;
+    struct kndSharedDictItem *item;
+};
 
 struct kndDiscourseContext
 {
     struct kndStatement *stms;
+};
 
+struct kndTextLoc
+{
+    knd_state_type type;
+
+    struct kndClassInst *src;
+    struct kndAttr *attr;
+    size_t par_id;
+    size_t sent_id;
+    void *obj;
+
+    struct kndTextLoc *children;
+    struct kndTextLoc *next;
+};
+
+struct kndTextSearchReport
+{
+    struct kndClassEntry *entry;
+    struct kndAttr *attr;
+    struct kndStatement *stm;
+
+    struct kndClassIdx *idx;
+
+    struct kndTextLoc *locs;
+    size_t num_locs;
+    size_t total_locs;
+
+    struct kndTextSearchReport *next;
 };
 
 struct kndClassDeclaration
 {
-    struct kndClass *class;
+    struct kndClassEntry *entry;
 
     struct kndClassInstEntry *insts;
     struct kndClassInstEntry *inst_tail;
@@ -47,7 +92,7 @@ struct kndClassDeclaration
 
 struct kndProcDeclaration
 {
-    struct kndProc *proc;
+    struct kndProcEntry *entry;
 
     struct kndProcInstEntry *insts;
     struct kndProcInstEntry *inst_tail;
@@ -58,8 +103,8 @@ struct kndProcDeclaration
 
 struct kndStatement
 {
-    const char *name;
-    size_t name_size;
+    const char *schema_name;
+    size_t schema_name_size;
     size_t numid;
 
     struct kndClass *stm_type;
@@ -92,8 +137,8 @@ struct kndSyNode
     struct kndSyNodeSpec *specs;
     size_t num_specs;
 
-    size_t pos;
-    size_t len;
+    size_t linear_pos;
+    size_t linear_len;
 
     struct kndSyNode *next;
 };
@@ -134,6 +179,10 @@ struct kndPar
     struct kndSentence *last_sent;
     size_t num_sents;
 
+    struct kndClassDeclaration *class_declars;
+    struct kndProcDeclaration  *proc_declars;
+    struct kndDict *name_idx;
+
     struct kndPar *next;
 };
 
@@ -142,8 +191,9 @@ struct kndText
     const char *locale;
     size_t locale_size;
 
-    const char *seq;
-    size_t seq_size;
+    struct kndAttrVar *attr_var;
+    struct kndCharSeq *seq;
+
     struct kndSyNode *synodes;
     struct kndStatement *stms;
 
@@ -151,7 +201,7 @@ struct kndText
     struct kndPar *last_par;
     size_t num_pars;
 
-    /* translated renderings of master content: manual or automatic */
+    /* translated renderings of deep semantics: manual or automatic */
     struct kndText *trs;
     size_t num_trs;
 
@@ -162,13 +212,34 @@ struct kndText
 };
 
 void knd_text_str(struct kndText *self, size_t depth);
-gsl_err_t knd_text_import(struct kndText *self,
-                          const char *rec,
-                          size_t *total_size,
-                          struct kndTask *task);
+gsl_err_t knd_text_import(struct kndText *self, const char *rec, size_t *total_size, struct kndTask *task);
+int knd_text_index(struct kndText *self, struct kndRepo *repo, struct kndTask *task);
+gsl_err_t knd_text_search(struct kndRepo *repo, const char *rec, size_t *total_size, struct kndTask *task);
 
-int knd_text_export(struct kndText *self,
-                    knd_format format,
-                    struct kndTask *task);
-int knd_text_new(struct kndMemPool *mempool,
-                 struct kndText   **self);
+gsl_err_t knd_statement_import(struct kndStatement *stm, const char *rec, size_t *total_size, struct kndTask *task);
+int knd_statement_resolve(struct kndStatement *stm, struct kndTask *task);
+
+int knd_text_export(struct kndText *self, knd_format format, struct kndTask *task);
+int knd_par_export_GSL(struct kndPar *par, struct kndTask *task);
+int knd_text_export_query_report(struct kndTask *task);
+int knd_text_export_query_report_GSL(struct kndTask *task);
+
+int knd_text_export_GSP(struct kndText *self, struct kndTask *task);
+
+int knd_charseq_marshall(void *elem, size_t *output_size, struct kndTask *task);
+int knd_charseq_unmarshall(const char *elem_id, size_t elem_id_size, const char *val, size_t val_size,
+                           void **result, struct kndTask *task);
+
+int knd_text_new(struct kndMemPool *mempool, struct kndText **result);
+int knd_synode_new(struct kndMemPool *mempool, struct kndSyNode **result);
+int knd_synode_spec_new(struct kndMemPool *mempool, struct kndSyNodeSpec **result);
+int knd_charseq_new(struct kndMemPool *mempool, struct kndCharSeq **result);
+
+int knd_par_new(struct kndMemPool *mempool, struct kndPar **result);
+int knd_class_declar_new(struct kndMemPool *mempool, struct kndClassDeclaration **result);
+int knd_proc_declar_new(struct kndMemPool *mempool, struct kndProcDeclaration **result);
+int knd_sentence_new(struct kndMemPool *mempool, struct kndSentence **result);
+int knd_clause_new(struct kndMemPool *mempool, struct kndClause **result);
+int knd_statement_new(struct kndMemPool *mempool, struct kndStatement **result);
+int knd_text_loc_new(struct kndMemPool *mempool, struct kndTextLoc **result);
+int knd_text_search_report_new(struct kndMemPool *mempool, struct kndTextSearchReport **result);

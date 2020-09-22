@@ -32,11 +32,8 @@ struct kndQueue
     atomic_size_t tail_pos;
 };
 
-int knd_queue_new(struct kndQueue **self,
-                  size_t capacity);
+int knd_queue_new(struct kndQueue **self, size_t capacity);
 int knd_queue_reset(struct kndQueue *self);
 
-int knd_queue_push(struct kndQueue *self,
-                   void *elem);
-int knd_queue_pop(struct kndQueue *self,
-                  void **result);
+int knd_queue_push(struct kndQueue *self, void *elem);
+int knd_queue_pop(struct kndQueue *self, void **result);

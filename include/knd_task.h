@@ -42,24 +42,24 @@ struct kndClassInst;
 struct kndConcFolder;
 struct kndText;
 
-typedef int (*task_cb_func)(void *obj,
-                            const char *msg,
-                            size_t msg_size,
-                            void *ctx);
+typedef int (*task_cb_func)(void *obj, const char *msg, size_t msg_size, void *ctx);
 
 typedef enum knd_agent_role_type {
     KND_READER,
-    KND_WRITER
+    KND_WRITER,
+    KND_ARBITER
 } knd_agent_role_type;
 
 typedef enum knd_task_spec_type {
     KND_GET_STATE,
     KND_SELECT_STATE,
+    KND_READ_STATE,
     KND_COMMIT_STATE,
     KND_INNER_STATE,
     KND_INNER_COMMIT_STATE,
     KND_LIQUID_STATE,
-    KND_SYNC_STATE,
+    KND_UNFREEZE_STATE,
+    KND_SNAPSHOT_STATE,
     KND_DELTA_STATE,
     KND_LOAD_STATE,
     KND_RESTORE_STATE,
@@ -94,7 +94,6 @@ struct kndMemBlock {
     size_t buf_size;
     struct kndMemBlock *next;
 };
-
 
 struct kndTaskContext {
     char id[KND_ID_SIZE];
@@ -134,6 +133,7 @@ struct kndTaskContext {
     size_t depth;
     size_t max_depth;
     bool use_numid;
+    bool use_alias;
 
     // TODO: subscription channel
     // to push any commits
@@ -153,11 +153,15 @@ struct kndTaskContext {
     struct kndCommit *commit;
     bool commit_confirmed;
 
-    /* inner statements */
-    struct kndClassInstEntry *stm_class_insts;
-    size_t num_stm_class_insts;
-    struct kndProcInstEntry *stm_proc_insts;
-    size_t num_stm_proc_insts;
+    /* inner statement declarations */
+    struct kndClassDeclaration *class_declars;
+    size_t num_class_declars;
+    struct kndProcDeclaration *proc_declars;
+    size_t num_proc_declars;
+
+    /* text search query & results */
+    struct kndStatement *query;
+    struct kndTextSearchReport *reports;
 
     struct kndTaskContext *next;
 };
@@ -229,6 +233,7 @@ struct kndTask
 
     struct kndMemPool *mempool;
     bool is_mempool_owner;
+    bool keep_local_WAL;
 
     struct kndMemBlock *blocks;
     size_t num_blocks;
@@ -243,22 +248,13 @@ struct kndTask
 };
 
 // knd_task.c
-int knd_task_new(struct kndShard *shard,
-                 struct kndMemPool *mempool,
-                 int task_id,
-                 struct kndTask **task);
-int knd_task_mem(struct kndMemPool *mempool,
-                 struct kndTask **result);
-int knd_task_context_new(struct kndMemPool *mempool,
-                         struct kndTaskContext **ctx);
-int knd_task_block_new(struct kndMemPool *mempool,
-                       struct kndTask **result);
-int knd_task_copy_block(struct kndTask *self,
-                        const char *input, size_t input_size,
+int knd_task_new(struct kndShard *shard, struct kndMemPool *mempool, int task_id, struct kndTask **task);
+int knd_task_context_new(struct kndMemPool *mempool, struct kndTaskContext **ctx);
+int knd_task_block_new(struct kndMemPool *mempool, struct kndTask **result);
+int knd_task_copy_block(struct kndTask *self, const char *input, size_t input_size,
                         const char **output, size_t *output_size);
 
-int knd_task_read_file_block(struct kndTask *self,
-                             const char *filename, size_t filename_size,
+int knd_task_read_file_block(struct kndTask *self, const char *filename, size_t filename_size,
                              struct kndMemBlock **result);
 void knd_task_free_blocks(struct kndTask *self);
 

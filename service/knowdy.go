@@ -23,6 +23,8 @@ import (
 )
 
 type kndProc struct {
+	Name          string
+	Role          string
 	shard         *C.struct_kndShard
 	parentAddress string
 	workers       chan *C.struct_kndTask
@@ -40,7 +42,19 @@ func New(conf string, parentAddress string, concurrencyFactor int) (*kndProc, er
 		parentAddress: parentAddress,
 		workers:       make(chan *C.struct_kndTask, concurrencyFactor),
 	}
-
+	proc.Name = C.GoStringN(&shard.name[0], C.int(shard.name_size))
+        switch C.int(shard.role) {
+	case C.KND_ARBITER:
+		proc.Role = "Arbiter"
+		break
+	case C.KND_READER:
+		proc.Role = "Reader"
+		break
+	default:
+		proc.Role = "Default"
+		break
+	}
+	
 	for i := 0; i < concurrencyFactor; i++ {
 		var task *C.struct_kndTask
 		errCode := C.knd_task_new(shard, nil, C.int(i + 1), &task)
@@ -77,8 +91,7 @@ func (p *kndProc) RunTask(task string, task_len int) (string, string, error) {
 	cs := C.CString(task)
 	defer C.free(unsafe.Pointer(cs))
 
-	errCode := C.knd_task_copy_block(worker,
-		cs, C.size_t(task_len),
+	errCode := C.knd_task_copy_block(worker, cs, C.size_t(task_len),
 		(**C.char)(&block), (*C.size_t)(&block_size))
 	if (errCode != C.int(0)) {
 		return "", "", errors.New("block alloc failed")
@@ -92,6 +105,10 @@ func (p *kndProc) RunTask(task string, task_len int) (string, string, error) {
 		}
 		return "", "", errors.New(msg)
 	}
+
+	// any thresholds reached?
+
+	// TODO check what replication level is needed for new commits
 	
 	return C.GoStringN((*C.char)(worker.output), C.int(worker.output_size)), "meta", nil
 }

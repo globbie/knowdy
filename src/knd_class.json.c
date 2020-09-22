@@ -20,6 +20,7 @@
 #include "knd_attr.h"
 #include "knd_task.h"
 #include "knd_state.h"
+#include "knd_commit.h"
 #include "knd_user.h"
 #include "knd_repo.h"
 #include "knd_mempool.h"
@@ -27,6 +28,7 @@
 #include "knd_rel.h"
 #include "knd_proc.h"
 #include "knd_proc_arg.h"
+#include "knd_shared_set.h"
 #include "knd_set.h"
 #include "knd_output.h"
 #include "knd_utils.h"
@@ -46,13 +48,12 @@ struct LocalContext {
     struct kndClassVar *class_var;
 };
 
-int knd_export_class_state_JSON(struct kndClassEntry *self,
-                                struct kndTask *task)
+int knd_export_class_state_JSON(struct kndClassEntry *self, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
+    struct kndState *state = self->class->states;
     struct kndClass *c = self->class;
-    struct kndState *state = c->states;
-    size_t latest_state_numid = c->init_state + c->num_states;
+    size_t latest_state_numid = self->class->init_state + self->class->num_states;
     size_t total;
     int err;
 
@@ -98,15 +99,15 @@ int knd_export_class_state_JSON(struct kndClassEntry *self,
         err = out->writec(out, '}');                                              RET_ERR();
     }
 
-    state = self->inst_states;
+    state = c->inst_states;
     if (state) {
-        latest_state_numid = self->init_inst_state + self->num_inst_states;
+        latest_state_numid = c->init_inst_state + c->num_inst_states;
         total = 0;
         if (state->val)
             total = state->val->val_size;
 
-        err = out->write(out, ",\"instances\":{",
-                         strlen(",\"instances\":{"));                             RET_ERR();
+        err = out->write(out, ",\"insts\":{",
+                         strlen(",\"insts\":{"));                             RET_ERR();
         err = out->write(out, "\"_state\":", strlen("\"_state\":"));              RET_ERR();
         err = out->writef(out, "%zu", latest_state_numid);                        RET_ERR();
         err = out->write(out, ",\"total\":", strlen(",\"total\":"));              RET_ERR();
@@ -125,8 +126,7 @@ int knd_export_class_state_JSON(struct kndClassEntry *self,
     return knd_OK;
 }
 
-int knd_export_class_inst_state_JSON(struct kndClassEntry *self,
-                                     struct kndTask *task)
+int knd_export_class_inst_state_JSON(struct kndClass *self, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     size_t latest_state_id = 0;
@@ -225,7 +225,7 @@ static int export_gloss_JSON(struct kndClass *self,
             continue;
         }
         err = out->write(out, ",\"_gloss\":\"", strlen(",\"_gloss\":\""));        RET_ERR();
-        err = out->write_escaped(out, tr->seq,  tr->seq_size);                    RET_ERR();
+        err = out->write_escaped(out, tr->seq->val,  tr->seq->val_size);                    RET_ERR();
         err = out->write(out, "\"", 1);                                           RET_ERR();
         break;
     }
@@ -300,8 +300,7 @@ extern int knd_empty_set_export_JSON(struct kndClass *unused_var(self),
 }
 */
 
-static int export_facet(struct kndClassFacet *parent_facet,
-                        struct kndTask *task)
+static int export_facet(struct kndClassFacet *parent_facet, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndClassFacet *facet;
@@ -407,7 +406,6 @@ extern int knd_class_set_export_JSON(struct kndSet *set,
                      strlen(",\"batch\":["));                                     RET_ERR();
 
     curr_depth = task->ctx->max_depth;
-
     task->ctx->max_depth = 1;
 
     err = set->map(set, export_class_set_elem, (void*)task);
@@ -457,10 +455,10 @@ static int present_subclass(struct kndClassRef *ref,
     err = out->write(out, ",\"_id\":", strlen(",\"_id\":"));                      RET_ERR();
     err = out->writef(out, "%zu", entry->numid);                                  RET_ERR();
 
-    if (ref->entry->num_terminals) {
+    if (ref->entry->class->num_terminals) {
         err = out->write(out, ",\"_num_terminals\":",
                          strlen(",\"_num_terminals\":"));                         RET_ERR();
-        err = out->writef(out, "%zu", entry->num_terminals);                      RET_ERR();
+        err = out->writef(out, "%zu", ref->entry->class->num_terminals);                      RET_ERR();
     }
 
     /* localized glosses */
@@ -474,9 +472,7 @@ static int present_subclass(struct kndClassRef *ref,
     return knd_OK;
 }
 
-static int present_subclasses(struct kndClass *self,
-                              size_t num_children,
-                              struct kndTask *task)
+static int present_subclasses(struct kndClass *self, size_t num_children, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndClassRef *ref;
@@ -492,21 +488,21 @@ static int present_subclasses(struct kndClass *self,
 
     err = out->writef(out, "%zu", num_children);                                  RET_ERR();
 
-    if (entry->num_terminals) {
+    if (self->num_terminals) {
         err = out->write(out, ",\"_num_terminals\":",
                          strlen(",\"_num_terminals\":"));                         RET_ERR();
-        err = out->writef(out, "%zu", entry->num_terminals);                      RET_ERR();
+        err = out->writef(out, "%zu", self->num_terminals);                      RET_ERR();
     }
 
     err = out->write(out, ",\"_subclasses\":[",
                      strlen(",\"_subclasses\":["));                               RET_ERR();
     
-    for (ref = entry->children; ref; ref = ref->next) {
+    for (ref = self->children; ref; ref = ref->next) {
         c = ref->class;
         // TODO: defreeze
         if (!c) continue;
         
-        state = c->states;
+        state = ref->entry->class->states;
         if (state && state->phase == KND_REMOVED) continue;
 
         if (in_list) {
@@ -518,11 +514,12 @@ static int present_subclasses(struct kndClass *self,
     }
 
     if (orig_entry) {
-        for (ref = orig_entry->children; ref; ref = ref->next) {
+        for (ref = orig_entry->class->children; ref; ref = ref->next) {
             c = ref->class;
             // TODO: defreeze
             if (!c) continue;
-            state = c->states;
+
+            state = ref->entry->class->states;
             if (state && state->phase == KND_REMOVED) continue;
 
             if (in_list) {
@@ -580,10 +577,7 @@ static int export_inverse_attrs(struct kndClass *self,
                      ",\"_inverse_attrs\":[",
                      strlen(",\"_inverse_attrs\":["));                            RET_ERR();
 
-    for (attr_hub = self->entry->attr_hubs;
-         attr_hub;
-         attr_hub = attr_hub->next) {
-
+    FOREACH (attr_hub, self->attr_hubs) {
         if (in_list) {
                 err = out->writec(out, ',');                                      RET_ERR();
         }
@@ -656,8 +650,8 @@ static int export_baseclass_vars(struct kndClass *self,
         }
 
         if (item->attrs) {
-            item->attrs->depth = task->depth;
-            item->attrs->max_depth = task->ctx->max_depth;
+            //item->attrs->depth = task->depth;
+            //item->attrs->max_depth = task->ctx->max_depth;
             err = knd_attr_vars_export_JSON(item->attrs,
                                             task, false);      RET_ERR();
         }
@@ -680,8 +674,7 @@ static int export_baseclass_vars(struct kndClass *self,
     return knd_OK;
 }
                                      
-int knd_class_export_JSON(struct kndClass *self,
-                          struct kndTask *task)
+int knd_class_export_JSON(struct kndClass *self, struct kndTask *task)
 {
     struct kndClassEntry *entry = self->entry;
     struct kndClassEntry *orig_entry = entry->base;
@@ -757,7 +750,7 @@ int knd_class_export_JSON(struct kndClass *self,
     if (self->num_states) {
         err = out->writec(out, ',');
         if (err) return err;
-        err = knd_export_class_state_JSON(self->entry, task);                            RET_ERR();
+        err = knd_export_class_state_JSON(entry, task);                            RET_ERR();
     }
 
     /*if (self->num_inst_states) {
@@ -788,7 +781,7 @@ int knd_class_export_JSON(struct kndClass *self,
     //err = set->map(set, knd_export_inherited_attr, (void*)task); 
     //if (err && err != knd_RANGE) return err;
 
-    num_children = entry->num_children;
+    num_children = entry->class->num_children;
     if (self->desc_states) {
         state = self->desc_states;
         if (state->val) 
@@ -796,19 +789,19 @@ int knd_class_export_JSON(struct kndClass *self,
     }
 
     if (orig_entry)
-        num_children += orig_entry->num_children;
+        num_children += orig_entry->class->num_children;
 
     if (num_children) {
         err = present_subclasses(self, num_children, task);                        RET_ERR();
     }
 
     /* instances */
-    if (entry->inst_idx) {
-        err = out->write(out, ",\"_instances\":{",
-                         strlen(",\"_instances\":{"));                            RET_ERR();
+    if (self->inst_idx) {
+        err = out->write(out, ",\"_insts\":{",
+                         strlen(",\"_insts\":{"));                            RET_ERR();
 
-        if (self->entry->inst_states) {
-            err = knd_export_class_inst_state_JSON(self->entry, task);                         RET_ERR();
+        if (self->inst_states) {
+            err = knd_export_class_inst_state_JSON(self, task);                         RET_ERR();
         }
 
         // TODO navigation facets?
@@ -818,7 +811,7 @@ int knd_class_export_JSON(struct kndClass *self,
     }
 
     /* inverse relations */
-    if (entry->attr_hubs) {
+    if (self->attr_hubs) {
         err = export_inverse_attrs(self, task);                         RET_ERR();
     }
     

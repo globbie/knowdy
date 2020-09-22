@@ -61,104 +61,65 @@ static int str_attr_ref(void *obj,
     return knd_OK;
 }
 
-static int resolve_text(struct kndAttrVar *attr_var,
-                        struct kndTask *task)
+static int resolve_text(struct kndAttrVar *attr_var, struct kndTask *task)
 {
-    struct kndAttrVar *curr_item;
-    struct kndAttrVar *val_item;
-    struct kndText *text;
-    struct kndText *tr;
-    struct kndMemPool *mempool = task->mempool;
-    int err;
-
     if (DEBUG_ATTR_RESOLVE_LEVEL_2)
         knd_log(".. resolving text attr var: %.*s  class:%.*s",
                 attr_var->name_size, attr_var->name,
                 attr_var->class_var->parent->name_size,
                 attr_var->class_var->parent->name);
-
-    err = knd_text_new(mempool, &text);
-    if (err) {
-        knd_log("-- no text alloc");
-        return err;
+    if (!attr_var->text) {
+        KND_TASK_LOG("no text field (_t) found in attr var \"%.*s\"", attr_var->name_size, attr_var->name);
+        return knd_FAIL;
     }
-
-    for (curr_item = attr_var->list; curr_item; curr_item = curr_item->next) {
-        err = knd_text_new(mempool, &tr);
-        if (err) {
-            knd_log("-- no text alloc");
-        }
-
-        tr->locale = curr_item->name;
-        tr->locale_size = curr_item->name_size;
-
-        // no text value
-        if (!curr_item->children) {
-            knd_log("-- no children");
-            return knd_FAIL;
-        }
-        val_item = curr_item->children;
-        if (memcmp(val_item->name, "t", 1)) {
-            knd_log("-- no t field");
-            return knd_FAIL;
-        }
-
-        tr->seq = val_item->val;
-        tr->seq_size = val_item->val_size;
-
-        tr->next = text->trs;
-        text->trs = tr;
-        text->num_trs++;
-    }
-
-    attr_var->text = text;
-
     return knd_OK;
 }
 
 static int resolve_implied_attr_var(struct kndClass *self,
                                     struct kndClass *c,
-                                    const char *classname,
-                                    size_t classname_size,
-                                    struct kndAttrVar *parent_item,
+                                    const char *val, size_t val_size,
+                                    struct kndAttrVar *var,
                                     struct kndTask *task)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size = 0;
     struct kndAttr *attr = c->implied_attr;
     int err;
-    if (DEBUG_ATTR_RESOLVE_LEVEL_2)
-        knd_log("== class: \"%.*s\" implied attr: \"%.*s\"",
-                classname_size, classname,
-                attr->name_size, attr->name);
 
-    parent_item->implied_attr = attr;
+    if (DEBUG_ATTR_RESOLVE_LEVEL_2) {
+        const char *attr_type_name = knd_attr_names[attr->type];
+        size_t attr_type_name_size = strlen(attr_type_name);
+        knd_log("== class: \"%.*s\" implied attr %.*s: \"%.*s\" check value:%.*s",
+                c->name_size, c->name, attr_type_name_size, attr_type_name,
+                attr->name_size, attr->name, val_size, val);
+        knd_log(":: is list item:%d var attr:%.*s (set:%d)",
+                var->is_list_item, var->attr->name_size, var->attr->name,
+                var->attr->is_a_set);
+    }
+    var->implied_attr = attr;
 
     switch (attr->type) {
     case KND_ATTR_NUM:
         if (DEBUG_ATTR_RESOLVE_LEVEL_2)
             knd_log(".. resolving implied num attr: %.*s val:%.*s",
-                    parent_item->name_size, parent_item->name,
-                    parent_item->val_size, parent_item->val);
-        
-        if (parent_item->val_size) {
-            memcpy(buf, parent_item->val, parent_item->val_size);
-            buf_size = parent_item->val_size;
+                    var->name_size, var->name,
+                    var->val_size, var->val);
+        if (var->val_size) {
+            memcpy(buf, var->val, var->val_size);
+            buf_size = var->val_size;
             buf[buf_size] = '\0';
-            
-            err = knd_parse_num(buf, &parent_item->numval);
+            err = knd_parse_num(buf, &var->numval);
             // TODO: float parsing
         }
         break;
-    case KND_ATTR_INNER:
-        
-        break;
     case KND_ATTR_REF:
-        err = knd_resolve_class_ref(self,
-                                    classname, classname_size,
-                                    attr->ref_class, &parent_item->class, task);
+        err = knd_resolve_class_ref(self, val, val_size, attr->ref_class_entry->class, &var->class, task);
         if (err) return err;
-        //knd_log("++ class ref confirmed: %.*s!", classname_size, classname);
+        break;
+    case KND_ATTR_STR:
+        //knd_log("++ STR value: %.*s", val_size, val);
+        var->val = var->name;
+        var->val_size = var->name_size;
         break;
     default:
         break;
@@ -166,47 +127,40 @@ static int resolve_implied_attr_var(struct kndClass *self,
     return knd_OK;
 }
 
-static int resolve_inner_item(struct kndClass *self,
-                              struct kndAttrVar *parent_item,
-                              struct kndTask *task)
+static int resolve_inner_var(struct kndClass *self, struct kndAttrVar *parent_item, struct kndTask *task)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size = 0;
     struct kndClass *c;
+    struct kndClassInst *ci;
     struct kndAttrVar *item;
     struct kndAttr *attr;
     struct kndAttrRef *attr_ref;
+    struct kndProc *proc;
     const char *classname;
     size_t classname_size;
     int err;
 
     if (DEBUG_ATTR_RESOLVE_LEVEL_2)
-        knd_log(".. resolve inner item \"%.*s\" (val:%.*s) is list item:%d..",
+        knd_log(".. resolve inner var \"%.*s\" (blueprint:%.*s)",
                 parent_item->name_size, parent_item->name,
-                parent_item->val_size, parent_item->val,
-                parent_item->is_list_item);
+                parent_item->attr->ref_classname_size, parent_item->attr->ref_classname);
 
-    if (!parent_item->attr->ref_class) {
-        err = knd_resolve_class_ref(self,
-                                    parent_item->attr->ref_classname,
+    if (!parent_item->attr->ref_class_entry) {
+        err = knd_resolve_class_ref(self, parent_item->attr->ref_classname,
                                     parent_item->attr->ref_classname_size,
-                                    NULL, &parent_item->attr->ref_class,
-                                    task);
+                                    NULL, &c, task);
         if (err) return err;
+        parent_item->attr->ref_class_entry = c->entry;
     }
-    c = parent_item->attr->ref_class;
+
+    c = parent_item->attr->ref_class_entry->class;
+    // TODO if (!c)
+
     if (!c->is_resolved) {
-        err = knd_class_resolve(c, task);                                         RET_ERR();
+        err = knd_class_resolve(c, task);
+        KND_TASK_ERR("failed to resolve class %.*s", c->name_size, c->name);
     }
-
-    if (DEBUG_ATTR_RESOLVE_LEVEL_2) {
-        knd_log("\n.. resolving inner item \"%.*s\""
-                " class:%.*s [resolved:%d]] is_list_item:%d",
-                parent_item->name_size,  parent_item->name,
-                c->name_size, c->name, c->is_resolved,
-                parent_item->is_list_item);
-    }
-
     classname = parent_item->val;
     classname_size = parent_item->val_size;
     if (parent_item->is_list_item) {
@@ -214,25 +168,21 @@ static int resolve_inner_item(struct kndClass *self,
         classname_size = parent_item->name_size;
     }
 
-    if (DEBUG_ATTR_RESOLVE_LEVEL_2)
-        c->str(c, 1);
-
     if (parent_item->list) {
         err = resolve_attr_var_list(self, parent_item, task);
-        if (err) {
-            knd_log("-- attr var list not resolved: %.*s",
-                    parent_item->name_size, parent_item->name);
-            return err;
-        }
+        if (err) return err;
         return knd_OK;
     }
 
     if (c->implied_attr) {
+        if (DEBUG_ATTR_RESOLVE_LEVEL_2)
+            knd_log("== class %.*s has implied attr \"%.*s\"",
+                    c->name_size, c->name, c->implied_attr->name_size, c->implied_attr->name);
+
         err = resolve_implied_attr_var(self, c, classname, classname_size,
                                        parent_item, task);                        RET_ERR();
     }
 
-    /* resolve nested children */
     for (item = parent_item->children; item; item = item->next) {
         if (DEBUG_ATTR_RESOLVE_LEVEL_2) {
             knd_log(".. check attr \"%.*s\" in class \"%.*s\" "
@@ -247,8 +197,19 @@ static int resolve_inner_item(struct kndClass *self,
                     c->name_size, c->name);
             return err;
         }
+
         attr = attr_ref->attr;
         item->attr = attr;
+
+        if (DEBUG_ATTR_RESOLVE_LEVEL_3)
+            knd_log("++ got attr: %.*s (set:%d)", attr->name_size, attr->name, attr->is_a_set);
+
+        if (attr->is_a_set) {
+            err = resolve_attr_var_list(self, item, task);
+            if (err) return err;
+            continue;
+        }
+
         switch (attr->type) {
         case KND_ATTR_NUM:
             if (DEBUG_ATTR_RESOLVE_LEVEL_2)
@@ -263,15 +224,22 @@ static int resolve_inner_item(struct kndClass *self,
             err = knd_parse_num(buf, &item->numval);
             break;
         case KND_ATTR_INNER:
-            err = resolve_inner_item(self, item, task);
+            err = resolve_inner_var(self, item, task);
             if (err) return err;
             break;
         case KND_ATTR_REF:
-            classname = item->val;
-            classname_size = item->val_size;
-            err = knd_resolve_class_ref(self,
-                                        classname, classname_size,
-                                        attr->ref_class, &item->class, task);
+            err = knd_resolve_class_ref(self, item->val, item->val_size,
+                                        attr->ref_class_entry->class, &item->class, task);
+            if (err) return err;
+            break;
+        case KND_ATTR_REL:
+            err = knd_get_class_inst(item->attr->ref_class_entry->class, item->val, item->val_size, task, &ci);
+            if (err) return err;
+            item->class_inst_entry = ci->entry;
+            break;
+        case KND_ATTR_PROC_REF:
+            proc = attr->proc;
+            err = knd_resolve_proc_ref(self, item->val, item->val_size, proc, &item->proc, task);
             if (err) return err;
             break;
         default:
@@ -281,20 +249,27 @@ static int resolve_inner_item(struct kndClass *self,
     return knd_OK;
 }
 
-static int resolve_attr_var_list(struct kndClass *self,
-                                 struct kndAttrVar *parent_item,
-                                 struct kndTask *task)
+static int resolve_attr_var_list(struct kndClass *self, struct kndAttrVar *var, struct kndTask *task)
 {
-    struct kndAttr *parent_attr = parent_item->attr;
+    struct kndAttr *parent_attr = var->attr;
     struct kndAttrVar *item;
+    struct kndClassEntry *entry;
     struct kndClass *c, *local_class;
     const char *classname;
     size_t classname_size;
     int err;
 
+    if (!var->list) {
+        err = knd_FORMAT;
+        KND_TASK_ERR("attr %.*s requires a list of items", parent_attr->name_size, parent_attr->name);
+    }
+
     switch (parent_attr->type) {
         case KND_ATTR_STR:
-            // knd_log(".. ATTR_STR type, skip resolving..");
+            if (DEBUG_ATTR_RESOLVE_LEVEL_2)
+                knd_log("NB: \"%.*s\" has ATTR_STR type, no resolving needed (list:%d  %p)",
+                        var->name_size, var->name, var->is_list_item,
+                        var->list);
             return knd_OK;
     default:
         break;
@@ -303,41 +278,38 @@ static int resolve_attr_var_list(struct kndClass *self,
     if (DEBUG_ATTR_RESOLVE_LEVEL_2) {
         const char *attr_type_name = knd_attr_names[parent_attr->type];
         size_t attr_type_name_size = strlen(attr_type_name);
-        knd_log("\n.. class %.*s to resolve attr item list \"%.*s\" "
+        knd_log("\n.. class \"%.*s\" to resolve attr item list \"%.*s\" "
                 " of CLASS:%.*s   attr type:%.*s",
                 self->entry->name_size, self->entry->name,
-                parent_item->name_size, parent_item->name,
+                var->name_size, var->name,
                 parent_attr->ref_classname_size,
                 parent_attr->ref_classname,
                 attr_type_name_size, attr_type_name);
     }
 
     /* resolve template class ref */
-    if (!parent_attr->ref_class) {
-        err = knd_resolve_class_ref(self,
-                                    parent_attr->ref_classname,
-                                    parent_attr->ref_classname_size,
-                                    NULL, &parent_attr->ref_class, task);
+    if (!parent_attr->ref_class_entry) {
+        err = knd_resolve_class_ref(self, parent_attr->ref_classname, parent_attr->ref_classname_size, NULL, &c, task);
         if (err) {
             knd_log("-- ref not resolved: :%.*s",
-                    parent_attr->ref_classname,
-                    parent_attr->ref_classname_size);
+                    parent_attr->ref_classname, parent_attr->ref_classname_size);
             return err;
         }
+        parent_attr->ref_class_entry = c->entry;
     }
 
     /* base template class */
-    c = parent_attr->ref_class;
+    entry = parent_attr->ref_class_entry;
+    err = knd_class_acquire(entry, &c, task);
+    KND_TASK_ERR("failed to acquire class \"%.*s\"", entry->name_size, entry->name);
     if (!c->is_resolved) {
-        err = knd_class_resolve(c, task);                                         RET_ERR();
+        err = knd_class_resolve(c, task);
+        KND_TASK_ERR("failed to resolve class \"%.*s\"", c->name_size, c->name);
     }
 
     /* does local repo have a clone of this class? */
     if (self->entry->repo != c->entry->repo) {
-        err = knd_get_class(self->entry->repo,
-                            parent_attr->ref_classname,
-                            parent_attr->ref_classname_size,
-                            &local_class, task);
+        err = knd_get_class(self->entry->repo, entry->name, entry->name_size, &local_class, task);
         if (!err)
             c = local_class;
     }
@@ -345,35 +317,12 @@ static int resolve_attr_var_list(struct kndClass *self,
     if (DEBUG_ATTR_RESOLVE_LEVEL_2)
         c->str(c, 1);
 
-    /* first item */
-    if (parent_item->val_size) {
-        parent_item->attr = parent_attr;
-
-        switch (parent_attr->type) {
-        case KND_ATTR_INNER:
-            err = resolve_inner_item(self, parent_item, task);
-            if (err) {
-                knd_log("-- first inner item not resolved :(");
-                return err;
-            }
-            break;
-        case KND_ATTR_REF:
-            err = knd_resolve_class_ref(self,
-                                        parent_item->val, parent_item->val_size,
-                                        c, &parent_item->class, task);
-            if (err) return err;
-            break;
-        default:
-            break;
-        }
-    }
-
-    for (item = parent_item->list; item; item = item->next) {
+    for (item = var->list; item; item = item->next) {
         item->attr = parent_attr;
 
         switch (parent_attr->type) {
         case KND_ATTR_INNER:
-            err = resolve_inner_item(self, item, task);
+            err = resolve_inner_var(self, item, task);
             if (err) return err;
             break;
         case KND_ATTR_REF:
@@ -383,12 +332,8 @@ static int resolve_attr_var_list(struct kndClass *self,
                 classname = item->val;
                 classname_size = item->val_size;
             }
-            err = knd_resolve_class_ref(self, classname, classname_size,
-                                        c, &item->class, task);
-            if (err) {
-                knd_log("-- class ref not resolved");
-                return err;
-            }
+            err = knd_resolve_class_ref(self, classname, classname_size, c, &item->class, task);
+            if (err) return err;
             break;
         default:
             break;
@@ -397,9 +342,7 @@ static int resolve_attr_var_list(struct kndClass *self,
     return knd_OK;
 }
 
-static int register_new_attr(struct kndClass *self,
-                             struct kndAttr *attr,
-                             struct kndTask *task)
+static int register_attr(struct kndClass *self, struct kndAttr *attr, struct kndTask *task)
 {
     struct kndRepo *repo =       self->entry->repo;
     struct kndMemPool *mempool = task->mempool;
@@ -410,9 +353,8 @@ static int register_new_attr(struct kndClass *self,
     int err;
 
     if (DEBUG_ATTR_RESOLVE_LEVEL_2)
-        knd_log(".. register new attr: %.*s (host class: %.*s)",
-                name_size, name,
-                self->name_size, self->name);
+        knd_log(".. register attr: %.*s (host class: %.*s) task type:%d",
+                name_size, name, self->name_size, self->name, task->type);
 
     err = knd_attr_ref_new(mempool, &attr_ref);
     KND_TASK_ERR("failed to alloc kndAttrRef")
@@ -420,38 +362,32 @@ static int register_new_attr(struct kndClass *self,
     attr_ref->class_entry = self->entry;
 
     /* generate unique attr id */
-    attr->numid = atomic_fetch_add_explicit(&repo->attr_id_count, 1,
-                                            memory_order_relaxed);
+    attr->numid = atomic_fetch_add_explicit(&repo->attr_id_count, 1, memory_order_relaxed);
     attr->numid++;
     knd_uid_create(attr->numid, attr->id, &attr->id_size);
 
-    if (task->type == KND_LOAD_STATE) {
+    switch (task->type) {
+    case KND_RESTORE_STATE:
+        // fall through
+    case KND_LOAD_STATE:
         next_attr_ref = knd_shared_dict_get(repo->attr_name_idx, name, name_size);
         attr_ref->next = next_attr_ref;
 
-        err = knd_shared_dict_set(repo->attr_name_idx,
-                                  attr->name, attr->name_size,
-                                  (void*)attr_ref,
-                                  mempool,
-                                  NULL, NULL, true);
+        err = knd_shared_dict_set(repo->attr_name_idx, attr->name, attr->name_size,
+                                  (void*)attr_ref, mempool, NULL, NULL, true);
         KND_TASK_ERR("failed to globally register attr name \"%.*s\"", name_size, name);
 
-        err = attr_idx->add(attr_idx,
-                            attr->id, attr->id_size,
-                            (void*)attr_ref);
+        err = attr_idx->add(attr_idx, attr->id, attr->id_size, (void*)attr_ref);
         KND_TASK_ERR("failed to globally register numid of attr \"%.*s\"", name_size, name);
 
-        err = self->attr_idx->add(self->attr_idx,
-                                  attr->id, attr->id_size,
-                                  (void*)attr_ref);
+        err = self->attr_idx->add(self->attr_idx, attr->id, attr->id_size, (void*)attr_ref);
         KND_TASK_ERR("failed to locally register numid of attr \"%.*s\"", name_size, name);
         return knd_OK;
+    default:
+        break;
     }
-
     /* local task name idx */
-    err = knd_dict_set(task->attr_name_idx,
-                       name, name_size,
-                       (void*)attr_ref);
+    err = knd_dict_set(task->attr_name_idx, name, name_size, (void*)attr_ref);
     KND_TASK_ERR("failed to register attr name %.*s", name_size, name);
 
     if (DEBUG_ATTR_RESOLVE_LEVEL_2)
@@ -502,7 +438,7 @@ static int check_attr_name_conflict(struct kndClass *self,
 
 static int resolve_attr_ref(struct kndClass *self,
 			    struct kndAttrVar *parent_item,
-			    struct kndTask *unused_var(task))
+			    struct kndTask *task)
 {
     struct kndRepo *repo = self->entry->repo;
     struct kndSharedDict *class_name_idx = repo->class_name_idx;
@@ -510,9 +446,10 @@ static int resolve_attr_ref(struct kndClass *self,
     size_t classname_size = 0;
     const char *attrname = NULL;
     size_t attrname_size = 0;
+    const char *val_classname = NULL;
+    size_t val_classname_size = 0;
     struct kndClassEntry *entry;
     struct kndAttrVar *attr_var = NULL;
-    struct kndAttrVar *item = NULL;
     struct kndAttrRef *attr_ref;
     int err;
 
@@ -521,100 +458,99 @@ static int resolve_attr_ref(struct kndClass *self,
 		parent_item->name_size, parent_item->name);
     }
     for (attr_var = parent_item->children; attr_var; attr_var = attr_var->next) {
-	if (!memcmp(attr_var->name, "c", 1)) {
+	if (!memcmp(attr_var->name, "c", strlen("c"))) {
 	    classname = attr_var->val;
 	    classname_size = attr_var->val_size;
-	    break;
+	}
+	if (!memcmp(attr_var->name, "val", strlen("val"))) {
+	    val_classname = attr_var->val;
+	    val_classname_size = attr_var->val_size;
 	}
     }
     if (!classname_size) {
-	knd_log("-- no classname specified for attr ref \"%.*s\"",
-		item->name_size, item->name);
-	return knd_FAIL;
+        err = knd_FAIL;
+	KND_TASK_ERR("no classname specified for attr ref \"%.*s\" (val:%.*s)",
+                     parent_item->name_size, parent_item->name,
+                     parent_item->val_size, parent_item->val);
     }
 
     entry = knd_shared_dict_get(class_name_idx, classname, classname_size);
     if (!entry) {
-	knd_log("-- no such class: \"%.*s\" .."
-		"couldn't resolve the \"%.*s\" attr ref",
-		classname_size, classname,
-		parent_item->name_size, parent_item->name);
-	return knd_FAIL;
+	 err = knd_NO_MATCH;
+         KND_TASK_ERR("no such class: \"%.*s\" .."
+                      "couldn't resolve the \"%.*s\" attr ref",
+                      classname_size, classname,
+                      parent_item->name_size, parent_item->name);
     }
 
     /* get attr name */
-    for (item = attr_var->children; item; item = item->next) {
-	if (!memcmp(item->name, "attr", 1)) {
-	    attrname = item->val;
-	    attrname_size = item->val_size;
-	    break;
-	}
-    }
+    attrname = parent_item->val;
+    attrname_size = parent_item->val_size;
     if (!attrname_size) {
-	knd_log("-- no attr name specified in attr ref \"%.*s\"",
-		parent_item->name_size, parent_item->name);
-	return knd_FAIL;
+        err = knd_FAIL;
+	KND_TASK_ERR("no attr name specified in attr ref \"%.*s\"",
+                     parent_item->name_size, parent_item->name);
     }
-    err = knd_class_get_attr(entry->class,
-			     attrname, attrname_size,
+    err = knd_class_get_attr(entry->class, attrname, attrname_size,
 			     &attr_ref);
     if (err) {
-	knd_log("-- no attr \"%.*s\" in class \"%.*s\"",
-		attrname_size, attrname,
-		entry->class->name_size, entry->class->name);
-	return err;
+	KND_TASK_ERR("no attr \"%.*s\" in class \"%.*s\"",
+                     attrname_size, attrname,
+                     entry->class->name_size, entry->class->name);
     }
+    parent_item->class    = entry->class;
     parent_item->ref_attr = attr_ref->attr;
-    
+
+    if (val_classname_size) {
+        entry = knd_shared_dict_get(class_name_idx, val_classname, val_classname_size);
+        if (!entry) {
+            err = knd_NO_MATCH;
+            KND_TASK_ERR("no such class: \"%.*s\" .."
+                         "couldn't resolve the \"%.*s\" attr ref val",
+                         val_classname_size, val_classname,
+                         parent_item->name_size, parent_item->name);
+        }
+        parent_item->class_entry = entry;
+    }
     return knd_OK;
 }
 
-int knd_resolve_attr_vars(struct kndClass *self,
-                          struct kndClassVar *parent_item,
-                          struct kndTask *task)
+int knd_resolve_attr_vars(struct kndClass *self, struct kndClassVar *parent_item, struct kndTask *task)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size = 0;
-    struct kndAttrVar *attr_var;
+    struct kndAttrVar *var;
     struct kndAttrRef *attr_ref;
     struct kndAttr *attr;
     struct kndClass *c;
     struct kndProc *proc;
     struct kndRepo *repo = self->entry->repo;
-    struct kndOutput *log = task->log;
-    int e, err;
+    int err;
 
-    if (DEBUG_ATTR_RESOLVE_LEVEL_2) {
+    if (DEBUG_ATTR_RESOLVE_LEVEL_3) {
         knd_log("\n.. resolving attr vars of class \"%.*s\" (base:%.*s) (repo:%.*s) ..",
                 self->entry->name_size, self->entry->name,
                 parent_item->entry->name_size, parent_item->entry->name,
                 repo->name_size, repo->name);
     }
 
-    for (attr_var = parent_item->attrs; attr_var; attr_var = attr_var->next) {
+    for (var = parent_item->attrs; var; var = var->next) {
         if (DEBUG_ATTR_RESOLVE_LEVEL_2) {
-            knd_log("    .. resolving attr var: %.*s",
-                    attr_var->name_size, attr_var->name);
-        }
-        err = knd_class_get_attr(self,
-                                 attr_var->name, attr_var->name_size,
-                                 &attr_ref);
-        if (err) {
-            knd_log("-- no attr \"%.*s\" in class \"%.*s\"",
-                    attr_var->name_size, attr_var->name,
-                    self->name_size, self->name);
-            log->reset(log);
-            e = log->write(log, attr_var->name, attr_var->name_size);
-            if (e) return e;
-            e = log->write(log, ": no such attribute",
-                           strlen(": no such attribute"));
-            if (e) return e;
-            task->http_code = HTTP_NOT_FOUND;
-            return knd_FAIL;
+            knd_log(".. resolving attr var: %.*s",
+                    var->name_size, var->name);
         }
 
-         attr = attr_ref->attr;
-        attr_ref->attr_var = attr_var;
+        if (!memcmp("_proc", var->name, var->name_size)) {
+            if (DEBUG_ATTR_RESOLVE_LEVEL_2) 
+                knd_log(".. resolve _proc ref %.*s", var->val_size, var->val);
+            continue;
+        }
+
+        err = knd_class_get_attr(self, var->name, var->name_size, &attr_ref);
+        KND_TASK_ERR("no attr \"%.*s\" in class \"%.*s\"", var->name_size, var->name, self->name_size, self->name);
+
+        attr = attr_ref->attr;
+        attr_ref->attr_var = var;
 
         if (DEBUG_ATTR_RESOLVE_LEVEL_2) {
             knd_log("\n.. resolving attr vars of class \"%.*s\" (repo:%.*s) ..",
@@ -623,31 +559,28 @@ int knd_resolve_attr_vars(struct kndClass *self,
             knd_log("++ got attr: %.*s [id:%.*s] indexed:%d",
                     attr->name_size, attr->name,
                     attr->id_size, attr->id, attr->is_indexed);
-            str_attr_vars(attr_var, 1);
+            knd_attr_var_str(var, 1);
         }
 
         if (attr->is_a_set) {
-            attr_var->attr = attr;
+            var->attr = attr;
 
-            err = resolve_attr_var_list(self, attr_var, task);
-            if (err) {
-                knd_log("-- attr var list not resolved: %.*s",
-                        attr_var->name_size, attr_var->name);
-                return err;
-            }
-            if (attr_var->val_size)
-                attr_var->num_list_elems++;
+            err = resolve_attr_var_list(self, var, task);
+            KND_TASK_ERR("attr var list not resolved: %.*s", var->name_size, var->name);
+
+            if (var->val_size)
+                var->num_list_elems++;
 
             /*if (attr->is_indexed) {
-                err = knd_index_attr_var_list(self, attr, attr_var, task);
+                err = knd_index_attr_var_list(self, attr, var, task);
                 if (err) return err;
                 }*/
 
             /*task->attr = attr;
             switch (attr->type) {
             case KND_ATTR_INNER:
-                for (item = attr_var->list; item; item = item->next) {
-                    err = knd_index_inner_attr_var(self, item, task);             RET_ERR();
+                for (item = var->list; item; item = item->next) {
+                    err = knd_index_inner_var(self, item, task);             RET_ERR();
                 }
               break;
             default:
@@ -661,61 +594,55 @@ int knd_resolve_attr_vars(struct kndClass *self,
         switch (attr->type) {
         case KND_ATTR_INNER:
             /* TODO */
-            attr_var->attr = attr;
-            err = resolve_inner_item(self, attr_var, task);
-            if (err) {
-                knd_log("-- inner attr_var not resolved :(");
-                return err;
-            }
-
+            var->attr = attr;
+            err = resolve_inner_var(self, var, task);
+            if (err) return err;
             break;
         case KND_ATTR_REF:
-            c = attr->ref_class;
+            c = attr->ref_class_entry->class;
             if (!c->is_resolved) {
-                err = knd_class_resolve(c, task);                                 RET_ERR();
+                err = knd_class_resolve(c, task);
+                KND_TASK_ERR("failed to resolve class \"%.*s\"", c->name_size, c->name);
             }
-            err = knd_resolve_class_ref(self, attr_var->val, attr_var->val_size,
-                                        c, &attr_var->class, task);
+            err = knd_resolve_class_ref(self, var->val, var->val_size, c, &var->class, task);
             if (err) return err;
             break;
         case KND_ATTR_TEXT:
-            err = resolve_text(attr_var, task);                                   RET_ERR();
+            var->attr = attr;
+            err = resolve_text(var, task);
+            KND_TASK_ERR("failed to resolve text attr");
             break;
         case KND_ATTR_NUM:
-            memcpy(buf, attr_var->val, attr_var->val_size);
-            buf_size = attr_var->val_size;
+            memcpy(buf, var->val, var->val_size);
+            buf_size = var->val_size;
             buf[buf_size] = '\0';
-            err = knd_parse_num(buf, &attr_var->numval);
+            err = knd_parse_num(buf, &var->numval);
             break;
         case KND_ATTR_ATTR_REF:
-            err = resolve_attr_ref(self, attr_var, task);
+            err = resolve_attr_ref(self, var, task);
             if (err) return err;
             break;
         case KND_ATTR_PROC_REF:
             proc = attr->proc;
-            err = knd_resolve_proc_ref(self, attr_var->val, attr_var->val_size,
-                                       proc, &attr_var->proc, task);
+            err = knd_resolve_proc_ref(self, var->val, var->val_size, proc, &var->proc, task);
             if (err) return err;
             break;
         default:
             /* atomic value, call a validation function? */
             break;
         }
-        attr_var->attr = attr;
+        var->attr = attr;
     }
 
     if (DEBUG_ATTR_RESOLVE_LEVEL_1) {
         knd_log("++ resolved attr vars of class \"%.*s\"!",
                 self->entry->name_size, self->entry->name);
-        self->attr_idx->map(self->attr_idx,
-                            str_attr_ref,
-                            (void*)self);
+        self->attr_idx->map(self->attr_idx, str_attr_ref, (void*)self);
     }
     return knd_OK;
 }
 
-int knd_resolve_primary_attrs(struct kndClass *self,
-                              struct kndTask *task)
+int knd_resolve_primary_attrs(struct kndClass *self, struct kndTask *task)
 {
     struct kndAttr *attr;
     struct kndClassEntry *entry;
@@ -725,43 +652,34 @@ int knd_resolve_primary_attrs(struct kndClass *self,
     int err;
 
     if (DEBUG_ATTR_RESOLVE_LEVEL_2)
-        knd_log(".. resolving primary attrs of %.*s.. [total:%zu]",
+        knd_log(".. resolving primary attrs of %.*s [total:%zu]",
                 self->name_size, self->name, self->num_attrs);
 
-    for (attr = self->attrs; attr; attr = attr->next) {
+    FOREACH (attr, self->attrs) {
         err = check_attr_name_conflict(self, attr, task);
         KND_TASK_ERR("name conflict detected");
 
         switch (attr->type) {
         case KND_ATTR_INNER:
+            // fall through
         case KND_ATTR_REF:
             if (!attr->ref_classname_size) {
                 err = knd_FAIL;
                 KND_TASK_ERR("no class specified for attr \"%s\"", attr->name);
             }
-            entry = knd_shared_dict_get(class_name_idx,
-                                        attr->ref_classname,
-                                        attr->ref_classname_size);
+            entry = knd_shared_dict_get(class_name_idx, attr->ref_classname, attr->ref_classname_size);
             if (!entry) {
                 err = knd_NO_MATCH;
-                KND_TASK_ERR("no such class: \"%.*s\" .."
-                             "couldn't resolve the \"%.*s\" attr of %.*s :(",
-                             attr->ref_classname_size,
-                             attr->ref_classname,
-                             attr->name_size, attr->name,
-                             self->entry->name_size, self->entry->name);
+                KND_TASK_ERR("class not found: \"%.*s\"", attr->ref_classname_size, attr->ref_classname);
             }
-            attr->ref_class = entry->class;
+            attr->ref_class_entry = entry;
             break;
         case KND_ATTR_PROC_REF:
             if (!attr->ref_procname_size) {
-                knd_log("-- no proc name specified for attr \"%s\"",
-                        attr->name);
+                knd_log("-- no proc name specified for attr \"%.*s\"", attr->name_size, attr->name);
                 return knd_FAIL;
             }
-            proc_entry = knd_shared_dict_get(repo->proc_name_idx,
-                                             attr->ref_procname,
-                                             attr->ref_procname_size);
+            proc_entry = knd_shared_dict_get(repo->proc_name_idx, attr->ref_procname, attr->ref_procname_size);
             if (!proc_entry) {
                 knd_log("-- no such proc: \"%.*s\" .."
                         "couldn't resolve the \"%.*s\" attr of %.*s :(",
@@ -782,7 +700,7 @@ int knd_resolve_primary_attrs(struct kndClass *self,
             self->implied_attr = attr;
 
         /* no conflicts detected, register a new attr */
-        err = register_new_attr(self, attr, task);
+        err = register_attr(self, attr, task);
         KND_TASK_ERR("failed to register new attr");
     }
     return knd_OK;

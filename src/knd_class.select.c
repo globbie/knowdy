@@ -1,10 +1,13 @@
+#include "knd_commit.h"
 #include "knd_class.h"
 #include "knd_attr.h"
 #include "knd_task.h"
+#include "knd_text.h"
 #include "knd_repo.h"
 #include "knd_user.h"
 #include "knd_shard.h"
 #include "knd_set.h"
+#include "knd_shared_set.h"
 #include "knd_output.h"
 
 #include <gsl-parser.h>
@@ -31,7 +34,8 @@ struct LocalContext {
 
     struct kndClass *selected_class;
     struct kndClass *selected_base;
-
+    struct kndClassDeclaration *class_declar;
+    struct kndProcDeclaration *proc_declar;
     struct {
         size_t state_eq;
         size_t state_gt;
@@ -44,8 +48,7 @@ struct LocalContext {
 
 };
 
-static gsl_err_t
-run_get_class(void *obj, const char *name, size_t name_size)
+static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
@@ -55,19 +58,16 @@ run_get_class(void *obj, const char *name, size_t name_size)
 
     /* check root name */
     if (name_size == 1 && *name == '/') {
-        ctx->selected_class = ctx->repo->root_class;
+        ctx->class_entry = ctx->repo->root_class->entry;
         return make_gsl_err(gsl_OK);
     }
-
-    err = knd_get_class_entry(ctx->repo, name, name_size, &ctx->class_entry, task);
+    err = knd_get_class_entry(ctx->repo, name, name_size, true, &ctx->class_entry, task);
     if (err) {
-        KND_TASK_LOG("%.*s class name not found", name_size, name);
+        KND_TASK_LOG("\"%.*s\" class name not found", name_size, name);
         task->ctx->http_code = HTTP_NOT_FOUND;
         task->ctx->error = knd_NO_MATCH;
         return make_gsl_err_external(err);
     }
-
-    ctx->selected_class = ctx->class_entry->class;
     return make_gsl_err(gsl_OK);
 }
 
@@ -111,13 +111,12 @@ static int update_subset(struct kndClassFacet *parent_facet,
     facet->num_elems++;
 
     /* any subclasses? */
-    if (facet_entry->num_children) {
+    if (facet_entry->class->num_children) {
         /* find immediate child */
-        for (child_ref = facet_entry->children; child_ref;
-             child_ref = child_ref->next) {
+        FOREACH (child_ref, facet_entry->class->children) {
             if (child_ref->entry == elem) break;
 
-            for (ref = elem->ancestors; ref; ref = ref->next) {
+            FOREACH (ref, elem->class->ancestors) {
                 if (child_ref->entry != ref->entry) continue;
                 err = update_subset(facet, ref->entry, elem, task);              RET_ERR();
                 return knd_OK;
@@ -158,11 +157,9 @@ static int facetize_class(void *obj,
                 entry->name_size, entry->name);
 
     /* facetize by base class */
-    for (ref = entry->ancestors; ref; ref = ref->next) {
-
+    FOREACH (ref, entry->class->ancestors) {
         /* find immediate child */
-        for (child_ref = base->entry->children; child_ref;
-             child_ref = child_ref->next) {
+        FOREACH (child_ref, base->children) {
 
             if (child_ref->entry != ref->entry) continue;
 
@@ -210,7 +207,6 @@ static void free_facet(struct kndMemPool *mempool,
         ref_next = ref->next;
         knd_mempool_free(mempool, KND_MEMPAGE_TINY, (void*)ref);
     }
-
     knd_mempool_free(mempool, KND_MEMPAGE_TINY, (void*)parent_facet);
 }
 
@@ -385,8 +381,7 @@ parse_select_by_baseclass(void *obj, const char *rec, size_t *total_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t
-present_class_state(void *obj, const char *unused_var(name), size_t unused_var(name_size))
+static gsl_err_t present_class_state(void *obj, const char *unused_var(name), size_t unused_var(name_size))
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
@@ -401,9 +396,7 @@ present_class_state(void *obj, const char *unused_var(name), size_t unused_var(n
         if (err) return make_gsl_err_external(err);
         return make_gsl_err_external(knd_FAIL);
     }
-
-    err = knd_class_export_state(ctx->selected_class->entry,
-                                 task->ctx->format, task);
+    err = knd_class_export_state(ctx->selected_class->entry, task->ctx->format, task);
     if (err) {
         knd_log("-- class state export failed");
         return make_gsl_err_external(err);
@@ -594,7 +587,7 @@ present_class_desc(void *obj, const char *unused_var(name), size_t unused_var(na
 
     assert(ctx->selected_class);
 
-    if (!ctx->selected_class->entry->descendants) {
+    if (!ctx->selected_class->descendants) {
         // FIXME(k15tfu): Why it's empty??
         // DD: the index of descendants is not created for every class,
         // only for the non-terminal classes with actual children, grandchildren etc.
@@ -604,7 +597,7 @@ present_class_desc(void *obj, const char *unused_var(name), size_t unused_var(na
         return make_gsl_err_external(knd_FAIL);
     }
 
-    err = knd_class_set_export(ctx->selected_class->entry->descendants, ctx->task->ctx->format, ctx->task);
+    err = knd_class_set_export(ctx->selected_class->descendants, ctx->task->ctx->format, ctx->task);
     if (err) return make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);
@@ -636,34 +629,56 @@ parse_select_class_desc(void *obj, const char *rec, size_t *total_size)
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static gsl_err_t
-parse_select_class_inst(void *obj, const char *rec, size_t *total_size)
+static gsl_err_t parse_select_class_inst(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
+    struct kndClass *c;
+    int err;
 
     if (!ctx->class_entry) {
         KND_TASK_LOG("no class entry selected");
         return *total_size = 0, make_gsl_err_external(knd_FAIL);
     }
 
-    return knd_select_class_inst(ctx->class_entry, rec, total_size, ctx->task);
+    err = knd_class_acquire(ctx->class_entry, &c, task);
+    if (err) {
+        KND_TASK_LOG("failed to acquire class \"%.*s\"", ctx->class_entry->id_size, ctx->class_entry->id);
+        return *total_size = 0, make_gsl_err_external(err);
+    }
+    return knd_select_class_inst(c, rec, total_size, ctx->task);
 }
 
-static gsl_err_t
-parse_import_class_inst(void *obj, const char *rec, size_t *total_size)
+static gsl_err_t parse_import_class_inst(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
     struct kndCommit *commit = task->ctx->commit;
-    struct kndMemPool *mempool = task->mempool;
-    if (task->user_ctx)
-        mempool = task->shard->user->mempool;
+    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndClassEntry *entry = ctx->class_entry;
+    struct kndClass *c;
     int err;
 
-    if (!ctx->selected_class) {
-        KND_TASK_LOG("class not selected");
-        return *total_size = 0, make_gsl_err_external(knd_FAIL);
+    if (!entry) {
+        KND_TASK_LOG("class entry not selected");
+        return *total_size = 0, make_gsl_err_external(knd_FORMAT);
+    }
+
+    err = knd_class_acquire(entry, &c, task);
+    if (err) {
+        KND_TASK_LOG("failed to acquire class \"%.*s\"", entry->id_size, entry->id);
+        return *total_size = 0, make_gsl_err_external(err);
+    }
+
+    if (task->user_ctx) {
+        if (entry->repo != task->user_ctx->repo) {
+            err = knd_class_entry_clone(ctx->class_entry, task->user_ctx->repo, &entry, task);
+            if (err) {
+                KND_TASK_LOG("failed to clone class entry");
+                return *total_size = 0, make_gsl_err_external(err);
+            }
+            ctx->class_entry = entry;
+        }
     }
 
     switch (task->type) {
@@ -671,23 +686,20 @@ parse_import_class_inst(void *obj, const char *rec, size_t *total_size)
         if (!commit) {
             err = knd_commit_new(mempool, &commit);
             if (err) return make_gsl_err_external(err);
-            commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot.num_commits,
-                                                         memory_order_relaxed);
+            commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot->num_commits, memory_order_relaxed);
             task->ctx->commit = commit;
         }
         break;
     default:
         break;
     }
-
-    err = knd_import_class_inst(ctx->selected_class, rec, total_size, task);
+    err = knd_import_class_inst(entry, rec, total_size, task);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     return make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t
-validate_select_class_attr(void *obj, const char *name, size_t name_size,
-                           const char *rec, size_t *total_size)
+validate_select_class_attr(void *obj, const char *name, size_t name_size, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
 
@@ -697,8 +709,7 @@ validate_select_class_attr(void *obj, const char *name, size_t name_size,
         if (err) return *total_size = 0, make_gsl_err_external(err);
         return *total_size = 0, make_gsl_err_external(knd_FAIL);
     }
-    return knd_select_attr_var(ctx->selected_class, name, name_size,
-                               rec, total_size, ctx->task);
+    return knd_select_attr_var(ctx->selected_class, name, name_size, rec, total_size, ctx->task);
 }
 
 static gsl_err_t
@@ -717,7 +728,7 @@ run_remove_class(void *obj, const char *unused_var(name), size_t name_size)
         return make_gsl_err_external(knd_FAIL);
     }
 
-    if (ctx->selected_class->entry->num_children) {
+    if (ctx->selected_class->num_children) {
         knd_log("-- descendants exist");
         err = ctx->task->log->writef(ctx->task->log, "descendants exist");
         if (err) return make_gsl_err_external(err);
@@ -725,7 +736,7 @@ run_remove_class(void *obj, const char *unused_var(name), size_t name_size)
         return make_gsl_err_external(knd_FAIL);
     }
 
-    if (ctx->selected_class->entry->num_insts) {
+    if (ctx->selected_class->num_insts) {
         knd_log("-- instances exist");
         err = ctx->task->log->writef(ctx->task->log, "instances exist");
         if (err) return make_gsl_err_external(err);
@@ -746,15 +757,33 @@ run_remove_class(void *obj, const char *unused_var(name), size_t name_size)
 #endif
 }
 
-static gsl_err_t
-present_class_selection(void *obj, const char *unused_var(val), size_t unused_var(val_size))
+static gsl_err_t present_class_selection(void *obj, const char *unused_var(val), size_t unused_var(val_size))
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
+    struct kndClassDeclaration *declar;
+    struct kndClassEntry *entry = ctx->class_entry;
+    struct kndClass *c;
     int err;
 
-    // knd_log(".. present selected class: %.*s",
-    //        ctx->selected_class->name_size, ctx->selected_class->name);
+    switch (task->type) {
+    case KND_INNER_STATE:
+        if (DEBUG_CLASS_SELECT_LEVEL_2)
+            knd_log("^^ inner state class selection detected!");
+        if (!ctx->class_entry) return make_gsl_err(gsl_FORMAT);
+        err = knd_class_declar_new(task->mempool, &declar);
+        if (err) return make_gsl_err_external(err);
+
+        declar->entry = ctx->class_entry;
+        ctx->class_declar = declar;
+        declar->next = task->ctx->class_declars;
+        task->ctx->class_declars = declar;
+        return make_gsl_err(gsl_OK);
+    default:
+        break;
+    }
+
+    knd_log(".. present selected class: %.*s", ctx->class_entry->name_size, ctx->class_entry->name);
 
     /* select a set of classes by base class */
     if (ctx->selected_base) {
@@ -765,7 +794,7 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
         if (!task->num_sets) {
             // FIXME(k15tfu): remove this case
 
-            if (!ctx->selected_base->entry->descendants) {
+            if (!ctx->selected_base->descendants) {
                 err = knd_empty_set_export(ctx->selected_base, task->ctx->format, task);
                 if (err) return make_gsl_err_external(err);
                 return make_gsl_err(gsl_OK);
@@ -773,9 +802,7 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
 
             /* result set subdivision required? */
             if (ctx->create_subsets) {
-                err = create_subsets(ctx->selected_base->entry->descendants,
-                                     ctx->selected_base,
-                                     task);
+                err = create_subsets(ctx->selected_base->descendants, ctx->selected_base, task);
                 if (err) return make_gsl_err_external(err);
                 
                 err = knd_class_facets_export(task);
@@ -786,14 +813,15 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
                 return make_gsl_err(gsl_OK);
             }
 
-            err = knd_class_set_export(ctx->selected_base->entry->descendants, task->ctx->format, task);
+            err = knd_class_set_export(ctx->selected_base->descendants, task->ctx->format, task);
             if (err) return make_gsl_err_external(err);
             return make_gsl_err(gsl_OK);
         }
 
         /* add base set */
         assert(task->num_sets + 1 <= KND_MAX_CLAUSES);  // FIXME(k15tfu): <<
-        task->sets[task->num_sets] = ctx->selected_base->entry->descendants;
+
+        task->sets[task->num_sets] = ctx->selected_base->descendants;
         task->num_sets++;
 
         /* intersection result set */
@@ -829,9 +857,14 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
         return make_gsl_err(gsl_OK);
     }
     
-    /* get one class by name */
-    if (ctx->selected_class) {
-        err = knd_class_export(ctx->selected_class, task->ctx->format, task);
+    /* present a single class */
+    if (entry) {
+        c = atomic_load_explicit(&entry->class, memory_order_relaxed);
+        if (!c) {
+            knd_log("-- unresolved class entry: %.*s", entry->name_size, entry->name);
+            return make_gsl_err(gsl_FAIL);
+        }
+        err = knd_class_export(c, task->ctx->format, task);
         if (err) {
             KND_TASK_LOG("class export failed");
             return make_gsl_err_external(err);
@@ -840,6 +873,7 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
     }
 
     /* display all classes */
+#if 0
     if (ctx->repo->class_idx->num_elems) {
         err = knd_class_set_export(ctx->repo->class_idx, task->ctx->format, task);
         if (err) return make_gsl_err_external(err);
@@ -851,26 +885,19 @@ present_class_selection(void *obj, const char *unused_var(val), size_t unused_va
         if (err) return make_gsl_err_external(err);
         return make_gsl_err(gsl_OK);
     }
+#endif
 
-    task->ctx->http_code = 404;
-    struct kndOutput *log = task->log;
-    log->reset(log);
-    err = log->writef(log, "nothing to present");
-    if (err) return make_gsl_err_external(err);
+    KND_TASK_LOG("nothing to present");
     return make_gsl_err(gsl_FAIL);
 }
 
-gsl_err_t knd_class_select(struct kndRepo *repo,
-                           const char *rec, size_t *total_size,
-                           struct kndTask *task)
+gsl_err_t knd_class_select(struct kndRepo *repo, const char *rec, size_t *total_size, struct kndTask *task)
 {
     gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_2) {
-        knd_log("\n.. parsing class select rec: \"%.*s\" (repo:%.*s)",
-                32, rec, repo->name_size, repo->name);
-    }
+    if (DEBUG_CLASS_SELECT_LEVEL_2)
+        knd_log(".. parsing class select rec: \"%.*s\" (repo:%.*s)", 32, rec, repo->name_size, repo->name);
 
     struct LocalContext ctx = {
         .task = task,
@@ -941,18 +968,15 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
           .obj = &ctx
         }
     };
-
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) {
-        return parser_err;
-    }
-    if (!ctx.selected_class)
-        return make_gsl_err(gsl_OK);
+    if (parser_err.code) return parser_err;
 
     /* any commits happened? */
     switch (task->type) {
+    case KND_RESTORE_STATE:
+        // fall through
     case KND_COMMIT_STATE:
-        err = knd_class_commit_state(ctx.selected_class, task->phase, task);
+        err = knd_class_commit_state(ctx.class_entry, task->phase, task);
         if (err) return make_gsl_err_external(err);
         break;
     default:
@@ -961,8 +985,7 @@ gsl_err_t knd_class_select(struct kndRepo *repo,
     return make_gsl_err(gsl_OK);
 }
 
-int knd_class_match_query(struct kndClass *self,
-                          struct kndAttrVar *query)
+int knd_class_match_query(struct kndClass *self, struct kndAttrVar *query)
 {
     struct kndSet *attr_idx = self->attr_idx;
     knd_logic logic = query->logic;

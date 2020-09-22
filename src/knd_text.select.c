@@ -80,9 +80,7 @@ static gsl_err_t parse_text_par(void *obj,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-gsl_err_t knd_text_select(struct kndText *self,
-                          const char *rec, size_t *total_size,
-                          struct kndTask *task)
+gsl_err_t knd_text_select(struct kndText *self, const char *rec, size_t *total_size, struct kndTask *task)
 {
     if (DEBUG_TEXT_SELECT_LEVEL_TMP) {
         knd_log("\n.. parsing text select rec: \"%.*s\"",

@@ -37,13 +37,6 @@ typedef enum knd_state_phase { KND_SELECTED,
                                KND_FROZEN,
                                KND_RESTORED } knd_state_phase;
 
-typedef enum knd_commit_confirm { KND_INIT_STATE, 
-                                  KND_FAILED_STATE,
-                                  KND_CONFLICT_STATE,
-                                  KND_VALID_STATE,
-                                  KND_PERSISTENT_STATE
-} knd_commit_confirm;
-
 typedef enum knd_state_type { KND_STATE_CLASS,
                               KND_STATE_CLASS_VAR,
                               KND_STATE_ATTR,
@@ -56,30 +49,6 @@ typedef enum knd_state_type { KND_STATE_CLASS,
                               KND_STATE_PROC_INST
 } knd_state_type;
 
-struct kndCommit
-{
-    char id[KND_ID_SIZE];
-    size_t id_size;
-    size_t numid;
-
-    size_t orig_state_id;
-    char *rec;
-    size_t rec_size;
-
-    time_t timestamp;
-    knd_commit_confirm _Atomic confirm;
-
-    struct kndRepo *repo;
-
-    struct kndStateRef *class_state_refs;
-    size_t num_class_state_refs;
-
-    struct kndStateRef *proc_state_refs;
-    size_t num_proc_state_refs;
-
-    bool is_restored;
-    struct kndCommit *prev;
-};
 
 struct kndStateVal
 {
@@ -113,10 +82,6 @@ struct kndStateRef
     struct kndStateRef *next;
 };
 
-int knd_commit_new(struct kndMemPool *mempool,
-                   struct kndCommit **result);
-int knd_commit_mem(struct kndMemPool *mempool,
-                   struct kndCommit **result);
 int knd_state_new(struct kndMemPool *mempool,
                   struct kndState **result);
 int knd_state_mem(struct kndMemPool *mempool,

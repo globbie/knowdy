@@ -155,17 +155,14 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
 
     task->input = input;
     task->input_size = input_size;
-
     task->output = NULL;
     task->output_size = 0;
 
     if (DEBUG_TASK_LEVEL_2) {
         size_t chunk_size = KND_TEXT_CHUNK_SIZE;
-        if (task->input_size < chunk_size)
-            chunk_size = task->input_size;
+        if (task->input_size < chunk_size) chunk_size = task->input_size;
         knd_log("== INPUT (size:%zu): %.*s ..",
-                task->input_size,
-                chunk_size, task->input);
+                task->input_size, chunk_size, task->input);
     }
 
     struct gslTaskSpec specs[] = {
@@ -175,8 +172,7 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
           .obj = task
         }
     };
-    parser_err = gsl_parse_task(task->input, &total_size,
-                                specs, sizeof specs / sizeof specs[0]);
+    parser_err = gsl_parse_task(task->input, &total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
         if (!task->log->buf_size) {
             task->http_code = HTTP_INTERNAL_SERVER_ERROR;
@@ -184,8 +180,19 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
         }
         return gsl_err_to_knd_err_codes(parser_err);
     }
-    task->output = task->out->buf;
-    task->output_size = task->out->buf_size;
+
+    switch (task->role) {
+    case KND_ARBITER:
+        // fall through
+    case KND_WRITER:
+        task->output = task->file_out->buf;
+        task->output_size = task->file_out->buf_size;
+        break;
+    default:
+        task->output = task->out->buf;
+        task->output_size = task->out->buf_size;
+        break;
+    }
     return knd_OK;
 }
 
@@ -285,32 +292,19 @@ void knd_task_free_blocks(struct kndTask *task)
     task->num_blocks = 0;
 }
 
-int knd_task_context_new(struct kndMemPool *mempool,
-                         struct kndTaskContext **result)
+int knd_task_context_new(struct kndMemPool *mempool, struct kndTaskContext **result)
 {
     void *page;
     int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_SMALL_X2,
-                            sizeof(struct kndTaskContext), &page);                RET_ERR();
+    assert(mempool->small_x2_page_size >= sizeof(struct kndTaskContext));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL_X2, &page);
+    if (err) return err;
+    memset(page, 0, sizeof(struct kndTaskContext));
     *result = page;
     return knd_OK;
 }
 
-int knd_task_block_new(struct kndMemPool *mempool,
-                       struct kndTask **result)
-{
-    void *page;
-    int err;
-    err = knd_mempool_alloc(mempool, KND_MEMPAGE_TINY,
-                            sizeof(struct kndTask), &page);                   RET_ERR();
-    *result = page;
-    return knd_OK;
-}
-
-int knd_task_new(struct kndShard *shard,
-                 struct kndMemPool *mempool,
-                 int task_id,
-                 struct kndTask **task)
+int knd_task_new(struct kndShard *shard, struct kndMemPool *mempool, int task_id, struct kndTask **task)
 {
     struct kndTask *self;
     struct kndRepo *repo = shard->repo;
@@ -323,13 +317,20 @@ int knd_task_new(struct kndShard *shard,
     self->id = task_id;
     self->role = shard->role;
 
+    switch (shard->role) {
+    case KND_ARBITER:
+        // config
+        self->keep_local_WAL = true;
+        break;
+    default:
+        break;
+    }
     self->path = shard->path;
     self->path_size = shard->path_size;
 
     if (!mempool) {
-        err = knd_mempool_new(&mempool, 0);
+        err = knd_mempool_new(&mempool, KND_ALLOC_INCR, 0);
         if (err) goto error;
-        mempool->type = KND_ALLOC_INCR;
         mempool->num_pages = shard->ctx_mem_config.num_pages;
         mempool->num_small_x4_pages = shard->ctx_mem_config.num_small_x4_pages;
         mempool->num_small_x2_pages = shard->ctx_mem_config.num_small_x2_pages;

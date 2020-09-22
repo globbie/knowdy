@@ -33,9 +33,7 @@ struct kndTask;
 
 typedef enum knd_set_type { KND_SET_CLASS,
 			    KND_SET_CLASS_INST,
-			    KND_SET_STATE_UPDATE,
-			    KND_SET_REL,
-			    KND_SET_REL_INST } knd_set_type;
+			    KND_SET_STATE_UPDATE } knd_set_type;
 
 typedef enum knd_set_dir_type { KND_SET_DIR_FIXED,
                                 KND_SET_DIR_VAR } knd_set_dir_type;
@@ -139,3 +137,10 @@ int knd_set_add_ref(struct kndSet *self,
                     struct kndAttr *attr,
                     struct kndClassEntry *topic,
                     struct kndClassEntry *spec);
+int knd_set_map(struct kndSet *self,
+                map_cb_func cb,
+                void *obj);
+int knd_set_get(struct kndSet *self,
+                const char *key,
+                size_t key_size,
+                void **elem);

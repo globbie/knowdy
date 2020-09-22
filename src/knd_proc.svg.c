@@ -90,7 +90,7 @@ int knd_proc_export_SVG(struct kndProc *self,
         err = out->write(out, buf, buf_size);          RET_ERR();
         err = out->write(out, ">", 1);          RET_ERR();
 
-        err = out->write(out, tr->seq,  tr->seq_size);                            RET_ERR();
+        err = out->write(out, tr->seq->val,  tr->seq->val_size);                            RET_ERR();
         err = out->write(out, "</text>", strlen("</text>"));                        RET_ERR();
         break;
     next_tr:

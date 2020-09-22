@@ -80,10 +80,9 @@ static int retrieve_inst_updates(struct kndStateRef *ref,
     return knd_OK;
 }
 
-extern int knd_class_get_inst_updates(struct kndClassEntry *self,
-                                      size_t gt, size_t lt,
-                                      size_t unused_var(eq),
-                                      struct kndSet *set)
+int knd_class_get_inst_updates(struct kndClass *self, size_t gt, size_t lt,
+                               size_t unused_var(eq),
+                               struct kndSet *set)
 {
     struct kndState *state;
     struct kndStateRef *ref;
@@ -91,8 +90,7 @@ extern int knd_class_get_inst_updates(struct kndClassEntry *self,
 
     if (DEBUG_CLASS_SELECT_LEVEL_2)
         knd_log(".. class %.*s (repo:%.*s) to extract instance updates",
-                self->name_size, self->name,
-                self->repo->name_size, self->repo->name);
+                self->name_size, self->name, self->entry->repo->name_size, self->entry->repo->name);
 
     if (!lt) lt = self->num_inst_states + 1;
 
@@ -111,8 +109,7 @@ extern int knd_class_get_inst_updates(struct kndClassEntry *self,
     return knd_OK;
 }
 
-extern int knd_retrieve_class_updates(struct kndStateRef *ref,
-                                      struct kndSet *set)
+int knd_retrieve_class_updates(struct kndStateRef *ref, struct kndSet *set)
 {
     struct kndState *state = ref->state;
     struct kndClassEntry *entry;
@@ -168,7 +165,7 @@ extern int knd_class_get_updates(struct kndClass *self,
 
     if (!lt) lt = self->states->numid + 1;
 
-    for (state = self->states; state; state = state->next) {
+    FOREACH (state, self->states) {
         if (state->numid >= lt) continue;
         if (state->numid <= gt) continue;
 
@@ -197,13 +194,13 @@ extern int knd_class_get_desc_updates(struct kndClass *self,
                 self->entry->repo->name_size, self->entry->repo->name);
 
     if (!lt) lt = self->desc_states->numid + 1;
-    for (state = self->desc_states; state; state = state->next) {
+    FOREACH (state, self->desc_states) {
         if (state->numid >= lt) continue;
         if (state->numid <= gt) continue;
 
         // TODO
         if (!state->children) continue;
-        for (ref = state->children; ref; ref = ref->next) {
+        FOREACH (ref, state->children) {
             err = knd_retrieve_class_updates(ref, set);                               RET_ERR();
         }
     }
