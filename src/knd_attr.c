@@ -401,11 +401,11 @@ void kndAttr_init(struct kndAttr *self)
     memset(self, 0, sizeof(struct kndAttr));
 }
 
-extern int knd_register_attr_ref(void *obj,
-                                 const char *unused_var(elem_id),
-                                 size_t unused_var(elem_id_size),
-                                 size_t unused_var(count),
-                                 void *elem)
+int knd_register_attr_ref(void *obj,
+                          const char *unused_var(elem_id),
+                          size_t unused_var(elem_id_size),
+                          size_t unused_var(count),
+                          void *elem)
 {
     struct kndClass *self = obj;
     struct kndSet *attr_idx  = self->attr_idx;

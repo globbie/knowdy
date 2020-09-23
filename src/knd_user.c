@@ -176,6 +176,7 @@ static int build_user_ctx(struct kndUser *self, struct kndClassInst *inst,
     task->user_ctx = ctx;
     err = knd_create_user_repo(task);
     KND_TASK_ERR("failed to create user repo");
+
     *result = ctx;
     return knd_OK;
 }

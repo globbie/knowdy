@@ -46,7 +46,6 @@ static gsl_err_t run_get_proc(void *obj, const char *name, size_t name_size)
     struct kndRepo *repo = ctx->repo;
     struct kndProc *proc;
     int err;
-
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
@@ -54,7 +53,8 @@ static gsl_err_t run_get_proc(void *obj, const char *name, size_t name_size)
 
     err = knd_get_proc(repo, name, name_size, &proc, ctx->task);
     if (err) return make_gsl_err_external(err);
-    ctx->proc = proc;
+
+    ctx->proc =  proc;
     ctx->entry = proc->entry;
 
     return make_gsl_err(gsl_OK);
@@ -90,7 +90,7 @@ static gsl_err_t remove_proc(void *obj, const char *name, size_t name_size)
     struct kndTask *task = ctx->task;
     int err;
 
-    if (DEBUG_PROC_SELECT_LEVEL_TMP)
+    if (DEBUG_PROC_SELECT_LEVEL_2)
         knd_log(".. removing proc: %.*s", name_size, name);
 
     if (!proc) {
@@ -104,7 +104,7 @@ static gsl_err_t remove_proc(void *obj, const char *name, size_t name_size)
         return make_gsl_err(gsl_NO_MATCH);
     }
 
-    if (DEBUG_PROC_SELECT_LEVEL_TMP)
+    if (DEBUG_PROC_SELECT_LEVEL_2)
         knd_log("== proc to remove: \"%.*s\"\n",
                 proc->name_size, proc->name);
 
@@ -127,7 +127,7 @@ static gsl_err_t parse_proc_inst_import(void *obj, const char *rec, size_t *tota
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndMemPool *mempool = task->mempool;
+    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
     struct kndProcEntry *entry = ctx->entry;
     struct kndCommit *commit = task->ctx->commit;
     int err;
@@ -138,8 +138,8 @@ static gsl_err_t parse_proc_inst_import(void *obj, const char *rec, size_t *tota
     }
 
     if (task->user_ctx) {
-        mempool = task->shard->user->mempool;
         if (entry->repo != task->user_ctx->repo) {
+            knd_log(".. proc entry cloning..");
             err = knd_proc_entry_clone(ctx->entry, task->user_ctx->repo, &entry, task);
             if (err) {
                 KND_TASK_LOG("failed to clone proc entry");

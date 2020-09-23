@@ -582,6 +582,7 @@ static gsl_err_t parse_proc_select(void *obj, const char *rec, size_t *total_siz
     knd_task_spec_type orig_task_type = task->type;
     gsl_err_t parser_err;
 
+    knd_log("proc inner state  repo:%.*s", task->repo->name_size, task->repo->name);
     /* switch to statement's local scope */
     task->type = KND_INNER_STATE;
     parser_err = knd_proc_select(task->repo, rec, total_size, task);

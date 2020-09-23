@@ -108,11 +108,10 @@ struct kndRepo
 
     struct kndRepoSnapshot * _Atomic snapshot;
 
+    struct kndMemPool *mempool;
     struct kndMemBlock *blocks;
     size_t num_blocks;
     size_t total_block_size;
-
-    struct kndRepo *next;
 };
 
 int knd_present_repo_state(struct kndRepo *self, struct kndTask *task);

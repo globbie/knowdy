@@ -236,7 +236,7 @@ int knd_proc_resolve(struct kndProc *self, struct kndTask *task)
     int err;
 
     if (DEBUG_PROC_RESOLVE_LEVEL_2)
-        knd_log(".. resolving proc \"%.*s\"",  self->name_size, self->name);
+        knd_log(".. resolving proc \"%.*s\"", self->name_size, self->name);
 
     if (self->resolving_in_progress) {
         knd_log("-- vicious circle detected in \"%.*s\"", self->name_size, self->name);

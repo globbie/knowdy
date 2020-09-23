@@ -82,6 +82,7 @@ struct kndProcArg
     size_t name_size;
 
     struct kndProc *parent;
+    struct kndSharedDictItem *item;
 
     const char *classname;
     size_t classname_size;

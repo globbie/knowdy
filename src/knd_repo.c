@@ -427,7 +427,6 @@ static gsl_err_t parse_proc_import(void *obj,
                                                                     memory_order_relaxed);
         }
     }
-
     return knd_proc_import(task->repo, rec, total_size, task);
 }
 
@@ -447,7 +446,6 @@ static gsl_err_t run_get_schema(void *obj, const char *name, size_t name_size)
     self->repo->schema_name_size = name_size;
     return make_gsl_err(gsl_OK);
 }
-
 
 static gsl_err_t save_task_body(void *obj, const char *rec, size_t *total_size)
 {
@@ -484,6 +482,7 @@ static gsl_err_t parse_commit(void *obj, const char *rec, size_t *total_size)
     struct kndRepo *repo = ctx->repo;
     struct kndUserContext *user_ctx = task->user_ctx;
     struct kndSet *idx = repo->snapshot->commit_idx;
+    struct kndMemPool *mempool = task->mempool;
     size_t ts = 0;
     int err;
 
@@ -496,9 +495,12 @@ static gsl_err_t parse_commit(void *obj, const char *rec, size_t *total_size)
     memset(commit, 0, sizeof(struct kndCommit));
     commit->is_restored = true;
 
+    task->mempool = NULL;
     knd_task_reset(task);
+
     task->ctx->commit = commit;
     task->user_ctx = user_ctx;
+    task->mempool = mempool;
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -531,7 +533,6 @@ static gsl_err_t parse_commit(void *obj, const char *rec, size_t *total_size)
     }
     err = idx->add(idx, commit->id, commit->id_size, (void*)commit);
     if (err) {
-        knd_log("IDX failed");
         if (err == knd_CONFLICT) {
             KND_TASK_LOG("commit #%zu already exists", commit->numid);
         } else {
@@ -688,6 +689,7 @@ static int apply_commit(void *obj, const char *unused_var(elem_id), size_t unuse
 {
     struct kndTask *task = obj;
     struct kndUserContext *user_ctx = task->user_ctx;
+    struct kndMemPool *mempool = task->mempool;
     struct kndCommit *commit = elem;
     struct kndCommit *head_commit;
     struct kndRepo *repo = task->repo;
@@ -696,12 +698,15 @@ static int apply_commit(void *obj, const char *unused_var(elem_id), size_t unuse
     int err;
 
     if (DEBUG_REPO_LEVEL_TMP)
-        knd_log("\n.. applying commit #%zu: %.*s", commit->numid, commit->rec_size, commit->rec);
+        knd_log(".. applying commit #%zu: %.*s", commit->numid, commit->rec_size, commit->rec);
 
+    task->mempool = NULL;
     knd_task_reset(task);
+
     task->type = KND_RESTORE_STATE;
     task->ctx->commit = commit;
     task->user_ctx = user_ctx;
+    task->mempool = mempool;
 
     struct gslTaskSpec specs[] = {
         { .name = "task",
@@ -726,6 +731,9 @@ static int apply_commit(void *obj, const char *unused_var(elem_id), size_t unuse
     } while (!atomic_compare_exchange_weak(&repo->snapshot->commits, &head_commit, commit));
     /* restore repo ref */
     task->repo = repo;
+
+
+
     return knd_OK;
 }
 
@@ -1141,6 +1149,14 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
         return err;
     }
 
+    switch (task->role) {
+    case KND_READER:
+        return knd_OK;
+    default:
+        break;
+    }
+
+    // restore recent commits
     for (size_t i = 0; i < KND_MAX_TASKS; i++) {
         out->reset(out);
         OUT(path, path_size);
@@ -1186,14 +1202,13 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
     return knd_OK;
 }
 
-
-int knd_repo_index_proc_arg(struct kndRepo *repo, struct kndProc *proc, struct kndProcArg *arg, struct kndTask *task)
+int knd_repo_index_proc_arg(struct kndRepo *repo, struct kndProc *proc,
+                            struct kndProcArg *arg, struct kndTask *task)
 {
     struct kndMemPool *mempool   = task->mempool;
     struct kndSet *arg_idx       = repo->proc_arg_idx;
     struct kndSharedDict *arg_name_idx = repo->proc_arg_name_idx;
-    struct kndProcArgRef *arg_ref, *prev_arg_ref;
-    struct kndSharedDictItem *item;
+    struct kndProcArgRef *ref, *arg_ref, *next_arg_ref;
     int err;
 
     /* generate unique attr id */
@@ -1209,18 +1224,31 @@ int knd_repo_index_proc_arg(struct kndRepo *repo, struct kndProc *proc, struct k
     arg_ref->arg = arg;
     arg_ref->proc = proc;
 
-    // if (task->type == KND_LOAD_STATE) {
+    switch (task->type) {
+    case KND_RESTORE_STATE:
+        // fall through
+    case KND_LOAD_STATE:
 
-    /* global indices */
-    prev_arg_ref = knd_shared_dict_get(arg_name_idx, arg->name, arg->name_size);
-    arg_ref->next = prev_arg_ref;
-    err = knd_shared_dict_set(arg_name_idx, arg->name, arg->name_size, (void*)arg_ref, mempool,
-                              task->ctx->commit, &item, true);                                       RET_ERR();
+        err = knd_proc_get_arg(proc, arg->name, arg->name_size, &ref);
 
-    err = arg_idx->add(arg_idx, arg->id, arg->id_size, (void*)arg_ref);
-    KND_TASK_ERR("failed to idx arg ref");
+        next_arg_ref = knd_shared_dict_get(arg_name_idx, arg->name, arg->name_size);
+        arg_ref->next = next_arg_ref;
 
-    // TODO: local task register
+        err = knd_shared_dict_set(arg_name_idx, arg->name, arg->name_size,
+                                  (void*)arg_ref, mempool, NULL, &arg->item, true);
+        KND_TASK_ERR("failed to globally register arg name \"%.*s\"", arg->name_size, arg->name);
+
+        err = arg_idx->add(arg_idx, arg->id, arg->id_size, (void*)arg_ref);
+        KND_TASK_ERR("failed to globally register numid of arg \"%.*s\"", arg->name_size, arg->name);
+
+        return knd_OK;
+    default:
+        break;
+    }
+
+    /* local task name idx */
+    err = knd_dict_set(task->proc_arg_name_idx, arg->name, arg->name_size, (void*)arg_ref);
+    KND_TASK_ERR("failed to register arg name %.*s", arg->name_size, arg->name);
 
     if (DEBUG_REPO_LEVEL_2)
         knd_log("++ new primary arg: \"%.*s\" (id:%.*s) of \"%.*s\" (repo:%.*s)",
@@ -1568,12 +1596,11 @@ int knd_confirm_commit(struct kndRepo *self, struct kndTask *task)
     struct kndTaskContext *ctx = task->ctx;
     struct kndCommit *commit = ctx->commit;
     int err;
-
     assert(commit != NULL);
 
     if (DEBUG_REPO_LEVEL_TMP)
-        knd_log(".. \"%.*s\" repo to confirm commit #%zu user ctx:%p",
-                self->name_size, self->name, commit->numid, task->user_ctx);
+        knd_log(".. \"%.*s\" repo to confirm commit #%zu",
+                self->name_size, self->name, commit->numid);
 
     commit->repo = self;
 
@@ -1585,7 +1612,6 @@ int knd_confirm_commit(struct kndRepo *self, struct kndTask *task)
 
     switch (task->role) {
     case KND_ARBITER:
-
         err = update_indices(self, commit, task);
         KND_TASK_ERR("index update failed");
 
@@ -1642,7 +1668,6 @@ int knd_repo_snapshot_new(struct kndMemPool *mempool, struct kndRepoSnapshot **r
     *result = s;
     return knd_OK;
 }
-
 
 int knd_repo_new(struct kndRepo **repo, const char *name, size_t name_size,
                  const char *schema_path, size_t schema_path_size, struct kndMemPool *mempool)
