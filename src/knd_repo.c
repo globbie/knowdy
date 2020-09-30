@@ -111,8 +111,8 @@ static int present_latest_state_JSON(struct kndRepo *self, struct kndOutput *out
 {
     char idbuf[KND_ID_SIZE];
     size_t idbuf_size;
-    // TODO
-    size_t latest_commit_id = atomic_load_explicit(&self->snapshot->num_commits, memory_order_relaxed);
+    struct kndRepoSnapshot *snapshot = atomic_load_explicit(&self->snapshots, memory_order_relaxed);
+    size_t latest_commit_id = atomic_load_explicit(&snapshot->num_commits, memory_order_relaxed);
     struct kndCommit *commit;
     int err;
 
@@ -128,14 +128,15 @@ static int present_latest_state_JSON(struct kndRepo *self, struct kndOutput *out
 
     if (latest_commit_id) {
         knd_uid_create(latest_commit_id, idbuf, &idbuf_size);
-        // TODO
-        err = self->snapshot->commit_idx->get(self->snapshot->commit_idx, idbuf, idbuf_size, (void**)&commit);                    RET_ERR();
+
+        //
+        err = knd_set_get(snapshot->commit_idx, idbuf, idbuf_size, (void**)&commit);  RET_ERR();
         err = out->write(out, ",\"_time\":", strlen(",\"_time\":"));              RET_ERR();
         err = out->writef(out, "%zu", (size_t)commit->timestamp);                 RET_ERR();
         //err = present_commit_JSON(commit, out);  RET_ERR();
     } else {
         err = out->write(out, ",\"_time\":", strlen(",\"_time\":"));              RET_ERR();
-        err = out->writef(out, "%zu", (size_t)self->snapshot->timestamp);          RET_ERR();
+        err = out->writef(out, "%zu", (size_t)snapshot->timestamp);          RET_ERR();
     }
     err = out->writec(out, '}');                                                  RET_ERR();
     return knd_OK;
@@ -172,7 +173,7 @@ static gsl_err_t present_repo_state(void *obj,
     //if (task->state_lt && task->state_lt < task->state_gt) goto show_curr_state;
 
     // TODO
-    size_t latest_commit_id = atomic_load_explicit(&repo->snapshot->num_commits, memory_order_relaxed);
+    size_t latest_commit_id = atomic_load_explicit(&repo->snapshots->num_commits, memory_order_relaxed);
     task->state_lt = latest_commit_id + 1;
 
     if (DEBUG_REPO_LEVEL_2) {
@@ -334,7 +335,7 @@ static gsl_err_t parse_class_import(void *obj,
             err = knd_commit_new(task->mempool, &task->ctx->commit);
             if (err) return make_gsl_err_external(err);
 
-            task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot->num_commits,
+            task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshots->num_commits,
                                                                     memory_order_relaxed);
         }
     }
@@ -423,7 +424,7 @@ static gsl_err_t parse_proc_import(void *obj,
             err = knd_commit_new(task->mempool, &task->ctx->commit);
             if (err) return make_gsl_err_external(err);
 
-            task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot->num_commits,
+            task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshots->num_commits,
                                                                     memory_order_relaxed);
         }
     }
@@ -481,7 +482,7 @@ static gsl_err_t parse_commit(void *obj, const char *rec, size_t *total_size)
     struct kndTask *task = ctx->task;
     struct kndRepo *repo = ctx->repo;
     struct kndUserContext *user_ctx = task->user_ctx;
-    struct kndSet *idx = repo->snapshot->commit_idx;
+    struct kndSet *idx = repo->snapshots->commit_idx;
     struct kndMemPool *mempool = task->mempool;
     size_t ts = 0;
     int err;
@@ -587,7 +588,7 @@ static int restore_commits(struct kndRepo *repo, struct kndMemBlock *memblock, s
 
     parser_err = gsl_parse_task(memblock->buf, &total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
-        knd_log("WAL parsing failed: %d", parser_err.code);
+        // knd_log("WAL parsing failed: %d", parser_err.code);
         return gsl_err_to_knd_err_codes(parser_err);
     }
     return knd_OK;
@@ -693,6 +694,7 @@ static int apply_commit(void *obj, const char *unused_var(elem_id), size_t unuse
     struct kndCommit *commit = elem;
     struct kndCommit *head_commit;
     struct kndRepo *repo = task->repo;
+    struct kndRepoSnapshot *snapshot = atomic_load_explicit(&repo->snapshots, memory_order_relaxed);
     gsl_err_t parser_err;
     size_t total_size = commit->rec_size;
     int err;
@@ -726,14 +728,11 @@ static int apply_commit(void *obj, const char *unused_var(elem_id), size_t unuse
     KND_TASK_ERR("index update failed");
 
     do {
-        head_commit = atomic_load_explicit(&repo->snapshot->commits, memory_order_acquire);
+        head_commit = atomic_load_explicit(&snapshot->commits, memory_order_acquire);
         commit->prev = head_commit;
-    } while (!atomic_compare_exchange_weak(&repo->snapshot->commits, &head_commit, commit));
+    } while (!atomic_compare_exchange_weak(&snapshot->commits, &head_commit, commit));
     /* restore repo ref */
     task->repo = repo;
-
-
-
     return knd_OK;
 }
 
@@ -1057,13 +1056,75 @@ static int read_source_files(struct kndRepo *self, struct kndTask *task)
     return knd_OK;
 }
 
+int knd_repo_restore(struct kndRepo *self, struct kndRepoSnapshot *snapshot, struct kndTask *task)
+{
+    char path[KND_PATH_SIZE + 1];
+    size_t path_size;
+    struct kndOutput *out = task->file_out;
+    struct stat st;
+    int err;
+
+    if (DEBUG_REPO_LEVEL_TMP) {
+        const char *owner_name = "/";
+        size_t owner_name_size = 1;
+        if (task->user_ctx) {
+            owner_name = task->user_ctx->inst->name;
+            owner_name_size =  task->user_ctx->inst->name_size;
+        }
+        knd_log(".. restoring the latest snapshot #%zu of repo \"%.*s\" (owner:%.*s) ",
+                snapshot->numid, self->name_size, self->name, owner_name_size, owner_name);
+    }
+
+    // restore recent commits
+    for (size_t i = 0; i < KND_MAX_TASKS; i++) {
+        out->reset(out);
+        OUT(snapshot->path, snapshot->path_size);
+        err = out->writef(out, "agent_%zu/", i);
+        if (err) return err;
+
+        if (stat(out->buf, &st)) {
+            if (DEBUG_REPO_LEVEL_TMP)
+                knd_log("-- no such folder: \"%.*s\"", out->buf_size, out->buf);
+
+            // sys agent 0 folder is optional
+            if (i == 0) continue;
+            break;
+        }
+        if (out->buf_size > KND_PATH_SIZE) return knd_LIMIT;
+        memcpy(path, out->buf, out->buf_size);
+        path_size = out->buf_size;
+        path[path_size] = '\0';
+
+        err = restore_journals(self, snapshot, path, path_size, task);
+        KND_TASK_ERR("failed to restore journals in \"%.*s\"", path_size, path);
+    }
+    if (snapshot->commit_idx->num_elems == 0) {
+        knd_log("-- no commits to restore in repo \"%.*s\"", self->name_size, self->name);
+        return knd_OK;
+    }
+
+    if (DEBUG_REPO_LEVEL_3)
+        knd_log("== total commits to restore in repo \"%.*s\": %zu", self->name_size, self->name,
+                snapshot->commit_idx->num_elems);
+
+    /* all commits are there in the idx,
+       time to apply them in timely order */
+    task->repo = self;
+    err = snapshot->commit_idx->map(snapshot->commit_idx, apply_commit, (void*)task);
+    KND_TASK_ERR("failed to apply commits");
+    atomic_store_explicit(&snapshot->num_commits, snapshot->commit_idx->num_elems, memory_order_relaxed);
+
+    if (DEBUG_REPO_LEVEL_TMP)
+        knd_log("== repo \"%.*s\", total commits applied: %zu", self->name_size, self->name, snapshot->num_commits);
+
+    return knd_OK;
+}
+
 int knd_repo_open(struct kndRepo *self, struct kndTask *task)
 {
     struct kndOutput *out = task->file_out;
     struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
     struct kndRepoSnapshot *snapshot;
-    char path[KND_PATH_SIZE + 1];
-    size_t path_size;
     char buf[KND_PATH_SIZE];
     size_t buf_size;
     struct stat st;
@@ -1077,8 +1138,8 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
             owner_name = task->user_ctx->inst->name;
             owner_name_size =  task->user_ctx->inst->name_size;
         }
-        knd_log(".. restoring the latest valid state of repo \"%.*s\" (ctx:%p owner:%.*s) ",
-                self->name_size, self->name, task->user_ctx, owner_name_size, owner_name);
+        knd_log(".. open repo \"%.*s\" (owner:%.*s  open mode:%d)",
+                self->name_size, self->name, owner_name_size, owner_name, task->role);
     }
     out->reset(out);
     err = out->write(out, task->path, task->path_size);
@@ -1114,27 +1175,26 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
     }
 
     if (DEBUG_REPO_LEVEL_2)
-        knd_log("== the latest snapshot of \"%.*s\" is #%d",
-                self->name_size, self->name, latest_snapshot_id);
+        knd_log("== the latest snapshot of \"%.*s\" is #%d", self->name_size, self->name, latest_snapshot_id);
 
     err = out->writef(out, "snapshot_%d/", latest_snapshot_id);
     KND_TASK_ERR("snapshot path construction failed");
 
     if (out->buf_size >= KND_PATH_SIZE) return knd_LIMIT;
-    memcpy(path, out->buf, out->buf_size);
-    path_size = out->buf_size;
 
     err = knd_repo_snapshot_new(mempool, &snapshot);
     KND_TASK_ERR("failed to alloc a repo snapshot");
     snapshot->numid = latest_snapshot_id;
+    memcpy(snapshot->path, out->buf, out->buf_size);
+    snapshot->path_size = out->buf_size;
 
-    atomic_store_explicit(&self->snapshot, snapshot, memory_order_relaxed);
+    atomic_store_explicit(&self->snapshots, snapshot, memory_order_relaxed);
 
     /* decode string names */
-    err = fetch_str_idx(self, path, path_size, task);
+    err = fetch_str_idx(self, snapshot->path, snapshot->path_size, task);
     if (err && err != knd_NO_MATCH) return err;
 
-    err = fetch_class_storage(self, path, path_size, task);
+    err = fetch_class_storage(self, snapshot->path, snapshot->path_size, task);
     switch (err) {
     case knd_NO_MATCH:
         // read classes from source files
@@ -1155,50 +1215,9 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
     default:
         break;
     }
-
-    // restore recent commits
-    for (size_t i = 0; i < KND_MAX_TASKS; i++) {
-        out->reset(out);
-        OUT(path, path_size);
-        err = out->writef(out, "agent_%zu/", i);
-        if (err) return err;
-
-        if (stat(out->buf, &st)) {
-            if (DEBUG_REPO_LEVEL_TMP)
-                knd_log("-- no such folder: \"%.*s\"", out->buf_size, out->buf);
-
-            // sys agent 0 folder is optional
-            if (i == 0) continue;
-            break;
-        }
-        if (out->buf_size > KND_PATH_SIZE) return knd_LIMIT;
-        memcpy(buf, out->buf, out->buf_size);
-        buf_size = out->buf_size;
-        buf[buf_size] = '\0';
-
-        err = restore_journals(self, snapshot, buf, buf_size, task);
-        KND_TASK_ERR("failed to restore journals in \"%.*s\"", buf_size, buf);
-    }
-
-    if (snapshot->commit_idx->num_elems == 0) {
-        knd_log("-- no commits to restore in repo \"%.*s\"", self->name_size, self->name);
-        return knd_OK;
-    }
-
-    if (DEBUG_REPO_LEVEL_3)
-        knd_log("== total commits to restore in repo \"%.*s\": %zu", self->name_size, self->name,
-                snapshot->commit_idx->num_elems);
-
-    /* all commits are there in the idx,
-       time to apply them in timely order */
-    task->repo = self;
-    err = snapshot->commit_idx->map(snapshot->commit_idx, apply_commit, (void*)task);
-    KND_TASK_ERR("failed to apply commits");
-    atomic_store_explicit(&snapshot->num_commits, snapshot->commit_idx->num_elems, memory_order_relaxed);
-
-    if (DEBUG_REPO_LEVEL_TMP)
-        knd_log("== repo \"%.*s\", total commits applied: %zu",
-                self->name_size, self->name, snapshot->num_commits);
+    snapshot->role = task->role;
+    err = knd_repo_restore(self, snapshot, task);
+    KND_TASK_ERR("failed to restore repo \"%.*s\"", self->name_size, self->name);
     return knd_OK;
 }
 
@@ -1461,8 +1480,7 @@ static int check_commit_conflicts(struct kndRepo *self, struct kndCommit *commit
         knd_log(".. new commit #%zu (%p) to check any commit conflicts since state #%zu..",
                 commit->numid, commit, commit->orig_state_id);
 
-    snapshot = atomic_load_explicit(&self->snapshot, memory_order_relaxed);
-
+    snapshot = atomic_load_explicit(&self->snapshots, memory_order_relaxed);
     do {
         head_commit = atomic_load_explicit(&snapshot->commits, memory_order_relaxed);
         if (head_commit) {
@@ -1488,6 +1506,7 @@ static int build_commit_WAL(struct kndRepo *self, struct kndCommit *commit, stru
 {
     struct kndOutput *out = task->out;
     struct kndOutput *file_out = task->file_out;
+    struct kndRepoSnapshot *snapshot = atomic_load_explicit(&self->snapshots, memory_order_relaxed);
     char filename[KND_PATH_SIZE + 1];
     size_t filename_size;
     size_t planned_journal_size = 0;
@@ -1511,7 +1530,7 @@ static int build_commit_WAL(struct kndRepo *self, struct kndCommit *commit, stru
         err = out->write(out, self->path, self->path_size);
         KND_TASK_ERR("repo path construction failed");
     }
-    err = out->writef(out, "snapshot_%zu/", self->snapshot->numid);
+    err = out->writef(out, "snapshot_%zu/", snapshot->numid);
     KND_TASK_ERR("snapshot path construction failed");
 
     err = out->writef(out, "agent_%d/", task->id);
@@ -1520,7 +1539,7 @@ static int build_commit_WAL(struct kndRepo *self, struct kndCommit *commit, stru
     err = knd_mkpath((const char*)out->buf, out->buf_size, 0755, false);
     KND_TASK_ERR("mkpath %.*s failed", out->buf_size, out->buf);
 
-    err = out->writef(out, "journal_%zu.log", self->snapshot->num_journals[task->id]);
+    err = out->writef(out, "journal_%zu.log", snapshot->num_journals[task->id]);
     KND_TASK_ERR("log filename construction failed");
 
     if (out->buf_size >= KND_PATH_SIZE) {
@@ -1540,10 +1559,10 @@ static int build_commit_WAL(struct kndRepo *self, struct kndCommit *commit, stru
     }
 
     planned_journal_size = st.st_size + out->buf_size;
-    if (planned_journal_size >= self->snapshot->max_journal_size) {
+    if (planned_journal_size >= snapshot->max_journal_size) {
         if (DEBUG_REPO_LEVEL_TMP)
             knd_log("!NB: journal size limit reached!");
-        self->snapshot->num_journals[task->id]++;
+        snapshot->num_journals[task->id]++;
 
         out->reset(out);
         err = out->write(out, task->path, task->path_size);
@@ -1599,8 +1618,7 @@ int knd_confirm_commit(struct kndRepo *self, struct kndTask *task)
     assert(commit != NULL);
 
     if (DEBUG_REPO_LEVEL_TMP)
-        knd_log(".. \"%.*s\" repo to confirm commit #%zu",
-                self->name_size, self->name, commit->numid);
+        knd_log(".. \"%.*s\" repo to confirm commit #%zu", self->name_size, self->name, commit->numid);
 
     commit->repo = self;
 
@@ -1655,9 +1673,9 @@ int knd_repo_snapshot_new(struct kndMemPool *mempool, struct kndRepoSnapshot **r
 {
     struct kndRepoSnapshot *s;
     int err;
-    assert(mempool->page_size >= sizeof(struct kndRepoSnapshot));
-    err = knd_mempool_page(mempool, KND_MEMPAGE_BASE, (void**)&s);
-    if (err) return err;
+
+    s = malloc(sizeof(struct kndRepoSnapshot));
+    if (!s) return knd_NOMEM;
     memset(s, 0, sizeof(struct kndRepoSnapshot));
 
     err = knd_set_new(mempool, &s->commit_idx);
@@ -1770,7 +1788,7 @@ int knd_repo_new(struct kndRepo **repo, const char *name, size_t name_size,
 
     err = knd_repo_snapshot_new(mempool, &snapshot);
     if (err) goto error;
-    atomic_store_explicit(&self->snapshot, snapshot, memory_order_relaxed);
+    atomic_store_explicit(&self->snapshots, snapshot, memory_order_relaxed);
     
     *repo = self;
     return knd_OK;

@@ -219,7 +219,6 @@ int knd_get_proc(struct kndRepo *repo, const char *name, size_t name_size, struc
     entry = knd_shared_dict_get(repo->proc_name_idx, name, name_size);
     if (!entry) {
         if (repo->base) {
-            knd_log(".. try base repo..");
             err = knd_get_proc(repo->base, name, name_size, result, task);
             KND_TASK_ERR("no such proc: \"%.*s\"", name_size, name);
             return knd_OK;

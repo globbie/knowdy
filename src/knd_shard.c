@@ -327,6 +327,7 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     task->ctx = calloc(1, sizeof(struct kndTaskContext));
     if (!task->ctx) return knd_NOMEM;
     task->mempool = mempool;
+    task->role = self->role;
     self->task = task;
 
     err = knd_repo_open(repo, task);

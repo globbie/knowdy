@@ -35,8 +35,7 @@ int knd_cache_set(struct kndCache *self, void *data, size_t *cell_num)
         }
         cell = &self->cells[i];
         num_readers = atomic_load_explicit(&cell->num_readers, memory_order_relaxed);
-
-        if (DEBUG_CACHE_LEVEL_TMP)
+        if (DEBUG_CACHE_LEVEL_2)
             knd_log("cell %zu) num readers:%zu", i, num_readers);
 
         // the cell is being used by readers
@@ -66,7 +65,7 @@ int knd_cache_set(struct kndCache *self, void *data, size_t *cell_num)
         // allow reader access
         atomic_store_explicit(&cell->num_readers, 0, memory_order_relaxed);
 
-        if (DEBUG_CACHE_LEVEL_TMP)
+        if (DEBUG_CACHE_LEVEL_2)
             knd_log("++ set cell %zu) data:%p", i, cell->data);
         *cell_num = i;
 

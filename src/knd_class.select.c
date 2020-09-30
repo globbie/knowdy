@@ -238,7 +238,7 @@ parse_get_class_by_numid(void *obj, const char *rec, size_t *total_size)
     int err = knd_get_class_by_id(ctx->repo, id, id_size, &ctx->selected_class, ctx->task);
     if (err) return make_gsl_err_external(err);
 
-    if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
+    if (DEBUG_CLASS_SELECT_LEVEL_2) {
         ctx->selected_class->str(ctx->selected_class, 1);
     }
 
@@ -500,7 +500,7 @@ struct kndTask *task = obj;
     if (task->state_gt >= latest_state->numid)             goto show_curr_state;
     if (task->state_lt && task->state_lt < task->state_gt) goto show_curr_state;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
+    if (DEBUG_CLASS_SELECT_LEVEL_2) {
         knd_log(".. select class descendants update delta:  gt %zu  lt %zu  eq:%zu..",
                 task->state_gt, task->state_lt, task->state_eq);
     }
@@ -656,6 +656,9 @@ static gsl_err_t parse_import_class_inst(void *obj, const char *rec, size_t *tot
     struct kndCommit *commit = task->ctx->commit;
     struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
     struct kndClassEntry *entry = ctx->class_entry;
+    struct kndRepo *repo = task->repo;
+    struct kndRepoSnapshot *snapshot = atomic_load_explicit(&repo->snapshots, memory_order_relaxed);
+    knd_task_spec_type orig_task_type = task->type;
     struct kndClass *c;
     int err;
 
@@ -663,21 +666,38 @@ static gsl_err_t parse_import_class_inst(void *obj, const char *rec, size_t *tot
         KND_TASK_LOG("class entry not selected");
         return *total_size = 0, make_gsl_err_external(knd_FORMAT);
     }
-
     err = knd_class_acquire(entry, &c, task);
     if (err) {
         KND_TASK_LOG("failed to acquire class \"%.*s\"", entry->id_size, entry->id);
         return *total_size = 0, make_gsl_err_external(err);
     }
-
     if (task->user_ctx) {
-        if (entry->repo != task->user_ctx->repo) {
-            err = knd_class_entry_clone(ctx->class_entry, task->user_ctx->repo, &entry, task);
+        repo = task->user_ctx->repo;
+        if (entry->repo != repo) {
+            err = knd_class_entry_clone(ctx->class_entry, repo, &entry, task);
             if (err) {
                 KND_TASK_LOG("failed to clone class entry");
                 return *total_size = 0, make_gsl_err_external(err);
             }
             ctx->class_entry = entry;
+        }
+        snapshot = atomic_load_explicit(&repo->snapshots, memory_order_relaxed);
+
+        switch (snapshot->role) {
+        case KND_READER:
+            if (DEBUG_CLASS_SELECT_LEVEL_2)
+                knd_log(">> snapshot %.*s (role:%d  task role:%d)", snapshot->path_size, snapshot->path, snapshot->role, task->role);
+
+            snapshot->role = KND_WRITER;
+            err = knd_repo_restore(repo, snapshot, task);
+            if (err) {
+                KND_TASK_LOG("failed to restore snapshot commits");
+                return *total_size = 0, make_gsl_err_external(err);
+            }
+            task->type = orig_task_type;
+            break;
+        default:
+            break;
         }
     }
 
@@ -686,7 +706,7 @@ static gsl_err_t parse_import_class_inst(void *obj, const char *rec, size_t *tot
         if (!commit) {
             err = knd_commit_new(mempool, &commit);
             if (err) return make_gsl_err_external(err);
-            commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot->num_commits, memory_order_relaxed);
+            commit->orig_state_id = atomic_load_explicit(&snapshot->num_commits, memory_order_relaxed);
             task->ctx->commit = commit;
         }
         break;
@@ -782,8 +802,6 @@ static gsl_err_t present_class_selection(void *obj, const char *unused_var(val),
     default:
         break;
     }
-
-    knd_log(".. present selected class: %.*s", ctx->class_entry->name_size, ctx->class_entry->name);
 
     /* select a set of classes by base class */
     if (ctx->selected_base) {

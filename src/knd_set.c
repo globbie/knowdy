@@ -160,14 +160,12 @@ static int save_elem(struct kndSet *self, struct kndSetElemIdx *parent_idx, void
     /* assign elem */
     if (!self->allow_overwrite &&
         parent_idx->elems[idx_pos] != NULL) {
-        knd_log("set elem already exists");
+        // knd_log("set elem already exists");
         return knd_CONFLICT;
     }
-
     parent_idx->elems[idx_pos] = elem;
     self->num_elems++;
     self->num_valid_elems++;
-
     return knd_OK;
 }
 
@@ -203,44 +201,26 @@ static int get_elem(struct kndSet *self, struct kndSetElemIdx *parent_idx,
     return knd_OK;
 }
 
-int knd_set_add(struct kndSet *self,
-                const char *key,
-                size_t key_size,
-                void *elem)
+int knd_set_add(struct kndSet *self, const char *key, size_t key_size, void *elem)
 {
     int err;
     assert(key_size != 0);
     assert(key != NULL);
-
-    // knd_log(".. adding ELEM \"%.*s\"", key_size, key);
-
     err = save_elem(self, self->idx, elem, key, key_size);
-    if (err) {
-        knd_log("failed to add a set elem: %d", err);
-        return err;
-    }
+    if (err) return err;
     return knd_OK;
 }
 
-int knd_set_get(struct kndSet *self,
-                const char *key,
-                size_t key_size,
-                void **elem)
+int knd_set_get(struct kndSet *self, const char *key, size_t key_size, void **elem)
 {
     int err;
-
     if (!self->idx) return knd_FAIL;
-
     err = get_elem(self, self->idx, elem, key, key_size);
     if (err) return err;
-
     return knd_OK;
 }
 
-static int kndSet_traverse_idx(struct kndSetElemIdx *parent_idx,
-                               map_cb_func cb,
-                               void *obj,
-                               size_t *count)
+static int kndSet_traverse_idx(struct kndSetElemIdx *parent_idx, map_cb_func cb, void *obj, size_t *count)
 {
     char buf[KND_ID_SIZE];
     size_t buf_size = 0;

@@ -30,6 +30,10 @@ struct kndConcFolder
 /*  steady-state DB snapshot */
 struct kndRepoSnapshot
 {
+    char path[KND_PATH_SIZE + 1];
+    size_t path_size;
+
+    knd_agent_role_type role;
     size_t numid;
     time_t timestamp;
 
@@ -106,7 +110,7 @@ struct kndRepo
     struct kndSharedDict *str_dict;
     atomic_size_t num_strs;
 
-    struct kndRepoSnapshot * _Atomic snapshot;
+    struct kndRepoSnapshot * _Atomic snapshots;
 
     struct kndMemPool *mempool;
     struct kndMemBlock *blocks;
@@ -121,9 +125,10 @@ gsl_err_t knd_parse_repo(void *obj, const char *rec, size_t *total_size);
 int knd_repo_index_proc_arg(struct kndRepo *repo, struct kndProc *self, struct kndProcArg *arg, struct kndTask *task);
 int knd_repo_commit_indices(struct kndRepo *self, struct kndTaskContext *ctx);
 int knd_repo_check_conflicts(struct kndRepo *self, struct kndTaskContext *ctx);
-gsl_err_t knd_parse_repo_commit(void *obj, const char *rec, size_t *total_size);
+gsl_err_t knd_repo_parse_commit(void *obj, const char *rec, size_t *total_size);
 
 int knd_repo_open(struct kndRepo *self, struct kndTask *task);
+int knd_repo_restore(struct kndRepo *self, struct kndRepoSnapshot *snapshot, struct kndTask *task);
 int knd_repo_snapshot(struct kndRepo *self, struct kndTask *task);
 
 void knd_repo_del(struct kndRepo *self);

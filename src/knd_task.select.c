@@ -184,7 +184,7 @@ static gsl_err_t parse_class_import(void *obj,
         err = knd_commit_new(task->mempool, &task->ctx->commit);
         if (err) return make_gsl_err_external(err);
 
-        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot->num_commits,
+        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshots->num_commits,
                                                                 memory_order_relaxed);
     }
 
@@ -203,9 +203,7 @@ static gsl_err_t parse_class_select(void *obj,
     return knd_class_select(task->repo, rec, total_size, task);
 }
 
-static gsl_err_t parse_proc_import(void *obj,
-                                   const char *rec,
-                                   size_t *total_size)
+static gsl_err_t parse_proc_import(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
     struct kndRepo *repo = task->repo;
@@ -219,7 +217,7 @@ static gsl_err_t parse_proc_import(void *obj,
         err = knd_commit_new(task->mempool, &task->ctx->commit);
         if (err) return make_gsl_err_external(err);
 
-        task->ctx->commit->orig_state_id = atomic_load_explicit(&repo->snapshot->num_commits, memory_order_relaxed);
+        task->ctx->commit->orig_state_id = atomic_load_explicit(&repo->snapshots->num_commits, memory_order_relaxed);
     }
     return knd_proc_import(task->repo, rec, total_size, task);
 }
@@ -345,7 +343,8 @@ gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
 
         err = knd_confirm_commit(repo, task);
         if (err) {
-            parser_err = make_gsl_err_external(err);
+            parser_err = make_gsl_err(gsl_FAIL);
+            knd_log("commit confirm err:%d code:%d", err, parser_err.code);
             goto final;
         }
         // TODO
