@@ -18,7 +18,7 @@ int knd_cache_set(struct kndCache *self, void *data, size_t *cell_num)
 {
     struct kndCacheCell *cell = NULL;
     int num_readers = 0;
-    size_t state, curr_state;
+    size_t curr_state;
     void *prev_data;
     size_t start_cell_num = rand() % (int)self->num_cells - 1;
     size_t final_cell_num = self->num_cells;
@@ -41,7 +41,7 @@ int knd_cache_set(struct kndCache *self, void *data, size_t *cell_num)
         // the cell is being used by readers
         if (num_readers > 0) continue;
 
-        state = atomic_load_explicit(&cell->state, memory_order_relaxed);
+        // state = atomic_load_explicit(&cell->state, memory_order_relaxed);
         //if (curr_state - state < KND_CACHE_STATE_INTERVAL) {
             // recent activity detected
         //    continue;

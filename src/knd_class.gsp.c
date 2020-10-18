@@ -599,6 +599,7 @@ int knd_class_acquire(struct kndClassEntry *entry, struct kndClass **result, str
         if (!c) {
             err = knd_shared_set_unmarshall_elem(repo->class_idx, entry->id, entry->id_size,
                                                  knd_class_unmarshall, (void**)&c, task);
+            if (err) return err;
             c->entry = entry;
             c->name = entry->name;
             c->name_size = entry->name_size;
