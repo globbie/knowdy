@@ -137,10 +137,5 @@ int knd_set_add_ref(struct kndSet *self,
                     struct kndAttr *attr,
                     struct kndClassEntry *topic,
                     struct kndClassEntry *spec);
-int knd_set_map(struct kndSet *self,
-                map_cb_func cb,
-                void *obj);
-int knd_set_get(struct kndSet *self,
-                const char *key,
-                size_t key_size,
-                void **elem);
+int knd_set_map(struct kndSet *self, map_cb_func cb, void *obj);
+int knd_set_get(struct kndSet *self, const char *key, size_t key_size, void **elem);

@@ -31,7 +31,7 @@ static int payload_linear_scan(struct kndSharedSetDir *dir,
 {
     const char *b, *c;
     size_t remainder = block_size - 1;
-    bool in_tag = true;
+    // bool in_tag = true;
     void *result;
     size_t val_size;
     int err;
@@ -54,7 +54,7 @@ static int payload_linear_scan(struct kndSharedSetDir *dir,
             c++;
             idbuf[idbuf_size - 1] = *c++;
             remainder -= 2;
-            in_tag = true;
+            // in_tag = true;
             b = c;
             continue;
         default:
@@ -75,7 +75,7 @@ static int fetch_elem_linear_scan(const char *block, size_t block_size, const ch
     char curr_id;
     const char *b, *c;
     size_t remainder = block_size - 1;
-    bool in_tag = true;
+    // bool in_tag = true;
     size_t val_size;
     int err;
     if (DEBUG_SHARED_SET_GSP_LEVEL_2)
@@ -100,7 +100,7 @@ static int fetch_elem_linear_scan(const char *block, size_t block_size, const ch
             if (curr_id > *id) return knd_NO_MATCH;
 
             remainder -= 2;
-            in_tag = true;
+            // in_tag = true;
             b = c;
             continue;
         default:

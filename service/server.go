@@ -171,9 +171,9 @@ func gslHandler(proc *kndProc) http.Handler {
 		}
 		result, _, err := proc.RunTask(string(body), len(body))
 		if err != nil {
+			log.Println(err.Error())
 			// TODO HTTP error mapping
-			http.Error(w, err.Error(),
-				http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")

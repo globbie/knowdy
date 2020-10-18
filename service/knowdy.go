@@ -19,6 +19,7 @@ package main
 import "C"
 import (
 	"errors"
+	"log"
 	"unsafe"
 )
 
@@ -96,6 +97,8 @@ func (p *kndProc) RunTask(task string, task_len int) (string, string, error) {
 	if (errCode != C.int(0)) {
 		return "", "", errors.New("block alloc failed")
 	}
+
+	log.Printf(">> worker #%d got %s", worker.id, task)
 
 	errCode = C.knd_task_run(worker, block, C.size_t(block_size))
 	if errCode != C.int(0) {

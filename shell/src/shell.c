@@ -174,10 +174,8 @@ int main(int argc, char *argv[])
 
         ssize_t bytes_read = read(fd, config_body, config_body_size);
         if (bytes_read <= 0) goto error;
-
         close(fd);
     }
-
     if (!config_body) goto error;
 
     err = knd_shard_new(&shard, config_body, config_body_size);

@@ -251,9 +251,7 @@ static int kndSet_traverse_idx(struct kndSetElemIdx *parent_idx, map_cb_func cb,
     return knd_OK;
 }
 
-int knd_set_map(struct kndSet *self,
-                map_cb_func cb,
-                void *obj)
+int knd_set_map(struct kndSet *self, map_cb_func cb, void *obj)
 {
     size_t count = 0;
     int err;
