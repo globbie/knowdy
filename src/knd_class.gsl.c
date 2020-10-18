@@ -86,7 +86,8 @@ int knd_export_class_state_GSL(struct kndClassEntry *self, struct kndTask *task)
         timestamp = state->commit->timestamp;
     } else {
         err = out->writec(out, '0');                                              RET_ERR();
-        timestamp = self->repo->snapshot->timestamp;
+        // TODO
+        timestamp = self->repo->snapshots->timestamp;
     }
     
     err = out->write(out, "{time ", strlen("{time "));                            RET_ERR();

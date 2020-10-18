@@ -101,7 +101,7 @@ int knd_repo_snapshot(struct kndRepo *self, struct kndTask *task)
     char path[KND_PATH_SIZE + 1];
     size_t path_size;
     struct kndOutput *out = task->out;
-    size_t latest_commit_id = atomic_load_explicit(&self->snapshot->num_commits, memory_order_relaxed);
+    size_t latest_commit_id = atomic_load_explicit(&self->snapshots->num_commits, memory_order_relaxed);
     int err;
 
     if (!latest_commit_id) {
@@ -122,7 +122,7 @@ int knd_repo_snapshot(struct kndRepo *self, struct kndTask *task)
         err = out->write(out, self->path, self->path_size);
         KND_TASK_ERR("repo path construction failed");
     }
-    err = out->writef(out, "snapshot_%zu/", self->snapshot->numid);
+    err = out->writef(out, "snapshot_%zu/", self->snapshots->numid);
     KND_TASK_ERR("snapshot path construction failed");
 
     err = out->writef(out, "agent_%d/", task->id);

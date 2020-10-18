@@ -387,17 +387,17 @@ int knd_text_index(struct kndText *self, struct kndRepo *repo, struct kndTask *t
         for (sent = par->sents; sent; sent = sent->next) {
             if (!sent->stm) continue;
 
-        if (DEBUG_TEXT_IDX_LEVEL_3)
-            knd_log(">> repo \"%.*s\" to add a text idx rec: %.*s/%.*s/%.*s/P:%zu/S:%zu  \"%.*s\"",
-                    repo->name_size, repo->name, inst->blueprint->name_size, inst->blueprint->name,
-                    inst->name_size, inst->name,
-                    var->name_size, var->name, par->numid, sent->numid, sent->seq_size, sent->seq);
+            if (DEBUG_TEXT_IDX_LEVEL_3)
+                knd_log(">> repo \"%.*s\" to add a text idx rec: %.*s/%.*s/%.*s/P:%zu/S:%zu  \"%.*s\"",
+                        repo->name_size, repo->name, inst->blueprint->name_size, inst->blueprint->name,
+                        inst->name_size, inst->name,
+                        var->name_size, var->name, par->numid, sent->numid, sent->seq_size, sent->seq);
             
             for (decl = sent->stm->class_declars; decl; decl = decl->next) {
                 err = index_class_declar(decl, sent, par, var, inst, repo, task);
                 KND_TASK_ERR("failed to index class declar");
             }
-
+            
             for (proc_decl = sent->stm->proc_declars; proc_decl; proc_decl = proc_decl->next) {
                 err = index_proc_declar(proc_decl, sent, par, var, inst, repo, task);
                 KND_TASK_ERR("failed to index proc declar");

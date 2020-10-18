@@ -170,19 +170,20 @@ static int export_JSON(struct kndText *self,
 int knd_par_export_GSL(struct kndPar *par, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
+    struct kndSentence *sent;
     int err;
 
-    err = out->writef(out, "{%zu", par->numid);         RET_ERR();
-
-    if (par->class_declars) {
-        err = export_class_declars(par->class_declars, task);                      RET_ERR();
+    err = out->writef(out, "{%zu", par->numid);
+    RET_ERR();
+    if (par->num_sents) {
+        OUT("[s", strlen("[s"));
+        for (sent = par->sents; sent; sent = sent->next) {
+            err = sent_export_GSL(sent, task);
+            KND_TASK_ERR("failed to export sentence GSL");
+        }
+        OUT("]", 1);
     }
-
-    if (par->proc_declars) {
-        err = export_proc_declars(par->proc_declars, task);                        RET_ERR();
-    }
-
-    err = out->writec(out, '}');                        RET_ERR();
+    OUT("}", 1);
     return knd_OK;
 }
 

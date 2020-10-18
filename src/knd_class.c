@@ -738,105 +738,43 @@ int knd_unregister_class_inst(struct kndClass *self, struct kndClassInstEntry *e
     return knd_OK;
 }
 
-int knd_class_clone(struct kndClass *self, struct kndRepo *target_repo, struct kndClass **result, struct kndTask *task)
+int knd_class_copy(struct kndClass *self, struct kndClass *c, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->user_ctx->mempool;
-    struct kndClass *c;
-    struct kndClassEntry *entry;
-    // struct kndSharedDict *class_name_idx = target_repo->class_name_idx;
-    // struct kndSet *class_idx = target_repo->class_idx;
+    struct kndRepo *repo =  task->user_ctx->repo;
+    struct kndClassRef *ref, *src_ref;
     int err;
 
-    if (DEBUG_CLASS_LEVEL_TMP)
-        knd_log(".. cloning class %.*s (%.*s) to repo %.*s..",
-                self->name_size, self->name,
-                self->entry->repo->name_size, self->entry->repo->name,
-                target_repo->name_size, target_repo->name);
-
-    err = knd_class_new(mempool, &c);                                             RET_ERR();
-    err = knd_class_entry_new(mempool, &entry);                                   RET_ERR();
-    entry->repo = target_repo;
-    entry->base = self->entry;
-    entry->class = c;
-    c->entry = entry;
-
-    // TODO: atomic
-    //target_repo->num_classes++;
-    //entry->numid = target_repo->num_classes;
-    //knd_uid_create(entry->numid, entry->id, &entry->id_size);
-
-    err = knd_class_copy(self, c, mempool);
-    KND_TASK_ERR("class copy failed");
-
-    /* idx register */
-    /*    ref = knd_shared_dict_get(class_name_idx,
-                              entry->name, entry->name_size);
-
-    if (!ref) {
-        err = knd_shared_dict_set(class_name_idx,
-                                  entry->name, entry->name_size,
-                                  (void*)entry,
-                                  mempool,
-                                  NULL, NULL, false);                                   RET_ERR();
-    }
-
-    err = class_idx->add(class_idx,
-                         entry->id, entry->id_size,
-                         (void*)entry);                                           RET_ERR();
-    */
-
-    if (DEBUG_CLASS_LEVEL_TMP)
-        c->str(c, 1);
-
-    *result = c;
-    return knd_OK;
-}
-
-int knd_class_copy(struct kndClass *self, struct kndClass *c, struct kndMemPool *mempool)
-{
-    //struct kndRepo *repo =  c->entry->repo;
-    struct kndClassEntry *entry, *src_entry;
-    //struct kndClassRef   *ref,   *src_ref;
-
     if (DEBUG_CLASS_LEVEL_2)
-        knd_log(".. copying class %.*s..", self->name_size, self->name);
+        knd_log(".. copying class \"%.*s\" to repo \"%.*s\"",
+                self->name_size, self->name, repo->name_size, repo->name);
 
-    entry = c->entry;
-    src_entry = self->entry;
+    c->name = self->name;
+    c->name_size = self->name_size;
 
-    entry->name = src_entry->name;
-    entry->name_size = src_entry->name_size;
-    c->name = entry->name;
-    c->name_size = entry->name_size;
+    // TODO
+    c->attr_idx = self->attr_idx;
 
-    entry->class = c;
-    c->entry = entry;
-
-    /* copy the attrs */
-    c->attr_idx->mempool = mempool;
-    //err = self->attr_idx->map(self->attr_idx,
-    //                          knd_register_attr_ref,
-    //                          (void*)c);                                          RET_ERR();
-
-    
     /* copy the ancestors */
-    /*for (src_ref = self->entry->ancestors; src_ref; src_ref = src_ref->next) {
-        err = knd_class_ref_new(mempool, &ref);                                   RET_ERR();
+    FOREACH (src_ref, self->ancestors) {
+        err = knd_class_ref_new(mempool, &ref);
+        KND_TASK_ERR("failed to alloc a class ref");
         ref->class = src_ref->class;
         ref->entry = src_ref->entry;
 
-        prev_entry = knd_shared_dict_get(class_name_idx,
+        /* check local repo?
+           prev_entry = knd_shared_dict_get(class_name_idx,
                                          src_ref->class->name,
                                          src_ref->class->name_size);
         if (prev_entry) {
             ref->entry = prev_entry;
             ref->class = prev_entry->class;
-        }
-        
-        ref->next = entry->ancestors;
-        entry->ancestors = ref;
-        entry->num_ancestors++;
-        }*/
+            }*/
+
+        ref->next = c->ancestors;
+        c->ancestors = ref;
+        c->num_ancestors++;
+    }
     return knd_OK;
 }
 
@@ -864,7 +802,10 @@ int knd_class_entry_clone(struct kndClassEntry *self, struct kndRepo *repo,
     if (self->class) {
         err = knd_class_new(mempool, &c);
         KND_TASK_ERR("failed to alloc a class");
-        // TODO clone a class
+
+        err = knd_class_copy(self->class, c, task);
+        KND_TASK_ERR("failed to copy a class");
+
         c->entry = entry;
         entry->class = c;
     }

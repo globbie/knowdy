@@ -515,7 +515,7 @@ static int resolve_attr_ref(struct kndClass *self,
     return knd_OK;
 }
 
-int knd_resolve_attr_vars(struct kndClass *self, struct kndClassVar *parent_item, struct kndTask *task)
+int knd_resolve_attr_vars(struct kndClass *self, struct kndClassVar *cvar, struct kndTask *task)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size = 0;
@@ -527,28 +527,24 @@ int knd_resolve_attr_vars(struct kndClass *self, struct kndClassVar *parent_item
     struct kndRepo *repo = self->entry->repo;
     int err;
 
-    if (DEBUG_ATTR_RESOLVE_LEVEL_3) {
-        knd_log("\n.. resolving attr vars of class \"%.*s\" (base:%.*s) (repo:%.*s) ..",
-                self->entry->name_size, self->entry->name,
-                parent_item->entry->name_size, parent_item->entry->name,
+    if (DEBUG_ATTR_RESOLVE_LEVEL_2) {
+        knd_log(".. resolving attr vars of class \"%.*s\" (base:%.*s) (repo:%.*s) ..",
+                self->entry->name_size, self->entry->name, cvar->entry->name_size, cvar->entry->name,
                 repo->name_size, repo->name);
     }
 
-    for (var = parent_item->attrs; var; var = var->next) {
-        if (DEBUG_ATTR_RESOLVE_LEVEL_2) {
-            knd_log(".. resolving attr var: %.*s",
-                    var->name_size, var->name);
-        }
+    FOREACH (var, cvar->attrs) {
+        if (DEBUG_ATTR_RESOLVE_LEVEL_3)
+            knd_log(".. resolving attr var: %.*s", var->name_size, var->name);
 
         if (!memcmp("_proc", var->name, var->name_size)) {
-            if (DEBUG_ATTR_RESOLVE_LEVEL_2) 
+            if (DEBUG_ATTR_RESOLVE_LEVEL_3) 
                 knd_log(".. resolve _proc ref %.*s", var->val_size, var->val);
             continue;
         }
 
         err = knd_class_get_attr(self, var->name, var->name_size, &attr_ref);
         KND_TASK_ERR("no attr \"%.*s\" in class \"%.*s\"", var->name_size, var->name, self->name_size, self->name);
-
         attr = attr_ref->attr;
         attr_ref->attr_var = var;
 

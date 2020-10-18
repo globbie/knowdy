@@ -51,7 +51,7 @@ static gsl_err_t parse_proc_import(void *obj, const char *rec, size_t *total_siz
     task->type = KND_COMMIT_STATE;
 
     if (!task->ctx->commit->orig_state_id)
-        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot->num_commits,
+        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshots->num_commits,
                                                                 memory_order_relaxed);
     return knd_proc_import(task->repo, rec, total_size, task);
 }
@@ -82,11 +82,9 @@ int knd_create_user_repo(struct kndTask *task)
         knd_repo_del(repo);
         return err;
     }
-
     /* restore task */
     knd_task_reset(task);
     task->user_ctx = ctx;
-
     return knd_OK;
 }
 
@@ -98,7 +96,7 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
 
     assert(user_ctx->repo);
 
-    if (DEBUG_USER_LEVEL_2)
+    if (DEBUG_USER_LEVEL_TMP)
         knd_log(".. parsing user class import: \"%.*s\"..", 64, rec);
 
     task->type = KND_COMMIT_STATE;
@@ -106,8 +104,9 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
         err = knd_commit_new(task->mempool, &task->ctx->commit);
         if (err) return make_gsl_err_external(err);
         
-        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot->num_commits, memory_order_relaxed);
+        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshots->num_commits, memory_order_relaxed);
     }
+
     return knd_class_import(user_ctx->repo, rec, total_size, task);
 }
 
@@ -131,6 +130,7 @@ static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_si
             return make_gsl_err(gsl_FAIL);
         }
     }
+    knd_log(".. check user base repo");
     /* shared read-only repo */
     return knd_class_select(task->user_ctx->base_repo, rec, total_size, task);
 }
@@ -176,6 +176,7 @@ static int build_user_ctx(struct kndUser *self, struct kndClassInst *inst,
     task->user_ctx = ctx;
     err = knd_create_user_repo(task);
     KND_TASK_ERR("failed to create user repo");
+
     *result = ctx;
     return knd_OK;
 }
@@ -202,7 +203,7 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
 
     do {
         cell_num = atomic_load_explicit(&inst->entry->cache_cell_num, memory_order_relaxed);
-        if (DEBUG_USER_LEVEL_TMP)
+        if (DEBUG_USER_LEVEL_3)
             knd_log("== user inst %.*s (cache cell:%zu)", name_size, name, cell_num);
         if (!cell_num) {
             err = build_user_ctx(self, inst, &ctx, task);
@@ -243,6 +244,11 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
         task->user_ctx = ctx;
         break;
     } while (1);
+
+    if (DEBUG_USER_LEVEL_TMP)
+        knd_log("== user %.*s (cache cell:%zu) snapshot #%zu role:%d", inst->name_size, inst->name,
+                cell_num, ctx->repo->snapshots->numid, ctx->repo->snapshots->role);
+
     return make_gsl_err(gsl_OK);
 }
 
@@ -441,6 +447,13 @@ gsl_err_t knd_parse_select_user(void *obj, const char *rec, size_t *total_size)
         }
     };
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    switch (parser_err.code) {
+    case gsl_NO_MATCH:
+        KND_TASK_LOG("user area got an unrecognized tag \"%.*s\"", parser_err.val_size, parser_err.val);
+        break;
+    default:
+        break;
+    }
 
     switch (task->type) {
     case KND_RESTORE_STATE:
@@ -461,7 +474,7 @@ gsl_err_t knd_create_user(void *obj, const char *rec, size_t *total_size)
         err = knd_commit_new(task->mempool, &task->ctx->commit);
         if (err) return make_gsl_err_external(err);
 
-        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot->num_commits, memory_order_relaxed);
+        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshots->num_commits, memory_order_relaxed);
     }
     err = knd_import_class_inst(self->class->entry, rec, total_size, task);
     if (err) {

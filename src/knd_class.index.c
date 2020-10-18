@@ -112,8 +112,8 @@ static int index_ancestor(struct kndClass *self,
                     base_entry->name_size, base_entry->name,
                     self->entry->repo->name_size, self->entry->repo->name);
 
-            err = knd_class_clone(base_entry->class,
-                                  self->entry->repo, &base, task);             RET_ERR();
+            //err = knd_class_clone(base_entry->class,
+            //                      self->entry->repo, &base, task);             RET_ERR();
         }
     }
 
@@ -158,9 +158,9 @@ static int index_baseclass(struct kndClass *self,
 {
     struct kndMemPool *mempool = task->mempool;
     struct kndClassRef *ref, *baseref;
-    struct kndClass *base_copy = NULL;
+    // struct kndClass *base_copy = NULL;
     struct kndClassEntry *entry = self->entry;
-    struct kndRepo *repo = self->entry->repo;
+    // struct kndRepo *repo = self->entry->repo;
     struct kndSet *desc_idx;
     bool parent_linked = false;
     int err;
@@ -173,12 +173,12 @@ static int index_baseclass(struct kndClass *self,
                 base->entry->repo->name_size, base->entry->repo->name,
                 base->entry->class->state_top);
 
-    if (base->entry->repo != repo) {
+    /*if (base->entry->repo != repo) {
         err = knd_class_clone(base, repo, &base_copy, task);                   RET_ERR();
         base = base_copy;
         err = index_ancestor(self, base->entry, task);                             RET_ERR();
         parent_linked = true;
-    }
+        }*/
 
     /* register as a child */
     err = knd_class_ref_new(mempool, &ref);                                       RET_ERR();

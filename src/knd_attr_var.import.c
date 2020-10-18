@@ -63,15 +63,14 @@ static gsl_err_t parse_text(void *obj, const char *rec, size_t *total_size)
     gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_ATTR_VAR_LEVEL_2)
-        knd_log(".. %.*s: allocate text obj", ctx->attr_var->name_size, ctx->attr_var->name);
-
     err = knd_text_new(mempool, &text);
     if (err) return *total_size = 0, make_gsl_err_external(knd_NOMEM);
-    memset(text, 0, sizeof(struct kndText));
 
     parser_err = knd_text_import(text, rec, total_size, task);
-    if (parser_err.code) return parser_err;
+    if (parser_err.code) {
+        KND_TASK_LOG("text import failed");
+        return parser_err;
+    }
     ctx->attr_var->text = text;
     text->attr_var = ctx->attr_var;
 
@@ -210,7 +209,7 @@ int knd_import_attr_var(struct kndClassVar *self, const char *name, size_t name_
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
-        knd_log("-- attr var parsing failed: %d", parser_err.code);
+        KND_TASK_LOG("\"%.*s\" attr var import failed", name_size, name);
         return parser_err.code;
     }
 

@@ -460,9 +460,7 @@ static gsl_err_t parse_subj(void *obj, const char *rec, size_t *total_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_pred(void *obj,
-                            const char *rec,
-                            size_t *total_size)
+static gsl_err_t parse_pred(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
@@ -495,7 +493,6 @@ static gsl_err_t parse_pred(void *obj,
     ctx->clause = clause;
     ctx->synode = NULL;
     ctx->synode_spec = NULL;
-
     return make_gsl_err(gsl_OK);
 }
 
@@ -582,6 +579,7 @@ static gsl_err_t parse_proc_select(void *obj, const char *rec, size_t *total_siz
     knd_task_spec_type orig_task_type = task->type;
     gsl_err_t parser_err;
 
+    knd_log("proc inner state  repo:%.*s", task->repo->name_size, task->repo->name);
     /* switch to statement's local scope */
     task->type = KND_INNER_STATE;
     parser_err = knd_proc_select(task->repo, rec, total_size, task);
@@ -749,8 +747,16 @@ static gsl_err_t parse_par(void *obj, const char *rec, size_t *total_size)
     ctx->sent = NULL;
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return parser_err;
-
+    if (parser_err.code) {
+        switch (parser_err.code) {
+        case gsl_NO_MATCH:
+            KND_TASK_LOG("text par got an unrecognized tag \"%.*s\"", parser_err.val_size, parser_err.val);
+            break;
+        default:
+            break;
+        }
+        return parser_err;
+    }
     if (!par->num_sents) {
         KND_TASK_LOG("empty paragraphs not accepted");
         return make_gsl_err_external(err);

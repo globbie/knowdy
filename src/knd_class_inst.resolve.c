@@ -21,6 +21,7 @@
 #include "knd_class_inst.h"
 
 #define DEBUG_INST_RESOLVE_LEVEL_1 0
+#define DEBUG_INST_RESOLVE_LEVEL_2 0
 #define DEBUG_INST_RESOLVE_LEVEL_TMP 1
 
 int knd_class_inst_resolve(struct kndClassInst *self, struct kndTask *task)
@@ -29,15 +30,14 @@ int knd_class_inst_resolve(struct kndClassInst *self, struct kndTask *task)
     int err;
     self->resolving_in_progress = true;
 
+    if (DEBUG_INST_RESOLVE_LEVEL_2)
+        knd_log(".. resolve class inst %.*s::%.*s", c->name_size, c->name, c, self->name_size, self->name);
+
     if (self->class_var->attrs) {
         err = knd_resolve_attr_vars(c, self->class_var, task);
         KND_TASK_ERR("failed to resolve class inst %.*s::%.*s", c->entry->name_size, c->entry->name,
                      self->name_size, self->name);
     }
-
-    if (DEBUG_INST_RESOLVE_LEVEL_TMP)
-        knd_class_inst_str(self, 0);
-
     self->is_resolved = true;
     return knd_OK;
 }

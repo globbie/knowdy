@@ -95,9 +95,7 @@ static gsl_err_t import_arg_var(void *obj, const char *name, size_t name_size, c
     struct kndProcArgRef *ref = NULL;
     struct kndProcArgVar *var = NULL;
     struct kndTask *task = ctx->task;
-    struct kndMemPool *mempool = task->mempool;
-    if (task->user_ctx)
-        mempool = task->shard->user->mempool;
+    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
     int err;
     gsl_err_t parser_err;
 
@@ -213,10 +211,7 @@ static gsl_err_t import_proc_inst(struct kndProcInstEntry *entry, const char *re
 
 int knd_import_proc_inst(struct kndProcEntry *self, const char *rec, size_t *total_size, struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->mempool;
-    if (task->user_ctx)
-        mempool = task->shard->user->mempool;
-
+    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
     struct kndProcInst *inst;
     struct kndProcInstEntry *entry;
     struct kndProcDeclaration *declar;
@@ -228,7 +223,7 @@ int knd_import_proc_inst(struct kndProcEntry *self, const char *rec, size_t *tot
     int err;
 
     if (DEBUG_PROC_INST_IMPORT_LEVEL_2)
-        knd_log(".. import \"%.*s\" proc inst.. (repo:%.*s)", 128, rec, repo->name_size, repo->name);
+        knd_log(".. import proc inst");
 
     switch (task->type) {
     case KND_INNER_COMMIT_STATE:
@@ -319,7 +314,7 @@ int knd_import_proc_inst(struct kndProcEntry *self, const char *rec, size_t *tot
     if (!ctx->commit) {
         err = knd_commit_new(task->mempool, &ctx->commit);
         KND_TASK_ERR("commit alloc failed");
-        ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshot->num_commits, memory_order_relaxed);
+        ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshots->num_commits, memory_order_relaxed);
     }
     state->commit = ctx->commit;
     return knd_OK;

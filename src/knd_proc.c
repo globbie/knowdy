@@ -121,13 +121,18 @@ int knd_proc_get_arg(struct kndProc *self, const char *name, size_t name_size, s
 {
     struct kndProcArgRef *ref;
     struct kndProcArg *arg = NULL;
+
+    assert(self->entry != NULL);
+
     struct kndSharedDict *arg_name_idx = self->entry->repo->proc_arg_name_idx;
     struct kndSet *arg_idx = self->arg_idx;
     int err;
 
-    if (DEBUG_PROC_LEVEL_2)
-        knd_log(".. \"%.*s\" proc (repo: %.*s) to select arg \"%.*s\"",
-                self->name_size, self->name, self->entry->repo->name_size, self->entry->repo->name, name_size, name);
+    if (DEBUG_PROC_LEVEL_2) {
+        knd_log(".. \"%.*s\" proc (repo: %.*s) to select arg \"%.*s\" ",
+                self->name_size, self->name,
+                self->entry->repo->name_size, self->entry->repo->name, name_size, name);
+    }
 
     ref = knd_shared_dict_get(arg_name_idx, name, name_size);
     if (!ref) {
@@ -136,7 +141,8 @@ int knd_proc_get_arg(struct kndProc *self, const char *name, size_t name_size, s
             ref = knd_shared_dict_get(arg_name_idx, name, name_size);
         }
         if (!ref) {
-            knd_log("-- no such proc arg: \"%.*s\"", name_size, name);
+            if (DEBUG_PROC_LEVEL_2)
+                knd_log("-- no such proc arg: \"%.*s\"", name_size, name);
             return knd_NO_MATCH;
         }
     }
@@ -144,10 +150,6 @@ int knd_proc_get_arg(struct kndProc *self, const char *name, size_t name_size, s
     /* iterating over synonymous attrs */
     for (; ref; ref = ref->next) {
         arg = ref->arg;
-        if (DEBUG_PROC_LEVEL_3) {
-            knd_log("== arg %.*s is used in proc: %.*s",
-                    name_size, name, ref->proc->name_size, ref->proc->name);
-        }
         if (ref->proc == self) break;
 
         err = knd_proc_is_base(ref->proc, self);
@@ -311,10 +313,12 @@ int knd_proc_entry_clone(struct kndProcEntry *self, struct kndRepo *repo, struct
 
     if (DEBUG_PROC_LEVEL_2)
         knd_log(".. cloning proc entry %.*s (%.*s) to repo \"%.*s\"",
-                self->name_size, self->name, self->repo->name_size, self->repo->name, repo->name_size, repo->name);
+                self->name_size, self->name, self->repo->name_size, self->repo->name,
+                repo->name_size, repo->name);
 
     err = knd_proc_entry_new(mempool, &entry);
     KND_TASK_ERR("failed to alloc a proc entry");
+
     entry->repo = repo;
     entry->orig = self;
     entry->proc = self->proc;
@@ -343,11 +347,10 @@ int knd_proc_commit_state(struct kndProc *self,
     struct kndState *state = NULL;
     int err;
 
-    if (DEBUG_PROC_LEVEL_TMP) {
+    if (DEBUG_PROC_LEVEL_2) {
         knd_log(".. \"%.*s\" proc (repo:%.*s) to commit its state (phase:%d)",
                 self->name_size, self->name,
-                self->entry->repo->name_size, self->entry->repo->name,
-                phase);
+                self->entry->repo->name_size, self->entry->repo->name, phase);
     }
 
     err = commit_state(self, NULL, phase, &state, task);                          RET_ERR();

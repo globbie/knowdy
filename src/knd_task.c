@@ -50,7 +50,6 @@ void knd_task_reset(struct kndTask *self)
     self->max_depth = 1;
 
     self->http_code = HTTP_OK;
-
     if (self->ctx)
         memset(self->ctx, 0, sizeof(*self->ctx));
 
@@ -60,14 +59,23 @@ void knd_task_reset(struct kndTask *self)
     self->out->reset(self->out);
     self->log->reset(self->log);
 
-    if (self->role == KND_READER)
+    if (self->mempool)
         knd_mempool_reset(self->mempool);
 
-    knd_dict_reset(self->class_name_idx);
-    knd_dict_reset(self->class_inst_alias_idx);
-    knd_dict_reset(self->attr_name_idx);
-    knd_dict_reset(self->proc_name_idx);
-    knd_dict_reset(self->proc_arg_name_idx);
+    if (self->class_name_idx)
+        knd_dict_reset(self->class_name_idx);
+
+    if (self->class_inst_alias_idx)
+        knd_dict_reset(self->class_inst_alias_idx);
+
+    if (self->attr_name_idx)
+        knd_dict_reset(self->attr_name_idx);
+
+    if (self->proc_name_idx)
+        knd_dict_reset(self->proc_name_idx);
+
+    if (self->proc_arg_name_idx)
+        knd_dict_reset(self->proc_arg_name_idx);
 }
 
 static int task_err_export_JSON(struct kndTask *task)

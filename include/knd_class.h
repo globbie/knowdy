@@ -273,10 +273,8 @@ int knd_register_class_inst(struct kndClass *self, struct kndClassInstEntry *ent
 
 int knd_unregister_class_inst(struct kndClass *self, struct kndClassInstEntry *entry, struct kndTask *task);
 
-int knd_class_clone(struct kndClass *self, struct kndRepo *target_repo, struct kndClass **result, struct kndTask *task);
 int knd_class_entry_clone(struct kndClassEntry *self, struct kndRepo *target_repo, struct kndClassEntry **result, struct kndTask *task);
-
-int knd_class_copy(struct kndClass *self, struct kndClass *target, struct kndMemPool *mempool);
+int knd_class_copy(struct kndClass *self, struct kndClass *target, struct kndTask *task);
 
 int knd_register_state(struct kndClass *self);
 int knd_register_descendant_states(struct kndClass *self);

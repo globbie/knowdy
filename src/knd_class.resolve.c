@@ -164,8 +164,8 @@ static int link_ancestor(struct kndClass *self, struct kndClassEntry *base_entry
                     base_entry->name_size, base_entry->name,
                     self->entry->repo->name_size, self->entry->repo->name);
 
-            err = knd_class_clone(base_entry->class,
-                                  self->entry->repo, &base, task);             RET_ERR();
+            // err = knd_class_clone(base_entry->class,
+            //                      self->entry->repo, &base, task);             RET_ERR();
         }
     }
 
@@ -183,9 +183,9 @@ static int link_baseclass(struct kndClass *self, struct kndClass *base, struct k
 {
     struct kndMemPool *mempool = task->mempool;
     struct kndClassRef *ref, *baseref;
-    struct kndClass *base_copy = NULL;
+    // struct kndClass *base_copy = NULL;
     struct kndClassEntry *entry = self->entry;
-    struct kndRepo *repo = self->entry->repo;
+    // struct kndRepo *repo = self->entry->repo;
     bool parent_linked = false;
     int err;
 
@@ -196,12 +196,12 @@ static int link_baseclass(struct kndClass *self, struct kndClass *base, struct k
                 base->entry->repo->name_size, base->entry->repo->name,
                 base->entry->class->state_top);
 
-    if (base->entry->repo != repo) {
+    /* if (base->entry->repo != repo) {
         err = knd_class_clone(base, repo, &base_copy, task);                   RET_ERR();
         base = base_copy;
         err = link_ancestor(self, base->entry, task);                             RET_ERR();
         parent_linked = true;
-    }
+        } */
 
     /* copy the ancestors */
     for (baseref = base->ancestors; baseref; baseref = baseref->next) {

@@ -53,7 +53,8 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
 
     /* autogenerate unique name */
     if (name_size == 1 && *name == '_') {
-        knd_log("NB: auto generate name: \"%.*s\"", name_size, name);
+        if (DEBUG_INST_IMPORT_LEVEL_2)
+            knd_log("NB: auto generate name: \"%.*s\"", name_size, name);
         self->autogenerate_name = true;
         return make_gsl_err(gsl_OK);
     }
