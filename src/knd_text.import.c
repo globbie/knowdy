@@ -354,9 +354,7 @@ static gsl_err_t parse_synode_spec_array(void *obj,
     return gsl_parse_array(&item_spec, rec, total_size);
 }
 
-static gsl_err_t parse_synode(void *obj,
-                              const char *rec,
-                              size_t *total_size)
+static gsl_err_t parse_synode(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;

@@ -78,6 +78,18 @@ static int stm_export_GSL(struct kndStatement *stm, struct kndTask *task)
     return knd_OK;
 }
 
+static int clause_export_GSL(struct kndClause *clause, struct kndTask *task)
+{
+    struct kndOutput *out = task->out;
+    int err;
+
+    OUT("{clause ", strlen("{clause "));
+
+    OUT("}", 1);
+
+    return knd_OK;
+}
+
 static int sent_export_GSL(struct kndSentence *sent, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
@@ -87,6 +99,9 @@ static int sent_export_GSL(struct kndSentence *sent, struct kndTask *task)
 
     if (sent->stm) {
         err = stm_export_GSL(sent->stm, task);           RET_ERR();
+    }
+    if (sent->clause) {
+        err = clause_export_GSL(sent->clause, task);           RET_ERR();
     }
 
     err = out->writec(out, '}');                        RET_ERR();
