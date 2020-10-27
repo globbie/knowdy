@@ -96,6 +96,54 @@ int knd_proc_inst_export_GSL(struct kndProcInst *self, bool is_list_item, knd_st
     return knd_OK;
 }
 
+int knd_proc_inst_export_JSON(struct kndProcInst *self, bool is_list_item, knd_state_phase phase, struct kndTask *task, size_t depth)
+{
+    struct kndOutput *out = task->out;
+    struct kndProcArgVar *var;
+    int err;
+
+    if (!is_list_item) {
+        err = out->writec(out, '{');
+        RET_ERR();
+        if (phase == KND_CREATED) {
+            err = out->writec(out, '!');
+            RET_ERR();
+        }
+        OUT("inst ", strlen("inst "));
+    }
+
+    OUT(self->name, self->name_size);
+
+    if (task->ctx->use_alias) {
+        if (self->alias_size) {
+            err = out->write(out, "{_as ", strlen("{_as "));                  RET_ERR();
+            err = out->write(out, self->alias, self->alias_size);             RET_ERR();
+            err = out->writec(out, '}');                                      RET_ERR();
+        }
+    }
+    if (self->linear_pos) {
+        err = out->write(out, "{_pos ", strlen("{_pos "));             RET_ERR();
+        err = out->writef(out, "%zu", self->linear_pos);                   RET_ERR();
+        err = out->writec(out, '}');                                 RET_ERR();
+    }
+    if (self->linear_len) {
+        err = out->write(out, "{_len ", strlen("{_len "));             RET_ERR();
+        err = out->writef(out, "%zu", self->linear_len);                   RET_ERR();
+        err = out->writec(out, '}');                                 RET_ERR();
+    }
+
+    if (self->procvar) {
+        for (var = self->procvar->args; var; var = var->next) {
+            knd_proc_arg_var_export_GSL(var, task, depth + 2);
+        }
+    }
+
+    if (!is_list_item) {
+        err = out->writef(out, "%*s}", depth * KND_OFFSET_SIZE, "");  RET_ERR();
+    }
+    return knd_OK;
+}
+
 int knd_proc_inst_export(struct kndProcInst *self, knd_format format, bool is_list_item, struct kndTask *task)
 {
     switch (format) {

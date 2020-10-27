@@ -128,18 +128,29 @@ struct kndSyNodeSpec
     struct kndSyNodeSpec *next;
 };
 
+struct kndSyNodeAttr
+{
+    const char *name;
+    size_t name_size;
+    struct kndClass *val;
+
+    struct kndSyNodeAttr *next;
+};
+
 struct kndSyNode
 {
     const char *name;
     size_t name_size;
     struct kndClass *class;
+    struct kndSyNodeAttr *attrs;
 
-    struct kndSyNodeSpec *specs;
-    size_t num_specs;
+    struct kndSyNode *topic;
+    struct kndSyNodeSpec *spec;
+    struct kndSyNode *peers;
 
     size_t linear_pos;
     size_t linear_len;
-
+    bool is_terminal;
     struct kndSyNode *next;
 };
 
@@ -220,11 +231,15 @@ gsl_err_t knd_statement_import(struct kndStatement *stm, const char *rec, size_t
 int knd_statement_resolve(struct kndStatement *stm, struct kndTask *task);
 
 int knd_text_export(struct kndText *self, knd_format format, struct kndTask *task);
-int knd_par_export_GSL(struct kndPar *par, struct kndTask *task);
+
 int knd_text_export_query_report(struct kndTask *task);
 int knd_text_export_query_report_GSL(struct kndTask *task);
 
 int knd_text_export_GSP(struct kndText *self, struct kndTask *task);
+int knd_text_export_JSON(struct kndText *self, struct kndTask *task);
+int knd_text_build_JSON(const char *rec, size_t rec_size, struct kndTask *task);
+
+int knd_par_export_GSL(struct kndPar *par, struct kndTask *task);
 
 int knd_charseq_marshall(void *elem, size_t *output_size, struct kndTask *task);
 int knd_charseq_unmarshall(const char *elem_id, size_t elem_id_size, const char *val, size_t val_size,

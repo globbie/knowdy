@@ -78,13 +78,45 @@ static int stm_export_GSL(struct kndStatement *stm, struct kndTask *task)
     return knd_OK;
 }
 
+static int synode_export_GSL(struct kndSyNode *syn, struct kndTask *task)
+{
+    struct kndOutput *out = task->out;
+    struct kndSyNodeSpec *spec;
+    int err;
+
+    OUT("{syn ", strlen("{syn "));
+    OUT(syn->name, syn->name_size);
+    if (syn->is_terminal) {
+        OUT("{term ", strlen("{term "));
+        OUT(syn->class->name, syn->class->name_size);
+        err = out->writef(out, "{pos %zu}{len %zu}", syn->linear_pos, syn->linear_len);
+        if (err) return err;
+        OUT("}", 1);
+    }
+    if (syn->topic) {
+        err = synode_export_GSL(syn->topic, task);
+        KND_TASK_ERR("failed to export a synode");
+    }
+    if (syn->spec) {
+        spec = syn->spec;
+        OUT("{spec ", strlen("{spec "));
+        OUT(spec->name, spec->name_size);
+        err = synode_export_GSL(spec->synode, task);
+        KND_TASK_ERR("failed to export a spec synode");
+        OUT("}", 1);
+    }
+    OUT("}", 1);
+    return knd_OK;
+}
+
 static int clause_export_GSL(struct kndClause *clause, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     int err;
 
     OUT("{clause ", strlen("{clause "));
-
+    err = synode_export_GSL(clause->subj, task);
+    KND_TASK_ERR("failed to export clause synode");
     OUT("}", 1);
 
     return knd_OK;
@@ -152,32 +184,6 @@ static int export_GSL(struct kndText *self, struct kndTask *task)
         }
         err = out->writec(out, ']');                            RET_ERR();
     }
-    
-    return knd_OK;
-}
-
-static int export_JSON(struct kndText *self,
-                       struct kndTask *task)
-{
-    struct kndOutput *out = task->out;
-    struct kndState *state;
-    int err;
-
-    state = atomic_load_explicit(&self->states,
-                                 memory_order_relaxed);
-    if (!state) {
-        err = out->write_escaped(out, self->seq->val, self->seq->val_size);
-        if (err) return err;
-        if (self->locale_size) {
-            err = out->write(out, "\"_lang\":\"", strlen("\"_lang:\""));          RET_ERR();
-            err = out->write(out, self->locale, self->locale_size);               RET_ERR();
-            err = out->writec(out, '"');                                          RET_ERR();
-        }
-        return knd_OK;
-    }
-
-    err = out->write_escaped(out, state->val->val, state->val->val_size);
-    if (err) return err;
     
     return knd_OK;
 }
@@ -288,12 +294,15 @@ int knd_text_export(struct kndText *self, knd_format format, struct kndTask *tas
     int err;
     switch (format) {
     case KND_FORMAT_JSON:
-        err = export_JSON(self, task);                           RET_ERR();
+        err = knd_text_export_JSON(self, task);
+        KND_TASK_ERR("failed to export text JSON");
         break;
     default:
-        err = export_GSL(self, task);                            RET_ERR();
+        err = export_GSL(self, task);
+        KND_TASK_ERR("failed to export text GSL");
         break;
     }
 
     return knd_OK;
 }
+ 

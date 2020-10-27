@@ -74,6 +74,7 @@ int knd_statement_resolve(struct kndStatement *stm, struct kndTask *task)
 
     FOREACH (cd, stm->class_declars) {
         FOREACH (ci, cd->insts) {
+            if (!ci->inst) continue;
             if (!ci->inst->class_var) continue;
             err = resolve_class_inst(stm, ci, task);
             KND_TASK_ERR("failed to resolve class inst \"%.*s\"", ci->name_size, ci->name);
@@ -82,6 +83,7 @@ int knd_statement_resolve(struct kndStatement *stm, struct kndTask *task)
 
     FOREACH (pd, stm->proc_declars) {
         FOREACH (pi, pd->insts) {
+            if (!pi->inst) continue;
             if (!pi->inst->procvar) continue;
             err = resolve_proc_inst(stm, pi, task);
             KND_TASK_ERR("failed to resolve proc inst \"%.*s\"", pi->name_size, pi->name);

@@ -209,10 +209,7 @@ static int export_class_set_elem(void *obj,
     return knd_OK;
 }
 
-
-
-static int export_gloss_JSON(struct kndClass *self,
-                             struct kndTask *task)
+static int export_gloss_JSON(struct kndClass *self, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndText *tr;

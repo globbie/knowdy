@@ -224,6 +224,8 @@ void knd_proc_str(struct kndProc *self, size_t depth);
 void knd_proc_inst_str(struct kndProcInst *self, size_t depth);
 int knd_proc_inst_export_GSL(struct kndProcInst *self, bool is_list_item, knd_state_phase phase,
                              struct kndTask *task, size_t depth);
+int knd_proc_inst_export_JSON(struct kndProcInst *self, bool is_list_item, knd_state_phase phase,
+                              struct kndTask *task, size_t depth);
 
 int knd_import_proc_inst(struct kndProcEntry *self, const char *rec, size_t *total_size, struct kndTask *task);
 int knd_inner_proc_import(struct kndProc *self, const char *rec, size_t *total_size, struct kndRepo *repo,

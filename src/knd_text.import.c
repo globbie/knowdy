@@ -222,11 +222,18 @@ static gsl_err_t set_synode_spec_class(void *obj, const char *val, size_t val_si
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t set_synode_class(void *obj, const char *val, size_t val_size)    
+static gsl_err_t set_synode_class(void *obj, const char *name, size_t name_size)    
 {
-    struct kndSyNode *self = obj;
-    self->name = val;
-    self->name_size = val_size;
+    struct LocalContext *ctx = obj;
+    struct kndSyNode *synode = ctx->synode;
+    int err;
+
+    synode->name = name;
+    synode->name_size = name_size;
+
+    err = knd_get_class(ctx->task->repo, name, name_size, &synode->class, ctx->task);
+    if (err) return make_gsl_err_external(err);
+
     return make_gsl_err(gsl_OK);
 }
 
@@ -263,7 +270,7 @@ static gsl_err_t parse_synode_spec(void *obj, const char *rec, size_t *total_siz
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
     struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
-    struct kndSyNode *topic_synode = ctx->synode;
+    struct kndSyNode *base_synode = ctx->synode;
     struct kndSyNodeSpec *spec;
     gsl_err_t parser_err;
     int err;
@@ -271,6 +278,7 @@ static gsl_err_t parse_synode_spec(void *obj, const char *rec, size_t *total_siz
     err = knd_synode_spec_new(mempool, &spec);
     if (err) return make_gsl_err_external(err);
     ctx->synode_spec = spec;
+    ctx->synode = NULL;
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -286,7 +294,10 @@ static gsl_err_t parse_synode_spec(void *obj, const char *rec, size_t *total_siz
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return parser_err;
 
-    ctx->synode = topic_synode;
+    base_synode->spec = spec;
+    ctx->synode = base_synode;
+    ctx->synode_spec = NULL;
+
     return make_gsl_err(gsl_OK);
 }
 
@@ -295,31 +306,30 @@ static gsl_err_t parse_term_synode(void *obj, const char *rec, size_t *total_siz
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
     struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndSyNode *base_synode = ctx->synode;
     struct kndSyNode *synode;
     gsl_err_t parser_err;
     int err;
 
     err = knd_synode_new(mempool, &synode);
     if (err) return make_gsl_err_external(err);
+    synode->is_terminal = true;
+    base_synode->topic = synode;
+
     ctx->synode = synode;
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_synode_class,
-          .obj = synode
+          .obj = ctx
         },
-        { .name = "syn",
-          .name_size = strlen("syn"),
-          .parse = parse_synode,
-          .obj = obj
-        },
-        { .name = "_pos",
-          .name_size = strlen("_pos"),
+        { .name = "pos",
+          .name_size = strlen("pos"),
           .parse = gsl_parse_size_t,
           .obj = &synode->linear_pos
         },
-        { .name = "_len",
-          .name_size = strlen("_len"),
+        { .name = "len",
+          .name_size = strlen("len"),
           .parse = gsl_parse_size_t,
           .obj = &synode->linear_len
         }
@@ -328,38 +338,18 @@ static gsl_err_t parse_term_synode(void *obj, const char *rec, size_t *total_siz
     if (parser_err.code) {
         return parser_err;
     }
-    /*if (par->last_sent)
-        par->last_sent->next = sent;
-    else
-        par->sents = sent;
 
-    par->last_sent = sent;
-    par->num_sents++;
-    sent->numid = par->num_sents;
-    */
-    ctx->synode = NULL;
-
+    ctx->synode = base_synode;
     return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_synode_spec_array(void *obj,
-                                         const char *rec,
-                                         size_t *total_size)
-{
-    struct gslTaskSpec item_spec = {
-        .is_list_item = true,
-        .parse = parse_synode_spec,
-        .obj = obj
-    };
-    return gsl_parse_array(&item_spec, rec, total_size);
 }
 
 static gsl_err_t parse_synode(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    // struct kndSentence *sent = ctx->sent;
     struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndSyNode *base_synode = ctx->synode;
+    struct kndSyNodeSpec *spec = ctx->synode_spec;
     struct kndSyNode *synode;
     gsl_err_t parser_err;
     int err;
@@ -367,24 +357,25 @@ static gsl_err_t parse_synode(void *obj, const char *rec, size_t *total_size)
     err = knd_synode_new(mempool, &synode);
     if (err) return make_gsl_err_external(err);
     ctx->synode = synode;
+    ctx->synode_spec = NULL;
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_synode_class,
-          .obj = synode
+          .obj = obj
         },
         { .name = "syn",
           .name_size = strlen("syn"),
           .parse = parse_synode,
           .obj = obj
         },
-        { .name = "_pos",
-          .name_size = strlen("_pos"),
+        { .name = "pos",
+          .name_size = strlen("pos"),
           .parse = gsl_parse_size_t,
           .obj = &synode->linear_pos
         },
-        { .name = "_len",
-          .name_size = strlen("_len"),
+        { .name = "len",
+          .name_size = strlen("len"),
           .parse = gsl_parse_size_t,
           .obj = &synode->linear_len
         },
@@ -393,25 +384,23 @@ static gsl_err_t parse_synode(void *obj, const char *rec, size_t *total_size)
           .parse = parse_term_synode,
           .obj = obj
         },
-        { .type = GSL_GET_ARRAY_STATE,
-          .name = "spec",
+        { .name = "spec",
           .name_size = strlen("spec"),
-          .parse = parse_synode_spec_array,
+          .parse = parse_synode_spec,
           .obj = obj
         }
     };
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return parser_err;
 
-    /*if (par->last_sent)
-        par->last_sent->next = sent;
-    else
-        par->sents = sent;
+    if (base_synode)
+        base_synode->topic = synode;
+    if (spec)
+        spec->synode = synode;
+    
+    ctx->synode = base_synode;
+    ctx->synode_spec = spec;
 
-    par->last_sent = sent;
-    par->num_sents++;
-    sent->numid = par->num_sents;
-    */
     return make_gsl_err(gsl_OK);
 }
 
@@ -433,7 +422,7 @@ static gsl_err_t parse_subj(void *obj, const char *rec, size_t *total_size)
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_synode_class,
-          .obj = synode
+          .obj = obj
         },
         { .name = "syn",
           .name_size = strlen("syn"),
@@ -443,6 +432,11 @@ static gsl_err_t parse_subj(void *obj, const char *rec, size_t *total_size)
         { .name = "term",
           .name_size = strlen("term"),
           .parse = parse_term_synode,
+          .obj = obj
+        },
+        { .name = "spec",
+          .name_size = strlen("spec"),
+          .parse = parse_synode_spec,
           .obj = obj
         }
     };
@@ -476,7 +470,7 @@ static gsl_err_t parse_pred(void *obj, const char *rec, size_t *total_size)
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_synode_class,
-          .obj = synode
+          .obj = obj
         },
         { .name = "syn",
           .name_size = strlen("syn"),
@@ -494,9 +488,7 @@ static gsl_err_t parse_pred(void *obj, const char *rec, size_t *total_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_clause(void *obj,
-                              const char *rec,
-                              size_t *total_size)
+static gsl_err_t parse_clause(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
@@ -523,8 +515,8 @@ static gsl_err_t parse_clause(void *obj,
           .parse = parse_clause,
           .obj = obj
         },
-        { .name = "subj",
-          .name_size = strlen("subj"),
+        { .name = "syn",
+          .name_size = strlen("syn"),
           .parse = parse_subj,
           .obj = obj
         },
@@ -567,6 +559,7 @@ static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_si
     task->type = KND_INNER_STATE;
     parser_err = knd_class_select(task->repo, rec, total_size, task);
     task->type = orig_task_type;
+
     return parser_err;
 }
 

@@ -31,7 +31,8 @@ static int export_concise_JSON(struct kndClassInst *self, struct kndTask *task)
 }
 #endif
 
-int knd_class_inst_export_JSON(struct kndClassInst *self, bool is_list_item, struct kndTask *task)
+int knd_class_inst_export_JSON(struct kndClassInst *self, bool is_list_item, knd_state_phase unused_var(phase),
+                               struct kndTask *task, size_t unused_var(depth))
 {
     struct kndOutput *out = task->out;
     struct kndState *state = self->states;
@@ -128,8 +129,8 @@ static int export_class_inst_JSON(void *obj,
         err = out->writec(out, ',');                                              RET_ERR();
     }
 
-    // TODO: depth
-    err = knd_class_inst_export_JSON(inst, false, task);                                 RET_ERR();
+    err = knd_class_inst_export_JSON(inst, false, KND_SELECTED, task, 0);
+    KND_TASK_ERR("failed to export class inst JSON");
     task->batch_size++;
 
     return knd_OK;
