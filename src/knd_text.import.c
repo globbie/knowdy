@@ -225,6 +225,7 @@ static gsl_err_t set_synode_spec_class(void *obj, const char *val, size_t val_si
 static gsl_err_t set_synode_class(void *obj, const char *name, size_t name_size)    
 {
     struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
     struct kndSyNode *synode = ctx->synode;
     int err;
 
@@ -232,8 +233,10 @@ static gsl_err_t set_synode_class(void *obj, const char *name, size_t name_size)
     synode->name_size = name_size;
 
     err = knd_get_class(ctx->task->repo, name, name_size, &synode->class, ctx->task);
-    if (err) return make_gsl_err_external(err);
-
+    if (err) {
+        KND_TASK_LOG("no such class: %.*s", name_size, name);
+        return make_gsl_err(gsl_NO_MATCH);
+    }
     return make_gsl_err(gsl_OK);
 }
 

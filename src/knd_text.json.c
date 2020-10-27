@@ -311,7 +311,7 @@ int knd_text_build_JSON(const char *rec, size_t rec_size, struct kndTask *task)
 
     parser_err = knd_text_import(text, rec, &rec_size, task);
     if (parser_err.code) {
-        KND_TASK_LOG("text parsing failed: %.*s", task->log->buf_size, task->log->buf);
+        KND_TASK_LOG("text parsing failed: %d %.*s", parser_err.code, task->log->buf_size, task->log->buf);
         return knd_FAIL;
     }
 
