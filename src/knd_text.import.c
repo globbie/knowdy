@@ -273,12 +273,20 @@ static gsl_err_t set_text_seq(void *obj, const char *val, size_t val_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t set_synode_spec_class(void *obj, const char *val, size_t val_size)    
+static gsl_err_t set_synode_spec_class(void *obj, const char *name, size_t name_size)    
 {
     struct LocalContext *ctx = obj;
-    struct kndSyNodeSpec *self = ctx->synode_spec;
-    self->name = val;
-    self->name_size = val_size;
+    struct kndTask *task = ctx->task;
+    struct kndSyNodeSpec *spec = ctx->synode_spec;
+    int err;
+    spec->name = name;
+    spec->name_size = name_size;
+
+    err = knd_get_class(ctx->task->repo, name, name_size, &spec->class, ctx->task);
+    if (err) {
+        KND_TASK_LOG("no such class: %.*s", name_size, name);
+        return make_gsl_err(gsl_NO_MATCH);
+    }
     return make_gsl_err(gsl_OK);
 }
 
