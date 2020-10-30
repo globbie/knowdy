@@ -94,13 +94,13 @@ static int stm_export_JSON(struct kndStatement *stm, struct kndTask *task)
     return knd_OK;
 }
 
-static int export_gloss(struct kndSyNode *synode, struct kndTask *task)
+static int export_gloss(struct kndText *glosses, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndText *tr;
     int err;
 
-    FOREACH (tr, synode->class->tr) {
+    FOREACH (tr, glosses) {
         if (task->ctx->locale_size != tr->locale_size) continue;
         if (memcmp(task->ctx->locale, tr->locale, tr->locale_size)) {
             continue;
@@ -130,7 +130,7 @@ static int synode_export_JSON(struct kndSyNode *syn, struct kndTask *task)
     OUT("\"_n\":\"", strlen("\"_n\":\""));
     OUT(syn->name, syn->name_size);
     OUT("\"", 1);
-    err = export_gloss(syn, task);
+    err = export_gloss(syn->class->tr, task);
     KND_TASK_ERR("failed to export a gloss");
     if (syn->is_terminal) {
         err = out->writef(out, ",\"_pos\":%zu,\"_len\":%zu", syn->linear_pos, syn->linear_len);
@@ -150,6 +150,9 @@ static int synode_export_JSON(struct kndSyNode *syn, struct kndTask *task)
         OUT("\"_n\":\"", strlen("\"_n\":\""));
         OUT(spec->name, spec->name_size);
         OUT("\"", 1);
+        err = export_gloss(spec->class->tr, task);
+        KND_TASK_ERR("failed to export a spec gloss");
+
         if (spec->synode) {
             OUT(",\"_tp\":", strlen(",\"_tp\":"));
             err = synode_export_JSON(spec->synode, task);
