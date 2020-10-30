@@ -101,6 +101,61 @@ static gsl_err_t set_gloss_value(void *obj, const char *val, size_t val_size)
     return make_gsl_err(gsl_OK);
 }
 
+static gsl_err_t set_gloss_abbr(void *obj, const char *val, size_t val_size)
+{
+    struct LocalContext *ctx = obj;
+    char idbuf[KND_ID_SIZE];
+    size_t idbuf_size;
+    struct kndTask *task = ctx->task;
+    struct kndRepo *repo = ctx->repo;
+    struct kndText *text = ctx->text;
+    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndCharSeq *seq;
+    int err;
+    assert(val_size != 0);
+
+    switch (task->type) {
+    case KND_UNFREEZE_STATE:
+        err = knd_shared_set_get(repo->str_idx, val, val_size, (void**)&seq);
+        if (err) {
+            KND_TASK_LOG("failed to decode a gloss abbr");
+            return make_gsl_err_external(err);
+        }
+        text->seq = seq;
+
+        if (DEBUG_TEXT_IMPORT_LEVEL_2)
+            knd_log(">> gloss abbr decoded \"%.*s\" => \"%.*s\"", val_size, val, text->seq->val_size, text->seq->val);
+        return make_gsl_err(gsl_OK);
+    default:
+        break;
+    }
+    seq = knd_shared_dict_get(repo->str_dict, val, val_size);
+    if (!seq) {
+        err = knd_charseq_new(mempool, &seq);
+        if (err) {
+            KND_TASK_LOG("failed to alloc a gloss abbr charseq");
+            return make_gsl_err_external(err);
+        }
+        seq->val = val;
+        seq->val_size = val_size;
+        seq->numid = atomic_fetch_add_explicit(&repo->num_strs, 1, memory_order_relaxed);
+
+        err = knd_shared_dict_set(repo->str_dict, val, val_size, (void*)seq, mempool, NULL, &seq->item, false);
+        if (err) {
+            KND_TASK_LOG("failed to register a gloss by name");
+            return make_gsl_err_external(err);
+        }
+        knd_uid_create(seq->numid, idbuf, &idbuf_size);
+        err = knd_shared_set_add(repo->str_idx, idbuf, idbuf_size, (void*)seq);
+        if (err) {
+            KND_TASK_LOG("failed to register a gloss abbr by numid");
+            return make_gsl_err_external(err);
+        }
+    }
+    text->abbr = seq;
+    return make_gsl_err(gsl_OK);
+}
+
 static gsl_err_t parse_gloss_item(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
@@ -126,6 +181,11 @@ static gsl_err_t parse_gloss_item(void *obj, const char *rec, size_t *total_size
           .name_size = strlen("t"),
           .run = set_gloss_value,
           .obj = &ctx
+        },
+        { .name = "abbr",
+          .name_size = strlen("abbr"),
+          .run = set_gloss_abbr,
+          .obj = &ctx
         }
     };
     gsl_err_t parser_err;
@@ -134,7 +194,7 @@ static gsl_err_t parse_gloss_item(void *obj, const char *rec, size_t *total_size
     if (parser_err.code) return parser_err;
 
     if (t->locale_size == 0 || t->seq == NULL)
-        return make_gsl_err(gsl_FORMAT);  // error: both of them are required
+        return make_gsl_err(gsl_FORMAT);  // error: both attrs required
 
     if (DEBUG_TEXT_IMPORT_LEVEL_2)
         knd_log(".. read gloss translation: \"%.*s\",  text: \"%.*s\"",

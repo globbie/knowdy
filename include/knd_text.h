@@ -41,7 +41,7 @@ struct kndCharSeq
     knd_charseq_enc_type enc;
     const char *val;
     size_t val_size;
-    size_t numid;
+    size_t numid; // global str idx id
     struct kndSharedDictItem *item;
 };
 
@@ -204,6 +204,7 @@ struct kndText
 
     struct kndAttrVar *attr_var;
     struct kndCharSeq *seq;
+    struct kndCharSeq *abbr;
 
     struct kndSyNode *synodes;
     struct kndStatement *stms;

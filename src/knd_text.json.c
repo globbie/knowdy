@@ -109,6 +109,12 @@ static int export_gloss(struct kndSyNode *synode, struct kndTask *task)
         err = out->write_escaped(out, tr->seq->val,  tr->seq->val_size);
         KND_TASK_ERR("failed to export a charseq");
         OUT("\"", 1);
+        if (tr->abbr) {
+            OUT(",\"_abbr\":\"", strlen(",\"_abbr\":\""));
+            err = out->write_escaped(out, tr->abbr->val,  tr->abbr->val_size);
+            KND_TASK_ERR("failed to export an abbr charseq");
+            OUT("\"", 1);
+        }
         break;
     }
     return knd_OK;
