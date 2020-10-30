@@ -130,10 +130,9 @@ static int synode_export_JSON(struct kndSyNode *syn, struct kndTask *task)
     OUT("\"_n\":\"", strlen("\"_n\":\""));
     OUT(syn->name, syn->name_size);
     OUT("\"", 1);
+    err = export_gloss(syn, task);
+    KND_TASK_ERR("failed to export a gloss");
     if (syn->is_terminal) {
-        err = export_gloss(syn, task);
-        KND_TASK_ERR("failed to export a gloss");
-
         err = out->writef(out, ",\"_pos\":%zu,\"_len\":%zu", syn->linear_pos, syn->linear_len);
         if (err) return err;
         OUT("}", 1);
