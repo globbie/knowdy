@@ -34,7 +34,7 @@ static int export_class_declars(struct kndClassDeclaration *decls, struct kndTas
         if (count) {
             OUT(",", 1);
         }
-        OUT("{\"_n\":\"", strlen("{\"_n\":\""));
+        OUT("{\"name\":\"", strlen("{\"name\":\""));
         OUT(decl->entry->name, decl->entry->name_size);
         OUT("\"", 1);
 
@@ -48,17 +48,18 @@ static int export_class_declars(struct kndClassDeclaration *decls, struct kndTas
     return knd_OK;
 }
 
-static int export_proc_declars(struct kndProcDeclaration *decl, struct kndTask *task)
+static int export_proc_declars(struct kndProcDeclaration *decls, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndProcInstEntry *entry;
+    struct kndProcDeclaration *decl;
     int err;
 
-    for (; decl; decl = decl->next) {
+    FOREACH (decl, decls) {
         err = out->write(out, "{proc ", strlen("{proc "));                        RET_ERR();
         err = out->write(out, decl->entry->name, decl->entry->name_size);         RET_ERR();
 
-        for (entry = decl->insts; entry; entry = entry->next) {
+        FOREACH (entry, decl->insts) {
             err = knd_proc_inst_export_JSON(entry->inst, false, KND_CREATED, task, 0);    RET_ERR();
         }
         err = out->writec(out, '}');                                              RET_ERR();
@@ -105,12 +106,12 @@ static int export_gloss(struct kndText *glosses, struct kndTask *task)
         if (memcmp(task->ctx->locale, tr->locale, tr->locale_size)) {
             continue;
         }
-        OUT(",\"_gloss\":\"", strlen(",\"_gloss\":\""));
+        OUT(",\"gloss\":\"", strlen(",\"gloss\":\""));
         err = out->write_escaped(out, tr->seq->val,  tr->seq->val_size);
         KND_TASK_ERR("failed to export a charseq");
         OUT("\"", 1);
         if (tr->abbr) {
-            OUT(",\"_abbr\":\"", strlen(",\"_abbr\":\""));
+            OUT(",\"abbr\":\"", strlen(",\"abbr\":\""));
             err = out->write_escaped(out, tr->abbr->val,  tr->abbr->val_size);
             KND_TASK_ERR("failed to export an abbr charseq");
             OUT("\"", 1);
@@ -127,34 +128,34 @@ static int synode_export_JSON(struct kndSyNode *syn, struct kndTask *task)
     int err;
 
     OUT("{", 1);
-    OUT("\"_n\":\"", strlen("\"_n\":\""));
+    OUT("\"name\":\"", strlen("\"name\":\""));
     OUT(syn->name, syn->name_size);
     OUT("\"", 1);
     err = export_gloss(syn->class->tr, task);
     KND_TASK_ERR("failed to export a gloss");
     if (syn->is_terminal) {
-        err = out->writef(out, ",\"_pos\":%zu,\"_len\":%zu", syn->linear_pos, syn->linear_len);
+        err = out->writef(out, ",\"pos\":%zu,\"len\":%zu", syn->linear_pos, syn->linear_len);
         if (err) return err;
         OUT("}", 1);
         return knd_OK;
     }
 
     if (syn->topic) {
-        OUT(",\"_tp\":", strlen(",\"_tp\":"));
+        OUT(",\"topic\":", strlen(",\"topic\":"));
         err = synode_export_JSON(syn->topic, task);
         KND_TASK_ERR("failed to export a synode");
     }
     if (syn->spec) {
         spec = syn->spec;
-        OUT(",\"_spec\":{", strlen(",\"_spec\":{"));
-        OUT("\"_n\":\"", strlen("\"_n\":\""));
+        OUT(",\"spec\":{", strlen(",\"spec\":{"));
+        OUT("\"name\":\"", strlen("\"name\":\""));
         OUT(spec->name, spec->name_size);
         OUT("\"", 1);
         err = export_gloss(spec->class->tr, task);
         KND_TASK_ERR("failed to export a spec gloss");
 
         if (spec->synode) {
-            OUT(",\"_tp\":", strlen(",\"_tp\":"));
+            OUT(",\"topic\":", strlen(",\"topic\":"));
             err = synode_export_JSON(spec->synode, task);
             KND_TASK_ERR("failed to export a spec synode");
         }
@@ -169,17 +170,17 @@ static int sent_export_JSON(struct kndSentence *sent, struct kndTask *task)
     struct kndOutput *out = task->out;
     int err;
     OUT("{", 1);
-    OUT("\"_seq\":\"", strlen("\"_seq\":\""));
+    OUT("\"seq\":\"", strlen("\"seq\":\""));
     OUT(sent->seq, sent->seq_size);
     OUT("\"", 1);
 
     if (sent->stm) {
-        OUT(",\"_stm\":", strlen(",\"_stm\":"));
+        OUT(",\"stm\":", strlen(",\"stm\":"));
         err = stm_export_JSON(sent->stm, task);           RET_ERR();
     }
 
     if (sent->clause) {
-        OUT(",\"_clause\":", strlen(",\"_clause\":"));
+        OUT(",\"clause\":", strlen(",\"clause\":"));
         err = synode_export_JSON(sent->clause->subj, task);
         KND_TASK_ERR("failed to export clause synode");
     }
@@ -214,10 +215,9 @@ int knd_text_export_JSON(struct kndText *self, struct kndTask *task)
         err = out->write(out, seq->val, seq->val_size);                   RET_ERR();
     }
     if (self->locale_size) {
-        OUT("{", 1);
-        OUT("_lang ", strlen("_lang "));
+        OUT("\"lang\":", strlen("\"lang\":"));
         OUT(self->locale, self->locale_size);
-        OUT("}", 1);
+        OUT("\"", 1);
     }
 
     if (self->num_pars) {
