@@ -659,6 +659,7 @@ static gsl_err_t parse_import_class_inst(void *obj, const char *rec, size_t *tot
     struct kndRepo *repo = task->repo;
     struct kndRepoSnapshot *snapshot = atomic_load_explicit(&repo->snapshots, memory_order_relaxed);
     knd_task_spec_type orig_task_type = task->type;
+    struct kndRepoAccess *acl;
     struct kndClass *c;
     int err;
 
@@ -672,6 +673,15 @@ static gsl_err_t parse_import_class_inst(void *obj, const char *rec, size_t *tot
         return *total_size = 0, make_gsl_err_external(err);
     }
     if (task->user_ctx) {
+        acl = task->user_ctx->acls;
+        assert(acl != NULL);
+
+        if (!acl->allow_write) {
+            KND_TASK_LOG("writing not allowed");
+            err = knd_ACCESS;
+            if (err) return make_gsl_err_external(err);
+        }
+
         repo = task->user_ctx->repo;
         if (entry->repo != repo) {
             err = knd_class_entry_clone(ctx->class_entry, repo, &entry, task);

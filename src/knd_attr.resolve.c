@@ -237,6 +237,11 @@ static int resolve_inner_var(struct kndClass *self, struct kndAttrVar *parent_it
             if (err) return err;
             item->class_inst_entry = ci->entry;
             break;
+        case KND_ATTR_TEXT:
+            item->attr = attr;
+            err = resolve_text(item, task);
+            KND_TASK_ERR("failed to resolve text attr");
+            break;
         case KND_ATTR_PROC_REF:
             proc = attr->proc;
             err = knd_resolve_proc_ref(self, item->val, item->val_size, proc, &item->proc, task);
@@ -534,7 +539,7 @@ int knd_resolve_attr_vars(struct kndClass *self, struct kndClassVar *cvar, struc
     }
 
     FOREACH (var, cvar->attrs) {
-        if (DEBUG_ATTR_RESOLVE_LEVEL_3)
+        if (DEBUG_ATTR_RESOLVE_LEVEL_2)
             knd_log(".. resolving attr var: %.*s", var->name_size, var->name);
 
         if (!memcmp("_proc", var->name, var->name_size)) {

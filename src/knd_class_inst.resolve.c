@@ -26,12 +26,15 @@
 
 int knd_class_inst_resolve(struct kndClassInst *self, struct kndTask *task)
 {
+    assert(self->blueprint != NULL);
+    assert(self->blueprint->class != NULL);
     struct kndClass *c = self->blueprint->class;
     int err;
     self->resolving_in_progress = true;
 
-    if (DEBUG_INST_RESOLVE_LEVEL_2)
-        knd_log(".. resolve class inst %.*s::%.*s", c->name_size, c->name, c, self->name_size, self->name);
+    if (DEBUG_INST_RESOLVE_LEVEL_2) {
+        knd_log(".. resolve class inst %.*s", self->name_size, self->name);
+    }
 
     if (self->class_var->attrs) {
         err = knd_resolve_attr_vars(c, self->class_var, task);

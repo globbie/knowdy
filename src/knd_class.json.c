@@ -230,8 +230,7 @@ static int export_gloss_JSON(struct kndClass *self, struct kndTask *task)
     return knd_OK;
 }
 
-static int export_concise_JSON(struct kndClass *self,
-                               struct kndTask *task)
+static int export_concise_JSON(struct kndClass *self, struct kndTask *task)
 {
     struct kndClassVar *item;
     int err;
@@ -242,8 +241,8 @@ static int export_concise_JSON(struct kndClass *self,
 
     for (item = self->baseclass_vars; item; item = item->next) {
         if (!item->attrs) continue;
-        err = knd_attr_vars_export_JSON(item->attrs,
-                                        task, true);      RET_ERR();
+        err = knd_attr_vars_export_JSON(item->attrs, task, true, 0);
+        RET_ERR();
     }
 
     if (DEBUG_JSON_LEVEL_2)
@@ -373,8 +372,7 @@ extern int knd_class_facets_export_JSON(struct kndTask *task)
     return knd_OK;
 }
 
-extern int knd_class_set_export_JSON(struct kndSet *set,
-                                     struct kndTask *task)
+extern int knd_class_set_export_JSON(struct kndSet *set, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     size_t curr_depth = 0;
@@ -647,27 +645,13 @@ static int export_baseclass_vars(struct kndClass *self,
         }
 
         if (item->attrs) {
-            //item->attrs->depth = task->depth;
-            //item->attrs->max_depth = task->ctx->max_depth;
-            err = knd_attr_vars_export_JSON(item->attrs,
-                                            task, false);      RET_ERR();
+            err = knd_attr_vars_export_JSON(item->attrs, task, false, 0);
+            KND_TASK_ERR("failed to export JSON of attr vars");
         }
-
-        /*if (self->num_computed_attrs) {
-            if (DEBUG_JSON_LEVEL_TMP)
-                knd_log("\n.. export computed attrs of class %.*s",
-                        self->name_size, self->name);
-            err = present_computed_class_attrs(self, item);
-            if (err) return err;
-            }*/
-
-
-        err = out->write(out, "}", 1);      RET_ERR();
+        OUT("}", 1);
         item_count++;
     }
-    err = out->write(out, "]", 1);
-    if (err) return err;
-
+    OUT("]", 1);
     return knd_OK;
 }
                                      

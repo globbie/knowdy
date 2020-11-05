@@ -399,10 +399,7 @@ static int traverse_sync(struct kndSetElemIdx *parent_idx,
     return knd_OK;
 }
 
-int knd_set_sync(struct kndSet *self,
-                 map_cb_func cb,
-                 size_t *total_size,
-                 struct kndTask *task)
+int knd_set_sync(struct kndSet *self, map_cb_func cb, size_t *total_size, struct kndTask *task)
 {
     struct kndSetDir *root_dir;
     int err;

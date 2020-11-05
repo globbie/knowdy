@@ -249,26 +249,16 @@ int kndAttr_new(struct kndAttr **self);
 
 int knd_attr_var_export_GSL(struct kndAttrVar *self, struct kndTask *task, size_t depth);
 int knd_attr_vars_export_GSL(struct kndAttrVar *items, struct kndTask *task, bool is_concise, size_t depth);
-int knd_attr_var_export_JSON(struct kndAttrVar *self, struct kndTask *task);
+int knd_attr_var_export_JSON(struct kndAttrVar *var, struct kndTask *task, size_t depth);
+int knd_attr_vars_export_JSON(struct kndAttrVar *vars, struct kndTask *task, bool is_concise, size_t depth);
 
 int knd_export_inherited_attr(void *obj, const char *elem_id, size_t elem_id_size, size_t count, void *elem);
 
-int knd_attr_vars_export_JSON(struct kndAttrVar *items,
-                                     struct kndTask *task,
-                                     bool is_concise);
+int knd_attr_var_export_GSP(struct kndAttrVar *self, struct kndTask *task, struct kndOutput *out, size_t depth);
+int knd_attr_vars_export_GSP(struct kndAttrVar *items, struct kndOutput *out,struct kndTask *task,
+                             size_t depth, bool is_concise);
 
-int knd_attr_var_export_GSP(struct kndAttrVar *self,
-                                   struct kndTask *task,
-                                   struct kndOutput *out);
-
-int knd_attr_vars_export_GSP(struct kndAttrVar *items,
-                                    struct kndOutput *out,
-                                    struct kndTask *task,
-                                    size_t depth,
-                                    bool is_concise);
-
-int knd_present_computed_inner_attrs(struct kndAttrVar *attr_var,
-                                           struct kndOutput *out);
+int knd_present_computed_inner_attrs(struct kndAttrVar *attr_var, struct kndOutput *out);
 
 int knd_compute_num_value(struct kndAttr *attr,
                                  struct kndAttrVar *attr_var,
@@ -284,6 +274,7 @@ int knd_register_attr_ref(void *obj, const char *elem_id, size_t elem_id_size,
 int knd_get_arg_value(struct kndAttrVar *src, struct kndAttrVar *query, struct kndProcCallArg *arg);
 
 int knd_attr_export_GSL(struct kndAttr *self, struct kndTask *task, size_t depth);
+int knd_attr_export_JSON(struct kndAttr *self, struct kndTask *task, size_t depth);
 
 int knd_attr_export(struct kndAttr *self, knd_format format, struct kndTask *task);
 void knd_attr_var_str(struct kndAttrVar *item, size_t depth);

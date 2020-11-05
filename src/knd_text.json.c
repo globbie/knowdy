@@ -192,28 +192,27 @@ static int sent_export_JSON(struct kndSentence *sent, struct kndTask *task)
 int knd_text_export_JSON(struct kndText *self, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
-    //const char *locale = task->ctx->locale;
-    // size_t locale_size = task->ctx->locale_size;
     struct kndPar *par;
     struct kndSentence *sent;
-    struct kndState *state;
+    // struct kndState *state;
     struct kndCharSeq *seq = self->seq;
-    //struct kndStateVal *val;
-    // struct kndText *t;
     int err;
 
     OUT("{", 1);
 
-    state = atomic_load_explicit(&self->states, memory_order_relaxed);
+    /*state = atomic_load_explicit(&self->states, memory_order_relaxed);
     if (seq && state) {
         seq->val = state->val->val;
         seq->val_size = state->val->val_size;
         return knd_OK;
-    }
+        }*/
 
     if (seq && seq->val_size) {
-        err = out->write(out, seq->val, seq->val_size);                   RET_ERR();
+        OUT("\"seq\":\"", strlen("\"seq\":\""));
+        OUT(seq->val, seq->val_size);
+        OUT("\"", 1);
     }
+
     if (self->locale_size) {
         OUT("\"lang\":", strlen("\"lang\":"));
         OUT(self->locale, self->locale_size);

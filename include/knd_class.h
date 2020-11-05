@@ -183,7 +183,6 @@ struct kndClass
     struct kndSharedDict * _Atomic inst_name_idx;
     atomic_size_t    num_insts;
     atomic_size_t    inst_id_count;
-
     
     /* detect vicious circles */
     bool resolving_in_progress;

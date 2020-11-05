@@ -223,12 +223,12 @@ static int attr_var_list_export_GSP(struct kndAttrVar *parent_item, struct kndTa
             OUT(c->entry->id, c->entry->id_size);
             break;
         case KND_ATTR_INNER:
-            err = knd_attr_var_export_GSP(item, task, out);
+            err = knd_attr_var_export_GSP(item, task, out, 0);
             KND_TASK_ERR("failed to export inner attr var");
             break;
         default:
             OUT(item->name, item->name_size);
-            err = knd_attr_var_export_GSP(item, task, out);
+            err = knd_attr_var_export_GSP(item, task, out, 0);
             KND_TASK_ERR("failed to export attr var");
         }
         OUT("}", 1);
@@ -257,14 +257,15 @@ int knd_attr_vars_export_GSP(struct kndAttrVar *items, struct kndOutput *out, st
         OUT("{", 1);
         OUT(attr->id, attr->id_size);
         OUT(" ", 1);
-        err = knd_attr_var_export_GSP(item, task, out);
+        err = knd_attr_var_export_GSP(item, task, out, 0);
         KND_TASK_ERR("failed to export attr var");
         OUT("}", 1);
     }
     return knd_OK;
 }
 
-int knd_attr_var_export_GSP(struct kndAttrVar *var, struct kndTask *task, struct kndOutput *out)
+int knd_attr_var_export_GSP(struct kndAttrVar *var, struct kndTask *task, struct kndOutput *out,
+                            size_t unused_var(depth))
 {
     int err;
     

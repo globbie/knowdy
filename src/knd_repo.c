@@ -142,15 +142,12 @@ static int present_latest_state_JSON(struct kndRepo *self, struct kndOutput *out
     return knd_OK;
 }
 
-static gsl_err_t present_repo_state(void *obj,
-                                    const char *unused_var(name),
-                                    size_t unused_var(name_size))
+static gsl_err_t present_repo_state(void *obj, const char *unused_var(name), size_t unused_var(name_size))
 {
     struct kndTask *task = obj;
     struct kndRepo *repo = task->repo;
     struct kndOutput *out = task->out;
-    struct kndMemPool *mempool = task->mempool;
-    struct kndSet *set;
+    // struct kndMemPool *mempool = task->mempool;
     int err;
 
     if (!repo) {
@@ -163,7 +160,9 @@ static gsl_err_t present_repo_state(void *obj,
         return make_gsl_err(gsl_OK);
     }
 
+    
     task->type = KND_SELECT_STATE;
+
     /* restore:    if (!repo->commits) goto show_curr_state;
     commit = repo->commits;
     if (task->state_gt >= commit->numid) goto show_curr_state;
@@ -173,52 +172,19 @@ static gsl_err_t present_repo_state(void *obj,
     //if (task->state_lt && task->state_lt < task->state_gt) goto show_curr_state;
 
     // TODO
-    size_t latest_commit_id = atomic_load_explicit(&repo->snapshots->num_commits, memory_order_relaxed);
-    task->state_lt = latest_commit_id + 1;
+    // size_t latest_commit_id = atomic_load_explicit(&repo->snapshots->num_commits, memory_order_relaxed);
+    // task->state_lt = latest_commit_id + 1;
 
-    if (DEBUG_REPO_LEVEL_2) {
-        knd_log(".. select repo delta:  gt %zu  lt %zu  eq:%zu..",
-                task->state_gt, task->state_lt, task->state_eq);
-    }
-
-    err = knd_set_new(mempool, &set);
-    if (err) return make_gsl_err_external(err);
-    set->mempool = mempool;
-
-    /*err = select_commit_range(repo,
-                              task->state_gt, task->state_lt,
-                              task->state_eq, set);
-    if (err) return make_gsl_err_external(err);
-    */
-
-    // export
-    task->show_removed_objs = true;
-
-    // TODO: formats
-    err = knd_class_set_export_JSON(set, task);
-    if (err) return make_gsl_err_external(err);
-
-    return make_gsl_err(gsl_OK);
-    
-    /*show_curr_state:
-
-    switch (task->format) {
-    case KND_FORMAT_JSON:
+    switch (task->ctx->format) {
+    default:
         err = present_latest_state_JSON(repo, out);  
         if (err) return make_gsl_err_external(err);
         break;
-    default:
-        err = present_latest_state_GSL(repo, out);  
-        if (err) return make_gsl_err_external(err);
-        break;
     }
-    */
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_repo_state(void *obj,
-                                  const char *rec,
-                                  size_t *total_size)
+static gsl_err_t parse_repo_state(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
 
@@ -276,7 +242,7 @@ static gsl_err_t run_select_repo(void *obj, const char *name, size_t name_size)
         default:
             break;
         }
-        knd_log("== read-only base repo selected!");
+        // knd_log("== read-only base repo selected!");
         task->repo = task->shard->user->repo;
         return make_gsl_err(gsl_OK);
     }
@@ -285,6 +251,9 @@ static gsl_err_t run_select_repo(void *obj, const char *name, size_t name_size)
     if (name_size == 1) {
         switch (*name) {
         case '/':
+            return make_gsl_err(gsl_OK);
+        case '~':
+            task->repo = task->shard->user->repo;
             return make_gsl_err(gsl_OK);
         default:
             break;
@@ -299,9 +268,7 @@ static gsl_err_t run_select_repo(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_class_select(void *obj,
-                                    const char *rec,
-                                    size_t *total_size)
+static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
     struct kndUserContext *ctx = task->user_ctx;
@@ -311,13 +278,10 @@ static gsl_err_t parse_class_select(void *obj,
     if (ctx && ctx->repo) {
         repo = ctx->repo;
     }
-
     return knd_class_select(repo, rec, total_size, task);
 }
 
-static gsl_err_t parse_class_import(void *obj,
-                                    const char *rec,
-                                    size_t *total_size)
+static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
     struct kndUserContext *ctx = task->user_ctx;
@@ -348,6 +312,7 @@ gsl_err_t knd_parse_repo(void *obj, const char *rec, size_t *total_size)
 
     struct gslTaskSpec specs[] = {
         {   .is_implied = true,
+            .is_selector = true,
             .run = run_select_repo,
             .obj = task
         },
@@ -371,6 +336,10 @@ gsl_err_t knd_parse_repo(void *obj, const char *rec, size_t *total_size)
           .name_size = strlen("_commit_from"),
           .parse = gsl_parse_size_t,
           .obj = &task->state_eq
+        },
+        { .is_default = true,
+          .run = present_repo_state,
+          .obj = task
         }
     };
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);

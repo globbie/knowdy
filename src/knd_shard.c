@@ -349,8 +349,7 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
                        self->user_schema_path, self->user_schema_path_size,
                        self, task);
     if (err) {
-        knd_log("-- failed to create a user manager: %.*s",
-                task->output_size, task->output);
+        knd_log("-- failed to create a user manager: %.*s", task->output_size, task->output);
         goto error;
     }
     self->user = user;

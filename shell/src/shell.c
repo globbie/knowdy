@@ -80,15 +80,16 @@ static int knd_interact(struct kndShard *shard)
         if (!buf_size) continue;
 
         printf("[%s :%zu]\n", buf, buf_size);
+        block = buf;
+        block_size = buf_size;
 
         knd_task_reset(reader_task);
-        err = knd_task_run(reader_task, buf, buf_size);
+        err = knd_task_run(reader_task, block, block_size);
         if (err != knd_OK) {
-            knd_log("-- task run failed: %.*s",
-                    reader_task->output_size, reader_task->output);
+            knd_log("-- task run failed: %.*s", reader_task->output_size, reader_task->output);
             goto next_line;
         }
-        knd_log("== READER RESULT ==\n%.*s", reader_task->output_size, reader_task->output);
+        knd_log("== Reader's output:\n%.*s", reader_task->output_size, reader_task->output);
 
         /* update tasks require another run,
            possibly involving network communication */
@@ -103,12 +104,10 @@ static int knd_interact(struct kndShard *shard)
             knd_task_reset(writer_task);
             err = knd_task_run(writer_task, block, block_size);
             if (err != knd_OK) {
-                knd_log("-- update confirm failed: %.*s",
-                        writer_task->output_size, writer_task->output);
+                knd_log("-- update confirm failed: %.*s", writer_task->output_size, writer_task->output);
                 goto next_line;
             }
-            knd_log("== ARBITER RESULT ==\n%.*s",
-                    writer_task->output_size, writer_task->output);
+            knd_log("== Arbiter's output:\n%.*s", writer_task->output_size, writer_task->output);
             break;
         default:
             break;
