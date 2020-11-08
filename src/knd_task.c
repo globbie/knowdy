@@ -158,6 +158,9 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
 {
     size_t total_size = 0;
     gsl_err_t parser_err;
+    struct kndUser *user = task->shard->user;
+    struct kndUserContext *ctx;
+    int err;
 
     assert(task->ctx != NULL);
 
@@ -166,6 +169,14 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
     task->output = NULL;
     task->output_size = 0;
 
+    /* default user context */
+    err = knd_user_context_new(task->mempool, &ctx);
+    KND_TASK_ERR("failed to alloc user ctx");
+    ctx->repo = user->repo;
+    ctx->acls = user->default_acls;
+    ctx->mempool = user->mempool;
+    task->user_ctx = ctx;
+    
     if (DEBUG_TASK_LEVEL_2) {
         size_t chunk_size = KND_TEXT_CHUNK_SIZE;
         if (task->input_size < chunk_size) chunk_size = task->input_size;

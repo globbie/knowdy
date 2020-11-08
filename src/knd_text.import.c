@@ -56,13 +56,15 @@ static int fetch_charseq(const char *val, size_t val_size, struct kndCharSeq **r
 
     switch (task->type) {
     case KND_UNFREEZE_STATE:
+        if (val_size > KND_ID_SIZE) break;
         err = knd_shared_set_get(repo->str_idx, val, val_size, (void**)&seq);
-        KND_TASK_ERR("failed to decode a gloss");
-
-        if (DEBUG_TEXT_IMPORT_LEVEL_2)
-            knd_log(">> decode \"%.*s\" charseq => \"%.*s\"", val_size, val, seq->val_size, seq->val);
-        *result = seq;
-        return knd_OK;
+        if (!err) {
+            if (DEBUG_TEXT_IMPORT_LEVEL_2)
+                knd_log(">> decode \"%.*s\" charseq => \"%.*s\"", val_size, val, seq->val_size, seq->val);
+            *result = seq;
+            return knd_OK;
+        }
+        break;
     default:
         break;
     }
@@ -871,8 +873,8 @@ gsl_err_t knd_statement_import(struct kndStatement *stm, const char *rec, size_t
 
 gsl_err_t knd_text_import(struct kndText *self, const char *rec, size_t *total_size, struct kndTask *task)
 {
-    if (DEBUG_TEXT_IMPORT_LEVEL_2)
-        knd_log(".. import text: \"%.*s\"", 64, rec);
+    if (DEBUG_TEXT_IMPORT_LEVEL_TMP)
+        knd_log(".. import text: \"%.*s\"", 128, rec);
    
     struct LocalContext ctx = {
         .task = task,

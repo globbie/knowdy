@@ -21,7 +21,7 @@ static int export_concise_JSON(struct kndClassInst *self, struct kndTask *task)
     err = out->write(out, ",\"_class\":\"", strlen(",\"_class\":\""));
     if (err) return err;
 
-    err = out->write(out, self->blueprint->name, self->blueprint->name_size);
+    err = out->write(out, self->entry->blueprint->name, self->entry->blueprint->name_size);
     if (err) return err;
 
     err = out->write(out, "\"", 1);
@@ -42,9 +42,9 @@ int knd_class_inst_export_JSON(struct kndClassInst *self, bool is_list_item, knd
     if (DEBUG_INST_LEVEL_2) {
         knd_log(".. JSON export class inst \"%.*s\" curr depth:%zu max depth:%zu is_list:%d",
                 self->name_size, self->name, task->depth, task->max_depth, is_list_item);
-        if (self->blueprint) {
+        if (self->entry->blueprint) {
             knd_log("   (class: %.*s)",
-                    self->blueprint->name_size, self->blueprint->name);
+                    self->entry->blueprint->name_size, self->entry->blueprint->name);
         }
     }
 
@@ -84,7 +84,7 @@ int knd_class_inst_export_JSON(struct kndClassInst *self, bool is_list_item, knd
     }
 
     OUT(",\"_class\":\"", strlen(",\"_class\":\""));
-    OUT(self->blueprint->name, self->blueprint->name_size);
+    OUT(self->entry->blueprint->name, self->entry->blueprint->name_size);
     OUT("\"", 1);
 
     if (self->class_var->attrs) {

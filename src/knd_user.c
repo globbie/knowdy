@@ -227,7 +227,7 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
         ctx->repo = self->repo;
         ctx->base_repo = self->repo;
         ctx->acls = self->default_acls;
-        ctx->mempool = task->mempool;
+        ctx->mempool = self->mempool;
 
         task->user_ctx = ctx;
         return make_gsl_err(gsl_OK);

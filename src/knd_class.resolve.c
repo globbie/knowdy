@@ -154,9 +154,7 @@ static int link_ancestor(struct kndClass *self, struct kndClassEntry *base_entry
                 base->name_size, base->name, base->state_top);
 
     if (base_entry->repo != entry->repo) {
-        prev_entry = knd_dict_get(class_name_idx,
-                                  base_entry->name,
-                                  base_entry->name_size);
+        prev_entry = knd_dict_get(class_name_idx, base_entry->name, base_entry->name_size);
         if (prev_entry) {
             base = prev_entry->class;
         } else {

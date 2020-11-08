@@ -135,7 +135,11 @@ static int save_elem(struct kndSharedSet *self, struct kndSharedSetElemIdx *pare
 
     assert(parent_idx != NULL);
 
-    idx_pos = obj_id_base[(unsigned int)*id];
+    idx_pos = obj_id_base[(unsigned char)*id];
+    if (idx_pos == -1) {
+        knd_log("-- invalid elem id");
+        return knd_FORMAT;
+    }
     if (id_size > 1) {
         do {
             orig_idx = atomic_load_explicit(&parent_idx->idxs[idx_pos], memory_order_relaxed);
@@ -182,7 +186,11 @@ static int get_elem(struct kndSharedSet *self, struct kndSharedSetElemIdx *paren
 
     assert(parent_idx != NULL);
 
-    idx_pos = obj_id_base[(unsigned int)*id];
+    idx_pos = obj_id_base[(unsigned char)*id];
+    if (idx_pos == -1) {
+        knd_log("-- invalid elem id");
+        return knd_FORMAT;
+    }
     if (id_size > 1) {
         idx = atomic_load_explicit(&parent_idx->idxs[idx_pos], memory_order_relaxed);
         if (!idx) return knd_NO_MATCH;

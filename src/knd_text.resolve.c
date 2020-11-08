@@ -45,14 +45,14 @@ static int resolve_proc_inst(struct kndStatement *stm, struct kndProcInstEntry *
                 if (memcmp(entry->name, var->val, var->val_size)) continue;
                 var->inst = entry->inst;
 
-                err = knd_is_base(var->template->class, entry->inst->blueprint->class);
+                err = knd_is_base(var->template->class, entry->blueprint->class);
                 KND_TASK_ERR("template \"%.*s\" mismatch with \"%.*s\"",
                              var->template->name_size, var->template->name,
-                             entry->inst->blueprint->name_size, entry->inst->blueprint->name);
+                             entry->blueprint->name_size, entry->blueprint->name);
 
                 if (DEBUG_TEXT_RESOLVE_LEVEL_3)
                     knd_log("++ class inst ref \"%.*s\" (%.*s) class template: \"%.*s\"",
-                            var->val_size, var->val, entry->inst->blueprint->name_size, entry->inst->blueprint->name,
+                            var->val_size, var->val, entry->blueprint->name_size, entry->blueprint->name,
                             var->template->name_size, var->template->name);
             }
         }

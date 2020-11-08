@@ -348,9 +348,10 @@ static int export_facet(struct kndClassFacet *parent_facet, struct kndTask *task
     return knd_OK;
 }
 
-extern int knd_class_facets_export_JSON(struct kndTask *task)
+int knd_class_facets_export_JSON(struct kndTask *task)
 {
     struct kndClassFacet *facet;
+    struct kndClassFacet *facets = NULL;
     struct kndOutput *out = task->out;
     bool in_list = false;
     int err;
@@ -358,7 +359,7 @@ extern int knd_class_facets_export_JSON(struct kndTask *task)
     err = out->write(out, "{\"_facets\":[",
                      strlen("{\"_facets\":["));                                   RET_ERR();
 
-    for (facet = task->facet->children; facet; facet = facet->next) {
+    FOREACH (facet, facets) {
         if (in_list) {
             err = out->writec(out, ',');                                          RET_ERR();
         }

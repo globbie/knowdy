@@ -50,10 +50,24 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
     struct kndAttr *self = ctx->attr;
-    // TODO decode
-    //knd_log(">> attr code name: %.*s", name_size, name);
+    struct kndTask *task = ctx->task;
+    struct kndRepo *repo = task->repo;
+    struct kndCharSeq *seq;
+    int err;
+
     self->name = name;
     self->name_size = name_size;
+
+    if (name_size <= KND_ID_SIZE) {
+        err = knd_shared_set_get(repo->str_idx, name, name_size, (void**)&seq);
+        if (err) {
+            KND_TASK_LOG("failed to decode attr name code \"%.*s\"", name_size, name);
+            return make_gsl_err_external(err);
+        }
+        self->name = seq->val;
+        self->name_size = seq->val_size;
+        self->seq = seq;
+    }
     return make_gsl_err(gsl_OK);
 }
 
@@ -147,6 +161,20 @@ static gsl_err_t confirm_attr(void *obj, const char *unused_var(name), size_t un
     return make_gsl_err(gsl_OK);
 }
 
+static gsl_err_t parse_id(void *obj, const char *rec, size_t *total_size)
+{
+    struct kndAttr *self = obj;
+
+    struct gslTaskSpec specs[] = {
+        {   .is_implied = true,
+            .buf = self->id,
+            .buf_size = &self->id_size,
+            .max_buf_size = KND_ID_SIZE
+        }
+    };
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
 static gsl_err_t parse_quant_type(void *obj, const char *rec, size_t *total_size)
 {
     struct kndAttr *self = obj;
@@ -189,6 +217,11 @@ gsl_err_t knd_attr_read(struct kndAttr *self, struct kndTask *task, const char *
         { .is_implied = true,
           .run = run_set_name,
           .obj = &ctx
+        },
+        { .name = "id",
+          .name_size = strlen("id"),
+          .parse = parse_id,
+          .obj = self
         },
         { .type = GSL_GET_ARRAY_STATE,
           .name = "_g",
@@ -261,4 +294,94 @@ gsl_err_t knd_attr_read(struct kndAttr *self, struct kndTask *task, const char *
     // TODO: reject attr names starting with an underscore _
 
     return make_gsl_err(gsl_OK);
+}
+
+static int export_glosses(struct kndAttr *self, struct kndOutput *out)
+{
+    char idbuf[KND_ID_SIZE];
+    size_t id_size = 0;
+    struct kndText *t;
+    OUT("[_g", strlen("[_g"));
+    FOREACH (t, self->tr) {
+        OUT("{", 1);
+        OUT(t->locale, t->locale_size);
+        OUT("{t ", strlen("{t "));
+        knd_uid_create(t->seq->numid, idbuf, &id_size);
+        OUT(idbuf, id_size);
+        // OUT(t->seq, t->seq_size);
+        OUT("}}", 2);
+    }
+    OUT("]", 1);
+    return knd_OK;
+}
+
+int knd_attr_export_GSP(struct kndAttr *self, struct kndTask *task)
+{
+    struct kndOutput *out = task->out;
+    char buf[KND_NAME_SIZE] = {0};
+    size_t buf_size = 0;
+    struct kndText *tr;
+
+    const char *type_name = knd_attr_names[self->type];
+    size_t type_name_size = strlen(knd_attr_names[self->type]);
+    int err;
+
+    OUT("{", 1);
+    OUT(type_name, type_name_size);
+
+    OUT(" ", 1);
+    knd_uid_create(self->seq->numid, buf, &buf_size);
+    OUT(buf, buf_size);
+
+    OUT("{id ", strlen("{id "));
+    OUT(self->id, self->id_size);
+    OUT("}", 1);
+
+    if (self->is_a_set) {
+        OUT("{t set}", strlen("{t set}"));
+    }
+
+    if (self->is_implied) {
+        OUT("{impl}", strlen("{impl}"));
+    }
+
+    if (self->is_required) {
+        OUT("{req}", strlen("{req}"));
+    }
+
+    if (self->is_unique) {
+        OUT("{uniq}", strlen("{uniq}"));
+    }
+
+    if (self->is_indexed) {
+        OUT("{idx}", strlen("{idx}"));
+    }
+
+    if (self->concise_level) {
+        buf_size = sprintf(buf, "%zu", self->concise_level);
+        OUT("{concise ", strlen("{concise "));
+        OUT(buf, buf_size);
+        OUT("}", 1);
+    }
+
+    if (self->ref_class_entry) {
+        OUT("{c ", strlen("{c "));
+        OUT(self->ref_class_entry->id, self->ref_class_entry->id_size);
+        OUT("}", 1);
+    }
+
+    if (self->ref_procname_size) {
+        OUT("{p ", strlen("{p "));
+        OUT(self->ref_procname, self->ref_procname_size);
+        OUT("}", 1);
+    }
+
+    /* choose gloss */
+    if (self->tr) {
+        err = export_glosses(self, out);
+        KND_TASK_ERR("failed to export glosses GSP");
+    }
+
+    OUT("}", 1);
+    return knd_OK;
 }

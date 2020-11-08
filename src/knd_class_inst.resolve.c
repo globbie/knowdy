@@ -26,9 +26,9 @@
 
 int knd_class_inst_resolve(struct kndClassInst *self, struct kndTask *task)
 {
-    assert(self->blueprint != NULL);
-    assert(self->blueprint->class != NULL);
-    struct kndClass *c = self->blueprint->class;
+    assert(self->entry->blueprint != NULL);
+    assert(self->entry->blueprint->class != NULL);
+    struct kndClass *c = self->entry->blueprint->class;
     int err;
     self->resolving_in_progress = true;
 

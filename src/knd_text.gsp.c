@@ -136,14 +136,11 @@ static int sent_export_GSP(struct kndSentence *sent, struct kndTask *task)
 int knd_text_export_GSP(struct kndText *self, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
-    //const char *locale = task->ctx->locale;
-    // size_t locale_size = task->ctx->locale_size;
     struct kndPar *par;
     struct kndSentence *sent;
     struct kndState *state;
     struct kndCharSeq *seq = self->seq;
-    //struct kndStateVal *val;
-    // struct kndText *t;
+    struct kndText *trn;
     int err;
 
     state = atomic_load_explicit(&self->states, memory_order_relaxed);
@@ -154,27 +151,41 @@ int knd_text_export_GSP(struct kndText *self, struct kndTask *task)
     }
 
     if (seq && seq->val_size) {
-        err = out->write(out, seq->val, seq->val_size);                   RET_ERR();
+        OUT(seq->val, seq->val_size);
     }
     if (self->locale_size) {
-        err = out->writec(out, '{');                            RET_ERR();
-        err = out->write(out, "_lang ", strlen("_lang "));      RET_ERR();
-        err = out->write(out, self->locale, self->locale_size); RET_ERR();
-        err = out->writec(out, '}');                            RET_ERR();
+        OUT("{", 1);
+        OUT("_lang ", strlen("_lang "));
+        OUT(self->locale, self->locale_size);
+        OUT("}", 1);
+    }
+
+    if (self->trs) {
+        OUT("[trn", strlen("[trn"));
+        FOREACH (trn, self->trs) {
+            OUT("{", 1);
+            OUT(trn->locale, trn->locale_size);
+            OUT("{t ", strlen("{t "));
+            OUT(trn->seq->val, trn->seq->val_size);
+            OUT("}", 1);
+            OUT("}", 1);
+        }
+        OUT("]", 1);
     }
 
     if (self->num_pars) {
-        err = out->write(out, "[p", strlen("[p"));                  RET_ERR();
-        for (par = self->pars; par; par = par->next) {
-            err = out->writec(out, '{');                            RET_ERR();
-            err = out->write(out, "[s", strlen("[s"));              RET_ERR();
-            for (sent = par->sents; sent; sent = sent->next) {
-                err = sent_export_GSP(sent, task);                  RET_ERR();
+        OUT("[p", strlen("[p"));
+        FOREACH (par, self->pars) {
+            OUT("{", 1);
+            OUT("[s", strlen("[s"));
+            FOREACH (sent, par->sents) {
+                err = sent_export_GSP(sent, task);
+                KND_TASK_ERR("failed to export sent GSP");
             }
-            err = out->writec(out, ']');                            RET_ERR();
-            err = out->writec(out, '}');                            RET_ERR();
+            OUT("]", 1);
+            OUT("}", 1);
         }
-        err = out->writec(out, ']');                            RET_ERR();
+        OUT("]", 1);
     }
     return knd_OK;
 }

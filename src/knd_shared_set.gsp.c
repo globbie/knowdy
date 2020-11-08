@@ -390,8 +390,6 @@ int knd_shared_set_unmarshall_file(struct kndSharedSet *self, const char *filena
     self->dir = dir;
     self->num_elems = dir->total_elems;
 
-    knd_log("== total elems: %zu", self->num_elems);
-
  final:
     close(fd);
     return err;
@@ -413,7 +411,12 @@ static int read_elem(struct kndSharedSet *self, int fd, struct kndSharedSetDir *
 
     assert(dir != NULL);
 
-    idx_pos = obj_id_base[(unsigned int)*id];
+    idx_pos = obj_id_base[(unsigned char)*id];
+    if (idx_pos == -1) {
+        knd_log("-- invalid elem id");
+        return knd_FORMAT;
+    }
+
     if (id_size > 1) {
         subdir = atomic_load_explicit(&dir->subdirs[idx_pos], memory_order_relaxed);
         if (!subdir) return knd_NO_MATCH;

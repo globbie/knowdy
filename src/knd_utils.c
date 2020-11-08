@@ -110,7 +110,7 @@ extern void knd_calc_num_id(const char *id, size_t id_size, size_t *numval)
     size_t base = 1;
 
     for (size_t i = 0; i < id_size; i++) {
-        num = obj_id_base[(unsigned int)*c];
+        num = obj_id_base[(unsigned char)*c];
         if (num == -1) return;
         aggr = aggr + (num * base);
         base = base * KND_RADIX_BASE;

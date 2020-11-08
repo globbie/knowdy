@@ -36,7 +36,7 @@ void knd_class_inst_str(struct kndClassInst *self, size_t depth)
     if (self->type == KND_OBJ_ADDR) {
         knd_log("\n%*s>>> class inst \"%.*s::%.*s\"  numid:%zu",
                 depth * KND_OFFSET_SIZE, "",
-                self->blueprint->name_size, self->blueprint->name,
+                self->entry->blueprint->name_size, self->entry->blueprint->name,
                 self->name_size, self->name, self->entry->numid);
         //if (state) {
         //    knd_log("    state:%zu  phase:%d", state->numid, state->phase);

@@ -216,7 +216,8 @@ struct kndTask
     struct kndRepo *system_repo;
     struct kndRepo *repo;
 
-    struct kndClassFacet *facet;
+    struct kndClassFacet *facet; // TODO remove
+    struct kndClassEntry *blueprint;
     struct kndSet *set;
 
     struct kndConcFolder *folders;

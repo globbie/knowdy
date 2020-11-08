@@ -207,6 +207,7 @@ struct kndAttr
 
     const char *name;
     size_t name_size;
+    struct kndCharSeq *seq;
 
     struct kndClass *parent_class;
 
@@ -275,6 +276,7 @@ int knd_get_arg_value(struct kndAttrVar *src, struct kndAttrVar *query, struct k
 
 int knd_attr_export_GSL(struct kndAttr *self, struct kndTask *task, size_t depth);
 int knd_attr_export_JSON(struct kndAttr *self, struct kndTask *task, size_t depth);
+int knd_attr_export_GSP(struct kndAttr *self, struct kndTask *task);
 
 int knd_attr_export(struct kndAttr *self, knd_format format, struct kndTask *task);
 void knd_attr_var_str(struct kndAttrVar *item, size_t depth);

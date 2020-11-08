@@ -181,6 +181,7 @@ struct kndClass
 
     struct kndSharedSet  * _Atomic inst_idx;
     struct kndSharedDict * _Atomic inst_name_idx;
+    size_t           num_snapshot_insts;
     atomic_size_t    num_insts;
     atomic_size_t    inst_id_count;
     
@@ -249,6 +250,7 @@ int knd_class_unmarshall(const char *elem_id, size_t elem_id_size,
                          const char *val, size_t val_size, void **result, struct kndTask *task);
 
 int knd_class_read(struct kndClass *self, const char *rec, size_t *total_size, struct kndTask *task);
+int knd_class_inst_idx_fetch(struct kndClass *self, struct kndSharedDict **result, struct kndTask *task);
 
 int knd_class_export_GSP(struct kndClass *self, struct kndTask *task);
 int knd_class_export_commits_GSP(struct kndClass *self, struct kndClassCommit *commit, struct kndTask *task);

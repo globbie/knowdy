@@ -52,6 +52,8 @@ static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
+    struct kndClassEntry *entry;
+    struct kndClass *c;
     int err;
 
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
@@ -61,13 +63,26 @@ static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
         ctx->class_entry = ctx->repo->root_class->entry;
         return make_gsl_err(gsl_OK);
     }
-    err = knd_get_class_entry(ctx->repo, name, name_size, true, &ctx->class_entry, task);
+    err = knd_get_class_entry(ctx->repo, name, name_size, true, &entry, task);
     if (err) {
         KND_TASK_LOG("\"%.*s\" class name not found", name_size, name);
         task->ctx->http_code = HTTP_NOT_FOUND;
         task->ctx->error = knd_NO_MATCH;
         return make_gsl_err_external(err);
     }
+
+    c = atomic_load_explicit(&entry->class, memory_order_relaxed);
+    if (!c) {
+        knd_log(".. unmarshalling %.*s..", entry->name_size, entry->name);
+
+        err = knd_class_acquire(entry, &c, task);
+        if (err) {
+            KND_TASK_LOG("failed to acquire class \"%.*s\"", entry->name_size, entry->name);
+            return make_gsl_err_external(err);
+        }
+    }
+
+    ctx->class_entry = entry;
     return make_gsl_err(gsl_OK);
 }
 
@@ -889,8 +904,11 @@ static gsl_err_t present_class_selection(void *obj, const char *unused_var(val),
     if (entry) {
         c = atomic_load_explicit(&entry->class, memory_order_relaxed);
         if (!c) {
-            knd_log("-- unresolved class entry: %.*s", entry->name_size, entry->name);
-            return make_gsl_err(gsl_FAIL);
+            err = knd_class_acquire(entry, &c, task);
+            if (err) {
+                KND_TASK_LOG("failed to acquire class \"%.*s\"", entry->name_size, entry->name);
+                return make_gsl_err_external(err);
+            }
         }
         err = knd_class_export(c, task->ctx->format, task);
         if (err) {

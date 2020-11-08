@@ -43,8 +43,9 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     struct kndTask *task = ctx->task;
     struct kndSharedDict *class_name_idx = repo->class_name_idx;
 
-    assert(self->blueprint->class != NULL);
-    struct kndSharedDict *name_idx = self->blueprint->class->inst_name_idx;
+    assert(self->entry->blueprint != NULL);
+    assert(self->entry->blueprint->class != NULL);
+    struct kndSharedDict *name_idx = self->entry->blueprint->class->inst_name_idx;
     struct kndClass *c;
     int err;
 
@@ -68,13 +69,13 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
         }
         c = class_entry->class;
 
-        err = knd_is_base(self->blueprint->class, c);
+        err = knd_is_base(self->entry->blueprint->class, c);
         if (err) {
             KND_TASK_LOG("no inheritance from %.*s to %.*s",
-                         self->blueprint->name_size, self->blueprint->name, c->name_size, c->name);
+                         self->entry->blueprint->name_size, self->entry->blueprint->name, c->name_size, c->name);
             return make_gsl_err_external(err);
         }
-        self->blueprint = class_entry;
+        self->entry->blueprint = class_entry;
         return make_gsl_err(gsl_OK);
     }
 
@@ -214,7 +215,7 @@ int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *
     gsl_err_t parser_err;
     assert(entry->class != NULL);
 
-    if (DEBUG_INST_IMPORT_LEVEL_2)
+    if (DEBUG_INST_IMPORT_LEVEL_TMP)
         knd_log(".. class \"%.*s\" (repo:%.*s) to import inst \"%.*s\"",
                 entry->name_size, entry->name, entry->repo->name_size, entry->repo->name, 128, rec);
 
@@ -232,11 +233,12 @@ int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *
     
     err = knd_class_inst_entry_new(mempool, &inst_entry);
     KND_TASK_ERR("class inst  alloc failed");
+    inst_entry->blueprint = entry;
+
     err = knd_class_inst_new(mempool, &inst);
     KND_TASK_ERR("class inst alloc failed");
     inst->entry = inst_entry;
     inst_entry->inst = inst;
-    inst->blueprint = entry;
 
     err = knd_class_var_new(mempool, &class_var);
     KND_TASK_ERR("failed to alloc a class var");

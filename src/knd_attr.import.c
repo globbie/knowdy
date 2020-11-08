@@ -2,6 +2,9 @@
 
 #include "knd_mempool.h"
 #include "knd_text.h"
+#include "knd_shared_set.h"
+#include "knd_set.h"
+#include "knd_repo.h"
 #include "knd_utils.h"
 
 #include <gsl-parser.h>
@@ -32,9 +35,44 @@ struct LocalContext {
 
 static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
 {
-    struct kndAttr *self = obj;
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    struct kndRepo *repo = task->repo;
+    struct kndAttr *self = ctx->attr;
+    struct kndMemPool *mempool = task->mempool;
+    char idbuf[KND_ID_SIZE];
+    size_t idbuf_size;
+    struct kndCharSeq *seq;
+    int err;
+
     self->name = name;
     self->name_size = name_size;
+
+    /* register attr name as a global charseq */
+    seq = knd_shared_dict_get(repo->str_dict, name, name_size);
+    if (seq) {
+        self->seq = seq;
+        return make_gsl_err(gsl_OK);
+    }
+
+    err = knd_charseq_new(mempool, &seq);
+    seq->val = name;
+    seq->val_size = name_size;
+    seq->numid = atomic_fetch_add_explicit(&repo->num_strs, 1, memory_order_relaxed);
+
+    err = knd_shared_dict_set(repo->str_dict, name, name_size, (void*)seq,
+                              mempool, NULL, &seq->item, false);
+    if (err) {
+        KND_TASK_LOG("failed to register an attr name charseq");
+        return make_gsl_err_external(err);
+    }
+    knd_uid_create(seq->numid, idbuf, &idbuf_size);
+    err = knd_shared_set_add(repo->str_idx, idbuf, idbuf_size, (void*)seq);
+    if (err) {
+        KND_TASK_LOG("failed to register a charseq by numid");
+        return make_gsl_err_external(err);
+    }
+    self->seq = seq;
     return make_gsl_err(gsl_OK);
 }
 
@@ -214,7 +252,6 @@ static gsl_err_t confirm_unique(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-
 gsl_err_t knd_import_attr(struct kndAttr *self, struct kndTask *task, const char *rec, size_t *total_size)
 {
     struct LocalContext ctx = {
@@ -225,7 +262,7 @@ gsl_err_t knd_import_attr(struct kndAttr *self, struct kndTask *task, const char
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_set_name,
-          .obj = self
+          .obj = &ctx
         },
         { .type = GSL_GET_ARRAY_STATE,
           .name = "_gloss",

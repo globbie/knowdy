@@ -570,34 +570,23 @@ int knd_class_export_GSL(struct kndClassEntry *entry, struct kndTask *task, bool
     if (DEBUG_GSL_LEVEL_2) {
         knd_log(".. GSL export: \"%.*s\" (repo:%.*s) "
                 " depth:%zu max depth:%zu offset:%zu",
-                entry->name_size, entry->name,
-                entry->repo->name_size, entry->repo->name,
+                entry->name_size, entry->name, entry->repo->name_size, entry->repo->name,
                 task->depth, task->max_depth, task->ctx->format_offset);
     }
-    err = out->writec(out, '{');                                                      RET_ERR();
+    OUT("{", 1);
     if (!is_list_item) {
-        err = out->write(out, "class ", strlen("class "));                            RET_ERR();
+        OUT("class ", strlen("class "));
     }
     if (entry->name_size) {
-        err = out->write_escaped(out, entry->name, entry->name_size);                 RET_ERR();
-    }
-
-    if (entry->numid) {
-        if (task->ctx->format_offset) {
-            err = out->writec(out, '\n');                                             RET_ERR();
-            err = knd_print_offset(out, (depth + 1) * task->ctx->format_offset);      RET_ERR();
-        }
-        err = out->write(out, "{_id ", strlen("{_id "));                              RET_ERR();
-        err = out->writef(out, "%zu", entry->numid);                                  RET_ERR();
-        err = out->writec(out, '}');                                                  RET_ERR();
+        err = out->write_escaped(out, entry->name, entry->name_size);
+        RET_ERR();
     }
 
     if (task->max_depth == 0) {
         goto final;
     }
-
     if (task->ctx->format_offset) {
-        err = out->writec(out, ' ');                                              RET_ERR();
+        OUT(" ", 1);
     }
 
     if (state) {
@@ -628,29 +617,27 @@ int knd_class_export_GSL(struct kndClassEntry *entry, struct kndTask *task, bool
         default:
             break;
         }
-        err = out->writec(out, '}');                                              RET_ERR();
+        OUT("}", 1);
     }
 
     if (self->tr) {
         if (task->ctx->format_offset) {
-            err = out->writec(out, '\n');                                         RET_ERR();
-            err = knd_print_offset(out, (depth + 1) * task->ctx->format_offset);  RET_ERR();
+            OUT("\n", 1);
+            err = knd_print_offset(out, (depth + 1) * task->ctx->format_offset);
+            RET_ERR();
         }
-        err = knd_export_gloss_GSL(self->tr, task);                               RET_ERR();
+        err = knd_export_gloss_GSL(self->tr, task);
+        RET_ERR();
     }
 
     if (task->depth >= task->max_depth) {
-        err = export_concise_GSL(self, task, depth);                              RET_ERR();
+        err = export_concise_GSL(self, task, depth);
+        RET_ERR();
         goto final;
     }
 
     // expand
     task->depth++;
-
-    /* state info */
-    //if (0 && self->entry->num_states) {
-    //    err = knd_export_class_state_GSL(self->entry, task);                             RET_ERR();
-    //}
 
     /* display base classes only once */
     if (self->num_baseclass_vars) {

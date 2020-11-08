@@ -237,12 +237,14 @@ static gsl_err_t run_select_repo(void *obj, const char *name, size_t name_size)
     if (task->user_ctx) {
         switch (*name) {
         case '~':
-            // knd_log("== private repo selected: %p", task->user_ctx->repo);
+            repo = task->user_ctx->repo;
+            knd_log("== user home repo selected: %.*s", repo->name_size, repo->name);
+            task->repo = repo;
             return make_gsl_err(gsl_OK);
         default:
             break;
         }
-        // knd_log("== read-only base repo selected!");
+        knd_log("== read-only base repo selected!");
         task->repo = task->shard->user->repo;
         return make_gsl_err(gsl_OK);
     }
@@ -306,6 +308,20 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
     return knd_class_import(repo, rec, total_size, task);
 }
 
+static gsl_err_t parse_snapshot_task(void *obj, const char *unused_var(rec), size_t *total_size)
+{
+    struct kndTask *task = obj;
+    int err;
+
+    task->type = KND_SNAPSHOT_STATE;
+    err = knd_repo_snapshot(task->repo, task);
+    if (err) {
+        KND_TASK_LOG("failed to build a snapshot of repo %.*s", task->repo->name_size, task->repo->name);
+        return *total_size = 0, make_gsl_err(gsl_FAIL);
+    }
+    return *total_size = 0, make_gsl_err(gsl_OK);
+}
+
 gsl_err_t knd_parse_repo(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
@@ -336,6 +352,11 @@ gsl_err_t knd_parse_repo(void *obj, const char *rec, size_t *total_size)
           .name_size = strlen("_commit_from"),
           .parse = gsl_parse_size_t,
           .obj = &task->state_eq
+        },
+        { .name = "_snapshot",
+          .name_size = strlen("_snapshot"),
+          .parse = parse_snapshot_task,
+          .obj = task
         },
         { .is_default = true,
           .run = present_repo_state,
@@ -1007,7 +1028,7 @@ static int read_source_files(struct kndRepo *self, struct kndTask *task)
     int err;
 
     if (DEBUG_REPO_LEVEL_TMP)
-        knd_log(".. loading schema GSL files");
+        knd_log(".. initial loading of schema GSL files");
 
     /* read a system-wide schema */
     task->type = KND_LOAD_STATE;
@@ -1022,6 +1043,7 @@ static int read_source_files(struct kndRepo *self, struct kndTask *task)
 
     err = index_classes(self, task);
     KND_TASK_ERR("class indexing failed");
+    
     return knd_OK;
 }
 

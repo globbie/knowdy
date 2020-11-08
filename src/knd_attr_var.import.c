@@ -33,8 +33,7 @@ struct LocalContext {
 
 static gsl_err_t import_attr_var_list_item(void *obj, const char *rec, size_t *total_size);
 
-static gsl_err_t import_nested_attr_var(void *obj,
-                                        const char *name, size_t name_size,
+static gsl_err_t import_nested_attr_var(void *obj, const char *name, size_t name_size,
                                         const char *rec, size_t *total_size);
 static void append_attr_var(struct kndClassVar *ci, struct kndAttrVar *attr_var);
 

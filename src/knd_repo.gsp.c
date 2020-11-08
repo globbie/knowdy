@@ -56,7 +56,8 @@ static int marshall_idx(struct kndSharedSet *idx, const char *path, size_t path_
     err = knd_write_file((const char*)buf, out->buf, out->buf_size);
     KND_TASK_ERR("failed writing to file \"%.*s\"", buf_size, buf);
 
-    knd_log(".. marshall idx \"%.*s\" (num elems:%zu)", filename_size, filename, idx->num_elems);
+    if (DEBUG_REPO_GSP_LEVEL_2)
+        knd_log(".. marshall idx \"%.*s\" (num elems:%zu)", filename_size, filename, idx->num_elems);
 
     err = knd_shared_set_marshall(idx, buf, buf_size, cb, &total_size, task);
     KND_TASK_ERR("failed to marshall str idx");
@@ -153,6 +154,6 @@ int knd_repo_snapshot(struct kndRepo *self, struct kndTask *task)
     err = marshall_idx(self->str_idx, path, path_size, "strings.gsp", strlen("strings.gsp"),
                        knd_charseq_marshall, task);
     KND_TASK_ERR("failed to build the string idx");
-    
+
     return knd_OK;
 }
