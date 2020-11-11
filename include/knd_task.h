@@ -212,6 +212,7 @@ struct kndTask
     size_t max_depth;
 
     struct kndUserContext *user_ctx;
+    struct kndUserContext *default_user_ctx;
 
     struct kndRepo *system_repo;
     struct kndRepo *repo;

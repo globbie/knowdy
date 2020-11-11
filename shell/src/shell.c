@@ -32,6 +32,7 @@
 
 #include "knd_config.h"
 #include "knd_shard.h"
+#include "knd_user.h"
 #include "knd_utils.h"
 
 static const char *options_string = "c:h?";
@@ -51,6 +52,7 @@ static void display_usage(void)
 static int knd_interact(struct kndShard *shard)                      
 {
     struct kndTask *writer_task, *reader_task;
+    struct kndOutput *out;
     char  *buf;
     size_t buf_size;
     const char  *block;
@@ -68,6 +70,14 @@ static int knd_interact(struct kndShard *shard)
     reader_task->ctx = calloc(1, sizeof(struct kndTaskContext));
     if (!reader_task->ctx) return knd_NOMEM;
     reader_task->role = KND_READER;
+
+    out = reader_task->out;
+    out->reset(out);
+    shard->mempool->present(shard->mempool, out);
+    knd_log("** System Mempool\n%.*s", out->buf_size, out->buf);
+    out->reset(out);
+    shard->user->mempool->present(shard->user->mempool, out);
+    knd_log("** User Space Mempool\n%.*s", out->buf_size, out->buf);
 
     knd_log("\n++ Knowdy shard service is up and running! (agent role:%d)\n", shard->role);
     knd_log("   (finish session by pressing Ctrl+C)\n");

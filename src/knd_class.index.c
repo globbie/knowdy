@@ -266,8 +266,9 @@ int knd_class_index(struct kndClass *self, struct kndTask *task)
     self->indexing_in_progress = true;
 
     if (DEBUG_CLASS_INDEX_LEVEL_2) {
-        knd_log(".. indexing class \"%.*s\" (id:%.*s) ..",
-                self->entry->name_size, self->entry->name, self->entry->id_size, self->entry->id);
+        knd_log(".. indexing class \"%.*s\" (id:%.*s) mempool:%p",
+                self->entry->name_size, self->entry->name, self->entry->id_size, self->entry->id,
+                task->mempool);
     }
 
     /* a child of the root class */

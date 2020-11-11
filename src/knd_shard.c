@@ -302,11 +302,11 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
 
     err = knd_mempool_new(&mempool, KND_ALLOC_INCR, 0);
     if (err) goto error;
-    mempool->num_pages = self->mem_config.num_pages;
-    mempool->num_small_x4_pages = self->mem_config.num_small_x4_pages;
-    mempool->num_small_x2_pages = self->mem_config.num_small_x2_pages;
-    mempool->num_small_pages = self->mem_config.num_small_pages;
-    mempool->num_tiny_pages = self->mem_config.num_tiny_pages;
+    mempool->num_pages = self->ctx_mem_config.num_pages;
+    mempool->num_small_x4_pages = self->ctx_mem_config.num_small_x4_pages;
+    mempool->num_small_x2_pages = self->ctx_mem_config.num_small_x2_pages;
+    mempool->num_small_pages = self->ctx_mem_config.num_small_pages;
+    mempool->num_tiny_pages = self->ctx_mem_config.num_tiny_pages;
     err = mempool->alloc(mempool);
     if (err) goto error;
     self->mempool = mempool;
@@ -326,8 +326,9 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     if (err) goto error;
     task->ctx = calloc(1, sizeof(struct kndTaskContext));
     if (!task->ctx) return knd_NOMEM;
-    task->mempool = mempool;
     task->role = self->role;
+    task->user_ctx->repo = repo;
+    task->user_ctx->mempool = mempool;
     self->task = task;
 
     err = knd_repo_open(repo, task);

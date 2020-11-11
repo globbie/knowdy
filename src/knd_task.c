@@ -53,7 +53,7 @@ void knd_task_reset(struct kndTask *self)
     if (self->ctx)
         memset(self->ctx, 0, sizeof(*self->ctx));
 
-    self->user_ctx = NULL;
+    self->user_ctx = self->default_user_ctx;
     self->repo = self->system_repo;
 
     self->out->reset(self->out);
@@ -159,23 +159,16 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
     size_t total_size = 0;
     gsl_err_t parser_err;
     struct kndUser *user = task->shard->user;
-    struct kndUserContext *ctx;
-    int err;
 
     assert(task->ctx != NULL);
+    task->user_ctx->repo = user->repo;
+    task->user_ctx->acls = user->default_acls;
+    task->user_ctx->mempool = user->mempool ? user->mempool : task->mempool;
 
     task->input = input;
     task->input_size = input_size;
     task->output = NULL;
     task->output_size = 0;
-
-    /* default user context */
-    err = knd_user_context_new(task->mempool, &ctx);
-    KND_TASK_ERR("failed to alloc user ctx");
-    ctx->repo = user->repo;
-    ctx->acls = user->default_acls;
-    ctx->mempool = user->mempool;
-    task->user_ctx = ctx;
     
     if (DEBUG_TASK_LEVEL_2) {
         size_t chunk_size = KND_TEXT_CHUNK_SIZE;
@@ -386,6 +379,11 @@ int knd_task_new(struct kndShard *shard, struct kndMemPool *mempool, int task_id
     /* system repo defaults */
     self->system_repo       = repo;
     self->repo              = repo;
+
+    /* default user context */
+    err = knd_user_context_new(NULL, &self->default_user_ctx);
+    if (err) goto error;
+    self->user_ctx = self->default_user_ctx;
 
     *task = self;
 

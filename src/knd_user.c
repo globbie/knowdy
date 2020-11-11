@@ -222,7 +222,7 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
 
     /* default anonymous user */
     if (name_size == 1 && name[0] == '_') {
-        err = knd_user_context_new(task->mempool, &ctx);
+        err = knd_user_context_new(NULL, &ctx);
         if (err) return make_gsl_err_external(err);
         ctx->repo = self->repo;
         ctx->base_repo = self->repo;
@@ -516,14 +516,15 @@ int knd_user_new(struct kndUser **user, const char *classname, size_t classname_
     struct kndSharedDictItem *dict_item = NULL;
     int err;
 
-    self = malloc(sizeof(struct kndUser));                                        ALLOC_ERR(self);
+    self = malloc(sizeof(struct kndUser));
+    ALLOC_ERR(self);
     memset(self, 0, sizeof(struct kndUser));
     self->classname = classname;
     self->classname_size = classname_size;
 
     err = knd_get_class(repo, classname, classname_size, &self->class, task);
     if (err) {
-        knd_log("no such user class: %.*s", classname_size, classname);
+        KND_TASK_LOG("no such user class: %.*s", classname_size, classname);
         goto error;
     }
 
@@ -559,18 +560,21 @@ int knd_user_new(struct kndUser **user, const char *classname, size_t classname_
     /* read-only base repo for all users */
     self->reponame = reponame;
     self->reponame_size = reponame_size;
-    err = knd_repo_new(&self->repo, reponame, reponame_size, schema_path, schema_path_size, shard->mempool);
+    err = knd_repo_new(&self->repo, reponame, reponame_size, schema_path, schema_path_size, mempool);
     if (err) goto error;
     err = knd_shared_dict_set(shard->repo_name_idx, reponame, reponame_size,
-                              (void*)self->repo, shard->mempool, NULL, &dict_item, true);
+                              (void*)self->repo, mempool, NULL, &dict_item, true);
     KND_TASK_ERR("failed to register repo name \"%.*s\"", reponame_size, reponame);
 
     task->repo = self->repo;
-    task->mempool = shard->mempool;
+    task->user_ctx->repo = self->repo;
+    task->user_ctx->mempool = mempool;
+    task->mempool = mempool;
+
     err = knd_repo_open(self->repo, task);
     if (err) goto error;
 
-    err = knd_set_new(shard->mempool, &self->user_idx);
+    err = knd_set_new(mempool, &self->user_idx);
     if (err) goto error;
 
     err = knd_cache_new(&self->cache, KND_CACHE_NUM_CELLS, KND_CACHE_MAX_MEM_SIZE, free_user_ctx);
@@ -595,7 +599,7 @@ int knd_user_context_new(struct kndMemPool *mempool, struct kndUserContext **res
     struct kndUserContext *self;
     void *page;
     int err;
-    if (mempool) {
+    if (!mempool) {
         self = calloc(1, sizeof(struct kndUserContext));
         if (!self) return knd_NOMEM;
         *result = self;

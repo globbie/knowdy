@@ -320,7 +320,6 @@ int knd_attr_export_GSP(struct kndAttr *self, struct kndTask *task)
     struct kndOutput *out = task->out;
     char buf[KND_NAME_SIZE] = {0};
     size_t buf_size = 0;
-    struct kndText *tr;
 
     const char *type_name = knd_attr_names[self->type];
     size_t type_name_size = strlen(knd_attr_names[self->type]);

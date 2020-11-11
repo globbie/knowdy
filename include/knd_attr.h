@@ -261,16 +261,11 @@ int knd_attr_vars_export_GSP(struct kndAttrVar *items, struct kndOutput *out,str
 
 int knd_present_computed_inner_attrs(struct kndAttrVar *attr_var, struct kndOutput *out);
 
-int knd_compute_num_value(struct kndAttr *attr,
-                                 struct kndAttrVar *attr_var,
-                                 long *result);
+int knd_compute_num_value(struct kndAttr *attr, struct kndAttrVar *attr_var, long *result);
 
-int knd_apply_attr_var_updates(struct kndClass *self,
-                                      struct kndClassUpdate *update,
-                                      struct kndTask *task);
+int knd_apply_attr_var_updates(struct kndClass *self, struct kndClassUpdate *update, struct kndTask *task);
 
-int knd_register_attr_ref(void *obj, const char *elem_id, size_t elem_id_size,
-                          size_t count, void *elem);
+int knd_register_attr_ref(void *obj, const char *elem_id, size_t elem_id_size, size_t count, void *elem);
 
 int knd_get_arg_value(struct kndAttrVar *src, struct kndAttrVar *query, struct kndProcCallArg *arg);
 

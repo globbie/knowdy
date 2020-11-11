@@ -1058,9 +1058,13 @@ int knd_repo_restore(struct kndRepo *self, struct kndRepoSnapshot *snapshot, str
     if (DEBUG_REPO_LEVEL_TMP) {
         const char *owner_name = "/";
         size_t owner_name_size = 1;
-        if (task->user_ctx) {
+        switch (task->user_ctx->type) {
+        case KND_USER_AUTHENTICATED:
             owner_name = task->user_ctx->inst->name;
             owner_name_size =  task->user_ctx->inst->name_size;
+            break;
+        default:
+            break;
         }
         knd_log(".. restoring the latest snapshot #%zu of repo \"%.*s\" (owner:%.*s) ",
                 snapshot->numid, self->name_size, self->name, owner_name_size, owner_name);
@@ -1125,29 +1129,37 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
     if (DEBUG_REPO_LEVEL_TMP) {
         const char *owner_name = "/";
         size_t owner_name_size = 1;
-        if (task->user_ctx) {
+        switch (task->user_ctx->type) {
+        case KND_USER_AUTHENTICATED:
             owner_name = task->user_ctx->inst->name;
             owner_name_size =  task->user_ctx->inst->name_size;
+            break;
+        default:
+            break;
         }
-        knd_log(".. open repo \"%.*s\" (owner:%.*s  open mode:%d)",
+        knd_log(".. open \"%.*s\" Repo (owner:%.*s  open mode:%d)",
                 self->name_size, self->name, owner_name_size, owner_name, task->role);
+        out->reset(out);
+        mempool->present(mempool, out);
+        knd_log("** Repo Mempool\n%.*s", out->buf_size, out->buf);
     }
     out->reset(out);
-    err = out->write(out, task->path, task->path_size);
-    KND_TASK_ERR("system path construction failed");
+    OUT(task->path, task->path_size);
 
-    if (task->user_ctx) {
+    if (task->user_ctx && task->user_ctx->path_size) {
         OUT(task->user_ctx->path, task->user_ctx->path_size);
     }
     if (self->path_size) {
-        err = out->write(out, self->path, self->path_size);
-        KND_TASK_ERR("repo path construction failed");
+        OUT(self->path, self->path_size);
     }
 
     for (size_t i = 0; i < KND_MAX_SNAPSHOTS; i++) {
         buf_size = snprintf(buf, KND_TEMP_BUF_SIZE, "snapshot_%zu/", i);
-        err = out->write(out, buf, buf_size);
-        KND_TASK_ERR("snapshot path construction failed");
+        OUT(buf, buf_size);
+
+        if (DEBUG_REPO_LEVEL_2)
+            knd_log(".. try snapshot path: %.*s", out->buf_size, out->buf);
+
         if (stat(out->buf, &st)) {
             out->rtrim(out, buf_size);
             break;
@@ -1158,9 +1170,13 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
 
     if (latest_snapshot_id < 0) {
         knd_log("no snapshots of \"%.*s\" found", self->name_size, self->name);
-        if (!task->user_ctx) {
+        switch (task->user_ctx->type) {
+        case KND_USER_DEFAULT:
             err = read_source_files(self, task);
             KND_TASK_ERR("failed to read GSL source files");
+            break;
+        default:
+            break;
         }
         return knd_OK;
     }
@@ -1188,10 +1204,13 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
     err = fetch_class_storage(self, snapshot->path, snapshot->path_size, task);
     switch (err) {
     case knd_NO_MATCH:
-        // read classes from source files
-        if (!task->user_ctx) {
+        switch (task->user_ctx->type) {
+        case KND_USER_DEFAULT:
             err = read_source_files(self, task);
             KND_TASK_ERR("failed to read GSL source files");
+            break;
+        default:
+            break;
         }
         break;
     case knd_OK:
@@ -1280,10 +1299,14 @@ static int export_commit_GSL(struct kndRepo *self, struct kndCommit *commit, str
     task->ctx->max_depth = KND_MAX_DEPTH;
     OUT("{task", strlen("{task"));
 
-    if (task->user_ctx) {
+    switch (task->user_ctx->type) {
+    case KND_USER_AUTHENTICATED:
         user_inst = task->user_ctx->inst;
         OUT("{user ", strlen("{user "));
         OUT(user_inst->name, user_inst->name_size);
+        break;
+    default:
+        break;
     }
 
     OUT("{repo ", strlen("{repo "));
@@ -1347,7 +1370,7 @@ static int update_indices(struct kndRepo *self, struct kndCommit *commit, struct
         name_idx = repo->class_name_idx;
     }
 
-    for (ref = commit->class_state_refs; ref; ref = ref->next) {
+    FOREACH (ref, commit->class_state_refs) {
         entry = ref->obj;
         if (DEBUG_REPO_LEVEL_2)
             knd_log(".. idx update of class \"%.*s\" (phase:%d)",
@@ -1513,7 +1536,7 @@ static int build_commit_WAL(struct kndRepo *self, struct kndCommit *commit, stru
     err = out->write(out, task->path, task->path_size);
     KND_TASK_ERR("system path construction failed");
 
-    if (task->user_ctx) {
+    if (task->user_ctx && task->user_ctx->path_size) {
         OUT(task->user_ctx->path, task->user_ctx->path_size);
     }
 

@@ -291,9 +291,13 @@ static int build_elems_footer(struct kndSharedSetDir *dir, bool use_keys, size_t
         err = out->write(out, (const char*)buf, cell_size);
         KND_TASK_ERR("set dir output failed");
     }
-    err = out->writec(out, (char)cell_size);
+    if (use_keys) {
+        err = out->writec(out, (int)dir->num_elems);
+        KND_TASK_ERR("output failure");
+    }
+    err = out->writec(out, (int)cell_size);
     KND_TASK_ERR("output failure");
-    err = out->writec(out, (int)use_keys);
+    err = out->writec(out, (char)use_keys);
     KND_TASK_ERR("output failure");
     return knd_OK;
 }
