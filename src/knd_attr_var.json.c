@@ -50,8 +50,8 @@ static int inner_var_export_JSON(struct kndAttrVar *var, struct kndTask *task, s
     int err;
 
     if (DEBUG_ATTR_VAR_JSON_LEVEL_TMP)
-        knd_log(".. JSON export inner var \"%.*s\"  list item:%d",
-                var->name_size, var->name, var->is_list_item);
+        knd_log(".. JSON export inner var \"%.*s\" val:%.*s implied:%p list item:%d",
+                var->name_size, var->name, var->val_size, var->val, var->implied_attr, var->is_list_item);
 
     if (task->ctx->format_offset) {
         OUT("\n", 1);
@@ -105,6 +105,8 @@ static int inner_var_export_JSON(struct kndAttrVar *var, struct kndTask *task, s
             err = knd_print_offset(out, depth * task->ctx->format_offset);
             KND_TASK_ERR("GSL offset output failed");
         }
+        knd_log("* child %.*s => %.*s  implied:%p",
+                item->name_size, item->name, item->val_size, item->val, item->implied_attr);
         err = knd_attr_var_export_JSON(item, task, depth + 1);
     }    
     return knd_OK;

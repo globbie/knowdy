@@ -57,11 +57,8 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     struct kndClass *self = ctx->class;
     struct kndTask *task = ctx->task;
     struct kndRepo *repo = ctx->repo;
-    struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndClassEntry *entry;
     struct kndClass *c;
-    char idbuf[KND_ID_SIZE];
-    size_t idbuf_size;
     struct kndCharSeq *seq;
     int err;
 
@@ -84,34 +81,17 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
             err = knd_shared_dict_set(repo->class_name_idx, name, name_size, (void*)entry,
                                       task->mempool, NULL, NULL, false);
             if (err) {
-                knd_log("failed to register a class name");
+                KND_TASK_LOG("failed to register a class name");
                 return make_gsl_err_external(err);
             }
             if (DEBUG_CLASS_IMPORT_LEVEL_2)
                 knd_log("++ new class registered: %.*s", name_size, name);
 
-            /* register as a normal charseq */
-            seq = knd_shared_dict_get(repo->str_dict, name, name_size);
-            if (!seq) {
-                err = knd_charseq_new(mempool, &seq);
-                seq->val = name;
-                seq->val_size = name_size;
-
-                seq->numid = atomic_fetch_add_explicit(&repo->num_strs, 1, memory_order_relaxed);
-
-                err = knd_shared_dict_set(repo->str_dict, name, name_size, (void*)seq,
-                                          mempool, NULL, &seq->item, false);
-                if (err) {
-                    KND_TASK_LOG("failed to register a class name charseq");
-                    return make_gsl_err_external(err);
-                }
-                knd_uid_create(seq->numid, idbuf, &idbuf_size);
-                err = knd_shared_set_add(repo->str_idx, idbuf, idbuf_size, (void*)seq);
-                if (err) {
-                    KND_TASK_LOG("failed to register a charseq by numid");
-                    return make_gsl_err_external(err);
-                }
-                // knd_log(">> class name as a str: \"%.*s\"", name_size, name);
+            /* register as a charseq */
+            err = knd_charseq_fetch(repo, name, name_size, &seq, task);
+            if (err) {
+                KND_TASK_LOG("failed to encode a class name charseq %.*s", name_size, name);
+                return make_gsl_err_external(err);
             }
             entry->seq = seq;
             return make_gsl_err(gsl_OK);

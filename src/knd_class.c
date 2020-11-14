@@ -684,6 +684,32 @@ int knd_get_class_by_id(struct kndRepo *repo, const char *id, size_t id_size, st
     return knd_OK;
 }
 
+int knd_get_class_entry_by_id(struct kndRepo *repo, const char *id, size_t id_size,
+                              struct kndClassEntry **result, struct kndTask *task)
+{
+    struct kndClassEntry *entry;
+    struct kndSharedSet *class_idx = repo->class_idx;
+    int err;
+
+    if (DEBUG_CLASS_LEVEL_2)
+        knd_log(".. repo \"%.*s\" to get class entry by id \"%.*s\"",
+                repo->name_size, repo->name, id_size, id);
+    
+    err = knd_shared_set_get(class_idx, id, id_size, (void**)&entry);
+    if (err) {
+        /* check parent schema */
+        if (repo->base) {
+            err = knd_get_class_entry_by_id(repo->base, id, id_size, result, task);
+            if (err) return err;
+            return knd_OK;
+        }
+        err = knd_NO_MATCH;
+        KND_TASK_ERR("no such class entry: \"%.*s\"", id_size, id);
+    }
+    *result = entry;
+    return knd_OK;
+}
+
 int knd_unregister_class_inst(struct kndClass *self, struct kndClassInstEntry *entry, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;

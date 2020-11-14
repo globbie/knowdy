@@ -242,9 +242,13 @@ int knd_text_build_JSON(const char *rec, size_t rec_size, struct kndTask *task);
 
 int knd_par_export_GSL(struct kndPar *par, struct kndTask *task);
 
+int knd_charseq_fetch(struct kndRepo *repo, const char *val, size_t val_size, struct kndCharSeq **result,
+                      struct kndTask *task);
 int knd_charseq_marshall(void *elem, size_t *output_size, struct kndTask *task);
 int knd_charseq_unmarshall(const char *elem_id, size_t elem_id_size, const char *val, size_t val_size,
                            void **result, struct kndTask *task);
+int knd_charseq_decode(struct kndRepo *repo, const char *val, size_t val_size, struct kndCharSeq **result,
+                       struct kndTask *task);
 
 int knd_text_new(struct kndMemPool *mempool, struct kndText **result);
 int knd_synode_new(struct kndMemPool *mempool, struct kndSyNode **result);
@@ -259,3 +263,4 @@ int knd_clause_new(struct kndMemPool *mempool, struct kndClause **result);
 int knd_statement_new(struct kndMemPool *mempool, struct kndStatement **result);
 int knd_text_loc_new(struct kndMemPool *mempool, struct kndTextLoc **result);
 int knd_text_search_report_new(struct kndMemPool *mempool, struct kndTextSearchReport **result);
+

@@ -39,12 +39,14 @@ int knd_charseq_marshall(void *elem, size_t *output_size, struct kndTask *task)
 int knd_charseq_unmarshall(const char *elem_id, size_t elem_id_size,
                            const char *val, size_t val_size, void **result, struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndCharSeq *seq;
     struct kndSharedDict *str_dict = task->repo->str_dict;
     int err;
-    if (DEBUG_TEXT_GSP_LEVEL_2)
+
+    if (DEBUG_TEXT_GSP_LEVEL_2) {
         knd_log("charseq \"%.*s\" => \"%.*s\"", elem_id_size, elem_id, val_size, val);
+    }
 
     err = knd_charseq_new(mempool, &seq);
     KND_TASK_ERR("charseq alloc failed");

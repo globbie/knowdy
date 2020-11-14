@@ -204,6 +204,8 @@ int knd_get_class_entry(struct kndRepo *self, const char *name, size_t name_size
                         struct kndClassEntry **result, struct kndTask *task);
 int knd_get_class(struct kndRepo *self, const char *name, size_t name_size, struct kndClass **result, struct kndTask *task);
 int knd_get_class_by_id(struct kndRepo *self, const char *id, size_t id_size, struct kndClass **result, struct kndTask *task);
+int knd_get_class_entry_by_id(struct kndRepo *repo, const char *id, size_t id_size,
+                              struct kndClassEntry **result, struct kndTask *task);
 
 int knd_is_base(struct kndClass *self, struct kndClass *child);
 

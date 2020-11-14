@@ -39,37 +39,16 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     struct kndTask *task = ctx->task;
     struct kndRepo *repo = task->repo;
     struct kndAttr *self = ctx->attr;
-    struct kndMemPool *mempool = task->mempool;
-    char idbuf[KND_ID_SIZE];
-    size_t idbuf_size;
     struct kndCharSeq *seq;
     int err;
 
     self->name = name;
     self->name_size = name_size;
 
-    /* register attr name as a global charseq */
-    seq = knd_shared_dict_get(repo->str_dict, name, name_size);
-    if (seq) {
-        self->seq = seq;
-        return make_gsl_err(gsl_OK);
-    }
-
-    err = knd_charseq_new(mempool, &seq);
-    seq->val = name;
-    seq->val_size = name_size;
-    seq->numid = atomic_fetch_add_explicit(&repo->num_strs, 1, memory_order_relaxed);
-
-    err = knd_shared_dict_set(repo->str_dict, name, name_size, (void*)seq,
-                              mempool, NULL, &seq->item, false);
+    /* register as a charseq */
+    err = knd_charseq_fetch(repo, name, name_size, &seq, task);
     if (err) {
-        KND_TASK_LOG("failed to register an attr name charseq");
-        return make_gsl_err_external(err);
-    }
-    knd_uid_create(seq->numid, idbuf, &idbuf_size);
-    err = knd_shared_set_add(repo->str_idx, idbuf, idbuf_size, (void*)seq);
-    if (err) {
-        KND_TASK_LOG("failed to register a charseq by numid");
+        KND_TASK_LOG("failed to encode a class name charseq %.*s", name_size, name);
         return make_gsl_err_external(err);
     }
     self->seq = seq;

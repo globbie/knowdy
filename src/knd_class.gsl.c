@@ -180,8 +180,7 @@ static int export_class_ref_GSL(void *obj,
     return knd_OK;
 }
 
-int knd_export_gloss_GSL(struct kndText *tr,
-                         struct kndTask *task)
+int knd_export_gloss_GSL(struct kndText *tr, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     const char *locale = task->ctx->locale;
@@ -194,7 +193,7 @@ int knd_export_gloss_GSL(struct kndText *tr,
         if (memcmp(locale, tr->locale, tr->locale_size)) {
             continue;
         }
-        err = out->write(out, "[_gloss ", strlen("[_gloss "));                    RET_ERR();
+        err = out->write(out, "[gloss ", strlen("[gloss "));                    RET_ERR();
         err = out->writec(out, '{');                                              RET_ERR();
         err = out->write_escaped(out, tr->locale, tr->locale_size);               RET_ERR();
         err = out->write(out, "{t ", strlen("{t "));                              RET_ERR();

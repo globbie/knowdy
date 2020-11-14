@@ -154,14 +154,9 @@ static int unmarshall_elems(struct kndSharedSetDir *dir, const char *block, size
     if (use_keys && cell_size > 0) {
         footer_size++;
         spec = block[block_size - footer_size];
-
-        //if (spec > KND_RADIX_BASE) {
-        //    return knd_LIMIT;
-        //}
         num_elems = spec;
-
-        knd_log("== \"%.*s\" use keys:%d  cell size:%zu  num elems:%zu",
-                idbuf_size, idbuf, use_keys, cell_size, num_elems);
+        if (num_elems > KND_RADIX_BASE)
+            return knd_LIMIT;
     }
 
     if (DEBUG_SHARED_SET_GSP_LEVEL_2)
@@ -190,11 +185,6 @@ static int unmarshall_elems(struct kndSharedSetDir *dir, const char *block, size
     remainder = block_size - (dir_size + footer_size);
     b = block + remainder;
     e = block;
-
-    if (use_keys) {
-        knd_log("block size:%zu remainder:%zu footer:%zu field size:%zu",
-                block_size, remainder, footer_size, dir_field_size);
-    }
     
     for (size_t i = 0; i < num_elems; i++) {
         c = (unsigned char*)b + (i * dir_field_size);
@@ -202,8 +192,10 @@ static int unmarshall_elems(struct kndSharedSetDir *dir, const char *block, size
             numval = knd_unpack_int(c + 1, cell_size);
             idbuf[idbuf_size] = *c;
             elem_id_val = obj_id_base[*c];
-            knd_log("%zu of %zu: elem id:%c numval:%zu payload \"%.*s\"",
-                    i, num_elems, *c, numval, numval, e);
+
+            if (DEBUG_SHARED_SET_GSP_LEVEL_2)
+                knd_log("%zu of %zu: elem id:%c numval:%zu payload \"%.*s\"",
+                        i, num_elems, *c, numval, numval, e);
         } else {
             numval = knd_unpack_int(c, cell_size);
             idbuf[idbuf_size] = obj_id_seq[i];
@@ -445,7 +437,7 @@ static int read_elem(struct kndSharedSet *self, int fd, struct kndSharedSetDir *
     size_t elem_block_size, elem_offset = 0;
     int err;
 
-    if (DEBUG_SHARED_SET_GSP_LEVEL_TMP)
+    if (DEBUG_SHARED_SET_GSP_LEVEL_2)
         knd_log(".. read elem (id remainder: \"%.*s\")", id_size, id);
 
     assert(dir != NULL);
@@ -499,7 +491,7 @@ static int read_elem(struct kndSharedSet *self, int fd, struct kndSharedSetDir *
     num_bytes = read(fd, b, elem_block_size);
     if (num_bytes != (ssize_t)elem_block_size) return knd_IO_FAIL;
     
-    if (DEBUG_SHARED_SET_GSP_LEVEL_TMP)
+    if (DEBUG_SHARED_SET_GSP_LEVEL_2)
         knd_log("PAYLOAD BLOCK: %s (size: %zu)", b, elem_block_size);
 
     if (dir->elems_linear_scan) {
@@ -520,7 +512,7 @@ int knd_shared_set_unmarshall_elem(struct kndSharedSet *self, const char *id, si
     knd_task_spec_type orig_task_type = task->type;
     int err;
 
-    if (DEBUG_SHARED_SET_GSP_LEVEL_TMP)
+    if (DEBUG_SHARED_SET_GSP_LEVEL_2)
         knd_log(".. unmarshall elem \"%.*s\" from GSP \"%s\"", id_size, id, self->path);
 
     // TODO: check cache

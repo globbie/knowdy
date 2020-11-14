@@ -45,47 +45,6 @@ static gsl_err_t set_gloss_locale(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-static int fetch_charseq(const char *val, size_t val_size, struct kndCharSeq **result,
-                         struct kndRepo *repo, struct kndTask *task)
-{
-    char idbuf[KND_ID_SIZE];
-    size_t idbuf_size;
-    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
-    struct kndCharSeq *seq;
-    int err;
-
-    switch (task->type) {
-    case KND_UNFREEZE_STATE:
-        if (val_size > KND_ID_SIZE) break;
-        err = knd_shared_set_get(repo->str_idx, val, val_size, (void**)&seq);
-        if (!err) {
-            if (DEBUG_TEXT_IMPORT_LEVEL_2)
-                knd_log(">> decode \"%.*s\" charseq => \"%.*s\"", val_size, val, seq->val_size, seq->val);
-            *result = seq;
-            return knd_OK;
-        }
-        break;
-    default:
-        break;
-    }
-    seq = knd_shared_dict_get(repo->str_dict, val, val_size);
-    if (!seq) {
-        err = knd_charseq_new(mempool, &seq);
-        KND_TASK_ERR("failed to alloc a charseq");
-        seq->val = val;
-        seq->val_size = val_size;
-        seq->numid = atomic_fetch_add_explicit(&repo->num_strs, 1, memory_order_relaxed);
-
-        err = knd_shared_dict_set(repo->str_dict, val, val_size, (void*)seq, mempool, NULL, &seq->item, false);
-        KND_TASK_ERR("failed to register a charseq");
-        knd_uid_create(seq->numid, idbuf, &idbuf_size);
-        err = knd_shared_set_add(repo->str_idx, idbuf, idbuf_size, (void*)seq);
-        KND_TASK_ERR("failed to register a charseq by numid");
-    }
-    *result = seq;
-    return knd_OK;
-}
-
 static gsl_err_t set_gloss_value(void *obj, const char *val, size_t val_size)
 {
     struct LocalContext *ctx = obj;
@@ -93,7 +52,7 @@ static gsl_err_t set_gloss_value(void *obj, const char *val, size_t val_size)
     int err;
     assert(val_size != 0);
 
-    err = fetch_charseq(val, val_size, &ctx->text->seq, task->repo, task);
+    err = knd_charseq_fetch(task->repo, val, val_size, &ctx->text->seq, task);
     if (err) {
         KND_TASK_LOG("failed to fetch a gloss charseq %.*s", val_size, val);
         return make_gsl_err_external(err);
@@ -108,7 +67,7 @@ static gsl_err_t set_gloss_abbr(void *obj, const char *val, size_t val_size)
     int err;
     assert(val_size != 0);
 
-    err = fetch_charseq(val, val_size, &ctx->text->abbr, task->repo, task);
+    err = knd_charseq_fetch(task->repo, val, val_size, &ctx->text->abbr, task);
     if (err) {
         KND_TASK_LOG("failed to fetch a gloss abbr charseq %.*s", val_size, val);
         return make_gsl_err_external(err);
@@ -193,7 +152,7 @@ static gsl_err_t set_text_seq(void *obj, const char *val, size_t val_size)
     struct kndTask *task = ctx->task;
     int err;
 
-    err = fetch_charseq(val, val_size, &ctx->text->seq, task->repo, task);
+    err = knd_charseq_fetch(task->repo, val, val_size, &ctx->text->seq, task);
     if (err) {
         KND_TASK_LOG("failed to fetch a text charseq %.*s", val_size, val);
         return make_gsl_err_external(err);

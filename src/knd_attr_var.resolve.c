@@ -172,12 +172,8 @@ static int resolve_inner_var(struct kndClass *self, struct kndAttrVar *var, stru
                     c->name_size, c->name, c->is_resolved);
         }
         err = knd_class_get_attr(c, item->name, item->name_size, &attr_ref);
-        if (err) {
-            knd_log("-- no attr \"%.*s\" in class \"%.*s\"",
-                    item->name_size, item->name,
-                    c->name_size, c->name);
-            return err;
-        }
+        KND_TASK_ERR("no attr \"%.*s\" in class \"%.*s\"",
+                     item->name_size, item->name, c->name_size, c->name);
 
         attr = attr_ref->attr;
         item->attr = attr;

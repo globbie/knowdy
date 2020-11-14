@@ -45,67 +45,54 @@ static int inner_var_export_GSL(struct kndAttrVar *var, struct kndTask *task, si
 {
     struct kndOutput *out = task->out;
     struct kndAttr *attr = var->attr;
-    struct kndClass *c;
+    // struct kndClass *c;
     struct kndAttrVar *item;
     int err;
 
-    if (DEBUG_ATTR_VAR_GSL_LEVEL_2)
-        knd_log(".. GSL export inner var \"%.*s\"  list item:%d",
-                var->name_size, var->name, var->is_list_item);
+    if (DEBUG_ATTR_VAR_GSL_LEVEL_TMP)
+        knd_log(".. GSL export inner var \"%.*s\" val:%.*s  list item:%d",
+                var->name_size, var->name, var->val_size, var->val, var->is_list_item);
 
     if (task->ctx->format_offset) {
         OUT("\n", 1);
         err = knd_print_offset(out, depth * task->ctx->format_offset);
         KND_TASK_ERR("GSL offset output failed");
     }
+    
+    /* if (var->is_list_item) {
+        knd_log("* inner list item (implied attr:%p) parent: %.*s",
+                var->implied_attr,
+                var->parent->name_size, var->parent->name);
+        attr = var->parent->attr;
+        knd_log("attr: %.*s  implied attr:%p", attr->name_size, attr->name, var->parent->implied_attr);
+
+        c = attr->ref_class_entry->class;
+        knd_log("class:%.*s", c->name_size, c->name);
+        } */
 
     if (var->implied_attr) {
-        OUT(var->val, var->val_size);
-    }
-
-    if (var->is_list_item) {
-        goto inner_children;
-    }
-
-    if (attr->is_a_set) {
-        err = attr_var_list_export_GSL(var, task, depth + 1);
-        KND_TASK_ERR("GSL attr var list export failed");
-        return knd_OK;
-    }
-        
-    /* export a class ref */
-    if (var->class) {
-        // TODO atomic
-        c = var->attr->ref_class_entry->class;
-
-        /* TODO: check assignment */
-        if (var->implied_attr) {
-            attr = var->implied_attr;
-        }
-        if (c->implied_attr)
-            attr = c->implied_attr;
-        c = var->class;
-
-        err = knd_class_export_GSL(c->entry, task, false, depth + 1);
-        KND_TASK_ERR("GSL class export failed");
-    }
-
-    if (!var->class) {
-        /* terminal string value */
-        if (var->val_size) {
-            OUT(var->val, var->val_size);
+        attr = var->implied_attr;
+        switch (attr->type) {
+        case KND_ATTR_REF:
+            assert(var->class_entry != NULL);
+            OUT(var->class_entry->name, var->class_entry->name_size);
+            break;
+        case KND_ATTR_STR:
+            OUT(var->name, var->name_size);
+            break;
+        default:
+            break;
         }
     }
 
- inner_children:
-    for (item = var->children; item; item = item->next) {
+    FOREACH (item, var->children) {
         if (task->ctx->format_offset) {
             OUT("\n", 1);
             err = knd_print_offset(out, depth * task->ctx->format_offset);
             KND_TASK_ERR("GSL offset output failed");
         }
-        err = knd_attr_var_export_GSL(item, task, depth + 1);
-    }    
+        err = knd_attr_var_export_GSL(item, task, depth);
+    }
     return knd_OK;
 }
 
@@ -271,7 +258,7 @@ static int attr_var_list_export_GSL(struct kndAttrVar *var, struct kndTask *task
 
     for (item = var->list; item; item = item->next) {
         if (task->ctx->format_offset) {
-            err = out->writec(out, '\n');                                         RET_ERR();
+            err = out->writec(out, '\n');                                              RET_ERR();
             err = knd_print_offset(out, (depth + 1) * task->ctx->format_offset);       RET_ERR();
         }
 
