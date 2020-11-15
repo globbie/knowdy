@@ -45,11 +45,10 @@ static int inner_var_export_GSL(struct kndAttrVar *var, struct kndTask *task, si
 {
     struct kndOutput *out = task->out;
     struct kndAttr *attr = var->attr;
-    // struct kndClass *c;
     struct kndAttrVar *item;
     int err;
 
-    if (DEBUG_ATTR_VAR_GSL_LEVEL_TMP)
+    if (DEBUG_ATTR_VAR_GSL_LEVEL_2)
         knd_log(".. GSL export inner var \"%.*s\" val:%.*s  list item:%d",
                 var->name_size, var->name, var->val_size, var->val, var->is_list_item);
 
@@ -64,7 +63,6 @@ static int inner_var_export_GSL(struct kndAttrVar *var, struct kndTask *task, si
                 var->implied_attr,
                 var->parent->name_size, var->parent->name);
         attr = var->parent->attr;
-        knd_log("attr: %.*s  implied attr:%p", attr->name_size, attr->name, var->parent->implied_attr);
 
         c = attr->ref_class_entry->class;
         knd_log("class:%.*s", c->name_size, c->name);

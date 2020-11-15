@@ -96,7 +96,7 @@ static gsl_err_t set_baseclass(void *obj, const char *id, size_t id_size)
     }
     class_var->entry = entry;
 
-    if (DEBUG_CLASS_READ_LEVEL_TMP)
+    if (DEBUG_CLASS_READ_LEVEL_3)
         knd_log("== conc item baseclass: %.*s (id:%.*s)", entry->name_size, entry->name, id_size, id);
     
     return make_gsl_err(gsl_OK);
@@ -300,8 +300,8 @@ static gsl_err_t read_attr(void *obj, const char *name, size_t name_size, const 
 
 int knd_class_read(struct kndClass *self, const char *rec, size_t *total_size, struct kndTask *task)
 {
-    if (DEBUG_CLASS_READ_LEVEL_2)
-        knd_log(".. reading class GSP: \"%.*s\"..", 128, rec);
+    if (DEBUG_CLASS_READ_LEVEL_TMP)
+        knd_log(".. reading class GSP: \"%.*s\" attr_idx:%p", 128, rec, self->attr_idx);
 
     if (self->resolving_in_progress) {
         knd_log("vicious circle detected while reading class \"%.*s\"", self->name_size, self->name);
@@ -382,9 +382,9 @@ static int inherit_attr(struct kndClass *self, struct kndAttr *attr, struct kndT
     struct kndAttrRef *ref = NULL;
     int err;
 
-    if (DEBUG_CLASS_READ_LEVEL_TMP)
-        knd_log("..  \"%.*s\" (id:%.*s) attr of \"%.*s\" to be inherited by %.*s..",
-                attr->name_size, attr->name, attr->id_size, attr->id,
+    if (DEBUG_CLASS_READ_LEVEL_3)
+        knd_log("..  \"%.*s\" (id:%.*s size:%zu) attr of \"%.*s\" to be inherited by %.*s",
+                attr->name_size, attr->name, attr->id_size, attr->id, attr->id_size,
                 attr->parent_class->name_size, attr->parent_class->name,
                 self->name_size, self->name);
 
@@ -393,7 +393,7 @@ static int inherit_attr(struct kndClass *self, struct kndAttr *attr, struct kndT
     ref->attr = attr;
     ref->class_entry = attr->parent_class->entry;
 
-    err = attr_idx->add(attr_idx, attr->id, attr->id_size, (void*)ref);
+    err = knd_set_add(attr_idx, attr->id, attr->id_size, (void*)ref);
     KND_TASK_ERR("failed to update attr idx of %.*s", self->name_size, self->name);
 
     return knd_OK;
@@ -412,8 +412,9 @@ static int resolve_class(struct kndClass *self, struct kndTask *task)
         err = knd_class_acquire(entry, &c, task);
         KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
 
-        knd_log(".. class \"%.*s\" to inherit attrs from \"%.*s\"",
-                self->name_size, self->name, c->name_size, c->name);
+        if (DEBUG_CLASS_READ_LEVEL_2)
+            knd_log(".. class \"%.*s\" to inherit attrs from \"%.*s\"",
+                    self->name_size, self->name, c->name_size, c->name);
 
         FOREACH (attr, c->attrs) {
             err = inherit_attr(self, attr, task);

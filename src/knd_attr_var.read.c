@@ -279,16 +279,23 @@ static gsl_err_t set_attr_var_value(void *obj, const char *val, size_t val_size)
     self->val = val;
     self->val_size = val_size;
 
-    err = knd_charseq_decode(task->repo, val, val_size, &seq, task);
-    if (err) {
-        KND_TASK_LOG("failed to decode a charseq");
-        if (err) return make_gsl_err_external(err);
+    switch (self->attr->type) {
+    case KND_ATTR_NUM:
+    case KND_ATTR_FLOAT:
+    case KND_ATTR_STR:
+        err = knd_charseq_decode(task->repo, val, val_size, &seq, task);
+        if (err) {
+            KND_TASK_LOG("failed to decode a charseq");
+            if (err) return make_gsl_err_external(err);
+        }
+        if (DEBUG_ATTR_VAR_READ_LEVEL_TMP)
+            knd_log(">> \"%.*s\" => decoded str val:%.*s", self->name_size, self->name, seq->val_size, seq->val);
+        self->val = seq->val;
+        self->val_size = seq->val_size;
+    default:
+        break;
     }
 
-    if (DEBUG_ATTR_VAR_READ_LEVEL_TMP)
-        knd_log(">> \"%.*s\" => decoded val:%.*s", self->name_size, self->name, seq->val_size, seq->val);
-    self->val = seq->val;
-    self->val_size = seq->val_size;
     return make_gsl_err(gsl_OK);
 }
 
@@ -467,7 +474,7 @@ int knd_read_attr_var_list(struct kndClassVar *self, const char *id, size_t id_s
     return knd_OK;
 }
 
-int knd_read_attr_var(struct kndClassVar *self, const char *name, size_t name_size,
+int knd_read_attr_var(struct kndClassVar *self, const char *id, size_t id_size,
                       const char *rec, size_t *total_size, struct kndTask *task)
 {
     struct kndAttrRef *ref;
@@ -480,8 +487,8 @@ int knd_read_attr_var(struct kndClassVar *self, const char *name, size_t name_si
     err = knd_class_acquire(entry, &c, task);
     KND_TASK_ERR("failed to get class %.*s", entry->name_size, entry->name);
 
-    err = knd_class_get_attr(c, name, name_size, &ref);
-    KND_TASK_ERR("no attr \"%.*s\" in class \"%.*s\"", name_size, name, entry->name_size, entry->name);
+    err = knd_set_get(c->attr_idx, id, id_size, (void**)&ref);
+    KND_TASK_ERR("no attr \"%.*s\" in class \"%.*s\"", id_size, id, entry->name_size, entry->name);
 
     if (DEBUG_ATTR_VAR_READ_LEVEL_TMP)
         knd_log(".. reading attr var \"%.*s\" of class: \"%.*s\"",
@@ -490,8 +497,8 @@ int knd_read_attr_var(struct kndClassVar *self, const char *name, size_t name_si
     err = knd_attr_var_new(task->mempool, &var);
     KND_TASK_ERR("failed to alloc an attr var");
     var->class_var = self;
-    var->name = name;
-    var->name_size = name_size;
+    var->name = ref->attr->name;
+    var->name_size = ref->attr->name_size;
     var->attr = ref->attr;
 
     struct LocalContext ctx = {

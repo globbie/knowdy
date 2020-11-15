@@ -216,15 +216,15 @@ int knd_attr_vars_export_GSP(struct kndAttrVar *items, struct kndOutput *out, st
 int knd_attr_var_export_GSP(struct kndAttrVar *var, struct kndTask *task, struct kndOutput *out,
                             size_t unused_var(depth))
 {
+    char idbuf[KND_ID_SIZE];
+    size_t idbuf_size;
+    struct kndCharSeq *seq;
     int err;
 
     assert(var->attr != NULL);
     knd_attr_type attr_type = var->attr->type;
 
     switch (attr_type) {
-    case KND_ATTR_NUM:
-        OUT(var->val, var->val_size);
-        break;
     case KND_ATTR_REF:
         OUT(var->class->entry->id, var->class->entry->id_size);
         break;
@@ -243,7 +243,10 @@ int knd_attr_var_export_GSP(struct kndAttrVar *var, struct kndTask *task, struct
         OUT("}", 1);
         break;
     default:
-        OUT(var->val, var->val_size);
+        err = knd_charseq_fetch(task->repo, var->val, var->val_size, &seq, task);
+        KND_TASK_ERR("failed to encode a charseq");
+        knd_uid_create(seq->numid, idbuf, &idbuf_size);
+        OUT(idbuf, idbuf_size);
         break;
     }
     return knd_OK;
