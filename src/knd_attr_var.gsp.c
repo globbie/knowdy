@@ -83,7 +83,6 @@ static int inner_var_export_GSP(struct kndAttrVar *var, struct kndTask *task)
             err = knd_charseq_fetch(task->repo, var->name, var->name_size, &seq, task);
             KND_TASK_ERR("failed to encode a charseq");
             knd_uid_create(seq->numid, idbuf, &idbuf_size);
-            // var->seq = seq;
             OUT(idbuf, idbuf_size);
             break;
         default:
@@ -116,6 +115,9 @@ static int inner_var_export_GSP(struct kndAttrVar *var, struct kndTask *task)
         case KND_ATTR_INNER:
             err = inner_var_export_GSP(item, task);
             KND_TASK_ERR("failed to export inner var GSP");
+            break;
+        case KND_ATTR_BOOL:
+            OUT("t", 1);
             break;
         default:
             assert(item->val != NULL);

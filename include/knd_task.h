@@ -122,6 +122,7 @@ struct kndTaskContext {
 
     knd_format format;
     size_t format_offset;
+    size_t format_indent;
 
     struct kndText *tr;
 

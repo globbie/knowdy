@@ -189,7 +189,7 @@ static int sent_export_JSON(struct kndSentence *sent, struct kndTask *task)
     return knd_OK;
 }
 
-int knd_text_export_JSON(struct kndText *self, struct kndTask *task)
+int knd_text_export_JSON(struct kndText *self, struct kndTask *task, size_t unused_var(depth))
 {
     struct kndOutput *out = task->out;
     struct kndPar *par;
@@ -303,6 +303,53 @@ int knd_text_export_query_report_JSON(struct kndTask *task)
     return knd_OK;
 }
 
+int knd_text_gloss_export_JSON(struct kndText *text, struct kndTask *task, size_t depth)
+{
+    struct kndOutput *out = task->out;
+    struct kndText *tr;
+    size_t indent_size = task->ctx->format_indent;
+    int err;
+
+    FOREACH (tr, text) {
+        if (task->ctx->locale_size != tr->locale_size) continue;
+        if (memcmp(task->ctx->locale, tr->locale, tr->locale_size)) {
+            continue;
+        }
+        OUT(",", 1);
+        if (indent_size) {
+            OUT("\n", 1);
+            err = knd_print_offset(out, depth * indent_size);
+            RET_ERR();
+        }
+        OUT("\"gloss\":", strlen("\"gloss\":"));
+        if (indent_size) {
+            OUT(" ", 1);
+        }
+        OUT("\"", 1);
+        err = out->write_escaped(out, tr->seq->val,  tr->seq->val_size);
+        RET_ERR();
+        OUT("\"", 1);
+
+        if (tr->abbr) {
+            OUT(",", 1);
+            if (indent_size) {
+                OUT("\n", 1);
+                err = knd_print_offset(out, depth * indent_size);
+                RET_ERR();
+            }
+            OUT("\"abbr\":", strlen("\"abbr\":"));
+            if (indent_size) {
+                OUT(" ", 1);
+            }
+            OUT("\"", 1);
+            OUT(tr->abbr->val, tr->abbr->val_size);
+            OUT("\"", 1);
+        }
+        break;
+    }
+    return knd_OK;
+}
+
 int knd_text_build_JSON(const char *rec, size_t rec_size, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
@@ -322,7 +369,7 @@ int knd_text_build_JSON(const char *rec, size_t rec_size, struct kndTask *task)
         return knd_FAIL;
     }
 
-    err = knd_text_export(text, KND_FORMAT_JSON, task);
+    err = knd_text_export(text, KND_FORMAT_JSON, task, 0);
     KND_TASK_ERR("failed to export text JSON");
 
     if (DEBUG_TEXT_JSON_LEVEL_2)
@@ -332,3 +379,4 @@ int knd_text_build_JSON(const char *rec, size_t rec_size, struct kndTask *task)
     task->output_size = task->out->buf_size;
     return knd_OK;
 }
+

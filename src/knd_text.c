@@ -274,3 +274,19 @@ void knd_text_str(struct kndText *self, size_t depth)
     knd_log("%*stext: \"%.*s\" (lang:%.*s)", depth * KND_OFFSET_SIZE, "",
             val->val_size, val->val, self->locale_size, self->locale);
 }
+
+int knd_text_export(struct kndText *self, knd_format format, struct kndTask *task, size_t depth)
+{
+    int err;
+    switch (format) {
+    case KND_FORMAT_JSON:
+        err = knd_text_export_JSON(self, task, depth);
+        KND_TASK_ERR("failed to export text JSON");
+        break;
+    default:
+        err = knd_text_export_GSL(self, task, depth);
+        KND_TASK_ERR("failed to export text GSL");
+        break;
+    }
+    return knd_OK;
+}

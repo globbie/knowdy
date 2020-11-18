@@ -217,14 +217,12 @@ int knd_empty_set_export_JSON(struct kndClass *self, struct kndTask *task);
 
 int knd_class_set_export_JSON(struct kndSet *set, struct kndTask *task);
 int knd_class_facets_export_JSON(struct kndTask *task);
-int knd_class_export_JSON(struct kndClass *self, struct kndTask *task);
+int knd_class_export_JSON(struct kndClass *self, struct kndTask *task, bool is_list_item, size_t depth);
 
 int knd_class_export(struct kndClass *self, knd_format format, struct kndTask *task);
 
 int knd_class_export_state(struct kndClassEntry *self, knd_format format, struct kndTask *task);
 
-gsl_err_t knd_parse_gloss_array(void *obj, const char *rec, size_t *total_size);
-gsl_err_t knd_parse_summary_array(void *obj, const char *rec, size_t *total_size);
 
 // knd_class.gsl.c
 int knd_export_class_state_GSL(struct kndClassEntry *self, struct kndTask *task);

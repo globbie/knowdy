@@ -406,15 +406,12 @@ int knd_empty_set_export(struct kndClass *self,
     return knd_FAIL;
 }
 
-int knd_class_export(struct kndClass *self,
-                     knd_format format,
-                     struct kndTask *task)
+int knd_class_export(struct kndClass *self, knd_format format, struct kndTask *task)
 {
     task->out->reset(task->out);
-
     switch (format) {
     case KND_FORMAT_JSON:
-        return knd_class_export_JSON(self, task);
+        return knd_class_export_JSON(self, task, false, 0);
     case KND_FORMAT_GSP:
         return knd_class_export_GSP(self, task);
     default:
@@ -424,9 +421,7 @@ int knd_class_export(struct kndClass *self,
     return knd_FAIL;
 }
 
-int knd_class_export_state(struct kndClassEntry *self,
-                           knd_format format,
-                           struct kndTask *task)
+int knd_class_export_state(struct kndClassEntry *self, knd_format format, struct kndTask *task)
 {
     switch (format) {
         case KND_FORMAT_JSON:

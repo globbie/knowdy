@@ -146,9 +146,9 @@ static int export_conc_elem_GSL(void *obj,
 
     curr_depth = task->depth;
     task->depth = 0;
-    if (task->ctx->format_offset) {
+    if (task->ctx->format_indent) {
         err = out->writec(out, '\n');                                             RET_ERR();
-        err = knd_print_offset(out, task->ctx->format_offset);                         RET_ERR();
+        err = knd_print_offset(out, task->ctx->format_indent);                         RET_ERR();
     }
 
     err = knd_class_export_GSL(entry, task, true, 1);                                 RET_ERR();
@@ -170,39 +170,13 @@ static int export_class_ref_GSL(void *obj,
     int err;
 
     task->depth = 0;
-    if (task->ctx->format_offset) {
+    if (task->ctx->format_indent) {
         err = out->writec(out, '\n');                                             RET_ERR();
-        err = knd_print_offset(out, task->ctx->format_offset);                    RET_ERR();
+        err = knd_print_offset(out, task->ctx->format_indent);                    RET_ERR();
     }
 
     err = knd_class_export_GSL(entry, task, true, 1);                                 RET_ERR();
 
-    return knd_OK;
-}
-
-int knd_export_gloss_GSL(struct kndText *tr, struct kndTask *task)
-{
-    struct kndOutput *out = task->out;
-    const char *locale = task->ctx->locale;
-    size_t locale_size = task->ctx->locale_size;
-    int err;
-
-    for (; tr; tr = tr->next) {
-        if (locale_size != tr->locale_size) continue;
-
-        if (memcmp(locale, tr->locale, tr->locale_size)) {
-            continue;
-        }
-        err = out->write(out, "[gloss ", strlen("[gloss "));                    RET_ERR();
-        err = out->writec(out, '{');                                              RET_ERR();
-        err = out->write_escaped(out, tr->locale, tr->locale_size);               RET_ERR();
-        err = out->write(out, "{t ", strlen("{t "));                              RET_ERR();
-        err = out->write_escaped(out, tr->seq->val,  tr->seq->val_size);                    RET_ERR();
-        err = out->writec(out, '}');                                              RET_ERR();
-        err = out->writec(out, '}');                                              RET_ERR();
-        err = out->writec(out, ']');                                              RET_ERR();
-        break;
-    }
     return knd_OK;
 }
 
@@ -274,9 +248,9 @@ int knd_class_set_export_GSL(struct kndSet *set,
                           (unsigned long)set->num_valid_elems);                   RET_ERR();
     }
 
-    if (task->ctx->format_offset) {
+    if (task->ctx->format_indent) {
         err = out->writec(out, '\n');                                             RET_ERR();
-        err = knd_print_offset(out, task->ctx->format_offset);                    RET_ERR();
+        err = knd_print_offset(out, task->ctx->format_indent);                    RET_ERR();
     }
 
     if (!task->ctx->batch_max) {
@@ -291,9 +265,9 @@ int knd_class_set_export_GSL(struct kndSet *set,
     
     err = out->writec(out, ']');                                                  RET_ERR();
 
-    if (task->ctx->format_offset) {
+    if (task->ctx->format_indent) {
         err = out->writec(out, '\n');                                             RET_ERR();
-        err = knd_print_offset(out, task->ctx->format_offset);                    RET_ERR();
+        err = knd_print_offset(out, task->ctx->format_indent);                    RET_ERR();
     }
 
     err = out->writef(out, "{batch{max %lu}",
@@ -321,9 +295,9 @@ static int present_subclass(struct kndClassRef *ref,
     err = out->write(out, entry->name, entry->name_size);                         RET_ERR();
     //err = out->writec(out, ' ');                                                  RET_ERR();
 
-    if (task->ctx->format_offset) {
+    if (task->ctx->format_indent) {
         err = out->writec(out, '\n');                                             RET_ERR();
-        err = knd_print_offset(out, (depth + 1) * task->ctx->format_offset);           RET_ERR();
+        err = knd_print_offset(out, (depth + 1) * task->ctx->format_indent);           RET_ERR();
     }
 
     /*if (ref->entry->num_terminals) {
@@ -339,11 +313,8 @@ static int present_subclass(struct kndClassRef *ref,
     }
 
     if (c->tr) {
-        if (task->ctx->format_offset) {
-            err = out->writec(out, '\n');                                         RET_ERR();
-            err = knd_print_offset(out, (depth + 1) * task->ctx->format_offset);       RET_ERR();
-        }
-        err = knd_export_gloss_GSL(c->tr, task);                                          RET_ERR();
+        err = knd_text_gloss_export_GSL(c->tr, task, depth);
+        RET_ERR();
     }
     err = out->write(out, "{_id ", strlen("{_id "));                              RET_ERR();
     err = out->writef(out, "%zu", entry->numid);                                  RET_ERR();
@@ -377,9 +348,9 @@ static int present_subclasses(struct kndClass *self, size_t num_children, struct
         err = out->writec(out, '}');                                              RET_ERR();
     }
 
-    if (task->ctx->format_offset) {
+    if (task->ctx->format_indent) {
         err = out->writec(out, '\n');                                             RET_ERR();
-        err = knd_print_offset(out, (depth + 1) * task->ctx->format_offset);           RET_ERR();
+        err = knd_print_offset(out, (depth + 1) * task->ctx->format_indent);           RET_ERR();
     }
     err = out->write(out, "[batch", strlen("[batch"));                            RET_ERR();
 
@@ -391,9 +362,9 @@ static int present_subclasses(struct kndClass *self, size_t num_children, struct
         
         state = c->states;
         if (state && state->phase == KND_REMOVED) continue;
-        if (task->ctx->format_offset) {
+        if (task->ctx->format_indent) {
             err = out->writec(out, '\n');                                         RET_ERR();
-            err = knd_print_offset(out, (depth + 2) * task->ctx->format_offset);       RET_ERR();
+            err = knd_print_offset(out, (depth + 2) * task->ctx->format_indent);       RET_ERR();
         }
         err = present_subclass(ref, task, depth + 2);                             RET_ERR();
     }
@@ -407,9 +378,9 @@ static int present_subclasses(struct kndClass *self, size_t num_children, struct
             state = c->states;
             if (state && state->phase == KND_REMOVED) continue;
 
-            if (task->ctx->format_offset) {
+            if (task->ctx->format_indent) {
                 err = out->writec(out, '\n');                                     RET_ERR();
-                err = knd_print_offset(out, (depth + 1) * task->ctx->format_offset);   RET_ERR();
+                err = knd_print_offset(out, (depth + 1) * task->ctx->format_indent);   RET_ERR();
             }
             err = present_subclass(ref, task, depth + 1);                         RET_ERR();
         }
@@ -432,9 +403,9 @@ static int export_attrs(struct kndClass *self,
     err = out->write(out, "[attr", strlen("[attr"));                            RET_ERR();
 
     for (attr = self->attrs; attr; attr = attr->next) {
-        if (task->ctx->format_offset) {
+        if (task->ctx->format_indent) {
             err = out->writec(out, '\n');                                         RET_ERR();
-            err = knd_print_offset(out, (depth + 2) * task->ctx->format_offset);       RET_ERR();
+            err = knd_print_offset(out, (depth + 2) * task->ctx->format_indent);       RET_ERR();
         }
 
         err = knd_attr_export_GSL(attr, task, depth + 1);
@@ -450,73 +421,50 @@ static int export_attrs(struct kndClass *self,
     return knd_OK;
 }
 
-static int export_baseclass_vars(struct kndClass *self,
-                                 struct kndTask *task,
-                                 size_t depth)
+static int export_baseclasses(struct kndClass *self, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     struct kndClassVar *cvar;
+    struct kndClass *c;
     size_t cvar_count = 0;
     size_t curr_depth = task->ctx->depth;
+    size_t indent_size = task->ctx->format_indent;
     int err;
 
-    err = out->write(out, "[is", strlen("[is"));                                  RET_ERR();
+    if (indent_size) {
+        OUT("\n", 1);
+        err = knd_print_offset(out, depth * indent_size);
+        RET_ERR();
+    }
+    OUT("[is", strlen("[is"));
 
-    for (cvar = self->baseclass_vars; cvar; cvar = cvar->next) {
-        if (task->ctx->format_offset) {
-            err = out->writec(out, '\n');                                         RET_ERR();
-            err = knd_print_offset(out,
-                                   (depth + 1) * task->ctx->format_offset);       RET_ERR();
+    FOREACH (cvar, self->baseclass_vars) {
+        if (indent_size) {
+            OUT("\n", 1);
+            err = knd_print_offset(out, (depth + 1) * indent_size);
+            RET_ERR();
         }
-        err = out->writec(out, '{');                                              RET_ERR();
-        err = out->write(out, cvar->entry->name, cvar->entry->name_size);         RET_ERR();
+        OUT("{", 1);
+        OUT(cvar->entry->name, cvar->entry->name_size);
 
+        err = knd_class_acquire(cvar->entry, &c, task);
+        KND_TASK_ERR("failed to acquire baseclass %.*s", cvar->entry->name_size, cvar->entry->name);
 
-        if (cvar->entry->class && cvar->entry->class->tr) {
-            if (task->ctx->format_offset) {
-                err = out->writec(out, '\n');                                     RET_ERR();
-                err = knd_print_offset(out,
-                                       (depth + 2) * task->ctx->format_offset);   RET_ERR();
-            }
-            err = knd_export_gloss_GSL(cvar->entry->class->tr, task);             RET_ERR();
-        }
-
-         if (cvar->entry->numid) {
-            if (task->ctx->format_offset) {
-                err = out->writec(out, '\n');                                         RET_ERR();
-                err = knd_print_offset(out,
-                                       (depth + 2) * task->ctx->format_offset);       RET_ERR();
-            }
-            err = out->write(out, "{_id ", strlen("{_id "));                          RET_ERR();
-            err = out->writef(out, "%zu", cvar->entry->numid);                        RET_ERR();
-            err = out->writec(out, '}');                                              RET_ERR();
+        if (c->tr) {
+            err = knd_text_gloss_export_GSL(c->tr, task, depth + 2);
+            KND_TASK_ERR("failed to export baseclass gloss GSL");
         }
        
         if (cvar->attrs) {
-            /*if (task->ctx->format_offset) {
-                err = out->writec(out, '\n');                                     RET_ERR();
-                err = knd_print_offset(out,
-                                       (depth + 2) * task->ctx->format_offset);   RET_ERR();
-                                       }*/
             curr_depth = task->ctx->depth;
-            err = knd_attr_vars_export_GSL(cvar->attrs,
-                                           task, false, depth + 1);               RET_ERR();
+            err = knd_attr_vars_export_GSL(cvar->attrs, task, false, depth + 2);
+            KND_TASK_ERR("failed to export attr vars GSL");
             task->ctx->depth = curr_depth;   
         }
-
-        /*if (self->num_computed_attrs) {
-            if (DEBUG_GSL_LEVEL_TMP)
-                knd_log("\n.. export computed attrs of class %.*s",
-                        self->name_size, self->name);
-            err = present_computed_class_attrs(self, cvar);
-            if (err) return err;
-            }*/
-        err = out->write(out, "}", 1);      RET_ERR();
+        OUT("}", 1);
         cvar_count++;
     }
-    err = out->write(out, "]", 1);
-    if (err) return err;
-
+    OUT("]", 1);
     return knd_OK;
 }
 
@@ -563,14 +511,15 @@ int knd_class_export_GSL(struct kndClassEntry *entry, struct kndTask *task, bool
     struct kndOutput *out = task->out;
     struct kndAttrHub *attr_hub;
     struct kndState *state = self->states;
+    size_t indent_size = task->ctx->format_indent;
     size_t num_children;
     int err;
 
     if (DEBUG_GSL_LEVEL_2) {
         knd_log(".. GSL export: \"%.*s\" (repo:%.*s) "
-                " depth:%zu max depth:%zu offset:%zu",
+                " depth:%zu max depth:%zu indent size:%zu",
                 entry->name_size, entry->name, entry->repo->name_size, entry->repo->name,
-                task->depth, task->max_depth, task->ctx->format_offset);
+                task->depth, task->max_depth, indent_size);
     }
     OUT("{", 1);
     if (!is_list_item) {
@@ -584,14 +533,14 @@ int knd_class_export_GSL(struct kndClassEntry *entry, struct kndTask *task, bool
     if (task->max_depth == 0) {
         goto final;
     }
-    if (task->ctx->format_offset) {
+    if (indent_size) {
         OUT(" ", 1);
     }
 
     if (state) {
-        if (task->ctx->format_offset) {
+        if (indent_size) {
             err = out->writec(out, '\n');                                         RET_ERR();
-            err = knd_print_offset(out, (depth + 1) * task->ctx->format_offset);       RET_ERR();
+            err = knd_print_offset(out, (depth + 1) * indent_size);       RET_ERR();
         }
 
         err = out->write(out, "{_state ", strlen("{_state "));                    RET_ERR();
@@ -620,64 +569,45 @@ int knd_class_export_GSL(struct kndClassEntry *entry, struct kndTask *task, bool
     }
 
     if (self->tr) {
-        if (task->ctx->format_offset) {
-            OUT("\n", 1);
-            err = knd_print_offset(out, (depth + 1) * task->ctx->format_offset);
-            RET_ERR();
-        }
-        err = knd_export_gloss_GSL(self->tr, task);
+        err = knd_text_gloss_export_GSL(self->tr, task, depth + 1);
         RET_ERR();
     }
 
-    if (task->depth >= task->max_depth) {
+    if (depth >= task->max_depth) {
         err = export_concise_GSL(self, task, depth);
         RET_ERR();
         goto final;
     }
 
-    // expand
-    task->depth++;
-
     /* display base classes only once */
     if (self->num_baseclass_vars) {
-        if (task->ctx->format_offset) {
-            err = out->writec(out, '\n');                                                RET_ERR();
-            err = knd_print_offset(out, (depth + 1) * task->ctx->format_offset);         RET_ERR();
-        }
-        err = export_baseclass_vars(self, task, depth + 1);                       RET_ERR();
-
-    } else {
+        err = export_baseclasses(self, task, depth + 1);
+        RET_ERR();
+    }
+    /*else {
         if (orig_entry && orig_entry->class->num_baseclass_vars) {
-            if (task->ctx->format_offset) {
+            if (indent_size) {
                 err = out->writec(out, '\n');                                     RET_ERR();
-                err = knd_print_offset(out, (depth + 1) * task->ctx->format_offset);   RET_ERR();
+                err = knd_print_offset(out, (depth + 1) * indent_size);   RET_ERR();
             }
             
             err = export_baseclass_vars(orig_entry->class, task, depth + 1);      RET_ERR();
         }
-    }
+        }*/
 
     if (self->attrs) {
-        /*if (task->ctx->format_offset) {
-            err = out->writec(out, '\n');                                         RET_ERR();
-            err = knd_print_offset(out, (depth + 1) * task->ctx->format_offset);       RET_ERR();
-            }*/
-        err = export_attrs(self, task, depth + 1); RET_ERR();
-    } else {
+        err = export_attrs(self, task, depth + 1);
+        RET_ERR();
+    }
+    /*else {
         if (orig_entry && orig_entry->class->num_attrs) {
-            if (task->ctx->format_offset) {
+            if (indent_size) {
                 err = out->writec(out, '\n');                                     RET_ERR();
-                err = knd_print_offset(out, (depth + 1) * task->ctx->format_offset);   RET_ERR();
+                err = knd_print_offset(out, (depth + 1) * indent_size);   RET_ERR();
             }
             err = export_attrs(orig_entry->class, task, depth + 1);               RET_ERR();
         }
-    }
-
-    /* inherited attrs */
-    /*set = self->attr_idx;
-    err = set->map(set, knd_export_inherited_attr, (void*)task); 
-    if (err && err != knd_RANGE) return err;
-    */
+        }*/
 
     num_children = self->num_children;
     if (self->desc_states) {
@@ -691,9 +621,9 @@ int knd_class_export_GSL(struct kndClassEntry *entry, struct kndTask *task, bool
         num_children += orig_entry->class->num_children;
 
     if (num_children) {
-        if (task->ctx->format_offset) {
+        if (indent_size) {
             err = out->writec(out, '\n');                                         RET_ERR();
-            err = knd_print_offset(out, (depth + 1) * task->ctx->format_offset);       RET_ERR();
+            err = knd_print_offset(out, (depth + 1) * indent_size);       RET_ERR();
         }
         err = present_subclasses(self, num_children, task, depth + 1);            RET_ERR();
     }
@@ -715,16 +645,16 @@ int knd_class_export_GSL(struct kndClassEntry *entry, struct kndTask *task, bool
 
     /* reverse attr paths */
     if (self->attr_hubs) {
-        if (task->ctx->format_offset) {
+        if (indent_size) {
             err = out->writec(out, '\n');                                         RET_ERR();
-            err = knd_print_offset(out, (depth + 1) * task->ctx->format_offset);  RET_ERR();
+            err = knd_print_offset(out, (depth + 1) * indent_size);  RET_ERR();
         }
         err = out->write(out, "[_rev_attrs", strlen("[_rev_attrs"));              RET_ERR();
         FOREACH (attr_hub, self->attr_hubs) {
-            if (task->ctx->format_offset) {
+            if (indent_size) {
                 err = out->writec(out, '\n');                                     RET_ERR();
                 err = knd_print_offset(out,
-                                       (depth + 2) * task->ctx->format_offset);   RET_ERR();
+                                       (depth + 2) * indent_size);   RET_ERR();
             }
             err = export_attr_hub_GSL(attr_hub, out, task, depth);                RET_ERR();
         }

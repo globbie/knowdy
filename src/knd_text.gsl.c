@@ -137,11 +137,10 @@ static int sent_export_GSL(struct kndSentence *sent, struct kndTask *task)
     }
 
     err = out->writec(out, '}');                        RET_ERR();
-   
     return knd_OK;
 }
 
-static int export_GSL(struct kndText *self, struct kndTask *task)
+int knd_text_export_GSL(struct kndText *self, struct kndTask *task, size_t unused_var(depth))
 {
     struct kndOutput *out = task->out;
     struct kndPar *par;
@@ -299,20 +298,42 @@ int knd_text_export_query_report(struct kndTask *task)
     return knd_OK;
 }
 
-int knd_text_export(struct kndText *self, knd_format format, struct kndTask *task)
+int knd_text_gloss_export_GSL(struct kndText *tr, struct kndTask *task, size_t depth)
 {
+    struct kndOutput *out = task->out;
+    const char *locale = task->ctx->locale;
+    size_t locale_size = task->ctx->locale_size;
     int err;
-    switch (format) {
-    case KND_FORMAT_JSON:
-        err = knd_text_export_JSON(self, task);
-        KND_TASK_ERR("failed to export text JSON");
-        break;
-    default:
-        err = export_GSL(self, task);
-        KND_TASK_ERR("failed to export text GSL");
+
+    for (; tr; tr = tr->next) {
+        if (locale_size != tr->locale_size) continue;
+
+        if (memcmp(locale, tr->locale, tr->locale_size)) {
+            continue;
+        }
+        if (task->ctx->format_offset) {
+            OUT("\n", 1);
+            err = knd_print_offset(out, depth * task->ctx->format_offset);
+            RET_ERR();
+        }
+        OUT("[gloss ", strlen("[gloss "));
+        OUT("{", 1);
+        err = out->write_escaped(out, tr->locale, tr->locale_size);
+        RET_ERR();
+        OUT("{t ", strlen("{t "));
+        err = out->write_escaped(out, tr->seq->val,  tr->seq->val_size);
+        RET_ERR();
+        OUT("}", 1);
+
+        if (tr->abbr) {
+            OUT("{abbr ", strlen("{abbr "));
+            OUT(tr->abbr->val, tr->abbr->val_size);
+            OUT("}", 1);
+        }
+        OUT("}", 1);
+        OUT("]", 1);
         break;
     }
-
     return knd_OK;
 }
- 
+

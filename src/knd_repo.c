@@ -238,13 +238,15 @@ static gsl_err_t run_select_repo(void *obj, const char *name, size_t name_size)
         switch (*name) {
         case '~':
             repo = task->user_ctx->repo;
-            knd_log("== user home repo selected: %.*s", repo->name_size, repo->name);
+            if (DEBUG_REPO_LEVEL_3)
+                knd_log("== user repo selected: %.*s", repo->name_size, repo->name);
             task->repo = repo;
             return make_gsl_err(gsl_OK);
         default:
             break;
         }
-        knd_log("== read-only base repo selected!");
+        if (DEBUG_REPO_LEVEL_3)
+            knd_log("== read-only base repo selected!");
         task->repo = task->shard->user->repo;
         return make_gsl_err(gsl_OK);
     }

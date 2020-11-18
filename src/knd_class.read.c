@@ -298,13 +298,31 @@ static gsl_err_t read_attr(void *obj, const char *name, size_t name_size, const 
     return make_gsl_err(gsl_OK);
 }
 
+static gsl_err_t read_glosses(void *obj, const char *rec, size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    struct kndClass *self = ctx->class;
+    gsl_err_t parser_err;
+
+    parser_err = knd_read_gloss_array((void*)task, rec, total_size);
+    if (parser_err.code) return *total_size = 0, parser_err;
+
+    if (task->ctx->tr) {
+        self->tr = task->ctx->tr;
+        task->ctx->tr = NULL;
+    }
+    return make_gsl_err(gsl_OK);
+}
+
 int knd_class_read(struct kndClass *self, const char *rec, size_t *total_size, struct kndTask *task)
 {
-    if (DEBUG_CLASS_READ_LEVEL_TMP)
-        knd_log(".. reading class GSP: \"%.*s\" attr_idx:%p", 128, rec, self->attr_idx);
+    if (DEBUG_CLASS_READ_LEVEL_2)
+        knd_log(".. reading class GSP: \"%.*s\"", 128, rec);
 
     if (self->resolving_in_progress) {
-        knd_log("vicious circle detected while reading class \"%.*s\"", self->name_size, self->name);
+        knd_log("vicious circle detected while reading class \"%.*s\"",
+                self->name_size, self->name);
         return knd_FAIL;
     }
     self->resolving_in_progress = true;
@@ -329,14 +347,14 @@ int knd_class_read(struct kndClass *self, const char *rec, size_t *total_size, s
           .obj = &ctx
         },
         { .type = GSL_GET_ARRAY_STATE,
-          .name = "_g",
-          .name_size = strlen("_g"),
-          .parse = knd_parse_gloss_array,
-          .obj = ctx.task
+          .name = "g",
+          .name_size = strlen("g"),
+          .parse = read_glosses,
+          .obj = &ctx
         },
         { .type = GSL_GET_ARRAY_STATE,
-          .name = "_is",
-          .name_size = strlen("_is"),
+          .name = "is",
+          .name_size = strlen("is"),
           .parse = parse_baseclass_array,
           .obj = &ctx
         },
@@ -366,12 +384,6 @@ int knd_class_read(struct kndClass *self, const char *rec, size_t *total_size, s
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return parser_err.code;
-
-    // assign glosses
-    if (task->ctx->tr) {
-        self->tr = task->ctx->tr;
-        task->ctx->tr = NULL;
-    }
     return knd_OK;
 }
 
@@ -458,6 +470,26 @@ int knd_class_acquire(struct kndClassEntry *entry, struct kndClass **result, str
         }
     } while (!atomic_compare_exchange_weak(&entry->class, &prev_c, c));
 
+    *result = c;
+    return knd_OK;
+}
+
+int knd_class_unmarshall(const char *elem_id, size_t elem_id_size, const char *rec, size_t rec_size,
+                         void **result, struct kndTask *task)
+{
+    struct kndClass *c = NULL;
+    size_t total_size = rec_size;
+    int err;
+
+    if (DEBUG_CLASS_READ_LEVEL_2)
+        knd_log(">> GSP class \"%.*s\" => \"%.*s\"", elem_id_size, elem_id, rec_size, rec);
+
+    err = knd_class_new(task->user_ctx->mempool, &c);
+    KND_TASK_ERR("failed to alloc a class");
+
+    err = knd_class_read(c, rec, &total_size, task);
+    KND_TASK_ERR("failed to read GSP class rec");
+    
     *result = c;
     return knd_OK;
 }

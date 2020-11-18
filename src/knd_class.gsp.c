@@ -117,15 +117,21 @@ static int export_glosses(struct kndClass *self, struct kndOutput *out)
     char idbuf[KND_ID_SIZE];
     size_t id_size = 0;
     struct kndText *t;
-    OUT("[_g", strlen("[_g"));
+    OUT("[g", strlen("[g"));
     FOREACH (t, self->tr) {
         OUT("{", 1);
         OUT(t->locale, t->locale_size);
         OUT("{t ", strlen("{t "));
         knd_uid_create(t->seq->numid, idbuf, &id_size);
         OUT(idbuf, id_size);
-        // OUT(t->seq, t->seq_size);
-        OUT("}}", 2);
+        OUT("}", 1);
+        if (t->abbr) {
+            OUT("{abbr ", strlen("{abbr "));
+            knd_uid_create(t->abbr->numid, idbuf, &id_size);
+            OUT(idbuf, id_size);
+            OUT("}", 1);
+        }
+        OUT("}", 1);
     }
     OUT("]", 1);
     return knd_OK;
@@ -137,7 +143,7 @@ static int export_baseclass_vars(struct kndClass *self, struct kndTask *task, st
     struct kndClass *c;
     int err;
 
-    err = out->write(out, "[_is", strlen("[_is"));                              RET_ERR();
+    err = out->write(out, "[is", strlen("[is"));                              RET_ERR();
     for (item = self->baseclass_vars; item; item = item->next) {
         err = out->writec(out, '{');                                              RET_ERR();
         c = item->entry->class;
@@ -432,22 +438,3 @@ int knd_class_entry_unmarshall(const char *elem_id, size_t elem_id_size, const c
     return knd_OK;
 }
 
-int knd_class_unmarshall(const char *elem_id, size_t elem_id_size, const char *rec, size_t rec_size,
-                         void **result, struct kndTask *task)
-{
-    struct kndClass *c = NULL;
-    size_t total_size = rec_size;
-    int err;
-
-    if (DEBUG_CLASS_GSP_LEVEL_TMP)
-        knd_log(">> GSP class \"%.*s\" => \"%.*s\"", elem_id_size, elem_id, rec_size, rec);
-
-    err = knd_class_new(task->user_ctx->mempool, &c);
-    KND_TASK_ERR("failed to alloc a class");
-
-    err = knd_class_read(c, rec, &total_size, task);
-    KND_TASK_ERR("failed to read GSP class rec");
-    
-    *result = c;
-    return knd_OK;
-}

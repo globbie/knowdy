@@ -70,18 +70,11 @@ static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
         task->ctx->error = knd_NO_MATCH;
         return make_gsl_err_external(err);
     }
-
-    c = atomic_load_explicit(&entry->class, memory_order_relaxed);
-    if (!c) {
-        knd_log(".. unmarshalling %.*s..", entry->name_size, entry->name);
-
-        err = knd_class_acquire(entry, &c, task);
-        if (err) {
-            KND_TASK_LOG("failed to acquire class \"%.*s\"", entry->name_size, entry->name);
-            return make_gsl_err_external(err);
-        }
+    err = knd_class_acquire(entry, &c, task);
+    if (err) {
+        KND_TASK_LOG("failed to acquire class \"%.*s\"", entry->name_size, entry->name);
+        return make_gsl_err_external(err);
     }
-
     ctx->class_entry = entry;
     return make_gsl_err(gsl_OK);
 }

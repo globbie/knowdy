@@ -70,9 +70,9 @@ static gsl_err_t parse_text(void *obj, const char *rec, size_t *total_size)
     err = knd_text_new(mempool, &text);
     if (err) return *total_size = 0, make_gsl_err_external(knd_NOMEM);
 
-    parser_err = knd_text_import(text, rec, total_size, task);
+    parser_err = knd_text_read(text, rec, total_size, task);
     if (parser_err.code) {
-        KND_TASK_LOG("text import failed");
+        KND_TASK_LOG("text read failed");
         return parser_err;
     }
     ctx->attr_var->text = text;
@@ -122,7 +122,6 @@ static gsl_err_t read_nested_attr_var_list(void *obj, const char *id, size_t id_
         .list_parent = attr_var,
         .task = task
     };
-
     struct gslTaskSpec read_attr_var_spec = {
         .is_list_item = true,
         .parse = read_attr_var_list_item,
@@ -196,7 +195,7 @@ static gsl_err_t read_nested_attr_var(void *obj, const char *id, size_t id_size,
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
-        KND_TASK_LOG("attr var import failed: %d", parser_err.code);
+        KND_TASK_LOG("attr var reading failed: %d", parser_err.code);
         return parser_err;
     }
 
@@ -225,17 +224,19 @@ static gsl_err_t set_attr_var_name(void *obj, const char *name, size_t name_size
     struct kndCharSeq *seq;
     int err;
 
-    if (DEBUG_ATTR_VAR_READ_LEVEL_TMP)
-        knd_log(".. set attr var name \"%.*s\" is_list_item:%d val:%.*s  class:%p",
-                name_size, name, self->is_list_item, self->val_size, self->val, c);
+    if (DEBUG_ATTR_VAR_READ_LEVEL_2)
+        knd_log(".. set attr var name \"%.*s\" is_list_item:%d val:%.*s",
+                name_size, name, self->is_list_item, self->val_size, self->val);
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     self->name = name;
     self->name_size = name_size;
 
     if (c && c->implied_attr) {
-        knd_log(">> implied attr: %.*s (type:%d)",
-                c->implied_attr->name_size, c->implied_attr->name, c->implied_attr->type);
+        if (DEBUG_ATTR_VAR_READ_LEVEL_2)
+            knd_log(">> implied attr: %.*s (type:%d)",
+                    c->implied_attr->name_size, c->implied_attr->name, c->implied_attr->type);
+
         self->implied_attr = c->implied_attr;
 
         switch (c->implied_attr->type) {
@@ -245,7 +246,8 @@ static gsl_err_t set_attr_var_name(void *obj, const char *name, size_t name_size
                 KND_TASK_LOG("no such class entry: %.*s", name_size, name);
                 if (err) return make_gsl_err_external(err);
             }
-            knd_log("== REF template: %.*s", self->class_entry->name_size, self->class_entry->name);
+            if (DEBUG_ATTR_VAR_READ_LEVEL_2)
+                knd_log("== REF: %.*s", self->class_entry->name_size, self->class_entry->name);
             break;
         case KND_ATTR_STR:
             err = knd_charseq_decode(task->repo, name, name_size, &seq, task);
@@ -271,7 +273,7 @@ static gsl_err_t set_attr_var_value(void *obj, const char *val, size_t val_size)
     struct kndCharSeq *seq;
     int err;
 
-    if (DEBUG_ATTR_VAR_READ_LEVEL_TMP)
+    if (DEBUG_ATTR_VAR_READ_LEVEL_2)
         knd_log(".. set attr var value: \"%.*s\" => \"%.*s\"",
                 self->name_size, self->name, val_size, val);
 
@@ -288,8 +290,9 @@ static gsl_err_t set_attr_var_value(void *obj, const char *val, size_t val_size)
             KND_TASK_LOG("failed to decode a charseq");
             if (err) return make_gsl_err_external(err);
         }
-        if (DEBUG_ATTR_VAR_READ_LEVEL_TMP)
-            knd_log(">> \"%.*s\" => decoded str val:%.*s", self->name_size, self->name, seq->val_size, seq->val);
+        if (DEBUG_ATTR_VAR_READ_LEVEL_2)
+            knd_log(">> \"%.*s\" => decoded str val:%.*s",
+                    self->name_size, self->name, seq->val_size, seq->val);
         self->val = seq->val;
         self->val_size = seq->val_size;
     default:
@@ -430,7 +433,7 @@ int knd_read_attr_var_list(struct kndClassVar *self, const char *id, size_t id_s
     KND_TASK_ERR("\"%.*s\" attr not found in class \"%.*s\" ", id_size, id, c->name_size, c->name);
     attr = ref->attr;
 
-    if (DEBUG_ATTR_VAR_READ_LEVEL_TMP)
+    if (DEBUG_ATTR_VAR_READ_LEVEL_2)
         knd_log(">> class %.*s to read var list \"%.*s\" (%.*s) REC: %.*s",
                 entry->name_size, entry->name, attr->name_size, attr->name, id_size, id, 32, rec);
 
@@ -457,8 +460,9 @@ int knd_read_attr_var_list(struct kndClassVar *self, const char *id, size_t id_s
         KND_TASK_ERR("failed to acquire class \"%.*s\"",
                      attr->ref_class_entry->name_size, attr->ref_class_entry->name);
 
-        knd_log(">> inner class: \"%.*s\"",
-                attr->ref_class_entry->name_size, attr->ref_class_entry->name);
+        if (DEBUG_ATTR_VAR_READ_LEVEL_2)
+            knd_log(">> inner class: \"%.*s\"",
+                    attr->ref_class_entry->name_size, attr->ref_class_entry->name);
         break;
     default:
         break;
@@ -490,7 +494,7 @@ int knd_read_attr_var(struct kndClassVar *self, const char *id, size_t id_size,
     err = knd_set_get(c->attr_idx, id, id_size, (void**)&ref);
     KND_TASK_ERR("no attr \"%.*s\" in class \"%.*s\"", id_size, id, entry->name_size, entry->name);
 
-    if (DEBUG_ATTR_VAR_READ_LEVEL_TMP)
+    if (DEBUG_ATTR_VAR_READ_LEVEL_2)
         knd_log(".. reading attr var \"%.*s\" of class: \"%.*s\"",
                 ref->attr->name_size, ref->attr->name, entry->name_size, entry->name);
 
