@@ -159,7 +159,8 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
     size_t total_size = 0;
     gsl_err_t parser_err;
     struct kndUser *user = task->shard->user;
-
+    struct kndOutput *out = task->out;
+    int err;
     assert(task->ctx != NULL);
     task->user_ctx->repo = user->repo;
     task->user_ctx->acls = user->default_acls;
@@ -189,7 +190,17 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
         if (!task->log->buf_size) {
             task->http_code = HTTP_INTERNAL_SERVER_ERROR;
             KND_TASK_LOG("unclassified server error");
+            return gsl_err_to_knd_err_codes(parser_err);
         }
+
+        out->reset(out);
+        err = out->write_escaped(out, task->log->buf, task->log->buf_size);
+        if (err) {
+            KND_TASK_LOG("server output error");
+            return gsl_err_to_knd_err_codes(parser_err);
+        }
+        task->output = out->buf;
+        task->output_size = out->buf_size;
         return gsl_err_to_knd_err_codes(parser_err);
     }
 
@@ -201,8 +212,8 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
         task->output_size = task->file_out->buf_size;
         break;
     default:
-        task->output = task->out->buf;
-        task->output_size = task->out->buf_size;
+        task->output = out->buf;
+        task->output_size = out->buf_size;
         break;
     }
     return knd_OK;

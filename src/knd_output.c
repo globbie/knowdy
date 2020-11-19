@@ -83,10 +83,7 @@ static int kndOutput_write(struct kndOutput *self, const char *buf, size_t buf_s
     return knd_OK;
 }
 
-static int
-kndOutput_write_escaped(struct kndOutput *self,
-                        const char *buf,
-                        size_t buf_size)
+static int kndOutput_write_escaped(struct kndOutput *self, const char *buf, size_t buf_size)
 {
     size_t free_space = self->capacity - self->buf_size;
     size_t chunk_size = 0;
