@@ -102,7 +102,7 @@ static gsl_err_t set_baseclass(void *obj, const char *id, size_t id_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t set_ancestor(void *obj, const char *id, size_t id_size)
+static gsl_err_t set_class_ref(void *obj, const char *id, size_t id_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
@@ -121,7 +121,7 @@ static gsl_err_t set_ancestor(void *obj, const char *id, size_t id_size)
     ref->entry = entry;
 
     if (DEBUG_CLASS_READ_LEVEL_3)
-        knd_log("== ancestor: %.*s (id:%.*s)", entry->name_size, entry->name, id_size, id);
+        knd_log("== class ref: %.*s (id:%.*s)", entry->name_size, entry->name, id_size, id);
     
     return make_gsl_err(gsl_OK);
 }
@@ -191,7 +191,7 @@ static gsl_err_t parse_ancestor_array_item(void *obj, const char *rec, size_t *t
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = set_ancestor,
+          .run = set_class_ref,
           .obj = ctx
         }
     };
@@ -214,6 +214,48 @@ static gsl_err_t parse_ancestor_array(void *obj, const char *rec, size_t *total_
     struct gslTaskSpec cvar_spec = {
         .is_list_item = true,
         .parse = parse_ancestor_array_item,
+        .obj = ctx
+    };
+    return gsl_parse_array(&cvar_spec, rec, total_size);
+}
+
+static gsl_err_t parse_child_item(void *obj, const char *rec, size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+    struct kndClass *self = ctx->class;
+    struct kndMemPool *mempool = ctx->task->user_ctx->mempool;
+    struct kndClassRef *ref;
+    int err;
+
+    err = knd_class_ref_new(mempool, &ref);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
+    ctx->class_ref = ref;
+
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = set_class_ref,
+          .obj = ctx
+        }
+    };
+    gsl_err_t parser_err;
+
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) return parser_err;
+
+    // append
+    ref->next = self->children;
+    self->children = ref;
+    self->num_children++;
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_children_array(void *obj, const char *rec, size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+
+    struct gslTaskSpec cvar_spec = {
+        .is_list_item = true,
+        .parse = parse_child_item,
         .obj = ctx
     };
     return gsl_parse_array(&cvar_spec, rec, total_size);
@@ -362,6 +404,12 @@ int knd_class_read(struct kndClass *self, const char *rec, size_t *total_size, s
           .name = "anc",
           .name_size = strlen("anc"),
           .parse = parse_ancestor_array,
+          .obj = &ctx
+        },
+        { .type = GSL_GET_ARRAY_STATE,
+          .name = "c",
+          .name_size = strlen("c"),
+          .parse = parse_children_array,
           .obj = &ctx
         },
         { .validate = read_attr,

@@ -219,7 +219,7 @@ static int export_concise_JSON(struct kndClass *self, struct kndTask *task)
         knd_log(".. export concise JSON for %.*s..",
                 self->entry->name_size, self->entry->name);
 
-    for (item = self->baseclass_vars; item; item = item->next) {
+    FOREACH (item, self->baseclass_vars) {
         if (!item->attrs) continue;
         err = knd_attr_vars_export_JSON(item->attrs, task, true, 0);
         KND_TASK_ERR("failed to export attr vars JSON");
@@ -416,98 +416,108 @@ extern int knd_class_set_export_JSON(struct kndSet *set, struct kndTask *task)
 }
 
 
-static int present_subclass(struct kndClassRef *ref,
-                            struct kndTask *task)
+static int present_subclass(struct kndClassRef *ref, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     struct kndClassEntry *entry = ref->entry;
     struct kndClass *c;
+    size_t indent_size = task->ctx->format_indent;
     int err;
 
-    err = out->write(out, "{\"_name\":\"", strlen("{\"_name\":\""));              RET_ERR();
-    err = out->write(out, entry->name, entry->name_size);                         RET_ERR();
-    err = out->write(out, "\"", 1);                                               RET_ERR();
+    if (indent_size) {
+        OUT("\n", 1);
+        err = knd_print_offset(out, depth * indent_size);
+        RET_ERR();
+    }
 
-    err = out->write(out, ",\"_id\":", strlen(",\"_id\":"));                      RET_ERR();
-    err = out->writef(out, "%zu", entry->numid);                                  RET_ERR();
+    OUT("{", 1);
+    if (indent_size) {
+        OUT("\n", 1);
+        err = knd_print_offset(out, (depth + 1) * indent_size);
+        RET_ERR();
+    }
+    OUT("\"class\":", strlen("\"class\":"));
+    if (indent_size) {
+        OUT(" ", 1);
+    }
+    OUT("\"", 1);
+    OUT(entry->name, entry->name_size);
+    OUT("\"", 1);
 
-    if (ref->entry->class->num_terminals) {
+    /*if (ref->entry->class->num_terminals) {
         err = out->write(out, ",\"_num_terminals\":",
                          strlen(",\"_num_terminals\":"));                         RET_ERR();
         err = out->writef(out, "%zu", ref->entry->class->num_terminals);                      RET_ERR();
-    }
+        }*/
 
-    /* localized glosses */
-    c = entry->class;
-    if (!c) {
-        //err = unfreeze_class(self, entry, &c);                          RET_ERR();
+    /* get localized gloss */
+    err = knd_class_acquire(entry, &c, task);
+    KND_TASK_ERR("failed to acquire a subclass %.*s", entry->name_size, entry->name);
+    if (c->tr) {
+        err = knd_text_gloss_export_JSON(c->tr, task, depth + 1);
+        KND_TASK_ERR("failed to export subclass gloss JSON");
     }
-    // err = export_gloss_JSON(c, task);                                             RET_ERR();
-    err = export_concise_JSON(c, task);                                           RET_ERR();
-    err = out->writec(out, '}');                                                  RET_ERR();
+    if (indent_size) {
+        OUT("\n", 1);
+        err = knd_print_offset(out, depth * indent_size);
+        RET_ERR();
+    }
+    OUT("}", 1);
     return knd_OK;
 }
 
-static int present_subclasses(struct kndClass *self, size_t num_children, struct kndTask *task)
+static int present_subclasses(struct kndClass *self, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     struct kndClassRef *ref;
-    struct kndClassEntry *entry = self->entry;
-    struct kndClassEntry *orig_entry = entry->base;
-    struct kndClass *c;
-    struct kndState *state;
     bool in_list = false;
+    size_t indent_size = task->ctx->format_indent;
     int err;
 
-    err = out->write(out, ",\"_num_subclasses\":",
-                     strlen(",\"_num_subclasses\":"));                            RET_ERR();
-
-    err = out->writef(out, "%zu", num_children);                                  RET_ERR();
-
-    if (self->num_terminals) {
-        err = out->write(out, ",\"_num_terminals\":",
-                         strlen(",\"_num_terminals\":"));                         RET_ERR();
-        err = out->writef(out, "%zu", self->num_terminals);                      RET_ERR();
+    OUT(",", 1);
+    if (indent_size) {
+        OUT("\n", 1);
+        err = knd_print_offset(out, depth * indent_size);
+        RET_ERR();
     }
+    OUT("\"num-subclasses\":", strlen("\"num-subclasses\":"));
+    if (indent_size) {
+        OUT(" ", 1);
+    }
+    OUTF("%zu", self->num_children);
+    OUT(",", 1);
 
-    err = out->write(out, ",\"_subclasses\":[",
-                     strlen(",\"_subclasses\":["));                               RET_ERR();
-    
-    for (ref = self->children; ref; ref = ref->next) {
-        c = ref->class;
-        // TODO: defreeze
-        if (!c) continue;
-        
-        state = ref->entry->class->states;
-        if (state && state->phase == KND_REMOVED) continue;
+    /*if (self->num_terminals) {
+        OUT("\"num-terminals\":", strlen("\"num-terminals\":"));
+        OUT("%zu,", self->num_terminals);
+        }*/
 
+    if (indent_size) {
+        OUT("\n", 1);
+        err = knd_print_offset(out, depth * indent_size);
+        RET_ERR();
+    }
+  
+    OUT("\"subclasses\":", strlen("\"subclasses\":"));
+    if (indent_size) {
+        OUT(" ", 1);
+    }
+    OUT("[", 1);
+
+    FOREACH (ref, self->children) {
         if (in_list) {
-            err = out->write(out, ",", 1);                                        RET_ERR();
+            OUT(",", 1);
         }
-
-        err = present_subclass(ref, task);                                        RET_ERR();
+        err = present_subclass(ref, task, depth + 1);
+        KND_TASK_ERR("failed to present subclass JSON");
         in_list = true;
     }
-
-    if (orig_entry) {
-        for (ref = orig_entry->class->children; ref; ref = ref->next) {
-            c = ref->class;
-            // TODO: defreeze
-            if (!c) continue;
-
-            state = ref->entry->class->states;
-            if (state && state->phase == KND_REMOVED) continue;
-
-            if (in_list) {
-                err = out->write(out, ",", 1);                                    RET_ERR();
-            }
-            err = present_subclass(ref, task);                                    RET_ERR();
-            in_list = true;
-        }
+    if (indent_size) {
+        OUT("\n", 1);
+        err = knd_print_offset(out, depth * indent_size);
+        RET_ERR();
     }
-    
-    err = out->write(out, "]", 1);                                                RET_ERR();
-    
+    OUT("]", 1);    
     return knd_OK;
 }
 
@@ -666,6 +676,11 @@ static int export_baseclasses(struct kndClass *self, struct kndTask *task, size_
         OUT("}", 1);
         count++;
     }
+    if (indent_size) {
+        OUT("\n", 1);
+        err = knd_print_offset(out, depth * indent_size);
+        RET_ERR();
+    }
     OUT("]", 1);
     return knd_OK;
 }
@@ -677,7 +692,6 @@ int knd_class_export_JSON(struct kndClass *self, struct kndTask *task, bool unus
     struct kndOutput *out = task->out;
     struct kndState *state = self->states;
     size_t indent_size = task->ctx->format_indent;
-    size_t num_children;
     int err;
 
     if (DEBUG_JSON_LEVEL_2)
@@ -772,18 +786,8 @@ int knd_class_export_JSON(struct kndClass *self, struct kndTask *task, bool unus
     //err = set->map(set, knd_export_inherited_attr, (void*)task); 
     //if (err && err != knd_RANGE) return err;
 
-    num_children = entry->class->num_children;
-    if (self->desc_states) {
-        state = self->desc_states;
-        if (state->val) 
-            num_children = state->val->val_size;
-    }
-
-    if (orig_entry)
-        num_children += orig_entry->class->num_children;
-
-    if (num_children) {
-        err = present_subclasses(self, num_children, task);
+    if (self->num_children) {
+        err = present_subclasses(self, task, depth + 1);
         KND_TASK_ERR("failed to export subclasses in JSON");
     }
 

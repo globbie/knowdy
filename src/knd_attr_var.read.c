@@ -297,6 +297,7 @@ static gsl_err_t set_attr_var_value(void *obj, const char *val, size_t val_size)
                     self->name_size, self->name, seq->val_size, seq->val);
         self->val = seq->val;
         self->val_size = seq->val_size;
+        break;
     case KND_ATTR_REF:
         err = knd_shared_set_get(repo->class_idx, val, val_size, (void**)&entry);
         if (err) {
@@ -308,7 +309,7 @@ static gsl_err_t set_attr_var_value(void *obj, const char *val, size_t val_size)
         
         if (DEBUG_ATTR_VAR_READ_LEVEL_3)
             knd_log(">> set class ref: %.*s (id:%.*s)", entry->name_size, entry->name, val_size, val);
-
+        break;
     default:
         break;
     }

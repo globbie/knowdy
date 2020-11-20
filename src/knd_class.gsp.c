@@ -180,6 +180,22 @@ static int export_ancestors(struct kndClass *self, struct kndTask *task)
     return knd_OK;
 }
 
+static int export_children(struct kndClass *self, struct kndTask *task)
+{
+    struct kndOutput *out = task->out;
+    struct kndClassRef *ref;
+    struct kndClassEntry *entry;
+
+    OUT("[c", strlen("[c"));
+    FOREACH (ref, self->children) {
+        entry = ref->entry;
+        OUT("{", 1);
+        OUT(entry->id, entry->id_size);
+        OUT("}", 1);
+    }
+    OUT("]", 1);
+    return knd_OK;
+}
 
 #if 0
 static int export_descendants_GSP(struct kndClass *self, struct kndTask *task)
@@ -350,6 +366,12 @@ int knd_class_export_GSP(struct kndClass *self, struct kndTask *task)
         err = export_ancestors(self, task);
         KND_TASK_ERR("failed to export ancestors GSP");
     }
+
+    if (self->num_children) {
+        err = export_children(self, task);
+        KND_TASK_ERR("failed to export children GSP");
+    }
+
     // insts
     if (self->inst_idx) {
         err = out->writef(out, "{insts %zu}", self->inst_idx->num_elems);
