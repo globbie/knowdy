@@ -296,7 +296,6 @@ static int resolve_baseclasses(struct kndClass *self, struct kndTask *task)
     }
 
     self->base_is_resolved = true;
-
     return knd_OK;
 }
 

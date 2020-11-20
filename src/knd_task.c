@@ -199,6 +199,8 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
             KND_TASK_LOG("server output error");
             return gsl_err_to_knd_err_codes(parser_err);
         }
+        knd_log("-- task err code:%d http code:%d", parser_err.code, task->ctx->http_code);
+
         task->output = out->buf;
         task->output_size = out->buf_size;
         return gsl_err_to_knd_err_codes(parser_err);

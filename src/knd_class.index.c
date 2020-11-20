@@ -148,13 +148,12 @@ static int index_ancestor(struct kndClass *self,
 static inline void set_child_ref(struct kndClassEntry *self, struct kndClassRef *child_ref)
 {
     child_ref->next = self->class->children;
-    // atomic
+    // TODO atomic
     self->class->children = child_ref;
+    self->class->num_children++;
 }
 
-static int index_baseclass(struct kndClass *self,
-                           struct kndClass *base,
-                           struct kndTask *task)
+static int index_baseclass(struct kndClass *self, struct kndClass *base, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
     struct kndClassRef *ref, *baseref;

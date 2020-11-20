@@ -270,6 +270,8 @@ static gsl_err_t set_attr_var_value(void *obj, const char *val, size_t val_size)
     struct LocalContext *ctx = obj;
     struct kndAttrVar *self = ctx->attr_var;
     struct kndTask    *task = ctx->task;
+    struct kndRepo *repo = task->repo;
+    struct kndClassEntry *entry;
     struct kndCharSeq *seq;
     int err;
 
@@ -295,6 +297,18 @@ static gsl_err_t set_attr_var_value(void *obj, const char *val, size_t val_size)
                     self->name_size, self->name, seq->val_size, seq->val);
         self->val = seq->val;
         self->val_size = seq->val_size;
+    case KND_ATTR_REF:
+        err = knd_shared_set_get(repo->class_idx, val, val_size, (void**)&entry);
+        if (err) {
+            KND_TASK_LOG("class \"%.*s\" not found in repo %.*s",
+                         val_size, val, repo->name_size, repo->name);
+            return make_gsl_err(gsl_FAIL);
+        }
+        self->class_entry = entry;
+        
+        if (DEBUG_ATTR_VAR_READ_LEVEL_3)
+            knd_log(">> set class ref: %.*s (id:%.*s)", entry->name_size, entry->name, val_size, val);
+
     default:
         break;
     }
