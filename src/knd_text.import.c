@@ -832,9 +832,9 @@ gsl_err_t knd_statement_import(struct kndStatement *stm, const char *rec, size_t
 
 gsl_err_t knd_text_import(struct kndText *self, const char *rec, size_t *total_size, struct kndTask *task)
 {
-    if (DEBUG_TEXT_IMPORT_LEVEL_TMP)
+    if (DEBUG_TEXT_IMPORT_LEVEL_2)
         knd_log(".. import text: \"%.*s\"", 128, rec);
-   
+
     struct LocalContext ctx = {
         .task = task,
         .text = self

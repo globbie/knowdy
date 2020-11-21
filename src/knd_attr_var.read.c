@@ -88,31 +88,34 @@ static gsl_err_t read_nested_attr_var_list(void *obj, const char *id, size_t id_
     struct kndTask *task = ctx->task;
     struct kndMemPool *mempool = task->mempool;
     struct kndAttrVar *parent_attr_var = ctx->attr_var;
-    struct kndSet *attr_idx = ctx->class->attr_idx;
-    struct kndAttrRef *ref;
     struct kndAttrVar *attr_var;
+    struct kndAttrRef *ref;
+    struct kndAttr *attr;
     int err;
 
     if (DEBUG_ATTR_VAR_READ_LEVEL_2)
         knd_log(".. reading nested attr_var list: \"%.*s\" REC: %.*s", id_size, id, 32, rec);
 
-    err = attr_idx->get(attr_idx, id, id_size, (void**)&ref);
+    assert(ctx->class != NULL);
+
+    err = knd_set_get(ctx->class->attr_idx, id, id_size, (void**)&ref);
     if (err) {
         KND_TASK_LOG("no such attr: %.*s", id_size, id);
         return *total_size = 0, make_gsl_err_external(err);
     }
     assert(ref->attr != NULL);
+    attr = ref->attr;
 
     if (DEBUG_ATTR_VAR_READ_LEVEL_2)
-        knd_log(">> attr decoded: %.*s", ref->attr->name_size, ref->attr->name);
+        knd_log(">> attr decoded: %.*s  (type:%d)", attr->name_size, attr->name, attr->type);
 
     err = knd_attr_var_new(mempool, &attr_var);
     if (err) {
         return make_gsl_err(err);
     }
-    attr_var->attr = ref->attr;
-    attr_var->name = ref->attr->name;
-    attr_var->name_size = ref->attr->name_size;
+    attr_var->attr = attr;
+    attr_var->name = attr->name;
+    attr_var->name_size = attr->name_size;
 
     attr_var->next = parent_attr_var->children;
     parent_attr_var->children = attr_var;
@@ -128,6 +131,23 @@ static gsl_err_t read_nested_attr_var_list(void *obj, const char *id, size_t id_
         .obj = &attr_var_ctx
     };
 
+    switch (attr->type) {
+    case KND_ATTR_INNER:
+        assert(attr->ref_class_entry != NULL);
+
+        err = knd_class_acquire(attr->ref_class_entry, &attr_var_ctx.class, task);
+        if (err) {
+            KND_TASK_LOG("failed to acquire class \"%.*s\"",
+                         attr->ref_class_entry->name_size, attr->ref_class_entry->name);
+            return *total_size = 0, make_gsl_err_external(err);
+        }
+        if (DEBUG_ATTR_VAR_READ_LEVEL_3)
+            knd_log(">> list inner class: \"%.*s\"",
+                    attr->ref_class_entry->name_size, attr->ref_class_entry->name);
+        break;
+    default:
+        break;
+    }
     return gsl_parse_array(&read_attr_var_spec, rec, total_size);
 }
 
@@ -139,17 +159,17 @@ static gsl_err_t read_nested_attr_var(void *obj, const char *id, size_t id_size,
     struct kndTask    *task = ctx->task;
     struct kndAttrVar *attr_var;
     struct kndMemPool *mempool = task->mempool;
-    struct kndSet *attr_idx = ctx->class->attr_idx;
     struct kndAttrRef *ref;
     gsl_err_t parser_err;
     int err;
 
-    err = attr_idx->get(attr_idx, id, id_size, (void**)&ref);
+    assert(ctx->class != NULL);
+
+    err = knd_set_get(ctx->class->attr_idx, id, id_size, (void**)&ref);
     if (err) {
         KND_TASK_LOG("no such attr: %.*s", id_size, id);
         return *total_size = 0, make_gsl_err_external(err);
     }
-
     assert(ref->attr != NULL);
 
     if (DEBUG_ATTR_VAR_READ_LEVEL_2)
@@ -400,7 +420,7 @@ static gsl_err_t read_attr_var_list_item(void *obj, const char *rec, size_t *tot
     ctx->attr_var = attr_var;
 
     if (DEBUG_ATTR_VAR_READ_LEVEL_2)
-        knd_log("== reading a list item of %.*s: %.*s", self->name_size, self->name, 32, rec);
+        knd_log("== reading a list item of \"%.*s\": %.*s", self->name_size, self->name, 32, rec);
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,

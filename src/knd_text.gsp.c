@@ -44,9 +44,8 @@ int knd_charseq_unmarshall(const char *elem_id, size_t elem_id_size,
     struct kndSharedDict *str_dict = task->repo->str_dict;
     int err;
 
-    if (DEBUG_TEXT_GSP_LEVEL_2) {
+    if (DEBUG_TEXT_GSP_LEVEL_2)
         knd_log("charseq \"%.*s\" => \"%.*s\"", elem_id_size, elem_id, val_size, val);
-    }
 
     err = knd_charseq_new(mempool, &seq);
     KND_TASK_ERR("charseq alloc failed");

@@ -130,7 +130,7 @@ static int save_elem(struct kndSharedSet *self, struct kndSharedSetElemIdx *pare
     int idx_pos;
     int err;
 
-    if (DEBUG_SHARED_SET_LEVEL_3)
+    if (DEBUG_SHARED_SET_LEVEL_2)
         knd_log("== set idx to save ID remainder: \"%.*s\"", id_size, id);
 
     assert(parent_idx != NULL);
@@ -181,7 +181,7 @@ static int get_elem(struct kndSharedSet *self, struct kndSharedSetElemIdx *paren
     int idx_pos;
     int err;
 
-    if (DEBUG_SHARED_SET_LEVEL_2)
+    if (DEBUG_SHARED_SET_LEVEL_3)
         knd_log(".. get elem by ID, remainder \"%.*s\"", id_size, id);
 
     assert(parent_idx != NULL);
@@ -353,6 +353,9 @@ static int marshall_elems(struct kndSharedSetElemIdx *parent_idx, struct kndShar
     size_t block_size;
     int err;
 
+    if (DEBUG_SHARED_SET_LEVEL_2)
+        knd_log(".. marshall elems of dir \"%.*s\"", idbuf_size, idbuf);
+
     for (size_t i = 0; i < KND_RADIX_BASE; i++) {
         if (parent_idx->idxs[i]) dir->num_subdirs++;
         elem = parent_idx->elems[i];
@@ -367,8 +370,9 @@ static int marshall_elems(struct kndSharedSetElemIdx *parent_idx, struct kndShar
             err = out->writec(out, obj_id_seq[i]);
             KND_TASK_ERR("output failure");
         }
+
         if (DEBUG_SHARED_SET_LEVEL_2)
-            knd_log(">> marshall elem %.*s", idbuf_size, idbuf);
+            knd_log(">> elem %.*s%c", idbuf_size, idbuf, obj_id_seq[i]);
 
         err = cb(elem, &block_size, task);
         if (err) return err;
@@ -379,6 +383,11 @@ static int marshall_elems(struct kndSharedSetElemIdx *parent_idx, struct kndShar
         dir->elem_block_sizes[i] = block_size;
         dir->num_elems++;
     }
+
+    if (DEBUG_SHARED_SET_LEVEL_3)
+        knd_log("== dir \"%.*s\" num subdirs:%zu num elems:%zu",
+                idbuf_size, idbuf, dir->num_subdirs, dir->num_elems);
+
     return knd_OK;
 }
 
@@ -445,6 +454,9 @@ static int traverse_marshall(struct kndSharedSetElemIdx *parent_idx, char *idbuf
     size_t byte_size, cell_size = 1;
     bool use_keys = false;
     int err;
+
+    if (DEBUG_SHARED_SET_LEVEL_2)
+        knd_log(">> %.*s (idbuf_size: %zu)", idbuf_size, idbuf, idbuf_size);
 
     dir = calloc(1, sizeof(struct kndSharedSetDir));
     if (!dir) {
@@ -539,7 +551,7 @@ int knd_shared_set_marshall(struct kndSharedSet *self, const char *filename, siz
     err = traverse_marshall(self->idx, idbuf, idbuf_size, filename, filename_size, cb, &root_dir, task);
     if (err) return err;
 
-    if (DEBUG_SHARED_SET_LEVEL_TMP)
+    if (DEBUG_SHARED_SET_LEVEL_3)
         knd_log("== total exported set size:%zu", root_dir->total_size);
 
     *total_size = root_dir->total_size;

@@ -189,7 +189,7 @@ static int unmarshall_elems(struct kndSharedSetDir *dir, const char *block, size
     for (size_t i = 0; i < num_elems; i++) {
         c = (unsigned char*)b + (i * dir_field_size);
         if (use_keys) {
-            numval = knd_unpack_int(c + 1, cell_size);
+            numval = knd_unpack_int(c + 1, cell_size);  // skip over subdir's id
             idbuf[idbuf_size] = *c;
             elem_id_val = obj_id_base[*c];
 
@@ -264,6 +264,7 @@ static int read_subdirs(struct kndSharedSet *self, struct kndSharedSetDir *dir,
 {
     unsigned char buf[KND_NAME_SIZE];
     struct kndSharedSetDir *subdir;
+    size_t num_subdirs = KND_RADIX_BASE;
     size_t spec_size = 2;
     ssize_t num_bytes;
     size_t subdir_area_size;
@@ -273,14 +274,17 @@ static int read_subdirs(struct kndSharedSet *self, struct kndSharedSetDir *dir,
     const unsigned char *c;
     size_t numval;
     size_t block_offset = 0;
+    size_t elem_id_val = 0;
     int err;
 
     if (DEBUG_SHARED_SET_GSP_LEVEL_2)
-        knd_log(".. reading subdirs from offset %zu + %zu", offset, parent_block_size);
+        knd_log(".. reading subdirs of \"%.*s\" from offset %zu + %zu",
+                idbuf_size, idbuf, offset, parent_block_size);
 
     // the last three bytes contain a dir size spec:
-    // dir_size (optional)   cell_size (1-4)   use_keys (0/1)
-    // [2]                   [1]               [0]
+    // num subdirs (if use_keys)  cell_size (1-4)   use_keys (0/1)
+    // [2]                        [1]               [0]
+
     lseek(fd, offset + parent_block_size - 3, SEEK_SET);
     num_bytes = read(fd, buf, 3);
     if (num_bytes != 3) return knd_IO_FAIL;
@@ -294,7 +298,8 @@ static int read_subdirs(struct kndSharedSet *self, struct kndSharedSetDir *dir,
 
     subdir_footer_size = KND_RADIX_BASE * cell_size;
     if (use_keys) {
-        subdir_footer_size = buf[0];
+        num_subdirs = buf[0];
+        subdir_footer_size = (num_subdirs * cell_size) + num_subdirs;
         spec_size = 3;
     }
     // make sure buf len is enough
@@ -310,9 +315,33 @@ static int read_subdirs(struct kndSharedSet *self, struct kndSharedSetDir *dir,
     if (num_bytes != (ssize_t)subdir_footer_size) return knd_IO_FAIL;
 
     if (use_keys) {
-        // TODO: subdir linear traversal
+        if (DEBUG_SHARED_SET_GSP_LEVEL_2)
+            knd_log(">> dir %.*s: subdir linear traversal needed (cell size:%zu footer size:%zu)",
+                    idbuf_size, idbuf, cell_size, subdir_footer_size);
+
+        for (size_t i = 0; i < num_subdirs; i++) {
+            c = (unsigned char*)buf + (i * (1 + cell_size));
+            numval = knd_unpack_int(c + 1, cell_size); // skip over subdir's id
+            if (numval == 0) continue;
+            idbuf[idbuf_size] = *c;
+            elem_id_val = obj_id_base[*c];
+
+            err = knd_shared_set_dir_new(self->mempool, &subdir);
+            KND_TASK_ERR("failed to alloc a set subdir");
+            subdir->total_size = numval;
+            subdir->global_offset = offset + block_offset;
+
+            err = unmarshall_block(self, subdir, fd, numval, idbuf, idbuf_size + 1, cb, task);
+            KND_TASK_ERR("failed to unmarshall subdir block %.*s", idbuf_size + 1, idbuf);
+
+            dir->subdirs[elem_id_val] = subdir;
+            dir->total_elems += subdir->total_elems;
+            block_offset += numval;
+        }
         return knd_OK;
     }
+
+    /* all subdirs are present in a footer */
     for (size_t i = 0; i < KND_RADIX_BASE; i++) {
         c = (unsigned char*)buf + (i * cell_size);
         numval = knd_unpack_int(c, cell_size);
@@ -343,8 +372,10 @@ static int unmarshall_block(struct kndSharedSet *self, struct kndSharedSetDir *d
     ssize_t num_bytes;
     size_t subdir_block_size;
     int err;
+
     if (DEBUG_SHARED_SET_GSP_LEVEL_2)
-        knd_log(".. unmarshall block from offset %zu (size: %zu)", dir->global_offset, block_size);
+        knd_log(">> id \"%.*s\" to unmarshall block from offset %zu (size: %zu)",
+                idbuf_size, idbuf, dir->global_offset, block_size);
 
     err = read_payload_size(dir, fd, dir->global_offset, block_size);
     KND_TASK_ERR("failed to read payload size");

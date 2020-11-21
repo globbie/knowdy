@@ -71,7 +71,6 @@ int knd_charseq_fetch(struct kndRepo *repo, const char *val, size_t val_size, st
     struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndCharSeq *seq;
     int err;
-
     assert(val != NULL);
     assert(val_size != 0);
 
@@ -91,10 +90,18 @@ int knd_charseq_fetch(struct kndRepo *repo, const char *val, size_t val_size, st
     
     err = knd_shared_dict_set(repo->str_dict, val, val_size, (void*)seq, mempool, NULL, &seq->item, false);
     KND_TASK_ERR("failed to register a charseq");
+
     knd_uid_create(seq->numid, idbuf, &idbuf_size);
     err = knd_shared_set_add(repo->str_idx, idbuf, idbuf_size, (void*)seq);
     KND_TASK_ERR("failed to register a charseq by numid");
 
+    // if (!memcmp(idbuf, "3d0", 3))
+    if (seq->numid > 240000) {
+        knd_log(">> register charseq \"%.*s\" (numval:%zu id: %.*s  idbuf_size:%zu)",
+                val_size, val, seq->numid, idbuf_size, idbuf, idbuf_size);
+        err = knd_shared_set_get(repo->str_idx, idbuf, idbuf_size, (void**)seq);
+        if (err) return err;
+    }
     *result = seq;
     return knd_OK;
 }

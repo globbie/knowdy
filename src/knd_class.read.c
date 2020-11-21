@@ -494,6 +494,9 @@ int knd_class_acquire(struct kndClassEntry *entry, struct kndClass **result, str
     // int num_readers;
     int err;
 
+    if (DEBUG_CLASS_READ_LEVEL_2)
+        knd_log(">> acquire class \"%.*s\"", entry->name_size, entry->name);
+
     // TODO read/write conflicts
     atomic_fetch_add_explicit(&entry->num_readers, 1, memory_order_relaxed);
  
