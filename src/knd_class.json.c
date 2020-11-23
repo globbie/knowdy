@@ -415,7 +415,6 @@ extern int knd_class_set_export_JSON(struct kndSet *set, struct kndTask *task)
     return knd_OK;
 }
 
-
 static int present_subclass(struct kndClassRef *ref, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
@@ -521,8 +520,7 @@ static int present_subclasses(struct kndClass *self, struct kndTask *task, size_
     return knd_OK;
 }
 
-static int export_attrs(struct kndClass *self,
-                        struct kndTask *task)
+static int export_attrs(struct kndClass *self, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndAttr *attr;
@@ -617,6 +615,9 @@ static int export_baseclasses(struct kndClass *self, struct kndTask *task, size_
     size_t count = 0;
     size_t indent_size = task->ctx->format_indent;
     int err;
+
+    if (DEBUG_JSON_LEVEL_2)
+        knd_log(".. export baseclasses of %.*s", self->name_size, self->name);
 
     OUT(",", 1);
     if (indent_size) {

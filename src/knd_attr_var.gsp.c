@@ -147,6 +147,9 @@ static int proc_item_export_GSP(struct kndAttrVar *item, struct kndTask *task, s
 
 static int attr_var_list_export_GSP(struct kndAttrVar *var, struct kndTask *task, struct kndOutput *out)
 {
+    char idbuf[KND_ID_SIZE];
+    size_t idbuf_size;
+    struct kndCharSeq *seq;
     struct kndAttrVar *item;
     struct kndClass *c;
 
@@ -175,6 +178,12 @@ static int attr_var_list_export_GSP(struct kndAttrVar *var, struct kndTask *task
         case KND_ATTR_INNER:
             err = inner_var_export_GSP(item, task);
             KND_TASK_ERR("failed to export inner attr var");
+            break;
+        case KND_ATTR_STR:
+            err = knd_charseq_fetch(task->repo, item->name, item->name_size, &seq, task);
+            KND_TASK_ERR("failed to encode a charseq");
+            knd_uid_create(seq->numid, idbuf, &idbuf_size);
+            OUT(idbuf, idbuf_size);
             break;
         default:
             OUT(item->name, item->name_size);

@@ -490,11 +490,11 @@ static int resolve_class(struct kndClass *self, struct kndTask *task)
 int knd_class_acquire(struct kndClassEntry *entry, struct kndClass **result, struct kndTask *task)
 {
     struct kndRepo *repo = entry->repo;
-    struct kndClass *c = NULL, *prev_c;
+    struct kndClass *c = NULL, *prev_c = NULL;
     // int num_readers;
     int err;
 
-    if (DEBUG_CLASS_READ_LEVEL_2)
+    if (DEBUG_CLASS_READ_LEVEL_3)
         knd_log(">> acquire class \"%.*s\"", entry->name_size, entry->name);
 
     // TODO read/write conflicts
@@ -503,7 +503,10 @@ int knd_class_acquire(struct kndClassEntry *entry, struct kndClass **result, str
     do {
         prev_c = atomic_load_explicit(&entry->class, memory_order_relaxed);
         if (prev_c) {
-            // TODO if (c != NULL)  - free 
+            // TODO if (c != NULL)  - free
+            if (DEBUG_CLASS_READ_LEVEL_3)
+                knd_log("++ %.*s class is already cached (class:%p)",
+                        entry->name_size, entry->name, prev_c);
             *result = prev_c;
             return knd_OK;
         }
@@ -512,7 +515,7 @@ int knd_class_acquire(struct kndClassEntry *entry, struct kndClass **result, str
                                                  knd_class_unmarshall, (void**)&c, task);
             if (err) return err;
             c->entry = entry;
-            entry->class = c;
+            // entry->class = c;
             c->name = entry->name;
             c->name_size = entry->name_size;
 
@@ -525,7 +528,8 @@ int knd_class_acquire(struct kndClassEntry *entry, struct kndClass **result, str
     return knd_OK;
 }
 
-int knd_class_unmarshall(const char *elem_id, size_t elem_id_size, const char *rec, size_t rec_size,
+int knd_class_unmarshall(const char *unused_var(elem_id), size_t unused_var(elem_id_size),
+                         const char *rec, size_t rec_size,
                          void **result, struct kndTask *task)
 {
     struct kndClass *c = NULL;
@@ -533,7 +537,7 @@ int knd_class_unmarshall(const char *elem_id, size_t elem_id_size, const char *r
     int err;
 
     if (DEBUG_CLASS_READ_LEVEL_2)
-        knd_log(">> GSP class \"%.*s\" => \"%.*s\"", elem_id_size, elem_id, rec_size, rec);
+        knd_log(">> GSP rec: \"%.*s\"", rec_size, rec);
 
     err = knd_class_new(task->user_ctx->mempool, &c);
     KND_TASK_ERR("failed to alloc a class");

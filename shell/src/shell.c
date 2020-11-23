@@ -101,6 +101,10 @@ static int knd_interact(struct kndShard *shard)
         }
         knd_log("== Reader's output:\n%.*s", reader_task->output_size, reader_task->output);
 
+        // out->reset(out);
+        // reader_task->mempool->present(reader_task->mempool, out);
+        // knd_log("** Task Mempool (%p)\n%.*s", reader_task->mempool, out->buf_size, out->buf);
+        
         /* update tasks require another run,
            possibly involving network communication */
         switch (reader_task->ctx->phase) {
