@@ -303,6 +303,12 @@ gsl_err_t knd_import_attr(struct kndAttr *self, struct kndTask *task, const char
     err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (err.code) return err;
 
+    /* reassign glosses */
+    if (task->ctx->tr) {
+        self->tr = task->ctx->tr;
+        task->ctx->tr = NULL;
+    }
+
     if (self->type == KND_ATTR_INNER) {
         if (!self->ref_classname_size) {
             knd_log("-- ref class not specified in %.*s",

@@ -228,6 +228,23 @@ static gsl_err_t parse_quant_type(void *obj, const char *rec, size_t *total_size
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
+static gsl_err_t read_glosses(void *obj, const char *rec, size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    struct kndAttr *self = ctx->attr;
+    gsl_err_t parser_err;
+
+    parser_err = knd_read_gloss_array((void*)task, rec, total_size);
+    if (parser_err.code) return *total_size = 0, parser_err;
+
+    if (task->ctx->tr) {
+        self->tr = task->ctx->tr;
+        task->ctx->tr = NULL;
+    }
+    return make_gsl_err(gsl_OK);
+}
+
 gsl_err_t knd_attr_read(struct kndAttr *self, struct kndTask *task, const char *rec, size_t *total_size)
 {
     struct LocalContext ctx = {
@@ -248,8 +265,8 @@ gsl_err_t knd_attr_read(struct kndAttr *self, struct kndTask *task, const char *
         { .type = GSL_GET_ARRAY_STATE,
           .name = "_g",
           .name_size = strlen("_g"),
-          .parse = knd_parse_gloss_array,
-          .obj = task
+          .parse = read_glosses,
+          .obj = &ctx
         },
         { .name = "c",
           .name_size = strlen("c"),

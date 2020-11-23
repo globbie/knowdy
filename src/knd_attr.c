@@ -169,91 +169,11 @@ void knd_attr_var_str(struct kndAttrVar *var, size_t depth)
         knd_attr_var_str(item, depth + 1);
 }
 
-static int export_JSON(struct kndAttr *self,
-                       struct kndTask *task)
-{
-    struct kndOutput *out = task->out;
-    struct kndText *tr;
-    struct kndProc *p;
-    const char *type_name = knd_attr_names[self->type];
-    size_t type_name_size = strlen(knd_attr_names[self->type]);
-    int err;
-
-    if (DEBUG_ATTR_LEVEL_2)
-        knd_log(".. JSON export attr: \"%.*s\"..",
-                self->name_size, self->name);
-
-    err = out->writec(out, '"');
-    if (err) return err;
-    err = out->write(out, self->name, self->name_size);
-    if (err) return err;
-    err = out->write(out, "\":{", strlen("\":{"));
-    if (err) return err;
-
-    err = out->write(out, "\"type\":\"", strlen("\"type\":\""));
-    if (err) return err;
-    err = out->write(out, type_name, type_name_size);
-    if (err) return err;
-    err = out->writec(out, '"');
-    if (err) return err;
-
-    if (self->is_a_set) {
-        err = out->write(out, ",\"is_a_set\":true", strlen(",\"is_a_set\":true"));
-        if (err) return err;
-    }
-
-    if (self->ref_classname_size) {
-        err = out->write(out, ",\"refclass\":\"", strlen(",\"refclass\":\""));
-        if (err) return err;
-        err = out->write(out, self->ref_classname, self->ref_classname_size);
-        if (err) return err;
-        err = out->write(out, "\"", 1);
-        if (err) return err;
-   }
-
-    /* choose gloss */
-    tr = self->tr;
-    while (tr) {
-        if (task->ctx->locale_size != tr->locale_size) continue;
-        if (memcmp(task->ctx->locale, tr->locale, tr->locale_size)) {
-            goto next_tr;
-        }
-
-        err = out->write(out,
-                         ",\"_gloss\":\"", strlen(",\"_gloss\":\""));
-        if (err) return err;
-
-        err = out->write(out, tr->seq->val,  tr->seq->val_size);
-        if (err) return err;
-
-        err = out->write(out, "\"", 1);
-        if (err) return err;
-        break;
-
-    next_tr:
-        tr = tr->next;
-    }
-
-    if (self->proc) {
-        err = out->write(out, ",\"proc\":", strlen(",\"proc\":"));
-        if (err) return err;
-        p = self->proc;
-        err = knd_proc_export(p, KND_FORMAT_JSON, task, out);
-        if (err) return err;
-    }
-
-    err = out->writec(out, '}');
-    if (err) return err;
-
-    return knd_OK;
-}
-
-
 int knd_attr_export(struct kndAttr *self, knd_format format, struct kndTask *task)
 {
     switch (format) {
     case KND_FORMAT_JSON:
-        return export_JSON(self, task);
+        return knd_attr_export_JSON(self, task, 0);
     case KND_FORMAT_GSP:
         return knd_attr_export_GSP(self, task);
     default:
