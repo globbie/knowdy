@@ -435,7 +435,7 @@ static int present_subclass(struct kndClassRef *ref, struct kndTask *task, size_
         err = knd_print_offset(out, (depth + 1) * indent_size);
         RET_ERR();
     }
-    OUT("\"class\":", strlen("\"class\":"));
+    OUT("\"name\":", strlen("\"name\":"));
     if (indent_size) {
         OUT(" ", 1);
     }
@@ -524,25 +524,18 @@ static int export_attrs(struct kndClass *self, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndAttr *attr;
-    size_t i = 0;
+    size_t count = 0;
     int err;
-    err = out->write(out, ",\"_attrs\":{",
-                     strlen(",\"_attrs\":{"));   RET_ERR();
-    
-    for (attr = self->attrs; attr; attr = attr->next) {
-        if (i) {
-            err = out->write(out, ",", 1);  RET_ERR();
+    OUT(",\"attrs\":{", strlen(",\"attrs\":{"));
+    FOREACH (attr, self->attrs) {
+        if (count) {
+            OUT(",", 1);
         }
         err = knd_attr_export(attr, KND_FORMAT_JSON, task);
-        if (err) {
-            if (DEBUG_JSON_LEVEL_TMP)
-                knd_log("-- failed to export %.*s attr",
-                        attr->name_size, attr->name);
-            return err;
-        }
-        i++;
+        KND_TASK_ERR("failed to export %.*s attr", attr->name_size, attr->name);
+        count++;
     }
-    err = out->writec(out, '}'); RET_ERR();
+    OUT("}", 1);
     return knd_OK;
 }
 
