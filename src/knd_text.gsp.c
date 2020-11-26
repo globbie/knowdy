@@ -29,7 +29,7 @@ int knd_charseq_marshall(void *elem, size_t *output_size, struct kndTask *task)
     OUT(seq->val, seq->val_size);
 
     if (DEBUG_TEXT_GSP_LEVEL_2)
-        knd_log("** %zu => %.*s (size:%zu)",  seq->numid,
+        knd_log("** %zu => \"%.*s\" (size:%zu)",  seq->numid,
                 seq->val_size, seq->val, out->buf_size - orig_size);
 
     *output_size = out->buf_size - orig_size;
@@ -136,6 +136,8 @@ static int sent_export_GSP(struct kndSentence *sent, struct kndTask *task)
 
 int knd_text_export_GSP(struct kndText *self, struct kndTask *task)
 {
+    char idbuf[KND_ID_SIZE];
+    size_t idbuf_size;
     struct kndOutput *out = task->out;
     struct kndPar *par;
     struct kndSentence *sent;
@@ -151,9 +153,15 @@ int knd_text_export_GSP(struct kndText *self, struct kndTask *task)
         return knd_OK;
     }
 
-    if (seq && seq->val_size) {
-        OUT(seq->val, seq->val_size);
+    if (seq) {
+       if (DEBUG_TEXT_GSP_LEVEL_2)
+           knd_log("** %zu => \"%.*s\" (size:%zu)",  seq->numid,
+                   seq->val_size, seq->val, seq->val_size);
+     
+        knd_uid_create(seq->numid, idbuf, &idbuf_size);
+        OUT(idbuf, idbuf_size);
     }
+
     if (self->locale_size) {
         OUT("{", 1);
         OUT("_lang ", strlen("_lang "));
@@ -167,7 +175,10 @@ int knd_text_export_GSP(struct kndText *self, struct kndTask *task)
             OUT("{", 1);
             OUT(trn->locale, trn->locale_size);
             OUT("{t ", strlen("{t "));
-            OUT(trn->seq->val, trn->seq->val_size);
+
+            knd_uid_create(trn->seq->numid, idbuf, &idbuf_size);
+            OUT(idbuf, idbuf_size);
+
             OUT("}", 1);
             OUT("}", 1);
         }

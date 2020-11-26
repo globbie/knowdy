@@ -49,13 +49,50 @@ static void display_usage(void)
     fprintf(stderr, "\nUsage: knd-shell --config=path_to_your_config\n\n");
 }
 
+static int check_file_rec(struct kndTask *task, const char *rec, size_t rec_size,
+                          struct kndMemBlock **result) 
+{
+    char buf[1024];
+    size_t buf_size;
+    size_t prefix_size = strlen("{file ");
+    struct stat st;
+    struct kndMemBlock *memblock;
+    int err;
+
+    if (memcmp(rec, "{file ", prefix_size)) {
+        return knd_OK;
+    }
+    rec += prefix_size;
+    buf_size = rec_size - prefix_size - 1; 
+    memcpy(buf, rec, buf_size);
+    buf[buf_size] = '\0';
+
+    knd_log(".. reading input file \"%.*s\"", buf_size, buf);
+
+    if (stat(buf, &st)) {
+        knd_log("-- no such file: \"%.*s\"", buf_size, buf);
+        return knd_FAIL;
+    }
+    if ((size_t)st.st_size >= 1024 * 1024) {
+        err = knd_LIMIT;
+        KND_TASK_ERR("max input file size limit reached");
+    }
+
+    err = knd_task_read_file_block(task, buf, (size_t)st.st_size, &memblock);
+    KND_TASK_ERR("failed to read memblock from file \"%.*s\"", buf_size, buf);
+
+    *result = memblock;
+    return knd_OK;
+}
+
 static int knd_interact(struct kndShard *shard)                      
 {
     struct kndTask *writer_task, *reader_task;
     struct kndOutput *out;
     char  *buf;
     size_t buf_size;
-    const char  *block;
+    struct kndMemBlock *memblock = NULL;
+    const char *block;
     size_t block_size;
     int err;
 
@@ -93,6 +130,14 @@ static int knd_interact(struct kndShard *shard)
         block = buf;
         block_size = buf_size;
 
+        err = check_file_rec(reader_task, buf, buf_size, &memblock);
+        if (err) goto next_line;
+
+        if (memblock) {
+            block = memblock->buf;
+            block_size = memblock->buf_size;
+        }
+            
         knd_task_reset(reader_task);
         err = knd_task_run(reader_task, block, block_size);
         if (err != knd_OK) {
@@ -100,6 +145,7 @@ static int knd_interact(struct kndShard *shard)
             goto next_line;
         }
         knd_log("== Reader's output:\n%.*s", reader_task->output_size, reader_task->output);
+        
 
         // out->reset(out);
         // reader_task->mempool->present(reader_task->mempool, out);
@@ -126,10 +172,14 @@ static int knd_interact(struct kndShard *shard)
         default:
             break;
         }
-
         /* readline allocates a new buffer every time */
     next_line:
         free(buf);
+        if (memblock) {
+            // free(memblock->buf);
+            //free(memblock);
+            memblock = NULL;
+        }
     }
     return knd_OK;
 }

@@ -10,6 +10,7 @@
 #include <string.h>
 
 #include "knd_task.h"
+#include "knd_user.h"
 #include "knd_class.h"
 #include "knd_proc.h"
 #include "knd_text.h"
@@ -57,7 +58,7 @@ static gsl_err_t parse_text(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndMemPool *mempool = task->mempool;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndText *text;
     gsl_err_t parser_err;
     int err;
@@ -115,7 +116,7 @@ static gsl_err_t import_nested_attr_var_list(void *obj,
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndMemPool *mempool = task->mempool;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndAttrVar *parent_attr_var = ctx->attr_var;
     struct kndAttrVar *attr_var;
     int err;
@@ -153,7 +154,7 @@ int knd_import_attr_var(struct kndClassVar *self, const char *name, size_t name_
                         const char *rec, size_t *total_size, struct kndTask *task)
 {
     struct kndAttrVar *attr_var;
-    struct kndMemPool *mempool = task->mempool;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
     gsl_err_t parser_err;
     int err;
 
@@ -246,7 +247,7 @@ static gsl_err_t import_attr_var_list_item(void *obj, const char *rec, size_t *t
     struct kndTask *task = ctx->task;
     struct kndAttrVar *self = ctx->list_parent;
     struct kndAttrVar *attr_var;
-    struct kndMemPool *mempool = task->mempool;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
     int err;
 
     err = knd_attr_var_new(mempool, &attr_var);
@@ -294,7 +295,7 @@ int knd_import_attr_var_list(struct kndClassVar *self, const char *name, size_t 
                              const char *rec, size_t *total_size, struct kndTask *task)
 {
     struct kndAttrVar *attr_var;
-    struct kndMemPool *mempool = task->mempool;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
     gsl_err_t parser_err;
     int err, e;
 
@@ -341,7 +342,7 @@ static gsl_err_t import_nested_attr_var(void *obj, const char *name, size_t name
     struct kndAttrVar *self = ctx->attr_var;
     struct kndTask    *task = ctx->task;
     struct kndAttrVar *attr_var;
-    struct kndMemPool *mempool = task->mempool;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
     gsl_err_t parser_err;
     int err;
     

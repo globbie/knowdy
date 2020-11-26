@@ -200,8 +200,7 @@ static int create_subsets(struct kndSet *set,
     return knd_OK;
 }
 
-static void free_facet(struct kndMemPool *mempool,
-                       struct kndClassFacet *parent_facet)
+static void free_facet(struct kndMemPool *mempool, struct kndClassFacet *parent_facet)
 {
     struct kndClassFacet *facet, *facet_next = NULL;
     struct kndClassRef *ref, *ref_next;
@@ -662,7 +661,7 @@ static gsl_err_t parse_import_class_inst(void *obj, const char *rec, size_t *tot
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
     struct kndCommit *commit = task->ctx->commit;
-    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndMemPool *mempool = task->mempool;
     struct kndClassEntry *entry = ctx->class_entry;
     struct kndRepo *repo = task->repo;
     struct kndRepoSnapshot *snapshot = atomic_load_explicit(&repo->snapshots, memory_order_relaxed);
@@ -671,10 +670,14 @@ static gsl_err_t parse_import_class_inst(void *obj, const char *rec, size_t *tot
     struct kndClass *c;
     int err;
 
+    if (DEBUG_CLASS_SELECT_LEVEL_2)
+        knd_log(".. parse import class inst..");
+
     if (!entry) {
         KND_TASK_LOG("class entry not selected");
         return *total_size = 0, make_gsl_err_external(knd_FORMAT);
     }
+
     err = knd_class_acquire(entry, &c, task);
     if (err) {
         KND_TASK_LOG("failed to acquire class \"%.*s\"", entry->id_size, entry->id);
@@ -703,7 +706,7 @@ static gsl_err_t parse_import_class_inst(void *obj, const char *rec, size_t *tot
 
         switch (snapshot->role) {
         case KND_READER:
-            if (DEBUG_CLASS_SELECT_LEVEL_2)
+            if (DEBUG_CLASS_SELECT_LEVEL_TMP)
                 knd_log(">> snapshot %.*s (role:%d  task role:%d)", snapshot->path_size, snapshot->path, snapshot->role, task->role);
 
             snapshot->role = KND_WRITER;
@@ -731,6 +734,7 @@ static gsl_err_t parse_import_class_inst(void *obj, const char *rec, size_t *tot
     default:
         break;
     }
+
     err = knd_import_class_inst(entry, rec, total_size, task);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     return make_gsl_err(gsl_OK);

@@ -48,14 +48,9 @@ int knd_class_inst_export_JSON(struct kndClassInst *self, bool is_list_item, knd
         }
     }
 
-    err = out->write(out, "{\"_name\":\"", strlen("{\"_name\":\""));              RET_ERR();
-    err = out->write(out, self->name, self->name_size);
-    if (err) return err;
-    err = out->write(out, "\"", 1);
-    if (err) return err;
-
-    err = out->write(out, ",\"_id\":", strlen(",\"_id\":"));                      RET_ERR();
-    err = out->writef(out, "%zu", self->entry->numid);                            RET_ERR();
+    OUT("{\"name\":\"", strlen("{\"name\":\""));
+    OUT(self->name, self->name_size);
+    OUT("\"", 1);
 
     if (state) {
         err = out->write(out, ",\"_state\":", strlen(",\"_state\":"));            RET_ERR();
@@ -83,7 +78,7 @@ int knd_class_inst_export_JSON(struct kndClassInst *self, bool is_list_item, knd
         }
     }
 
-    OUT(",\"_class\":\"", strlen(",\"_class\":\""));
+    OUT(",\"class\":\"", strlen(",\"class\":\""));
     OUT(self->entry->blueprint->name, self->entry->blueprint->name_size);
     OUT("\"", 1);
 

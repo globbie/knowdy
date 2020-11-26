@@ -57,7 +57,6 @@ static gsl_err_t set_gloss_value(void *obj, const char *val, size_t val_size)
         KND_TASK_LOG("failed to decode a gloss charseq %.*s", val_size, val);
         return make_gsl_err_external(err);
     }
-
     if (DEBUG_TEXT_READ_LEVEL_3)
         knd_log(">> locale: %.*s gloss:%.*s", ctx->text->locale_size, ctx->text->locale,
             ctx->text->seq->val_size, ctx->text->seq->val);
@@ -155,11 +154,18 @@ static gsl_err_t set_text_seq(void *obj, const char *val, size_t val_size)
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
     int err;
+
+    if (DEBUG_TEXT_READ_LEVEL_TMP)
+        knd_log(">> text encoded seq: %.*s (size:%zu)", val_size, val, val_size);
+
     err = knd_charseq_decode(task->repo, val, val_size, &ctx->text->seq, task);
     if (err) {
         KND_TASK_LOG("failed to decode a text charseq %.*s", val_size, val);
         return make_gsl_err_external(err);
     }
+    if (DEBUG_TEXT_READ_LEVEL_TMP)
+        knd_log(">> locale: %.*s text seq:%.*s", ctx->text->locale_size, ctx->text->locale,
+            ctx->text->seq->val_size, ctx->text->seq->val);
     return make_gsl_err(gsl_OK);
 }
 

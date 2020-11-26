@@ -209,7 +209,8 @@ int knd_text_export_JSON(struct kndText *self, struct kndTask *task, size_t unus
 
     if (seq && seq->val_size) {
         OUT("\"seq\":\"", strlen("\"seq\":\""));
-        OUT(seq->val, seq->val_size);
+        err = out->write_escaped(out, seq->val,  seq->val_size);
+        KND_TASK_ERR("failed to export a charseq");
         OUT("\"", 1);
     }
 

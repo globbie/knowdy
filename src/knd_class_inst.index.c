@@ -33,7 +33,7 @@ static int update_attr_var_indices(struct kndClassInstEntry *entry, struct kndRe
     struct kndAttrVar *var;
     int err;
     
-    if (DEBUG_INST_IDX_LEVEL_2)
+    if (DEBUG_INST_IDX_LEVEL_TMP)
         knd_log(".. class inst \"%.*s\" attr var indexing", entry->name_size, entry->name);
 
     FOREACH (var, entry->inst->class_var->attrs) {
@@ -43,6 +43,10 @@ static int update_attr_var_indices(struct kndClassInstEntry *entry, struct kndRe
                 knd_log(".. indexing text attr \"%.*s\"", var->name_size, var->name);
             err = knd_text_index(var->text, repo, task);
             KND_TASK_ERR("failed to index text attr var \"%.*s\"", var->name_size, var->name);
+            break;
+        case KND_ATTR_REL:
+            if (DEBUG_INST_IDX_LEVEL_TMP)
+                knd_log(".. indexing Rel attr \"%.*s\"", var->name_size, var->name);
             break;
         default:
             break;
@@ -64,13 +68,13 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *bl
     struct kndSharedSet *new_idx = NULL;
     struct kndCommit *commit = state_refs->state->commit;
     struct kndSharedDictItem *item = NULL;
-    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
     int err;
 
     assert(commit != NULL);
     assert(c != NULL);
 
-    if (DEBUG_INST_IDX_LEVEL_2)
+    if (DEBUG_INST_IDX_LEVEL_TMP)
         knd_log(".. repo \"%.*s\" to update inst indices of class \"%.*s\" (repo:%.*s)",
                 repo->name_size, repo->name, blueprint->name_size, blueprint->name,
                 blueprint->repo->name_size, blueprint->repo->name);
@@ -120,8 +124,9 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *bl
     name_idx = atomic_load_explicit(&c->inst_name_idx, memory_order_acquire);
     idx = atomic_load_explicit(&c->inst_idx, memory_order_acquire);
     
-    for (ref = state_refs; ref; ref = ref->next) {
+    FOREACH (ref, state_refs) {
         entry = ref->obj;
+
         switch (ref->state->phase) {
         case KND_CREATED:
             if (entry->name_size) {

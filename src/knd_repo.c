@@ -150,6 +150,8 @@ static gsl_err_t present_repo_state(void *obj, const char *unused_var(name), siz
     // struct kndMemPool *mempool = task->mempool;
     int err;
 
+    knd_log(".. present repo state..");
+
     if (!repo) {
         knd_log("-- no repo selected");
         out->reset(out);
@@ -234,41 +236,28 @@ static gsl_err_t run_select_repo(void *obj, const char *name, size_t name_size)
 
     if (!name_size) return make_gsl_err(gsl_FAIL);
 
-    if (task->user_ctx) {
-        switch (*name) {
-        case '~':
-            repo = task->user_ctx->repo;
-            if (DEBUG_REPO_LEVEL_3)
-                knd_log("== user repo selected: %.*s", repo->name_size, repo->name);
-            task->repo = repo;
-            return make_gsl_err(gsl_OK);
-        default:
-            break;
-        }
-        if (DEBUG_REPO_LEVEL_3)
-            knd_log("== read-only base repo selected!");
-        task->repo = task->shard->user->repo;
+    switch (*name) {
+    case '/':
         return make_gsl_err(gsl_OK);
+    case '~':
+        repo = task->user_ctx->repo;
+        if (DEBUG_REPO_LEVEL_2)
+            knd_log("== user base repo selected: %.*s",
+                    repo->name_size, repo->name);
+        task->repo = repo;
+        return make_gsl_err(gsl_OK);
+    default:
+        task->repo = task->user_ctx->repo;
+        break;
     }
 
-    /* system repo */
-    if (name_size == 1) {
-        switch (*name) {
-        case '/':
-            return make_gsl_err(gsl_OK);
-        case '~':
-            task->repo = task->shard->user->repo;
-            return make_gsl_err(gsl_OK);
-        default:
-            break;
-        }
-    }
-    repo = knd_shared_dict_get(task->shard->repo_name_idx, name, name_size);
+    /*repo = knd_shared_dict_get(task->shard->repo_name_idx, name, name_size);
     if (!repo) {
         KND_TASK_LOG("no such repo: %.*s", name_size, name);
         return make_gsl_err(gsl_FAIL);
     }
     task->repo = repo;
+    */
     return make_gsl_err(gsl_OK);
 }
 
@@ -324,6 +313,22 @@ static gsl_err_t parse_snapshot_task(void *obj, const char *unused_var(rec), siz
     return *total_size = 0, make_gsl_err(gsl_OK);
 }
 
+static gsl_err_t decode_seq(void *obj, const char *val, size_t val_size)
+{
+    struct kndTask *task = obj;
+    struct kndCharSeq *seq;
+    int err;
+
+    err = knd_charseq_decode(task->repo, val, val_size, &seq, task);
+    if (err) {
+        KND_TASK_LOG("failed to decode a text charseq %.*s", val_size, val);
+        return make_gsl_err_external(err);
+    }
+    if (DEBUG_REPO_LEVEL_3)
+        knd_log(">> text seq:%.*s", seq->val_size, seq->val);
+    return make_gsl_err(gsl_OK);
+}
+
 gsl_err_t knd_parse_repo(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
@@ -360,6 +365,11 @@ gsl_err_t knd_parse_repo(void *obj, const char *rec, size_t *total_size)
           .parse = parse_snapshot_task,
           .obj = task
         },
+        { .name = "_seq",
+          .name_size = strlen("_seq"),
+          .run = decode_seq,
+          .obj = task
+        },
         { .is_default = true,
           .run = present_repo_state,
           .obj = task
@@ -376,8 +386,7 @@ static gsl_err_t run_read_include(void *obj, const char *name, size_t name_size)
     int err;
 
     if (DEBUG_REPO_LEVEL_2)
-        knd_log(".. include file name: \"%.*s\" [%zu]",
-                (int)name_size, name, name_size);
+        knd_log(".. include file name: \"%.*s\" [%zu]", (int)name_size, name, name_size);
     if (!name_size) return make_gsl_err(gsl_FORMAT);
 
     err = knd_conc_folder_new(mempool, &folder);
@@ -612,7 +621,7 @@ static int restore_journals(struct kndRepo *self, struct kndRepoSnapshot *snapsh
             KND_TASK_ERR("journal size limit reached");
         }
 
-        if (DEBUG_REPO_LEVEL_TMP)
+        if (DEBUG_REPO_LEVEL_2)
             knd_log(".. restoring the journal file: %.*s", buf_size, buf);
 
         err = knd_task_read_file_block(task, buf, (size_t)st.st_size, &memblock);
@@ -1139,8 +1148,10 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
         default:
             break;
         }
-        knd_log(".. open \"%.*s\" Repo (owner:%.*s  open mode:%d)",
-                self->name_size, self->name, owner_name_size, owner_name, task->role);
+        knd_log(".. open \"%.*s\" Repo (owner:%.*s  open mode:%d acls:%p)",
+                self->name_size, self->name, owner_name_size, owner_name,
+                task->role, task->user_ctx->acls);
+
         out->reset(out);
         mempool->present(mempool, out);
         knd_log("** Repo Mempool\n%.*s", out->buf_size, out->buf);
@@ -1363,7 +1374,7 @@ static int update_indices(struct kndRepo *self, struct kndCommit *commit, struct
     struct kndSharedDict *name_idx = repo->class_name_idx;
     int err;
 
-    if (DEBUG_REPO_LEVEL_3)
+    if (DEBUG_REPO_LEVEL_TMP)
         knd_log(".. commit #%zu to update the indices of %.*s [shard role:%d]",
                 commit->numid, self->name_size, self->name, task->role);
 
@@ -1409,7 +1420,6 @@ static int update_indices(struct kndRepo *self, struct kndCommit *commit, struct
             }
             break;
         }
-
     }
 
     name_idx = self->proc_name_idx;

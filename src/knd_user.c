@@ -566,10 +566,21 @@ int knd_user_new(struct kndUser **user, const char *classname, size_t classname_
                               (void*)self->repo, mempool, NULL, &dict_item, true);
     KND_TASK_ERR("failed to register repo name \"%.*s\"", reponame_size, reponame);
 
+    /* default acl */
+    err = knd_repo_access_new(mempool, &acl);
+    KND_TASK_ERR("failed to alloc repo acl");
+    acl->repo = self->repo;
+    acl->allow_read = true;
+    acl->allow_write = true;
+    self->default_acls = acl;
+
     task->repo = self->repo;
     task->user_ctx->repo = self->repo;
     task->user_ctx->mempool = mempool;
+    task->user_ctx->acls = self->default_acls;
     task->mempool = mempool;
+
+    knd_log(">> User Repo acls:%p", self->default_acls);
 
     err = knd_repo_open(self->repo, task);
     if (err) goto error;
@@ -580,12 +591,6 @@ int knd_user_new(struct kndUser **user, const char *classname, size_t classname_
     err = knd_cache_new(&self->cache, KND_CACHE_NUM_CELLS, KND_CACHE_MAX_MEM_SIZE, free_user_ctx);
     if (err) goto error;
 
-    /* default acl */
-    err = knd_repo_access_new(mempool, &acl);
-    KND_TASK_ERR("failed to alloc repo acl");
-    acl->repo = self->repo;
-    acl->allow_read = true;
-    self->default_acls = acl;
 
     *user = self;
     return knd_OK;

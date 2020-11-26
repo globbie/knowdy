@@ -158,6 +158,7 @@ static int export_conc_elem_GSL(void *obj,
     return knd_OK;
 }
 
+#if 0
 static int export_class_ref_GSL(void *obj,
                                  const char *unused_var(elem_id),
                                  size_t unused_var(elem_id_size),
@@ -179,6 +180,7 @@ static int export_class_ref_GSL(void *obj,
 
     return knd_OK;
 }
+#endif
 
 static int export_concise_GSL(struct kndClass *self,
                               struct kndTask *task,
@@ -450,6 +452,9 @@ static int export_baseclasses(struct kndClass *self, struct kndTask *task, size_
         err = knd_class_acquire(cvar->entry, &c, task);
         KND_TASK_ERR("failed to acquire baseclass %.*s", cvar->entry->name_size, cvar->entry->name);
 
+        if (DEBUG_GSL_LEVEL_TMP)
+            knd_log(">> base class: %.*s", c->name_size, c->name);
+
         if (c->tr) {
             err = knd_text_gloss_export_GSL(c->tr, task, depth + 2);
             KND_TASK_ERR("failed to export baseclass gloss GSL");
@@ -468,6 +473,7 @@ static int export_baseclasses(struct kndClass *self, struct kndTask *task, size_
     return knd_OK;
 }
 
+#if 0
 static int export_attr_hub_GSL(struct kndAttrHub *hub, struct kndOutput *out, struct kndTask *task, size_t depth)
 {
     struct kndSet *set;
@@ -503,19 +509,20 @@ static int export_attr_hub_GSL(struct kndAttrHub *hub, struct kndOutput *out, st
 
     return knd_OK;
 }
+#endif
 
 int knd_class_export_GSL(struct kndClassEntry *entry, struct kndTask *task, bool is_list_item, size_t depth)
 {
     struct kndClass *self = entry->class;
     struct kndClassEntry *orig_entry = entry->base;
     struct kndOutput *out = task->out;
-    struct kndAttrHub *attr_hub;
+    // struct kndAttrHub *attr_hub;
     struct kndState *state = self->states;
     size_t indent_size = task->ctx->format_indent;
     size_t num_children;
     int err;
 
-    if (DEBUG_GSL_LEVEL_2) {
+    if (DEBUG_GSL_LEVEL_TMP) {
         knd_log(".. GSL export: \"%.*s\" (repo:%.*s) "
                 " depth:%zu max depth:%zu indent size:%zu",
                 entry->name_size, entry->name, entry->repo->name_size, entry->repo->name,
@@ -644,7 +651,7 @@ int knd_class_export_GSL(struct kndClassEntry *entry, struct kndTask *task, bool
     }
 
     /* reverse attr paths */
-    if (self->attr_hubs) {
+    /*if (self->attr_hubs) {
         if (indent_size) {
             err = out->writec(out, '\n');                                         RET_ERR();
             err = knd_print_offset(out, (depth + 1) * indent_size);  RET_ERR();
@@ -659,7 +666,7 @@ int knd_class_export_GSL(struct kndClassEntry *entry, struct kndTask *task, bool
             err = export_attr_hub_GSL(attr_hub, out, task, depth);                RET_ERR();
         }
         err = out->writec(out, ']');                                              RET_ERR();
-    }
+    } */
 
  final:
     err = out->writec(out, '}');                                                  RET_ERR();

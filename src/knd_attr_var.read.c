@@ -276,7 +276,7 @@ static gsl_err_t set_attr_var_name(void *obj, const char *name, size_t name_size
         self->implied_attr = c->implied_attr;
         attr = c->implied_attr;
     }
-    
+
     switch (attr->type) {
     case KND_ATTR_REF:
         err = knd_get_class_entry_by_id(task->repo, name, name_size, &self->class_entry, task);
@@ -446,8 +446,7 @@ static gsl_err_t read_attr_var_list_item(void *obj, const char *rec, size_t *tot
     if (parser_err.code) {
         return parser_err;
     }
-
-ctx->attr_var = prev_attr_var;
+    ctx->attr_var = prev_attr_var;
 
     // append
     return append_attr_var_list_item(self, attr_var);
@@ -533,7 +532,7 @@ int knd_read_attr_var(struct kndClassVar *self, const char *id, size_t id_size,
     err = knd_set_get(c->attr_idx, id, id_size, (void**)&ref);
     KND_TASK_ERR("no attr \"%.*s\" in class \"%.*s\"", id_size, id, entry->name_size, entry->name);
 
-    if (DEBUG_ATTR_VAR_READ_LEVEL_2)
+    if (DEBUG_ATTR_VAR_READ_LEVEL_TMP)
         knd_log(".. reading attr var \"%.*s\" of class: \"%.*s\"",
                 ref->attr->name_size, ref->attr->name, entry->name_size, entry->name);
 
@@ -553,6 +552,11 @@ int knd_read_attr_var(struct kndClassVar *self, const char *id, size_t id_size,
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_attr_var_value,
+          .obj = &ctx
+        },
+        { .name = "_t",
+          .name_size = strlen("_t"),
+          .parse = parse_text,
           .obj = &ctx
         },
         { .validate = read_nested_attr_var,

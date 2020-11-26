@@ -151,7 +151,6 @@ static gsl_err_t set_text_seq(void *obj, const char *val, size_t val_size)
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
     int err;
-
     err = knd_charseq_fetch(task->repo, val, val_size, &ctx->text->seq, task);
     if (err) {
         KND_TASK_LOG("failed to fetch a text charseq %.*s", val_size, val);

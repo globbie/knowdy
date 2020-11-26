@@ -211,7 +211,7 @@ static int resolve_inner_var(struct kndClass *self, struct kndAttrVar *var, stru
             break;
         case KND_ATTR_REL:
             err = knd_get_class_inst(item->attr->ref_class_entry->class, item->val, item->val_size, task, &ci);
-            if (err) return err;
+            KND_TASK_ERR("failed to resolve Rel attr var");
             item->class_inst_entry = ci->entry;
             break;
         case KND_ATTR_TEXT:

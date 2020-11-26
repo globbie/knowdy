@@ -335,8 +335,7 @@ knd_mkpath(const char *path, size_t path_size, mode_t mode, bool has_filename)
     return knd_OK;
 }
 
-extern int knd_write_file(const char *filename, 
-                          void *buf, size_t buf_size)
+extern int knd_write_file(const char *filename, void *buf, size_t buf_size)
 {
     int fd;
 
@@ -351,8 +350,7 @@ extern int knd_write_file(const char *filename,
 }
 
 extern int 
-knd_append_file(const char *filename, 
-                const void *buf, size_t buf_size)
+knd_append_file(const char *filename, const void *buf, size_t buf_size)
 {
     int fd;
 
@@ -369,28 +367,6 @@ knd_append_file(const char *filename,
 
     return written == -1 || (size_t)written != buf_size ? knd_IO_FAIL : knd_OK;
 }
-
-/*int knd_read_file_footer(const char *filename,
-                         void *footer,
-                         size_t footer_size,
-                         struct kndTask *task)
-{
-    int fd, num_bytes;
-    int err;
-
-    fd = open(filename, O_RDONLY);
-    if (fd == -1) {
-        err = knd_IO_FAIL;
-        KND_TASK_ERR("failed to open file");
-    }
-
-    lseek(fd, -(int)footer_size, SEEK_END);
-    num_bytes = read(fd, footer, footer_size);
-
-    close(fd);
-    return knd_OK;
-    }*/
-
 
 int knd_make_id_path(char *buf,
                      const char *path,

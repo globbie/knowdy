@@ -91,10 +91,7 @@ static int update_attr_facet(struct kndAttr *attr,
     return knd_OK;
 }
 
-int knd_index_attr(struct kndClass *self,
-                   struct kndAttr *attr,
-                   struct kndAttrVar *item,
-                   struct kndTask *task)
+int knd_index_attr(struct kndClass *self, struct kndAttr *attr, struct kndAttrVar *item, struct kndTask *task)
 {
     struct kndClass *base;
     struct kndClassRef *ref;
@@ -298,8 +295,7 @@ static int update_attr_hub(struct kndClass   *topic,
         }*/
 
     if (DEBUG_ATTR_INDEX_LEVEL_2)
-        knd_log("++ terminal attr hub \"%.*s\" reached!",
-                attr->name_size, attr->name);
+        knd_log("++ terminal attr hub \"%.*s\" reached!", attr->name_size, attr->name);
 
     set = hub->topics;
     if (!set) {
@@ -308,8 +304,7 @@ static int update_attr_hub(struct kndClass   *topic,
     }
 
     /* topic is already registered? */
-    err = set->get(set, topic->entry->id, topic->entry->id_size,
-                   &entry);
+    err = knd_set_get(set, topic->entry->id, topic->entry->id_size, &entry);
     if (err == knd_OK) {
         if (DEBUG_ATTR_INDEX_LEVEL_2)
             knd_log("?? topic %.*s (id:%.*s) already registered?",
@@ -335,7 +330,8 @@ static int update_attr_hub(struct kndClass   *topic,
         return knd_OK;
     }
 
-    err = set->add(set, spec->entry->id, spec->entry->id_size, (void*)spec->entry);                                           RET_ERR();
+    err = knd_set_add(set, spec->entry->id, spec->entry->id_size, (void*)spec->entry);
+    KND_TASK_ERR("failed to register spec in attr hub");
 
     return knd_OK;
 }

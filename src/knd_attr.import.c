@@ -5,6 +5,7 @@
 #include "knd_shared_set.h"
 #include "knd_set.h"
 #include "knd_repo.h"
+#include "knd_user.h"
 #include "knd_utils.h"
 
 #include <gsl-parser.h>
@@ -88,7 +89,7 @@ static gsl_err_t parse_proc(void *obj, const char *rec, size_t *total_size)
     struct kndAttr *self = ctx->attr;
     struct kndProc *proc;
     struct kndProcEntry *entry;
-    struct kndMemPool *mempool = task->mempool;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
     int err;
 
     err = knd_proc_new(mempool, &proc);

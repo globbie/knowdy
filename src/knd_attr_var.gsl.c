@@ -292,7 +292,10 @@ int knd_attr_vars_export_GSL(struct kndAttrVar *vars, struct kndTask *task, bool
     FOREACH (var, vars) {
         assert(var->attr != NULL);
         attr = var->attr;
-        
+
+        if (DEBUG_ATTR_VAR_GSL_LEVEL_3)
+            knd_log(">> attr var GSL export: %.*s", attr->name_size, attr->name);
+
         if (is_concise && !attr->concise_level) {
             //knd_log(".. concise level: %d", attr->concise_level);
             if (var->attr->type != KND_ATTR_INNER) 

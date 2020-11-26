@@ -164,7 +164,7 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
     assert(task->ctx != NULL);
     task->user_ctx->repo = user->repo;
     task->user_ctx->acls = user->default_acls;
-    task->user_ctx->mempool = user->mempool ? user->mempool : task->mempool;
+    task->user_ctx->mempool = user->mempool;
 
     task->input = input;
     task->input_size = input_size;

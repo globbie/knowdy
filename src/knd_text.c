@@ -79,6 +79,8 @@ int knd_charseq_fetch(struct kndRepo *repo, const char *val, size_t val_size, st
 
     seq = knd_shared_dict_get(repo->str_dict, val, val_size);
     if (seq) {
+        if (DEBUG_TEXT_LEVEL_3)
+            knd_log(">> \"%.*s\" charseq already registered", val_size, val);
         *result = seq;
         return knd_OK;
     }
@@ -88,12 +90,16 @@ int knd_charseq_fetch(struct kndRepo *repo, const char *val, size_t val_size, st
     seq->val_size = val_size;
     seq->numid = atomic_fetch_add_explicit(&repo->num_strs, 1, memory_order_relaxed);
     
-    err = knd_shared_dict_set(repo->str_dict, val, val_size, (void*)seq, mempool, NULL, &seq->item, false);
+    err = knd_shared_dict_set(repo->str_dict, val, val_size,
+                              (void*)seq, mempool, NULL, &seq->item, false);
     KND_TASK_ERR("failed to register a charseq");
 
     knd_uid_create(seq->numid, idbuf, &idbuf_size);
     err = knd_shared_set_add(repo->str_idx, idbuf, idbuf_size, (void*)seq);
     KND_TASK_ERR("failed to register a charseq by numid");
+
+    if (DEBUG_TEXT_LEVEL_3)
+        knd_log(">> \"%.*s\" (id:%.*s) charseq registered", val_size, val, idbuf_size, idbuf);
 
     *result = seq;
     return knd_OK;

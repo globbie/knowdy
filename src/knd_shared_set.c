@@ -181,7 +181,7 @@ static int get_elem(struct kndSharedSet *self, struct kndSharedSetElemIdx *paren
     int idx_pos;
     int err;
 
-    if (DEBUG_SHARED_SET_LEVEL_3)
+    if (DEBUG_SHARED_SET_LEVEL_2)
         knd_log(".. get elem by ID, remainder \"%.*s\"", id_size, id);
 
     assert(parent_idx != NULL);

@@ -139,7 +139,7 @@ static gsl_err_t check_empty_inst(void *obj, const char *unused_var(name), size_
 static gsl_err_t import_class_inst(struct kndClassInst *self, const char *rec, size_t *total_size, struct kndTask *task)
 {
     if (DEBUG_INST_IMPORT_LEVEL_2)
-        knd_log(".. class inst import REC: %.*s", 128, rec);
+        knd_log(".. class inst to import REC: %.*s", 128, rec);
 
     struct LocalContext ctx = {
         .class_inst = self,
@@ -202,7 +202,7 @@ static int generate_uniq_inst_name(struct kndClassInst *inst, struct kndTask *ta
 
 int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *total_size, struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndClass *c = entry->class;
     struct kndClassInst *inst;
     struct kndClassInstEntry *inst_entry;
@@ -215,7 +215,7 @@ int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *
     gsl_err_t parser_err;
     assert(entry->class != NULL);
 
-    if (DEBUG_INST_IMPORT_LEVEL_TMP)
+    if (DEBUG_INST_IMPORT_LEVEL_2)
         knd_log(".. class \"%.*s\" (repo:%.*s) to import inst \"%.*s\"",
                 entry->name_size, entry->name, entry->repo->name_size, entry->repo->name, 128, rec);
 

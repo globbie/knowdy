@@ -81,9 +81,10 @@ static int export_class_insts(void *obj, const char *unused_var(elem_id), size_t
     KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
     if (!c->inst_idx) return knd_OK;
 
-    knd_log("\n== class \"%.*s\" total insts:%zu", c->name_size, c->name, c->inst_idx->num_elems);
-    knd_log(">> path \"%.*s\"", task->filepath_size, task->filepath);
-
+    if (DEBUG_REPO_GSP_LEVEL_2) {
+        knd_log("\n== class \"%.*s\" total insts:%zu", c->name_size, c->name, c->inst_idx->num_elems);
+        knd_log(">> path \"%.*s\"", task->filepath_size, task->filepath);
+    }
     out->reset(out);
     OUT("inst_", strlen("inst_"));
     OUT(entry->id, entry->id_size);
@@ -91,9 +92,9 @@ static int export_class_insts(void *obj, const char *unused_var(elem_id), size_t
     memcpy(buf, out->buf, out->buf_size);
     buf_size = out->buf_size;
 
-    err = marshall_idx(c->inst_idx, task->filepath, task->filepath_size, buf, buf_size, knd_class_inst_marshall, task);
+    err = marshall_idx(c->inst_idx, task->filepath, task->filepath_size,
+                       buf, buf_size, knd_class_inst_marshall, task);
     KND_TASK_ERR("failed to build the class inst GSP storage");
-
     return knd_OK;
 }
 

@@ -79,7 +79,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
 
             /* register as a uniq class name */
             err = knd_shared_dict_set(repo->class_name_idx, name, name_size, (void*)entry,
-                                      task->mempool, NULL, NULL, false);
+                                      task->user_ctx->mempool, NULL, NULL, false);
             if (err) {
                 KND_TASK_LOG("failed to register a class name");
                 return make_gsl_err_external(err);
@@ -162,7 +162,7 @@ static gsl_err_t set_class_var(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx      = obj;
     struct kndTask *task          = ctx->task;
-    struct kndMemPool *mempool    = task->mempool;
+    struct kndMemPool *mempool    = task->user_ctx->mempool;
     struct kndClassVar *self      = ctx->class_var;
     struct kndRepo *repo          = task->repo;
     struct kndDict *class_name_idx = task->class_name_idx;
@@ -218,7 +218,7 @@ static gsl_err_t parse_attr(void *obj,
     struct kndClass *self = ctx->class;
     struct kndTask *task = ctx->task;
     struct kndAttr *attr;
-    struct kndMemPool *mempool = task->mempool;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
     const char *c;
     int err;
     gsl_err_t parser_err;
@@ -330,7 +330,7 @@ static gsl_err_t parse_baseclass(void *obj, const char *rec, size_t *total_size)
     struct kndTask *task = ctx->task;
     struct kndClass *self = ctx->class;
     struct kndClassVar *class_var;
-    struct kndMemPool *mempool = task->mempool;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
     gsl_err_t parser_err;
     int err;
 
@@ -375,7 +375,7 @@ static gsl_err_t add_uniq_attr(void *obj, const char *name, size_t name_size,
     struct LocalContext *ctx = obj;
     struct kndClass *self = ctx->class;
     struct kndTask *task = ctx->task;
-    struct kndMemPool *mempool = task->mempool;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndAttrRef *ref;
     int err;
 
