@@ -39,6 +39,15 @@ typedef enum knd_obj_type {
     KND_OBJ_INNER
 } knd_obj_type;
 
+struct kndClassInstRef
+{
+    struct kndClassInstEntry *entry;
+    struct kndClassInst      *inst;
+    const char *name;
+    size_t name_size;
+    struct kndClassInstRef   *next;
+};
+
 struct kndClassInstEntry
 {
     char id[KND_ID_SIZE];
@@ -100,18 +109,12 @@ int kndClassInst_new(struct kndClassInst **self);
 
 void knd_class_inst_str(struct kndClassInst *self, size_t depth);
 
-int knd_class_inst_entry_new(struct kndMemPool *mempool,
-                             struct kndClassInstEntry **result);
-int knd_class_inst_new(struct kndMemPool *mempool,
-                       struct kndClassInst **result);
-int knd_class_inst_mem(struct kndMemPool *mempool,
-                       struct kndClassInst **result);
-int knd_class_inst_export(struct kndClassInst *self,
-                          knd_format format,
-                          bool is_list_item,
-                          struct kndTask *task);
-int knd_class_inst_set_export(struct kndClassInst *self, knd_format format,
-                              struct kndTask *task);
+int knd_class_inst_ref_new(struct kndMemPool *mempool, struct kndClassInstRef **result);
+int knd_class_inst_entry_new(struct kndMemPool *mempool, struct kndClassInstEntry **result);
+int knd_class_inst_new(struct kndMemPool *mempool, struct kndClassInst **result);
+
+int knd_class_inst_export(struct kndClassInst *self, knd_format format, bool is_list_item, struct kndTask *task);
+int knd_class_inst_set_export(struct kndClassInst *self, knd_format format, struct kndTask *task);
 
 int knd_class_inst_commit_state(struct kndClass *self, struct kndStateRef *children, size_t num_children,
                                 struct kndTask *task);

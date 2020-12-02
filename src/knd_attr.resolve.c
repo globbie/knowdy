@@ -137,6 +137,23 @@ static int check_attr_name_conflict(struct kndClass *self,
     return knd_OK;
 }
 
+int knd_attr_hub_resolve(struct kndAttrHub *hub, struct kndTask *task)
+{
+    struct kndClass *c;
+    struct kndAttrRef *ref;
+    int err;
+
+    err = knd_class_acquire(hub->topic_template, &c, task);
+    KND_TASK_ERR("failed to acquire a class %.*s", hub->topic_template->name_size, hub->topic_template->name);
+
+    err = knd_set_get(c->attr_idx, hub->attr_id, hub->attr_id_size, (void**)&ref);
+    KND_TASK_ERR("no attr %.*s in class %.*s", hub->attr_id_size, hub->attr_id,
+                 hub->topic_template->name_size, hub->topic_template->name);
+
+    hub->attr = ref->attr;
+    return knd_OK;
+}
+
 int knd_resolve_primary_attrs(struct kndClass *self, struct kndTask *task)
 {
     struct kndAttr *attr;

@@ -81,6 +81,9 @@ struct kndClassRef
     struct kndClassEntry *entry;
     struct kndClass      *class;
     struct kndAttr       *attr;
+    struct kndClassInstRef *insts;
+    struct kndSet        *inst_idx;
+
     struct kndClassIdx   *idx;
     struct kndProcIdx    *proc_idx;
     struct kndClassRef   *next;

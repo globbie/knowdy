@@ -197,6 +197,61 @@ static int export_children(struct kndClass *self, struct kndTask *task)
     return knd_OK;
 }
 
+static int export_class_ref(void *obj, const char *unused_var(elem_id), size_t unused_var(elem_id_size),
+                            size_t unused_var(count), void *elem)
+{
+    struct kndTask *task = obj;
+    struct kndOutput *out = task->out;
+    struct kndClassRef *ref = elem;
+    struct kndClassEntry *entry = ref->entry;
+    struct kndClassInstRef *inst_ref;
+
+    OUT("{", 1);
+    OUT(entry->id, entry->id_size);
+    if (ref->insts) {
+        OUT("[_i", strlen("[_i"));
+        FOREACH (inst_ref, ref->insts) {
+            OUT("{", 1);
+            OUT(inst_ref->entry->name, inst_ref->entry->name_size);
+            OUT("}", 1);
+        }
+        OUT("]", 1);
+    }
+    OUT("}", 1);
+    return knd_OK;
+}
+
+static int export_inverse_rels(struct kndClass *self, struct kndTask *task)
+{
+    struct kndAttrHub *attr_hub;
+    struct kndAttr *attr;
+    struct kndOutput *out = task->out;
+    int err;
+    OUT("[rel", strlen("[rel"));
+    FOREACH (attr_hub, self->attr_hubs) {
+        if (!attr_hub->attr) {
+            err = knd_attr_hub_resolve(attr_hub, task);
+            KND_TASK_ERR("failed to resolve attr hub");
+        }
+        attr = attr_hub->attr;
+
+        OUT("{", 1);
+        OUT(attr_hub->topic_template->id, attr_hub->topic_template->id_size);
+        OUT("{a ", strlen("{a "));
+        OUT(attr->id, attr->id_size);
+        OUT("}", 1);
+        if (attr_hub->topics) {
+            OUT("[tp", strlen("[tp"));
+            err = knd_set_map(attr_hub->topics, export_class_ref, (void*)task);
+            if (err && err != knd_RANGE) return err;
+            OUT("]", 1);
+        }
+        OUT("}", 1);
+    }
+    OUT("]", 1);
+    return knd_OK;
+}
+
 #if 0
 static int export_descendants_GSP(struct kndClass *self, struct kndTask *task)
 {
@@ -370,6 +425,11 @@ int knd_class_export_GSP(struct kndClass *self, struct kndTask *task)
     if (self->num_children) {
         err = export_children(self, task);
         KND_TASK_ERR("failed to export children GSP");
+    }
+
+    if (self->attr_hubs) {
+        err = export_inverse_rels(self, task);
+        KND_TASK_ERR("failed to export inverse rels GSP");
     }
 
     // insts

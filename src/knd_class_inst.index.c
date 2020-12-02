@@ -32,7 +32,7 @@ static int update_attr_var_indices(struct kndClassInstEntry *entry, struct kndRe
 {
     struct kndAttrVar *var;
     int err;
-    
+
     if (DEBUG_INST_IDX_LEVEL_TMP)
         knd_log(".. class inst \"%.*s\" attr var indexing", entry->name_size, entry->name);
 
@@ -46,7 +46,14 @@ static int update_attr_var_indices(struct kndClassInstEntry *entry, struct kndRe
             break;
         case KND_ATTR_REL:
             if (DEBUG_INST_IDX_LEVEL_TMP)
-                knd_log(".. indexing Rel attr \"%.*s\"", var->name_size, var->name);
+                knd_log(".. indexing Rel attr \"%.*s\" (is a set:%d)",
+                        var->name_size, var->name, var->attr->is_a_set);
+
+            if (var->attr->is_a_set) {
+                err = knd_index_attr_var_list(entry->blueprint, entry, var->attr, var, task);
+                KND_TASK_ERR("failed to index attr var list");
+                break;
+            }
             break;
         default:
             break;

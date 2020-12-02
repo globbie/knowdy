@@ -122,6 +122,18 @@ int knd_class_inst_export_commit(struct kndStateRef *state_refs, struct kndTask 
     return knd_OK;
 }
 
+int knd_class_inst_ref_new(struct kndMemPool *mempool, struct kndClassInstRef **result)
+{
+    void *page;
+    int err;
+    assert(mempool->tiny_page_size >= sizeof(struct kndClassInstRef));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
+    if (err) return err;
+    memset(page, 0,  sizeof(struct kndClassInstRef));
+    *result = page;
+    return knd_OK;
+}
+
 int knd_class_inst_entry_new(struct kndMemPool *mempool, struct kndClassInstEntry **result)
 {
     void *page;
