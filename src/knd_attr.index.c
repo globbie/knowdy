@@ -75,7 +75,7 @@ int knd_attr_hub_update(struct kndClass *owner, struct kndClassEntry *topic, str
     struct kndClassInstRef *inst_ref;
     int err;
 
-    if (DEBUG_ATTR_INDEX_LEVEL_TMP) {
+    if (DEBUG_ATTR_INDEX_LEVEL_2) {
         knd_log(".. attr hub \"%.*s\" of class \"%.*s\" to add topic \"%.*s\" (inst:%p) => spec \"%.*s\" (inst:%p)",
                 attr->name_size, attr->name, owner->name_size, owner->name,
                 topic->name_size, topic->name, topic_inst, spec->name_size, spec->name, spec_inst);

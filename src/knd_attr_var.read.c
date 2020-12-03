@@ -278,6 +278,8 @@ static gsl_err_t set_attr_var_name(void *obj, const char *name, size_t name_size
     }
 
     switch (attr->type) {
+    case KND_ATTR_REL:
+        // fall through
     case KND_ATTR_REF:
         err = knd_get_class_entry_by_id(task->repo, name, name_size, &self->class_entry, task);
         if (err) {
@@ -338,6 +340,8 @@ static gsl_err_t set_attr_var_value(void *obj, const char *val, size_t val_size)
         self->val = seq->val;
         self->val_size = seq->val_size;
         break;
+    case KND_ATTR_REL:
+        // fall through
     case KND_ATTR_REF:
         err = knd_shared_set_get(repo->class_idx, val, val_size, (void**)&entry);
         if (err) {
@@ -420,8 +424,7 @@ static gsl_err_t read_attr_var_list_item(void *obj, const char *rec, size_t *tot
     ctx->attr_var = attr_var;
 
     if (DEBUG_ATTR_VAR_READ_LEVEL_2)
-        knd_log("== reading a list var of \"%.*s\": %.*s",
-               self->name_size, self->name, 32, rec);
+        knd_log("== reading a list var of \"%.*s\": %.*s", self->name_size, self->name, 32, rec);
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,

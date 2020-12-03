@@ -151,7 +151,6 @@ static int attr_var_list_export_GSP(struct kndAttrVar *var, struct kndTask *task
     size_t idbuf_size;
     struct kndCharSeq *seq;
     struct kndAttrVar *item;
-    struct kndClass *c;
 
     assert(var->attr != NULL);
     knd_attr_type attr_type = var->attr->type;
@@ -165,9 +164,11 @@ static int attr_var_list_export_GSP(struct kndAttrVar *var, struct kndTask *task
     FOREACH (item, var->list) {
         OUT("{", 1);
         switch (attr_type) {
+        case KND_ATTR_REL:
+            // fall through
         case KND_ATTR_REF:
-            c = item->class;
-            OUT(c->entry->id, c->entry->id_size);
+            assert(item->class_entry != NULL);
+            OUT(item->class_entry->id, item->class_entry->id_size);
             break;
         case KND_ATTR_TEXT:
             OUT("{_t ", strlen("{_t "));

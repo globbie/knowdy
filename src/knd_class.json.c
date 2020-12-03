@@ -161,11 +161,8 @@ static int export_class_ref(void *obj, const char *unused_var(elem_id), size_t u
     struct kndClassRef *ref = elem;
     struct kndClassEntry *entry = ref->entry;
     struct kndClassInstRef *inst_ref;
-    // size_t state_gt = task->state_gt;
-    // size_t curr_state = 0;
     int err;
 
-    knd_log("== REF insts: %p", ref->insts);
     if (task->batch_size) {
         OUT(",", 1);
     }
@@ -550,7 +547,7 @@ static int export_inverse_rels(struct kndClass *self, struct kndTask *task, size
         RET_ERR();
     }
 
-    OUT("\"_inverse_rels\":", strlen("\"_inverse_rels\":"));
+    OUT("\"inverse-rels\":", strlen("\"inverse-rels\":"));
     if (indent_size) {
         OUT(" ", 1);
     }

@@ -97,7 +97,7 @@ static int index_inner_class_ref(struct kndClass *self, struct kndAttrVar *item,
     struct kndClass *spec = item->class;
     int err;
 
-    if (DEBUG_ATTR_VAR_INDEX_LEVEL_TMP) {
+    if (DEBUG_ATTR_VAR_INDEX_LEVEL_2) {
         knd_log("\n.. index path from \"%.*s\" (template:\"%.*s\")",
                 spec->name_size, spec->name,
                 base->name_size, base->name);
@@ -170,7 +170,7 @@ int knd_index_attr_var_list(struct kndClassEntry *topic, struct kndClassInstEntr
     struct kndAttrVar *item;
     int err;
 
-    if (DEBUG_ATTR_VAR_INDEX_LEVEL_TMP)
+    if (DEBUG_ATTR_VAR_INDEX_LEVEL_2)
         knd_log(".. attr var list indexing (class:%.*s) attr \"%.*s\" [type:%d]",
                 topic->name_size, topic->name, attr->name_size, attr->name, attr->type);
     

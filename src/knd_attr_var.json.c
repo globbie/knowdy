@@ -65,6 +65,8 @@ static int inner_var_export_JSON(struct kndAttrVar *var, struct kndTask *task, s
             OUT(" ", 1);
         }
         switch (attr->type) {
+        case KND_ATTR_REL:
+            // fall through
         case KND_ATTR_REF:
             assert(var->class_entry != NULL);
             OUT("\"", 1);
@@ -164,7 +166,6 @@ static int attr_var_list_export_JSON(struct kndAttrVar *parent_var, struct kndTa
         err = knd_print_offset(out, depth * indent_size);
         RET_ERR();
     }
-
     OUT("\"", 1);
     OUT(parent_var->name, parent_var->name_size);
     OUT("\":", strlen("\":"));
@@ -178,7 +179,6 @@ static int attr_var_list_export_JSON(struct kndAttrVar *parent_var, struct kndTa
             err = out->writec(out, ',');
             if (err) return err;
         }
-
         if (indent_size) {
             OUT("\n", 1);
             err = knd_print_offset(out, (depth + 1) * indent_size);
@@ -197,6 +197,8 @@ static int attr_var_list_export_JSON(struct kndAttrVar *parent_var, struct kndTa
             err = inner_var_export_JSON(var, task, depth + 2);
             if (err) return err;
             break;
+        case KND_ATTR_REL:
+            // fall through
         case KND_ATTR_REF:
             err = ref_var_export_JSON(var, task, depth + 1);
             if (err) return err;
@@ -218,7 +220,9 @@ static int attr_var_list_export_JSON(struct kndAttrVar *parent_var, struct kndTa
             break;
         default:
             OUT("\"", 1);
-            OUT(var->val, var->val_size);
+            if (var->val_size) {
+                OUT(var->val, var->val_size);
+            }
             OUT("\"", 1);
             break;
         }
@@ -237,7 +241,6 @@ static int attr_var_list_export_JSON(struct kndAttrVar *parent_var, struct kndTa
         RET_ERR();
     }
     OUT("]", 1);
-
     return knd_OK;
 }
 
@@ -271,7 +274,6 @@ int knd_attr_vars_export_JSON(struct kndAttrVar *vars, struct kndTask *task, boo
             err = knd_print_offset(out, depth * indent_size);
             RET_ERR();
         }
-
         OUT("\"", 1);
         OUT(var->name, var->name_size);
         OUT("\":", strlen("\":"));
