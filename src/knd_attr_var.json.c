@@ -257,10 +257,6 @@ int knd_attr_vars_export_JSON(struct kndAttrVar *vars, struct kndTask *task, boo
     FOREACH (var, vars) {
         assert(var->attr != NULL);
         attr = var->attr;
-
-        knd_log(".. JSON export attr var %.*s (type:%d)",
-                var->name_size, var->name, attr->type);
-
         if (is_concise && !attr->concise_level) continue;
 
         OUT(",", 1);

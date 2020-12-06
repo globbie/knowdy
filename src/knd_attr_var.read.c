@@ -535,7 +535,7 @@ int knd_read_attr_var(struct kndClassVar *self, const char *id, size_t id_size,
     err = knd_set_get(c->attr_idx, id, id_size, (void**)&ref);
     KND_TASK_ERR("no attr \"%.*s\" in class \"%.*s\"", id_size, id, entry->name_size, entry->name);
 
-    if (DEBUG_ATTR_VAR_READ_LEVEL_TMP)
+    if (DEBUG_ATTR_VAR_READ_LEVEL_2)
         knd_log(".. reading attr var \"%.*s\" of class: \"%.*s\"",
                 ref->attr->name_size, ref->attr->name, entry->name_size, entry->name);
 

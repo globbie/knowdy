@@ -267,7 +267,7 @@ static gsl_err_t set_topic_inst_ref(void *obj, const char *name, size_t name_siz
 {
     struct LocalContext *ctx = obj;
     struct kndClassInstRef *ref = ctx->class_inst_ref;
-    if (DEBUG_CLASS_READ_LEVEL_TMP)
+    if (DEBUG_CLASS_READ_LEVEL_2)
         knd_log("== topic inst: %.*s", name_size, name);
 
     ref->name = name;
@@ -762,7 +762,7 @@ int knd_class_unmarshall(const char *unused_var(elem_id), size_t unused_var(elem
     size_t total_size = rec_size;
     int err;
 
-    if (DEBUG_CLASS_READ_LEVEL_TMP)
+    if (DEBUG_CLASS_READ_LEVEL_2)
         knd_log(">> GSP rec: \"%.*s\"", rec_size, rec);
 
     err = knd_class_new(task->user_ctx->mempool, &c);

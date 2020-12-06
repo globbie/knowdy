@@ -115,14 +115,13 @@ static gsl_err_t read_attr_var_list(void *obj, const char *name, size_t name_siz
 
 int knd_class_inst_read(struct kndClassInst *self, const char *rec, size_t *total_size, struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndClassEntry *entry = task->blueprint;
     struct kndClassVar *class_var;
     int err;
-
     assert(entry != NULL);
 
-    if (DEBUG_CLASS_INST_READ_LEVEL_TMP) {
+    if (DEBUG_CLASS_INST_READ_LEVEL_2) {
         knd_log(".. reading class inst GSP (entry:%p): \"%.*s\"..", entry, 128, rec);
         entry->class->str(entry->class, 1);
     }

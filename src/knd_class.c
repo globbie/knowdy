@@ -155,7 +155,7 @@ int knd_get_class_inst(struct kndClass *self, const char *name, size_t name_size
     struct kndSharedDict *name_idx = atomic_load_explicit(&self->inst_name_idx, memory_order_acquire);
     int err;
 
-    if (DEBUG_CLASS_LEVEL_TMP)
+    if (DEBUG_CLASS_LEVEL_2)
         knd_log(".. class \"%.*s\" (repo:%.*s) to get inst \"%.*s\"", self->name_size, self->name,
                 self->entry->repo->name_size, self->entry->repo->name, name_size, name);
 

@@ -121,6 +121,25 @@ static int export_gloss(struct kndText *glosses, struct kndTask *task)
     return knd_OK;
 }
 
+static int export_translation(struct kndText *trs, struct kndTask *task)
+{
+    struct kndOutput *out = task->out;
+    struct kndText *tr;
+    int err;
+    FOREACH (tr, trs) {
+        if (task->ctx->locale_size != tr->locale_size) continue;
+        if (memcmp(task->ctx->locale, tr->locale, tr->locale_size)) {
+            continue;
+        }
+        OUT("\"seq\":\"", strlen("\"seq\":\""));
+        err = out->write_escaped(out, tr->seq->val,  tr->seq->val_size);
+        KND_TASK_ERR("failed to export a charseq");
+        OUT("\"", 1);
+        return knd_OK;
+    }
+    return knd_NO_MATCH;
+}
+
 static int synode_export_JSON(struct kndSyNode *syn, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
@@ -194,33 +213,39 @@ int knd_text_export_JSON(struct kndText *self, struct kndTask *task, size_t unus
     struct kndOutput *out = task->out;
     struct kndPar *par;
     struct kndSentence *sent;
-    // struct kndState *state;
     struct kndCharSeq *seq = self->seq;
+    bool separ_needed = false;
     int err;
 
     OUT("{", 1);
-
-    /*state = atomic_load_explicit(&self->states, memory_order_relaxed);
-    if (seq && state) {
-        seq->val = state->val->val;
-        seq->val_size = state->val->val_size;
-        return knd_OK;
-        }*/
-
-    if (seq && seq->val_size) {
-        OUT("\"seq\":\"", strlen("\"seq\":\""));
-        err = out->write_escaped(out, seq->val,  seq->val_size);
-        KND_TASK_ERR("failed to export a charseq");
-        OUT("\"", 1);
-    }
-
-    if (self->locale_size) {
-        OUT("\"lang\":", strlen("\"lang\":"));
-        OUT(self->locale, self->locale_size);
-        OUT("\"", 1);
+    
+    err = export_translation(self->trs, task);
+    switch (err) {
+    case knd_NO_MATCH:
+        if (seq && seq->val_size) {
+            OUT("\"seq\":\"", strlen("\"seq\":\""));
+            err = out->write_escaped(out, seq->val,  seq->val_size);
+            KND_TASK_ERR("failed to export a charseq");
+            OUT("\"", 1);
+            separ_needed = true;
+        }
+        if (self->locale_size) {
+            OUT("\"lang\":", strlen("\"lang\":"));
+            OUT(self->locale, self->locale_size);
+            OUT("\"", 1);
+        }
+        break;
+    case knd_OK:
+        break;
+    default:
+        KND_TASK_LOG("failed to export a localized translation");
+        return err;
     }
 
     if (self->num_pars) {
+        if (separ_needed) {
+            OUT(",", 1);
+        }
         OUT("\"pars\":[", strlen("\"pars\":["));
         FOREACH (par, self->pars) {
             OUT("{", 1);

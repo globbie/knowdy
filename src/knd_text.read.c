@@ -155,7 +155,7 @@ static gsl_err_t set_text_seq(void *obj, const char *val, size_t val_size)
     struct kndTask *task = ctx->task;
     int err;
 
-    if (DEBUG_TEXT_READ_LEVEL_TMP)
+    if (DEBUG_TEXT_READ_LEVEL_2)
         knd_log(">> text encoded seq: %.*s (size:%zu)", val_size, val, val_size);
 
     err = knd_charseq_decode(task->repo, val, val_size, &ctx->text->seq, task);
@@ -163,7 +163,7 @@ static gsl_err_t set_text_seq(void *obj, const char *val, size_t val_size)
         KND_TASK_LOG("failed to decode a text charseq %.*s", val_size, val);
         return make_gsl_err_external(err);
     }
-    if (DEBUG_TEXT_READ_LEVEL_TMP)
+    if (DEBUG_TEXT_READ_LEVEL_3)
         knd_log(">> locale: %.*s text seq:%.*s", ctx->text->locale_size, ctx->text->locale,
             ctx->text->seq->val_size, ctx->text->seq->val);
     return make_gsl_err(gsl_OK);
@@ -781,7 +781,6 @@ static gsl_err_t parse_translation(void *obj, const char *rec, size_t *total_siz
         }
         return parser_err;
     }
-
     trn->next = orig_text->trs;
     orig_text->trs = trn;
     ctx->text = orig_text;

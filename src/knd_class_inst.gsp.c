@@ -55,7 +55,7 @@ int knd_class_inst_entry_unmarshall(const char *elem_id, size_t elem_id_size, co
 
     assert(blueprint != NULL);
 
-    if (DEBUG_CLASS_INST_GSP_LEVEL_TMP)
+    if (DEBUG_CLASS_INST_GSP_LEVEL_2)
         knd_log(">> GSP class inst entry \"%.*s\" => \"%.*s\"", elem_id_size, elem_id, rec_size, rec);
 
     err = knd_class_inst_entry_new(mempool, &entry);

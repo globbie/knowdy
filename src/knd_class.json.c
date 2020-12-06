@@ -547,7 +547,7 @@ static int export_inverse_rels(struct kndClass *self, struct kndTask *task, size
         RET_ERR();
     }
 
-    OUT("\"inverse-rels\":", strlen("\"inverse-rels\":"));
+    OUT("\"rels\":", strlen("\"rels\":"));
     if (indent_size) {
         OUT(" ", 1);
     }
