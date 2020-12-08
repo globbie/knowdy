@@ -43,10 +43,10 @@ int knd_class_inst_marshall(void *obj, size_t *output_size, struct kndTask *task
 int knd_class_inst_entry_unmarshall(const char *elem_id, size_t elem_id_size, const char *rec, size_t rec_size,
                                     void **result, struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndClassInstEntry *entry = NULL;
     struct kndRepo *repo = task->repo;
-    struct kndClassEntry *blueprint = task->blueprint;
+    struct kndClassEntry *blueprint = task->payload;
     struct kndCharSeq *seq;
     struct kndSharedDictItem *item;
     const char *c, *name = rec;

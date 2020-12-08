@@ -171,17 +171,16 @@ static int facetize_class(void *obj,
 
             if (child_ref->entry != ref->entry) continue;
 
-            err = update_subset(task->facet, ref->entry, entry, task);              RET_ERR();
+            err = update_subset(task->payload, ref->entry, entry, task);              RET_ERR();
             return knd_OK;
         }
     }
     return knd_OK;
 }
 
-static int create_subsets(struct kndSet *set,
-                          struct kndClass *c,
-                          struct kndTask *task)
+static int create_subsets(struct kndSet *set, struct kndClass *c, struct kndTask *task)
 {
+    struct kndClassFacet *facet;
     int err;
 
     struct LocalContext ctx = {
@@ -189,17 +188,19 @@ static int create_subsets(struct kndSet *set,
         .class = c
     };
 
-    err = knd_class_facet_new(task->mempool, &task->facet);                       RET_ERR();
-    task->facet->base = set->base->class->entry;
+    err = knd_class_facet_new(task->mempool, &facet);                       RET_ERR();
+    facet->base = set->base->class->entry;
 
     knd_log(".. subsets in progress .. max set size:%zu base:%p",
             task->mempool->max_set_size, set->base->class);
 
+    task->payload = facet;
     err = set->map(set, facetize_class, (void*)&ctx);                             RET_ERR();
 
     return knd_OK;
 }
 
+#if 0
 static void free_facet(struct kndMemPool *mempool, struct kndClassFacet *parent_facet)
 {
     struct kndClassFacet *facet, *facet_next = NULL;
@@ -216,14 +217,7 @@ static void free_facet(struct kndMemPool *mempool, struct kndClassFacet *parent_
     }
     knd_mempool_free(mempool, KND_MEMPAGE_TINY, (void*)parent_facet);
 }
-
-static void free_subsets(struct kndTask *task)
-{
-    free_facet(task->mempool, task->facet);
-    task->facet = NULL;
-    //knd_log("== mempool tiny pages in use: %zu",
-    //        task->mempool->tiny_pages_used);
-}
+#endif
 
 static gsl_err_t
 parse_get_class_by_numid(void *obj, const char *rec, size_t *total_size)
@@ -848,7 +842,7 @@ static gsl_err_t present_class_selection(void *obj, const char *unused_var(val),
                 err = knd_class_facets_export(task);
                 if (err) return make_gsl_err_external(err);
 
-                free_subsets(task);
+                // free_subsets(task);
 
                 return make_gsl_err(gsl_OK);
             }
@@ -888,7 +882,7 @@ static gsl_err_t present_class_selection(void *obj, const char *unused_var(val),
             err = knd_class_facets_export(task);
             if (err) return make_gsl_err_external(err);
 
-            free_subsets(task);
+            // free_subsets(task);
             return make_gsl_err(gsl_OK);
         }
 

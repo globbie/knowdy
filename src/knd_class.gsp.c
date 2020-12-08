@@ -105,7 +105,7 @@ int knd_class_inst_idx_fetch(struct kndClass *self, struct kndSharedDict **resul
 
     } while (!atomic_compare_exchange_weak(&self->inst_idx, &idx, new_idx));
 
-    task->blueprint = self->entry;
+    task->payload = self->entry;
     err = knd_shared_set_unmarshall_file(self->inst_idx, out->buf, out->buf_size,
                                          (size_t)st.st_size, knd_class_inst_entry_unmarshall, task);
     KND_TASK_ERR("failed to unmarshall class inst storage GSP file");

@@ -56,6 +56,7 @@ void knd_task_reset(struct kndTask *self)
     self->user_ctx = self->default_user_ctx;
     self->repo = self->system_repo;
 
+    self->payload = NULL;
     self->out->reset(self->out);
     self->log->reset(self->log);
 

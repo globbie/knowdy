@@ -24,12 +24,12 @@ struct LocalContext {
 int knd_class_inst_unmarshall(const char *elem_id, size_t elem_id_size, const char *rec, size_t rec_size,
                               void **result, struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndClassInst *inst = NULL;
     size_t total_size = rec_size;
     int err;
 
-    assert(task->blueprint != NULL);
+    assert(task->payload != NULL);
 
     if (DEBUG_CLASS_INST_READ_LEVEL_2)
         knd_log(">> GSP class inst \"%.*s\" => \"%.*s\"", elem_id_size, elem_id, rec_size, rec);
@@ -68,6 +68,8 @@ int knd_class_inst_acquire(struct kndClassInstEntry *entry, struct kndClassInst 
             return knd_OK;
         }
         if (!inst) {
+            // NB: passing blueprint class entry via task
+            task->payload = entry->blueprint;
             err = knd_shared_set_unmarshall_elem(c->inst_idx, entry->id, entry->id_size,
                                                  knd_class_inst_unmarshall, (void**)&inst, task);
             if (err) return err;
@@ -116,7 +118,7 @@ static gsl_err_t read_attr_var_list(void *obj, const char *name, size_t name_siz
 int knd_class_inst_read(struct kndClassInst *self, const char *rec, size_t *total_size, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->user_ctx->mempool;
-    struct kndClassEntry *entry = task->blueprint;
+    struct kndClassEntry *entry = task->payload;
     struct kndClassVar *class_var;
     int err;
     assert(entry != NULL);

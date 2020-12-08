@@ -42,9 +42,8 @@ void knd_class_inst_str(struct kndClassInst *self, size_t depth)
         //    knd_log("    state:%zu  phase:%d", state->numid, state->phase);
         //}
     }
-
     if (self->class_var->attrs) {
-        for (item = self->class_var->attrs; item; item = item->next)
+        FOREACH (item, self->class_var->attrs)
             knd_attr_var_str(item, depth + 1);
     }
 }

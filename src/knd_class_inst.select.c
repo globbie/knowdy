@@ -78,7 +78,7 @@ static gsl_err_t parse_get_inst_by_numid(void *obj, const char *rec, size_t *tot
     if (parser_err.code) return parser_err;
     knd_uid_create(numid, id, &id_size);
 
-    if (DEBUG_INST_LEVEL_TMP)
+    if (DEBUG_INST_LEVEL_2)
         knd_log("class inst id: %zu => \"%.*s\" [size: %zu]", numid, (int)id_size, id, id_size);
 
     err = knd_shared_set_get(inst_idx, id, id_size, (void**)&entry);
@@ -88,7 +88,7 @@ static gsl_err_t parse_get_inst_by_numid(void *obj, const char *rec, size_t *tot
     }
     task->type = KND_GET_STATE;
 
-    if (DEBUG_INST_LEVEL_TMP) {
+    if (DEBUG_INST_LEVEL_3) {
         knd_class_inst_str(entry->inst, 0);
     }
     ctx->inst = entry->inst;
@@ -129,7 +129,7 @@ static gsl_err_t present_state(void *obj, const char *unused_var(name), size_t u
     struct kndSet *set;
     int err;
 
-    if (DEBUG_INST_LEVEL_TMP) {
+    if (DEBUG_INST_LEVEL_2) {
         knd_log(".. select delta:  gt %zu  lt %zu  eq:%zu..",
                 task->state_gt, task->state_lt, task->state_eq);
     }
@@ -231,7 +231,7 @@ static gsl_err_t remove_inst(void *obj, const char *unused_var(name), size_t unu
     struct kndMemPool *mempool   = task->mempool;
     int err;
 
-    if (DEBUG_INST_LEVEL_TMP)
+    if (DEBUG_INST_LEVEL_2)
         knd_log("== class inst to be deleted: \"%.*s\"",
                 self->name_size, self->name);
 
