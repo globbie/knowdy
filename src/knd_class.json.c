@@ -149,7 +149,7 @@ int knd_export_class_inst_state_JSON(struct kndClass *self, struct kndTask *task
 }
 
 static int export_class_ref(void *obj, const char *unused_var(elem_id), size_t unused_var(elem_id_size),
-                            size_t count, void *elem)
+                            size_t unused_var(count), void *elem)
 {
     struct kndTask *task = obj;
     size_t indent_size = task->ctx->format_indent;
@@ -161,6 +161,7 @@ static int export_class_ref(void *obj, const char *unused_var(elem_id), size_t u
     struct kndClassRef *ref = elem;
     struct kndClassEntry *entry = ref->entry;
     struct kndClassInstRef *inst_ref;
+    size_t inst_ref_count = 0;
     int err;
 
     if (task->batch_size) {
@@ -199,7 +200,7 @@ static int export_class_ref(void *obj, const char *unused_var(elem_id), size_t u
         OUT("[", 1);
         
         FOREACH (inst_ref, ref->insts) {
-            if (count) {
+            if (inst_ref_count) {
                 OUT(",", 1);
             }
             OUT("{", 1);
@@ -215,6 +216,7 @@ static int export_class_ref(void *obj, const char *unused_var(elem_id), size_t u
             }
             OUT("\"", 1);
             OUT("}", 1);
+            inst_ref_count++;
         }
         OUT("]", 1);
     }

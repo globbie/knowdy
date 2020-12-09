@@ -33,7 +33,7 @@ static int update_attr_var_indices(struct kndClassInstEntry *entry, struct kndRe
     struct kndAttrVar *var;
     int err;
 
-    if (DEBUG_INST_IDX_LEVEL_TMP)
+    if (DEBUG_INST_IDX_LEVEL_2)
         knd_log(".. class inst \"%.*s\" attr var indexing", entry->name_size, entry->name);
 
     FOREACH (var, entry->inst->class_var->attrs) {
@@ -45,7 +45,7 @@ static int update_attr_var_indices(struct kndClassInstEntry *entry, struct kndRe
             KND_TASK_ERR("failed to index text attr var \"%.*s\"", var->name_size, var->name);
             break;
         case KND_ATTR_REL:
-            if (DEBUG_INST_IDX_LEVEL_TMP)
+            if (DEBUG_INST_IDX_LEVEL_2)
                 knd_log(".. indexing Rel attr \"%.*s\" (is a set:%d)",
                         var->name_size, var->name, var->attr->is_a_set);
 
@@ -81,7 +81,7 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *bl
     assert(commit != NULL);
     assert(c != NULL);
 
-    if (DEBUG_INST_IDX_LEVEL_TMP)
+    if (DEBUG_INST_IDX_LEVEL_2)
         knd_log(".. repo \"%.*s\" to update inst indices of class \"%.*s\" (repo:%.*s)",
                 repo->name_size, repo->name, blueprint->name_size, blueprint->name,
                 blueprint->repo->name_size, blueprint->repo->name);
@@ -91,7 +91,7 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *bl
         class_entry = knd_shared_dict_get(repo->class_name_idx, blueprint->name, blueprint->name_size);
         if (blueprint->repo != repo) {
             if (!class_entry) {
-                if (DEBUG_INST_IDX_LEVEL_TMP) {
+                if (DEBUG_INST_IDX_LEVEL_3) {
                     knd_log("NB: copy-on-write of class entry \"%.*s\" activated in repo %.*s",
                             class_entry->name_size, c->name, repo->name_size, repo->name);
                 }

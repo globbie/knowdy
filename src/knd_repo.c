@@ -651,7 +651,7 @@ static int fetch_str_idx(struct kndRepo *self, const char *path, size_t path_siz
     if (stat(out->buf, &st)) {
         return knd_NO_MATCH;
     }
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_2)
         knd_log(".. reading str idx \"%.*s\" [%zu]", out->buf_size, out->buf, (size_t)st.st_size);
 
     err = knd_shared_set_unmarshall_file(self->str_idx, out->buf, out->buf_size,
@@ -676,7 +676,6 @@ static int fetch_class_storage(struct kndRepo *self, const char *path, size_t pa
     if (stat(out->buf, &st)) {
         return knd_NO_MATCH;
     }
-
     if (DEBUG_REPO_LEVEL_TMP)
         knd_log(".. reading class storage: %.*s [%zu]", out->buf_size, out->buf, (size_t)st.st_size);
 
@@ -700,7 +699,7 @@ static int apply_commit(void *obj, const char *unused_var(elem_id), size_t unuse
     size_t total_size = commit->rec_size;
     int err;
 
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_2)
         knd_log(".. applying commit #%zu: %.*s", commit->numid, commit->rec_size, commit->rec);
 
     task->mempool = NULL;
@@ -1374,7 +1373,7 @@ static int update_indices(struct kndRepo *self, struct kndCommit *commit, struct
     struct kndSharedDict *name_idx = repo->class_name_idx;
     int err;
 
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_2)
         knd_log(".. commit #%zu to update the indices of %.*s [shard role:%d]",
                 commit->numid, self->name_size, self->name, task->role);
 
