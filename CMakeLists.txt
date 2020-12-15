@@ -17,8 +17,20 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose the type of build." FORCE)
 endif()
 
+set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules)
+
+#parsing the semantic version
+include(GetGitRevisionDescription)
+git_describe(VERSION --tags --dirty=-dirty)
+string(REGEX REPLACE "^v([0-9]+)\\..*" "\\1" VERSION_MAJOR "${VERSION}")
+string(REGEX REPLACE "^v[0-9]+\\.([0-9]+).*" "\\1" VERSION_MINOR "${VERSION}")
+string(REGEX REPLACE "^v[0-9]+\\.[0-9]+\\.([0-9]+).*" "\\1" VERSION_PATCH "${VERSION}")
+string(REGEX REPLACE "^v[0-9]+\\.[0-9]+\\.[0-9]+(.*)" "\\1" VERSION_SHA1 "${VERSION}")
+set(VERSION_SHORT "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/knd_version.h.in
+                ${CMAKE_CURRENT_SOURCE_DIR}/include/knd_version.h)
+
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-  set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules)
   include(CodeCoverage)
   #APPEND_COVERAGE_COMPILER_FLAGS()
   #SETUP_TARGET_FOR_COVERAGE_LCOV(NAME ${PROJECT_NAME}_coverage
@@ -65,7 +77,7 @@ set(HEADERS include/knd_attr.h
         include/knd_set.h include/knd_shared_set.h include/knd_set_idx.h include/knd_shard.h
         include/knd_state.h include/knd_commit.h
         include/knd_task.h include/knd_text.h
-        include/knd_user.h include/knd_utils.h)
+        include/knd_user.h include/knd_utils.h include/knd_version.h)
 set(SOURCES src/knd_attr.c src/knd_attr.import.c src/knd_attr.index.c
         src/knd_attr.read.c src/knd_attr.resolve.c src/knd_attr.select.c
         src/knd_attr.json.c src/knd_attr.gsl.c src/knd_attr.gsp.c
@@ -106,6 +118,3 @@ add_subdirectory(shell)
 
 install(DIRECTORY etc/knowdy/ DESTINATION etc/knowdy)
 install(DIRECTORY etc/systemd/system/ DESTINATION usr/lib/systemd/system)
-
-set(VERSION "0.8.0")
-

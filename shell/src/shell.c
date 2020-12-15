@@ -116,7 +116,7 @@ static int knd_interact(struct kndShard *shard)
     shard->user->mempool->present(shard->user->mempool, out);
     knd_log("** User Space Mempool\n%.*s", out->buf_size, out->buf);
 
-    knd_log("\n++ Knowdy shard service is up and running! (agent role:%d)\n", shard->role);
+    knd_log("\n++ Knowdy shard service is up and running! (agent role:%d  Knowdy version:%s)\n", shard->role, KND_VERSION);
     knd_log("   (finish session by pressing Ctrl+C)\n");
 
     while ((buf = readline(">> ")) != NULL) {
