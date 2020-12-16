@@ -32,7 +32,7 @@ static int update_attr_var_indices(struct kndClassInstEntry *entry, struct kndRe
 {
     struct kndAttrVar *var;
     int err;
-    
+
     if (DEBUG_INST_IDX_LEVEL_2)
         knd_log(".. class inst \"%.*s\" attr var indexing", entry->name_size, entry->name);
 
@@ -43,6 +43,17 @@ static int update_attr_var_indices(struct kndClassInstEntry *entry, struct kndRe
                 knd_log(".. indexing text attr \"%.*s\"", var->name_size, var->name);
             err = knd_text_index(var->text, repo, task);
             KND_TASK_ERR("failed to index text attr var \"%.*s\"", var->name_size, var->name);
+            break;
+        case KND_ATTR_REL:
+            if (DEBUG_INST_IDX_LEVEL_2)
+                knd_log(".. indexing Rel attr \"%.*s\" (is a set:%d)",
+                        var->name_size, var->name, var->attr->is_a_set);
+
+            if (var->attr->is_a_set) {
+                err = knd_index_attr_var_list(entry->blueprint, entry, var->attr, var, task);
+                KND_TASK_ERR("failed to index attr var list");
+                break;
+            }
             break;
         default:
             break;
@@ -64,7 +75,7 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *bl
     struct kndSharedSet *new_idx = NULL;
     struct kndCommit *commit = state_refs->state->commit;
     struct kndSharedDictItem *item = NULL;
-    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
     int err;
 
     assert(commit != NULL);
@@ -80,7 +91,7 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *bl
         class_entry = knd_shared_dict_get(repo->class_name_idx, blueprint->name, blueprint->name_size);
         if (blueprint->repo != repo) {
             if (!class_entry) {
-                if (DEBUG_INST_IDX_LEVEL_TMP) {
+                if (DEBUG_INST_IDX_LEVEL_3) {
                     knd_log("NB: copy-on-write of class entry \"%.*s\" activated in repo %.*s",
                             class_entry->name_size, c->name, repo->name_size, repo->name);
                 }
@@ -120,8 +131,9 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *bl
     name_idx = atomic_load_explicit(&c->inst_name_idx, memory_order_acquire);
     idx = atomic_load_explicit(&c->inst_idx, memory_order_acquire);
     
-    for (ref = state_refs; ref; ref = ref->next) {
+    FOREACH (ref, state_refs) {
         entry = ref->obj;
+
         switch (ref->state->phase) {
         case KND_CREATED:
             if (entry->name_size) {

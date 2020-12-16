@@ -11,6 +11,7 @@
 #include "knd_proc.h"
 #include "knd_shard.h"
 #include "knd_user.h"
+#include "knd_shared_set.h"
 #include "knd_utils.h"
 #include "knd_mempool.h"
 #include "knd_output.h"
@@ -41,6 +42,66 @@ int knd_charseq_new(struct kndMemPool *mempool, struct kndCharSeq **result)
     if (err) return err;
     memset(page, 0, sizeof(struct kndCharSeq));
     *result = page;
+    return knd_OK;
+}
+
+int knd_charseq_decode(struct kndRepo *repo, const char *val, size_t val_size, struct kndCharSeq **result,
+                      struct kndTask *task)
+{
+    struct kndCharSeq *seq;
+    int err;
+
+    if (DEBUG_TEXT_LEVEL_2)
+        knd_log(".. \"%.*s\" repo to decode \"%.*s\" charseq",
+                repo->name_size, repo->name, val_size, val);
+
+    assert(val_size <= KND_ID_SIZE);
+
+    err = knd_shared_set_get(repo->str_idx, val, val_size, (void**)&seq);
+    KND_TASK_ERR("failed to decode \"%.*s\" charseq ", val_size, val);
+    *result = seq;
+    return knd_OK;
+}
+
+int knd_charseq_fetch(struct kndRepo *repo, const char *val, size_t val_size, struct kndCharSeq **result,
+                      struct kndTask *task)
+{
+    char idbuf[KND_ID_SIZE];
+    size_t idbuf_size;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
+    struct kndCharSeq *seq;
+    int err;
+    assert(val != NULL);
+    assert(val_size != 0);
+
+    if (DEBUG_TEXT_LEVEL_2)
+        knd_log(".. \"%.*s\" repo fetching \"%.*s\" charseq", repo->name_size, repo->name, val_size, val);
+
+    seq = knd_shared_dict_get(repo->str_dict, val, val_size);
+    if (seq) {
+        if (DEBUG_TEXT_LEVEL_3)
+            knd_log(">> \"%.*s\" charseq already registered", val_size, val);
+        *result = seq;
+        return knd_OK;
+    }
+    err = knd_charseq_new(mempool, &seq);
+    KND_TASK_ERR("failed to alloc a charseq");
+    seq->val = val;
+    seq->val_size = val_size;
+    seq->numid = atomic_fetch_add_explicit(&repo->num_strs, 1, memory_order_relaxed);
+    
+    err = knd_shared_dict_set(repo->str_dict, val, val_size,
+                              (void*)seq, mempool, NULL, &seq->item, false);
+    KND_TASK_ERR("failed to register a charseq");
+
+    knd_uid_create(seq->numid, idbuf, &idbuf_size);
+    err = knd_shared_set_add(repo->str_idx, idbuf, idbuf_size, (void*)seq);
+    KND_TASK_ERR("failed to register a charseq by numid");
+
+    if (DEBUG_TEXT_LEVEL_3)
+        knd_log(">> \"%.*s\" (id:%.*s) charseq registered", val_size, val, idbuf_size, idbuf);
+
+    *result = seq;
     return knd_OK;
 }
 
@@ -108,8 +169,8 @@ int knd_synode_new(struct kndMemPool *mempool, struct kndSyNode **result)
 {
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndSyNode));
-    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
+    assert(mempool->small_page_size >= sizeof(struct kndSyNode));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndSyNode));
     *result = page;
@@ -218,4 +279,20 @@ void knd_text_str(struct kndText *self, size_t depth)
     val = state->val;
     knd_log("%*stext: \"%.*s\" (lang:%.*s)", depth * KND_OFFSET_SIZE, "",
             val->val_size, val->val, self->locale_size, self->locale);
+}
+
+int knd_text_export(struct kndText *self, knd_format format, struct kndTask *task, size_t depth)
+{
+    int err;
+    switch (format) {
+    case KND_FORMAT_JSON:
+        err = knd_text_export_JSON(self, task, depth);
+        KND_TASK_ERR("failed to export text JSON");
+        break;
+    default:
+        err = knd_text_export_GSL(self, task, depth);
+        KND_TASK_ERR("failed to export text GSL");
+        break;
+    }
+    return knd_OK;
 }

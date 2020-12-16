@@ -45,14 +45,14 @@ static int resolve_proc_inst(struct kndStatement *stm, struct kndProcInstEntry *
                 if (memcmp(entry->name, var->val, var->val_size)) continue;
                 var->inst = entry->inst;
 
-                err = knd_is_base(var->template->class, entry->inst->blueprint->class);
+                err = knd_is_base(var->template->class, entry->blueprint->class);
                 KND_TASK_ERR("template \"%.*s\" mismatch with \"%.*s\"",
                              var->template->name_size, var->template->name,
-                             entry->inst->blueprint->name_size, entry->inst->blueprint->name);
+                             entry->blueprint->name_size, entry->blueprint->name);
 
                 if (DEBUG_TEXT_RESOLVE_LEVEL_3)
                     knd_log("++ class inst ref \"%.*s\" (%.*s) class template: \"%.*s\"",
-                            var->val_size, var->val, entry->inst->blueprint->name_size, entry->inst->blueprint->name,
+                            var->val_size, var->val, entry->blueprint->name_size, entry->blueprint->name,
                             var->template->name_size, var->template->name);
             }
         }
@@ -74,6 +74,7 @@ int knd_statement_resolve(struct kndStatement *stm, struct kndTask *task)
 
     FOREACH (cd, stm->class_declars) {
         FOREACH (ci, cd->insts) {
+            if (!ci->inst) continue;
             if (!ci->inst->class_var) continue;
             err = resolve_class_inst(stm, ci, task);
             KND_TASK_ERR("failed to resolve class inst \"%.*s\"", ci->name_size, ci->name);
@@ -82,6 +83,7 @@ int knd_statement_resolve(struct kndStatement *stm, struct kndTask *task)
 
     FOREACH (pd, stm->proc_declars) {
         FOREACH (pi, pd->insts) {
+            if (!pi->inst) continue;
             if (!pi->inst->procvar) continue;
             err = resolve_proc_inst(stm, pi, task);
             KND_TASK_ERR("failed to resolve proc inst \"%.*s\"", pi->name_size, pi->name);

@@ -103,15 +103,9 @@ struct kndSet
                void *obj);
 };
 
-int knd_set_new(struct kndMemPool *mempool,
-                struct kndSet **result);
-int knd_set_dir_new(struct kndMemPool *mempool,
-                    struct kndSetDir **result);
-int knd_set_dir_entry_new(struct kndMemPool *mempool,
-                          struct kndSetDirEntry **result);
-
-int knd_set_mem(struct kndMemPool *mempool,
-                struct kndSet **result);
+int knd_set_new(struct kndMemPool *mempool, struct kndSet **result);
+int knd_set_dir_new(struct kndMemPool *mempool, struct kndSetDir **result);
+int knd_set_dir_entry_new(struct kndMemPool *mempool, struct kndSetDirEntry **result);
 int knd_set_init(struct kndSet *self);
 
 int knd_set_elem_idx_new(struct kndMemPool *mempool,
@@ -119,23 +113,9 @@ int knd_set_elem_idx_new(struct kndMemPool *mempool,
 int knd_set_elem_idx_mem(struct kndMemPool *mempool,
                          struct kndSetElemIdx **result);
 
-int knd_set_intersect(struct kndSet *self,
-                      struct kndSet **sets,
-                      size_t num_sets);
+int knd_set_intersect(struct kndSet *self, struct kndSet **sets, size_t num_sets);
 
-int knd_set_add(struct kndSet *self,
-                const char *key,
-                size_t key_size,
-                void *elem);
-
-int knd_set_sync(struct kndSet *self,
-                 map_cb_func cb,
-                 size_t *total_size,
-                 struct kndTask *task);
-
-int knd_set_add_ref(struct kndSet *self,
-                    struct kndAttr *attr,
-                    struct kndClassEntry *topic,
-                    struct kndClassEntry *spec);
+int knd_set_add(struct kndSet *self, const char *key, size_t key_size, void *elem);
+int knd_set_sync(struct kndSet *self, map_cb_func cb, size_t *total_size, struct kndTask *task);
 int knd_set_map(struct kndSet *self, map_cb_func cb, void *obj);
 int knd_set_get(struct kndSet *self, const char *key, size_t key_size, void **elem);

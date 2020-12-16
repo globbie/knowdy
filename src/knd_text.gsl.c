@@ -78,13 +78,45 @@ static int stm_export_GSL(struct kndStatement *stm, struct kndTask *task)
     return knd_OK;
 }
 
+static int synode_export_GSL(struct kndSyNode *syn, struct kndTask *task)
+{
+    struct kndOutput *out = task->out;
+    struct kndSyNodeSpec *spec;
+    int err;
+
+    OUT("{syn ", strlen("{syn "));
+    OUT(syn->name, syn->name_size);
+    if (syn->is_terminal) {
+        OUT("{term ", strlen("{term "));
+        OUT(syn->class->name, syn->class->name_size);
+        err = out->writef(out, "{pos %zu}{len %zu}", syn->linear_pos, syn->linear_len);
+        if (err) return err;
+        OUT("}", 1);
+    }
+    if (syn->topic) {
+        err = synode_export_GSL(syn->topic, task);
+        KND_TASK_ERR("failed to export a synode");
+    }
+    if (syn->spec) {
+        spec = syn->spec;
+        OUT("{spec ", strlen("{spec "));
+        OUT(spec->name, spec->name_size);
+        err = synode_export_GSL(spec->synode, task);
+        KND_TASK_ERR("failed to export a spec synode");
+        OUT("}", 1);
+    }
+    OUT("}", 1);
+    return knd_OK;
+}
+
 static int clause_export_GSL(struct kndClause *clause, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     int err;
 
     OUT("{clause ", strlen("{clause "));
-
+    err = synode_export_GSL(clause->subj, task);
+    KND_TASK_ERR("failed to export clause synode");
     OUT("}", 1);
 
     return knd_OK;
@@ -105,21 +137,17 @@ static int sent_export_GSL(struct kndSentence *sent, struct kndTask *task)
     }
 
     err = out->writec(out, '}');                        RET_ERR();
-   
     return knd_OK;
 }
 
-static int export_GSL(struct kndText *self, struct kndTask *task)
+int knd_text_export_GSL(struct kndText *self, struct kndTask *task, size_t unused_var(depth))
 {
     struct kndOutput *out = task->out;
-    //const char *locale = task->ctx->locale;
-    // size_t locale_size = task->ctx->locale_size;
     struct kndPar *par;
     struct kndSentence *sent;
     struct kndState *state;
     struct kndCharSeq *seq = self->seq;
-    //struct kndStateVal *val;
-    // struct kndText *t;
+    struct kndText *trn;
     int err;
 
     state = atomic_load_explicit(&self->states, memory_order_relaxed);
@@ -130,55 +158,42 @@ static int export_GSL(struct kndText *self, struct kndTask *task)
     }
 
     if (seq && seq->val_size) {
-        err = out->write(out, seq->val, seq->val_size);                   RET_ERR();
+        OUT(" ", 1);
+        OUT(seq->val, seq->val_size);
     }
     if (self->locale_size) {
-        err = out->writec(out, '{');                            RET_ERR();
-        err = out->write(out, "_lang ", strlen("_lang "));      RET_ERR();
-        err = out->write(out, self->locale, self->locale_size); RET_ERR();
-        err = out->writec(out, '}');                            RET_ERR();
+        OUT("{", 1);
+        OUT("lang ", strlen("lang "));
+        OUT(self->locale, self->locale_size);
+        OUT("}", 1);
     }
-
+    if (self->trs) {
+        OUT("[trn", strlen("[trn"));
+        FOREACH (trn, self->trs) {
+            OUT("{", 1);
+            OUT(trn->locale, trn->locale_size);
+            OUT("{t ", strlen("{t "));
+            OUT(trn->seq->val, trn->seq->val_size);
+            OUT("}", 1);
+            OUT("}", 1);
+        }
+        OUT("]", 1);
+    }
     if (self->num_pars) {
-        err = out->write(out, "[p", strlen("[p"));                  RET_ERR();
-        for (par = self->pars; par; par = par->next) {
-            err = out->writec(out, '{');                            RET_ERR();
-            err = out->write(out, "[s", strlen("[s"));              RET_ERR();
-            for (sent = par->sents; sent; sent = sent->next) {
-                err = sent_export_GSL(sent, task);                  RET_ERR();
+        OUT("[p", strlen("[p"));
+        FOREACH (par, self->pars) {
+            OUT("{", 1);
+            OUT("[s", strlen("[s"));
+            FOREACH (sent, par->sents) {
+                err = sent_export_GSL(sent, task);
+                KND_TASK_ERR("failed to export sent GSL");
             }
-            err = out->writec(out, ']');                            RET_ERR();
-            err = out->writec(out, '}');                            RET_ERR();
+            OUT("]", 1);
+            OUT("}", 1);
         }
-        err = out->writec(out, ']');                            RET_ERR();
-    }
-    
-    return knd_OK;
-}
-
-static int export_JSON(struct kndText *self,
-                       struct kndTask *task)
-{
-    struct kndOutput *out = task->out;
-    struct kndState *state;
-    int err;
-
-    state = atomic_load_explicit(&self->states,
-                                 memory_order_relaxed);
-    if (!state) {
-        err = out->write_escaped(out, self->seq->val, self->seq->val_size);
-        if (err) return err;
-        if (self->locale_size) {
-            err = out->write(out, "\"_lang\":\"", strlen("\"_lang:\""));          RET_ERR();
-            err = out->write(out, self->locale, self->locale_size);               RET_ERR();
-            err = out->writec(out, '"');                                          RET_ERR();
-        }
-        return knd_OK;
+        OUT("]", 1);
     }
 
-    err = out->write_escaped(out, state->val->val, state->val->val_size);
-    if (err) return err;
-    
     return knd_OK;
 }
 
@@ -283,17 +298,42 @@ int knd_text_export_query_report(struct kndTask *task)
     return knd_OK;
 }
 
-int knd_text_export(struct kndText *self, knd_format format, struct kndTask *task)
+int knd_text_gloss_export_GSL(struct kndText *tr, struct kndTask *task, size_t depth)
 {
+    struct kndOutput *out = task->out;
+    const char *locale = task->ctx->locale;
+    size_t locale_size = task->ctx->locale_size;
     int err;
-    switch (format) {
-    case KND_FORMAT_JSON:
-        err = export_JSON(self, task);                           RET_ERR();
-        break;
-    default:
-        err = export_GSL(self, task);                            RET_ERR();
+
+    for (; tr; tr = tr->next) {
+        if (locale_size != tr->locale_size) continue;
+
+        if (memcmp(locale, tr->locale, tr->locale_size)) {
+            continue;
+        }
+        if (task->ctx->format_offset) {
+            OUT("\n", 1);
+            err = knd_print_offset(out, depth * task->ctx->format_offset);
+            RET_ERR();
+        }
+        OUT("[gloss ", strlen("[gloss "));
+        OUT("{", 1);
+        err = out->write_escaped(out, tr->locale, tr->locale_size);
+        RET_ERR();
+        OUT("{t ", strlen("{t "));
+        err = out->write_escaped(out, tr->seq->val,  tr->seq->val_size);
+        RET_ERR();
+        OUT("}", 1);
+
+        if (tr->abbr) {
+            OUT("{abbr ", strlen("{abbr "));
+            OUT(tr->abbr->val, tr->abbr->val_size);
+            OUT("}", 1);
+        }
+        OUT("}", 1);
+        OUT("]", 1);
         break;
     }
-
     return knd_OK;
 }
+

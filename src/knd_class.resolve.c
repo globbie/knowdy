@@ -52,11 +52,8 @@ struct LocalContext {
 
 static int resolve_base(struct kndClass *self, struct kndTask *task);
 
-static int inherit_attr(void *obj,
-                        const char *unused_var(elem_id),
-                        size_t unused_var(elem_id_size),
-                        size_t unused_var(count),
-                        void *elem)
+static int inherit_attr(void *obj, const char *unused_var(elem_id), size_t unused_var(elem_id_size),
+                        size_t unused_var(count), void *elem)
 {
     struct LocalContext *ctx = obj;
     struct kndTask    *task = ctx->task;
@@ -68,7 +65,7 @@ static int inherit_attr(void *obj,
     struct kndAttrRef *ref = NULL;
     int err;
 
-    err = attr_idx->get(attr_idx, attr->id, attr->id_size, (void**)&ref);
+    err = knd_set_get(attr_idx, attr->id, attr->id_size, (void**)&ref);
     if (!err) {
         if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
             knd_log("..  \"%.*s\" (id:%.*s) attr already active in \"%.*s\"..",
@@ -82,10 +79,7 @@ static int inherit_attr(void *obj,
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2) 
         knd_log("..  \"%.*s\" (id:%.*s attr_var:%p) attr inherited by %.*s..",
-                attr->name_size, attr->name,
-                attr->id_size, attr->id,
-                src_ref->attr_var,
-                self->name_size, self->name);
+                attr->name_size, attr->name, attr->id_size, attr->id, src_ref->attr_var, self->name_size, self->name);
 
     if (ref) {
         if (src_ref->attr_var) {
@@ -102,8 +96,13 @@ static int inherit_attr(void *obj,
     ref->attr_var = src_ref->attr_var;
     ref->class_entry = src_ref->class_entry;
 
-    err = attr_idx->add(attr_idx, attr->id, attr->id_size, (void*)ref);
+    err = knd_set_add(attr_idx, attr->id, attr->id_size, (void*)ref);
     KND_TASK_ERR("failed to update attr idx of %.*s", self->name_size, self->name);
+
+    // inherit implied attr
+    if (attr->is_implied && !self->implied_attr)
+        self->implied_attr = attr;
+
     return knd_OK;
 }
 
@@ -154,9 +153,7 @@ static int link_ancestor(struct kndClass *self, struct kndClassEntry *base_entry
                 base->name_size, base->name, base->state_top);
 
     if (base_entry->repo != entry->repo) {
-        prev_entry = knd_dict_get(class_name_idx,
-                                  base_entry->name,
-                                  base_entry->name_size);
+        prev_entry = knd_dict_get(class_name_idx, base_entry->name, base_entry->name_size);
         if (prev_entry) {
             base = prev_entry->class;
         } else {
@@ -298,7 +295,6 @@ static int resolve_baseclasses(struct kndClass *self, struct kndTask *task)
     }
 
     self->base_is_resolved = true;
-
     return knd_OK;
 }
 
@@ -334,10 +330,12 @@ int knd_class_resolve(struct kndClass *self, struct kndTask *task)
             err = resolve_baseclasses(self, task);                                RET_ERR();
         }
         for (cvar = self->baseclass_vars; cvar; cvar = cvar->next) {
-            err = inherit_attrs(self, cvar->entry->class, task);                  RET_ERR();
+            err = inherit_attrs(self, cvar->entry->class, task);
+            RET_ERR();
             
             if (cvar->attrs) {
-                err = knd_resolve_attr_vars(self, cvar, task);                    RET_ERR();
+                err = knd_resolve_attr_vars(self, cvar, task);
+                RET_ERR();
             }
         }
     }
@@ -385,8 +383,8 @@ static int resolve_base(struct kndClass *self, struct kndTask *task)
     return knd_OK;
 }
 
-int knd_resolve_class_ref(struct kndClass *self, const char *name, size_t name_size, struct kndClass *base,
-                          struct kndClass **result, struct kndTask *task)
+int knd_resolve_class_ref(struct kndClass *self, const char *name, size_t name_size,
+                          struct kndClass *base, struct kndClass **result, struct kndTask *task)
 {
     struct kndClassEntry *entry;
     struct kndClass *c;

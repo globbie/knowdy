@@ -53,9 +53,10 @@ void knd_task_reset(struct kndTask *self)
     if (self->ctx)
         memset(self->ctx, 0, sizeof(*self->ctx));
 
-    self->user_ctx = NULL;
+    self->user_ctx = self->default_user_ctx;
     self->repo = self->system_repo;
 
+    self->payload = NULL;
     self->out->reset(self->out);
     self->log->reset(self->log);
 
@@ -158,14 +159,19 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
 {
     size_t total_size = 0;
     gsl_err_t parser_err;
-
+    struct kndUser *user = task->shard->user;
+    struct kndOutput *out = task->out;
+    int err;
     assert(task->ctx != NULL);
+    task->user_ctx->repo = user->repo;
+    task->user_ctx->acls = user->default_acls;
+    task->user_ctx->mempool = user->mempool;
 
     task->input = input;
     task->input_size = input_size;
     task->output = NULL;
     task->output_size = 0;
-
+    
     if (DEBUG_TASK_LEVEL_2) {
         size_t chunk_size = KND_TEXT_CHUNK_SIZE;
         if (task->input_size < chunk_size) chunk_size = task->input_size;
@@ -185,7 +191,19 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
         if (!task->log->buf_size) {
             task->http_code = HTTP_INTERNAL_SERVER_ERROR;
             KND_TASK_LOG("unclassified server error");
+            return gsl_err_to_knd_err_codes(parser_err);
         }
+
+        out->reset(out);
+        err = out->write_escaped(out, task->log->buf, task->log->buf_size);
+        if (err) {
+            KND_TASK_LOG("server output error");
+            return gsl_err_to_knd_err_codes(parser_err);
+        }
+        knd_log("-- task err code:%d http code:%d", parser_err.code, task->ctx->http_code);
+
+        task->output = out->buf;
+        task->output_size = out->buf_size;
         return gsl_err_to_knd_err_codes(parser_err);
     }
 
@@ -197,8 +215,8 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
         task->output_size = task->file_out->buf_size;
         break;
     default:
-        task->output = task->out->buf;
-        task->output_size = task->out->buf_size;
+        task->output = out->buf;
+        task->output_size = out->buf_size;
         break;
     }
     return knd_OK;
@@ -375,6 +393,11 @@ int knd_task_new(struct kndShard *shard, struct kndMemPool *mempool, int task_id
     /* system repo defaults */
     self->system_repo       = repo;
     self->repo              = repo;
+
+    /* default user context */
+    err = knd_user_context_new(NULL, &self->default_user_ctx);
+    if (err) goto error;
+    self->user_ctx = self->default_user_ctx;
 
     *task = self;
 

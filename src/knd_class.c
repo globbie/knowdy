@@ -51,11 +51,9 @@ static int str_attr_idx_rec(void *unused_var(obj),
 {
     struct kndAttrRef *src_ref = elem;
 
+    knd_log("   + %.*s => %p", src_ref->attr->name_size, src_ref->attr->name, src_ref->attr_var);   
+
     if (!src_ref->attr_var) return knd_OK;
-    /*knd_log("     + %.*s => %p",
-            src_ref->attr->name_size, src_ref->attr->name,
-            src_ref->attr_var);
-    */
     knd_attr_var_str(src_ref->attr_var, 2);
 
     return knd_OK;
@@ -83,8 +81,7 @@ static void str(struct kndClass *self, size_t depth)
     struct kndClassVar *item;
     struct kndAttrVar *var;
     struct kndClassRef *ref;
-    struct kndClass *c;
-    //struct kndState *state;
+    struct kndClassEntry *entry;
     const char *name;
     size_t name_size;
     char resolved_state = '-';
@@ -139,35 +136,37 @@ static void str(struct kndClass *self, size_t depth)
     }
 
     for (ref = self->ancestors; ref; ref = ref->next) {
-        c = ref->class;
+        entry = ref->entry;
         knd_log("%*s = %.*s (repo:%.*s)", depth * KND_OFFSET_SIZE, "",
-                c->entry->name_size, c->entry->name,
-                c->entry->repo->name_size, c->entry->repo->name);
+                entry->name_size, entry->name, entry->repo->name_size, entry->repo->name);
     }
 
     err = self->attr_idx->map(self->attr_idx, str_attr_idx_rec, (void*)self);
     if (err) return;
 
-    knd_log("%*s the end of %.*s}", depth * KND_OFFSET_SIZE, "",
-            self->entry->name_size, self->entry->name);
+    knd_log("%*s the end of %.*s}", depth * KND_OFFSET_SIZE, "", self->entry->name_size, self->entry->name);
 }
 
 int knd_get_class_inst(struct kndClass *self, const char *name, size_t name_size,
                        struct kndTask *task, struct kndClassInst **result)
 {
     struct kndClassInstEntry *entry;
-    struct kndClassInst *obj;
+    struct kndClassInst *inst;
     struct kndSharedDict *name_idx = atomic_load_explicit(&self->inst_name_idx, memory_order_acquire);
     int err;
 
-    if (DEBUG_CLASS_LEVEL_3)
-        knd_log(".. class \"%.*s\" (repo:%.*s) to get inst \"%.*s\"",
-                self->name_size, self->name, self->entry->repo->name_size, self->entry->repo->name, name_size, name);
+    if (DEBUG_CLASS_LEVEL_2)
+        knd_log(".. class \"%.*s\" (repo:%.*s) to get inst \"%.*s\"", self->name_size, self->name,
+                self->entry->repo->name_size, self->entry->repo->name, name_size, name);
 
     if (!name_idx) {
-        err = knd_NO_MATCH;
-        task->http_code = HTTP_NOT_FOUND;
-        KND_TASK_ERR("class \"%.*s\" has no instances", self->name_size, self->name);
+        if (!self->num_snapshot_insts) {
+            err = knd_NO_MATCH;
+            task->http_code = HTTP_NOT_FOUND;
+            KND_TASK_ERR("class \"%.*s\" has no instances", self->name_size, self->name);
+        }
+        err = knd_class_inst_idx_fetch(self, &name_idx, task);
+        KND_TASK_ERR("failed to unmarshall inst idx of class \"%.*s\"", self->name_size, self->name);
     }
 
     entry = knd_shared_dict_get(name_idx, name, name_size);
@@ -177,28 +176,21 @@ int knd_get_class_inst(struct kndClass *self, const char *name, size_t name_size
         KND_TASK_ERR("no such class inst: \"%.*s\"", name_size, name);
     }
 
-    // TODO
-    if (!entry->inst) {
-        //err = unfreeze_obj_entry(self, entry, result);
-        //if (err) return err;
-        return knd_FAIL;
-    }
+    err = knd_class_inst_acquire(entry, &inst, task);
+    KND_TASK_ERR("failed to acquire class inst %.*s", entry->name_size, entry->name);
 
-    if (entry->inst->states->phase == KND_REMOVED) {
-        KND_TASK_LOG("\"%s\" instance was removed", name);
+    if (inst->states && inst->states->phase == KND_REMOVED) {
+        KND_TASK_LOG("\"%s\" class inst was removed", name);
         return knd_NO_MATCH;
     }
     if (DEBUG_CLASS_LEVEL_3)
-        knd_class_inst_str(entry->inst, 1);
+        knd_class_inst_str(inst, 1);
 
-    obj = entry->inst;
-    *result = obj;
+    *result = inst;
     return knd_OK;
 }
 
-int knd_get_class_attr_value(struct kndClass *src,
-                             struct kndAttrVar *query,
-                             struct kndProcCallArg *arg)
+int knd_get_class_attr_value(struct kndClass *src, struct kndAttrVar *query, struct kndProcCallArg *arg)
 {
     struct kndAttrRef *attr_ref;
     struct kndAttrVar *child_var;
@@ -213,8 +205,7 @@ int knd_get_class_attr_value(struct kndClass *src,
     }
 
     if (DEBUG_CLASS_LEVEL_2) {
-        knd_log("++ got attr: %.*s",
-                query->name_size, query->name);
+        knd_log("++ got attr: %.*s", query->name_size, query->name);
     }
 
     if (!attr_ref->attr_var) return knd_NO_MATCH;
@@ -228,7 +219,6 @@ int knd_get_class_attr_value(struct kndClass *src,
         err = knd_get_arg_value(child_var, query->children, arg);
         if (err) return err;
     }
-
     return knd_OK;
 }
 
@@ -416,15 +406,12 @@ int knd_empty_set_export(struct kndClass *self,
     return knd_FAIL;
 }
 
-int knd_class_export(struct kndClass *self,
-                     knd_format format,
-                     struct kndTask *task)
+int knd_class_export(struct kndClass *self, knd_format format, struct kndTask *task)
 {
     task->out->reset(task->out);
-
     switch (format) {
     case KND_FORMAT_JSON:
-        return knd_class_export_JSON(self, task);
+        return knd_class_export_JSON(self, task, false, 0);
     case KND_FORMAT_GSP:
         return knd_class_export_GSP(self, task);
     default:
@@ -434,9 +421,7 @@ int knd_class_export(struct kndClass *self,
     return knd_FAIL;
 }
 
-int knd_class_export_state(struct kndClassEntry *self,
-                           knd_format format,
-                           struct kndTask *task)
+int knd_class_export_state(struct kndClassEntry *self, knd_format format, struct kndTask *task)
 {
     switch (format) {
         case KND_FORMAT_JSON:
@@ -694,6 +679,32 @@ int knd_get_class_by_id(struct kndRepo *repo, const char *id, size_t id_size, st
     return knd_OK;
 }
 
+int knd_get_class_entry_by_id(struct kndRepo *repo, const char *id, size_t id_size,
+                              struct kndClassEntry **result, struct kndTask *task)
+{
+    struct kndClassEntry *entry;
+    struct kndSharedSet *class_idx = repo->class_idx;
+    int err;
+
+    if (DEBUG_CLASS_LEVEL_2)
+        knd_log(".. repo \"%.*s\" to get class entry by id \"%.*s\"",
+                repo->name_size, repo->name, id_size, id);
+    
+    err = knd_shared_set_get(class_idx, id, id_size, (void**)&entry);
+    if (err) {
+        /* check parent schema */
+        if (repo->base) {
+            err = knd_get_class_entry_by_id(repo->base, id, id_size, result, task);
+            if (err) return err;
+            return knd_OK;
+        }
+        err = knd_NO_MATCH;
+        KND_TASK_ERR("no such class entry: \"%.*s\"", id_size, id);
+    }
+    *result = entry;
+    return knd_OK;
+}
+
 int knd_unregister_class_inst(struct kndClass *self, struct kndClassInstEntry *entry, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
@@ -727,7 +738,7 @@ int knd_unregister_class_inst(struct kndClass *self, struct kndClassInstEntry *e
                 self->num_inst_states);
     }
 
-    if (entry->inst->blueprint != self->entry) return knd_OK;
+    if (entry->blueprint != self->entry) return knd_OK;
 
     for (struct kndClassRef *ref = self->ancestors; ref; ref = ref->next) {
         c = ref->entry->class;

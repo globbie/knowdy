@@ -48,6 +48,8 @@ knd_shared_dict_hash(const char *key, size_t key_size)
 
 void* knd_shared_dict_get(struct kndSharedDict *self, const char *key, size_t key_size)
 {
+    assert(key != NULL);
+    assert(key_size != 0);
     size_t h = knd_shared_dict_hash(key, key_size) % self->size;
     struct kndSharedDictItem *item = atomic_load_explicit(&self->hash_array[h], memory_order_relaxed);
     while (item) {

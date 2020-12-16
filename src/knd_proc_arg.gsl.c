@@ -71,12 +71,8 @@ int knd_proc_arg_export_GSL(struct kndProcArg *self, struct kndTask *task, bool 
     }
 
     if (self->tr) {
-        if (task->ctx->format_offset) {
-            err = out->writec(out, '\n');                                         RET_ERR();
-            err = knd_print_offset(out,
-                                   (depth + 1) * task->ctx->format_offset);       RET_ERR();
-        }
-        err = knd_export_gloss_GSL(self->tr, task);                               RET_ERR();
+        err = knd_text_gloss_export_GSL(self->tr, task, depth);
+        RET_ERR();
     }
 
     if (self->classname_size) {

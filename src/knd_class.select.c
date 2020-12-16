@@ -52,6 +52,8 @@ static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
+    struct kndClassEntry *entry;
+    struct kndClass *c;
     int err;
 
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
@@ -61,13 +63,19 @@ static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
         ctx->class_entry = ctx->repo->root_class->entry;
         return make_gsl_err(gsl_OK);
     }
-    err = knd_get_class_entry(ctx->repo, name, name_size, true, &ctx->class_entry, task);
+    err = knd_get_class_entry(ctx->repo, name, name_size, true, &entry, task);
     if (err) {
         KND_TASK_LOG("\"%.*s\" class name not found", name_size, name);
         task->ctx->http_code = HTTP_NOT_FOUND;
         task->ctx->error = knd_NO_MATCH;
         return make_gsl_err_external(err);
     }
+    err = knd_class_acquire(entry, &c, task);
+    if (err) {
+        KND_TASK_LOG("failed to acquire class \"%.*s\"", entry->name_size, entry->name);
+        return make_gsl_err_external(err);
+    }
+    ctx->class_entry = entry;
     return make_gsl_err(gsl_OK);
 }
 
@@ -163,17 +171,16 @@ static int facetize_class(void *obj,
 
             if (child_ref->entry != ref->entry) continue;
 
-            err = update_subset(task->facet, ref->entry, entry, task);              RET_ERR();
+            err = update_subset(task->payload, ref->entry, entry, task);              RET_ERR();
             return knd_OK;
         }
     }
     return knd_OK;
 }
 
-static int create_subsets(struct kndSet *set,
-                          struct kndClass *c,
-                          struct kndTask *task)
+static int create_subsets(struct kndSet *set, struct kndClass *c, struct kndTask *task)
 {
+    struct kndClassFacet *facet;
     int err;
 
     struct LocalContext ctx = {
@@ -181,19 +188,20 @@ static int create_subsets(struct kndSet *set,
         .class = c
     };
 
-    err = knd_class_facet_new(task->mempool, &task->facet);                       RET_ERR();
-    task->facet->base = set->base->class->entry;
+    err = knd_class_facet_new(task->mempool, &facet);                       RET_ERR();
+    facet->base = set->base->class->entry;
 
     knd_log(".. subsets in progress .. max set size:%zu base:%p",
             task->mempool->max_set_size, set->base->class);
 
+    task->payload = facet;
     err = set->map(set, facetize_class, (void*)&ctx);                             RET_ERR();
 
     return knd_OK;
 }
 
-static void free_facet(struct kndMemPool *mempool,
-                       struct kndClassFacet *parent_facet)
+#if 0
+static void free_facet(struct kndMemPool *mempool, struct kndClassFacet *parent_facet)
 {
     struct kndClassFacet *facet, *facet_next = NULL;
     struct kndClassRef *ref, *ref_next;
@@ -209,14 +217,7 @@ static void free_facet(struct kndMemPool *mempool,
     }
     knd_mempool_free(mempool, KND_MEMPAGE_TINY, (void*)parent_facet);
 }
-
-static void free_subsets(struct kndTask *task)
-{
-    free_facet(task->mempool, task->facet);
-    task->facet = NULL;
-    //knd_log("== mempool tiny pages in use: %zu",
-    //        task->mempool->tiny_pages_used);
-}
+#endif
 
 static gsl_err_t
 parse_get_class_by_numid(void *obj, const char *rec, size_t *total_size)
@@ -654,24 +655,38 @@ static gsl_err_t parse_import_class_inst(void *obj, const char *rec, size_t *tot
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
     struct kndCommit *commit = task->ctx->commit;
-    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndMemPool *mempool = task->mempool;
     struct kndClassEntry *entry = ctx->class_entry;
     struct kndRepo *repo = task->repo;
     struct kndRepoSnapshot *snapshot = atomic_load_explicit(&repo->snapshots, memory_order_relaxed);
     knd_task_spec_type orig_task_type = task->type;
+    struct kndRepoAccess *acl;
     struct kndClass *c;
     int err;
+
+    if (DEBUG_CLASS_SELECT_LEVEL_2)
+        knd_log(".. parse import class inst..");
 
     if (!entry) {
         KND_TASK_LOG("class entry not selected");
         return *total_size = 0, make_gsl_err_external(knd_FORMAT);
     }
+
     err = knd_class_acquire(entry, &c, task);
     if (err) {
         KND_TASK_LOG("failed to acquire class \"%.*s\"", entry->id_size, entry->id);
         return *total_size = 0, make_gsl_err_external(err);
     }
     if (task->user_ctx) {
+        acl = task->user_ctx->acls;
+        assert(acl != NULL);
+
+        if (!acl->allow_write) {
+            KND_TASK_LOG("writing not allowed");
+            err = knd_ACCESS;
+            if (err) return make_gsl_err_external(err);
+        }
+
         repo = task->user_ctx->repo;
         if (entry->repo != repo) {
             err = knd_class_entry_clone(ctx->class_entry, repo, &entry, task);
@@ -685,7 +700,7 @@ static gsl_err_t parse_import_class_inst(void *obj, const char *rec, size_t *tot
 
         switch (snapshot->role) {
         case KND_READER:
-            if (DEBUG_CLASS_SELECT_LEVEL_2)
+            if (DEBUG_CLASS_SELECT_LEVEL_TMP)
                 knd_log(">> snapshot %.*s (role:%d  task role:%d)", snapshot->path_size, snapshot->path, snapshot->role, task->role);
 
             snapshot->role = KND_WRITER;
@@ -713,6 +728,7 @@ static gsl_err_t parse_import_class_inst(void *obj, const char *rec, size_t *tot
     default:
         break;
     }
+
     err = knd_import_class_inst(entry, rec, total_size, task);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     return make_gsl_err(gsl_OK);
@@ -826,7 +842,7 @@ static gsl_err_t present_class_selection(void *obj, const char *unused_var(val),
                 err = knd_class_facets_export(task);
                 if (err) return make_gsl_err_external(err);
 
-                free_subsets(task);
+                // free_subsets(task);
 
                 return make_gsl_err(gsl_OK);
             }
@@ -866,7 +882,7 @@ static gsl_err_t present_class_selection(void *obj, const char *unused_var(val),
             err = knd_class_facets_export(task);
             if (err) return make_gsl_err_external(err);
 
-            free_subsets(task);
+            // free_subsets(task);
             return make_gsl_err(gsl_OK);
         }
 
@@ -879,8 +895,11 @@ static gsl_err_t present_class_selection(void *obj, const char *unused_var(val),
     if (entry) {
         c = atomic_load_explicit(&entry->class, memory_order_relaxed);
         if (!c) {
-            knd_log("-- unresolved class entry: %.*s", entry->name_size, entry->name);
-            return make_gsl_err(gsl_FAIL);
+            err = knd_class_acquire(entry, &c, task);
+            if (err) {
+                KND_TASK_LOG("failed to acquire class \"%.*s\"", entry->name_size, entry->name);
+                return make_gsl_err_external(err);
+            }
         }
         err = knd_class_export(c, task->ctx->format, task);
         if (err) {

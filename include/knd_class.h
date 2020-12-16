@@ -81,6 +81,9 @@ struct kndClassRef
     struct kndClassEntry *entry;
     struct kndClass      *class;
     struct kndAttr       *attr;
+    struct kndClassInstRef *insts;
+    struct kndSet        *inst_idx;
+
     struct kndClassIdx   *idx;
     struct kndProcIdx    *proc_idx;
     struct kndClassRef   *next;
@@ -181,9 +184,9 @@ struct kndClass
 
     struct kndSharedSet  * _Atomic inst_idx;
     struct kndSharedDict * _Atomic inst_name_idx;
+    size_t           num_snapshot_insts;
     atomic_size_t    num_insts;
     atomic_size_t    inst_id_count;
-
     
     /* detect vicious circles */
     bool resolving_in_progress;
@@ -204,6 +207,8 @@ int knd_get_class_entry(struct kndRepo *self, const char *name, size_t name_size
                         struct kndClassEntry **result, struct kndTask *task);
 int knd_get_class(struct kndRepo *self, const char *name, size_t name_size, struct kndClass **result, struct kndTask *task);
 int knd_get_class_by_id(struct kndRepo *self, const char *id, size_t id_size, struct kndClass **result, struct kndTask *task);
+int knd_get_class_entry_by_id(struct kndRepo *repo, const char *id, size_t id_size,
+                              struct kndClassEntry **result, struct kndTask *task);
 
 int knd_is_base(struct kndClass *self, struct kndClass *child);
 
@@ -215,14 +220,12 @@ int knd_empty_set_export_JSON(struct kndClass *self, struct kndTask *task);
 
 int knd_class_set_export_JSON(struct kndSet *set, struct kndTask *task);
 int knd_class_facets_export_JSON(struct kndTask *task);
-int knd_class_export_JSON(struct kndClass *self, struct kndTask *task);
+int knd_class_export_JSON(struct kndClass *self, struct kndTask *task, bool is_list_item, size_t depth);
 
 int knd_class_export(struct kndClass *self, knd_format format, struct kndTask *task);
 
 int knd_class_export_state(struct kndClassEntry *self, knd_format format, struct kndTask *task);
 
-gsl_err_t knd_parse_gloss_array(void *obj, const char *rec, size_t *total_size);
-gsl_err_t knd_parse_summary_array(void *obj, const char *rec, size_t *total_size);
 
 // knd_class.gsl.c
 int knd_export_class_state_GSL(struct kndClassEntry *self, struct kndTask *task);
@@ -250,6 +253,7 @@ int knd_class_unmarshall(const char *elem_id, size_t elem_id_size,
                          const char *val, size_t val_size, void **result, struct kndTask *task);
 
 int knd_class_read(struct kndClass *self, const char *rec, size_t *total_size, struct kndTask *task);
+int knd_class_inst_idx_fetch(struct kndClass *self, struct kndSharedDict **result, struct kndTask *task);
 
 int knd_class_export_GSP(struct kndClass *self, struct kndTask *task);
 int knd_class_export_commits_GSP(struct kndClass *self, struct kndClassCommit *commit, struct kndTask *task);

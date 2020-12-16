@@ -40,399 +40,102 @@
 #define DEBUG_ATTR_INDEX_LEVEL_5 0
 #define DEBUG_ATTR_INDEX_LEVEL_TMP 1
 
-static int update_attr_hub(struct kndClass   *topic,
-                           struct kndClass   *spec,
-                           struct kndClass   *hub_owner,
-                           struct kndAttrVar *item,
-                           struct kndAttr    *attr,
-                           struct kndTask    *task,
-                           bool is_ancestor);
-
-static int update_attr_facet(struct kndAttr *attr,
-                             struct kndClass *topic,
-                             struct kndClass *spec,
-                             struct kndTask *task)
+static int attr_hub_fetch(struct kndClass *owner, struct kndClassEntry *topic, struct kndAttr *attr,
+                          struct kndAttrHub **result, struct kndTask *task)
 {
-    struct kndSet *set;
-    struct kndAttrFacet *facet;
-    struct kndMemPool *mempool = task->mempool;
-    void *entry;
-    int err;
-
-    /*knd_log("\n\n.. update the \"%.*s\" attr facet: topic:%.*s spec:%.*s task:%p",
-            attr->name_size, attr->name,
-            topic->name_size, topic->name,
-            spec->name_size, spec->name, task);
-    */
-    set = attr->facet_idx;
-    if (!set) {
-        err = knd_set_new(mempool, &set);                                         RET_ERR();
-        attr->facet_idx = set;
-    }
-
-    err = set->get(set,
-                   spec->entry->id, spec->entry->id_size,
-                   (void**)&facet);
-    if (err) {
-        err = knd_attr_facet_new(mempool, &facet);                                RET_ERR();
-        err = knd_set_new(mempool, &facet->topics);                               RET_ERR();
-        err = set->add(set, spec->entry->id, spec->entry->id_size,
-                       (void*)facet);                                             RET_ERR();
-    }
-
-    err = facet->topics->get(facet->topics, topic->entry->id, topic->entry->id_size,
-                             &entry);
-    if (err == knd_OK) return knd_OK;
-
-    err = facet->topics->add(facet->topics,
-                             topic->entry->id, topic->entry->id_size,
-                             (void*)topic->entry);                                RET_ERR();
-    
-    return knd_OK;
-}
-
-int knd_index_attr(struct kndClass *self,
-                   struct kndAttr *attr,
-                   struct kndAttrVar *item,
-                   struct kndTask *task)
-{
-    struct kndClass *base;
-    struct kndClassRef *ref;
-    struct kndClass *c, *curr_class;
-    int err;
-
-    if (DEBUG_ATTR_INDEX_LEVEL_2) {
-        knd_log(".. indexing attr \"%.*s\" [type:%d] of class \"%.*s\" (id:%.*s)"
-                " refclass: \"%.*s\" (name:%.*s val:%.*s)",
-                attr->name_size, attr->name, attr->type,
-                self->entry->name_size, self->entry->name,
-                self->entry->id_size, self->entry->id,
-                attr->ref_classname_size, attr->ref_classname,
-                item->name_size, item->name, item->val_size, item->val);
-    }
-    if (!attr->ref_classname_size) return knd_OK;
-
-    /* template base class */
-    err = knd_get_class(self->entry->repo,
-                        attr->ref_classname,
-                        attr->ref_classname_size,
-                        &base, task);                                             RET_ERR();
-    if (!base->is_resolved) {
-        err = knd_class_resolve(base, task);                                      RET_ERR();
-    }
-
-    /* spec class */
-    err = knd_get_class(self->entry->repo,
-                        item->val, item->val_size, &c, task);                     RET_ERR();
-    item->class = c;
-    if (!c->is_resolved) {
-        err = knd_class_resolve(c, task);                                         RET_ERR();
-    }
-    err = knd_is_base(base, c);                                                   RET_ERR();
-    
-    err = update_attr_hub(self, c, c, item, attr, task, false);                               RET_ERR();
-
-    /* update the ancestors */
-    for (ref = c->ancestors; ref; ref = ref->next) {
-        curr_class = ref->class;
-        err = knd_is_base(base, curr_class);
-        if (err) continue;
-
-        if (DEBUG_ATTR_INDEX_LEVEL_2)
-            knd_log(".. update spec ancestor: %.*s",
-                    curr_class->name_size, curr_class->name);
-
-        err = update_attr_hub(self, c, curr_class, item, attr, task, true);                            RET_ERR();
-    }
-    return knd_OK;
-}
-
-int knd_index_attr_var_list(struct kndClass *self, struct kndAttr *attr, struct kndAttrVar *var, struct kndTask *task)
-{
-    struct kndClass *base;
-    struct kndClass *c, *curr_class;
-    struct kndClassRef *ref;
-    struct kndAttrVar *item = var;
-    const char *name;
-    size_t name_size;
-    int err;
-
-    if (DEBUG_ATTR_INDEX_LEVEL_2) {
-        knd_log("\n.. attr item list indexing.. (class:%.*s) "
-                ".. index attr: \"%.*s\" [type:%d]"
-                " refclass: \"%.*s\" (name:%.*s val:%.*s)",
-                self->entry->name_size, self->entry->name,
-                attr->name_size, attr->name, attr->type,
-                attr->ref_classname_size, attr->ref_classname,
-                item->name_size, item->name, item->val_size, item->val);
-    }
-
-    switch (attr->type) {
-    case KND_ATTR_INNER:
-        knd_log("..indexing inner class..\n");
-        break;
-    default:
-        break;
-    }
-
-    if (!attr->ref_classname) return knd_OK;
-
-    /* template base class */
-    // TODO atomic
-    base = attr->ref_class_entry->class;
-    if (!base) {
-        err = knd_get_class(self->entry->repo, attr->ref_classname, attr->ref_classname_size,
-                            &base, task);                                             RET_ERR();
-
-        if (!base->is_resolved) {
-            err = knd_class_resolve(base, task);                                      RET_ERR();
-            attr->ref_class_entry = base->entry;
-        }
-    }
-
-    for (item = var->list; item; item = item->next) {
-        if (DEBUG_ATTR_INDEX_LEVEL_2)
-            knd_log("== index list item: \"%.*s\" val:%.*s",
-                    item->name_size, item->name,
-                    item->val_size, item->val);
-        name = item->name;
-        name_size = item->name_size;
-        if (item->val_size) {
-            name = item->val;
-            name_size = item->val_size;
-        }
-
-        /* spec class */
-        err = knd_get_class(self->entry->repo,
-                            name, name_size, &c, task);                           RET_ERR();
-        item->class = c;
-        if (!c->is_resolved) {
-            err = knd_class_resolve(c, task);                                     RET_ERR();
-        }
-        err = knd_is_base(base, c);
-        if (err) {
-            knd_log("-- no inheritance from \"%.*s\" to \"%.*s\"",
-                    base->name_size, base->name, c->name_size, c->name);
-            return err;
-        }
-
-        /*** index direct rels ***/
-        err = update_attr_facet(item->attr, self, c, task);                       RET_ERR();
-        
-        /*** index inverse rels ***/
-
-        /* update immediate hub */
-        err = update_attr_hub(self, c, c, item, item->attr, task, false);                     RET_ERR();
-        /* update the ancestors */
-        for (ref = c->ancestors; ref; ref = ref->next) {
-            curr_class = ref->class;
-            if (base == curr_class) goto update_hub;
-
-            err = knd_is_base(base, curr_class);
-            if (err) continue;
-
-        update_hub:
-            if (DEBUG_ATTR_INDEX_LEVEL_2)
-                knd_log(".. updating the attr hub of \"%.*s\"",
-                        curr_class->name_size, curr_class->name);
-            err = update_attr_hub(self, c, curr_class, item, item->attr, task, true);                  RET_ERR();
-        }
-
-    }
-    return knd_OK;
-}
-
-static void str_hub_path(struct kndAttrVar *item)
-{
-    if (!item->parent) return;
-    knd_log("   in \"%.*s\"", item->parent->name_size, item->parent->name);
-    str_hub_path(item->parent);
-}
-
-static int update_attr_hub(struct kndClass   *topic,
-                           struct kndClass   *spec,
-                           struct kndClass   *hub_owner,
-                           struct kndAttrVar *unused_var(item),
-                           struct kndAttr    *attr,
-                           struct kndTask    *task,
-                           bool is_ancestor)
-{
+    struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndAttrHub *hub = NULL;
-    struct kndMemPool *mempool = task->mempool;
-    struct kndSet *set;
-    void *entry;
     int err;
-
-    if (DEBUG_ATTR_INDEX_LEVEL_2) {
-        knd_log(".. attr hub \"%.*s\" of class \"%.*s\" "
-                "to add topic \"%.*s\" (id:%.*s) and spec \"%.*s\" (id:%.*s)",
-                attr->name_size, attr->name,
-                hub_owner->name_size, hub_owner->name,
-                topic->name_size, topic->name,
-                topic->entry->id_size, topic->entry->id,
-                spec->name_size, spec->name,
-                spec->entry->id_size, spec->entry->id);
-    }
-
-    for (hub = hub_owner->attr_hubs; hub; hub = hub->next) {
+    FOREACH (hub, owner->attr_hubs) {
         if (hub->attr == attr) {
             break;
         }
     }
-
     if (!hub) {
-        err = knd_attr_hub_new(mempool, &hub);                                    RET_ERR();
+        err = knd_attr_hub_new(mempool, &hub);
+        KND_TASK_ERR("failed to alloc attr hub");
+        hub->topic_template = topic;
         hub->attr = attr;
-        hub->owner = hub_owner;
-        hub->next = hub_owner->attr_hubs;
-        hub_owner->attr_hubs = hub;
+        // hub->owner = owner;
+        hub->next = owner->attr_hubs;
+        owner->attr_hubs = hub;
+    }
+    *result = hub;
+    return knd_OK;
+}
+
+int knd_attr_hub_update(struct kndClass *owner, struct kndClassEntry *topic, struct kndClassInstEntry *topic_inst,
+                        struct kndClassEntry *spec, struct kndClassInstEntry *spec_inst,
+                        struct kndAttr *attr, struct kndAttrVar *unused_var(var), struct kndTask *task, bool unused_var(is_ancestor))
+{
+    struct kndMemPool *mempool = task->user_ctx->mempool;
+    struct kndAttrHub *hub;
+    struct kndSet *set;
+    struct kndClassRef *ref;
+    struct kndClassInstRef *inst_ref;
+    int err;
+
+    if (DEBUG_ATTR_INDEX_LEVEL_2) {
+        knd_log(".. attr hub \"%.*s\" of class \"%.*s\" to add topic \"%.*s\" (inst:%p) => spec \"%.*s\" (inst:%p)",
+                attr->name_size, attr->name, owner->name_size, owner->name,
+                topic->name_size, topic->name, topic_inst, spec->name_size, spec->name, spec_inst);
     }
 
-    // TODO: check logic
-    /*if (item->parent) {
-        knd_log("attr with a parent %p", item->parent);
-        err = update_attr_hub(topic, spec, &hub->parent,
-                              item->parent, item->parent->attr,
-                              task, is_ancestor);                                 RET_ERR();
-        return knd_OK;
-        }*/
-
-    if (DEBUG_ATTR_INDEX_LEVEL_2)
-        knd_log("++ terminal attr hub \"%.*s\" reached!",
-                attr->name_size, attr->name);
+    err = attr_hub_fetch(owner, topic, attr, &hub, task);
+    KND_TASK_ERR("failed to fetch attr hub");
 
     set = hub->topics;
     if (!set) {
-        err = knd_set_new(mempool, &set);                                         RET_ERR();
+        err = knd_set_new(mempool, &set);
+        KND_TASK_ERR("failed to alloc topic set for attr hub");
         hub->topics = set;
     }
 
-    /* topic is already registered? */
-    err = set->get(set, topic->entry->id, topic->entry->id_size,
-                   &entry);
-    if (err == knd_OK) {
-        if (DEBUG_ATTR_INDEX_LEVEL_2)
-            knd_log("?? topic %.*s (id:%.*s) already registered?",
-                    topic->entry->name_size, topic->entry->name,
-                    topic->entry->id_size, topic->entry->id);
-        return knd_OK;
-    }
-    err = set->add(set, topic->entry->id, topic->entry->id_size,
-                   (void*)topic->entry);                                          RET_ERR();
+    /* topic already registered? */
+    err = knd_set_get(set, topic->id, topic->id_size, (void**)&ref);
+    if (err) {
+        err = knd_class_ref_new(mempool, &ref);
+        KND_TASK_ERR("failed to alloc class ref");
+        ref->entry = topic;
 
-    /* register specs? */
-    if (!is_ancestor) return knd_OK;
-
-    set = hub->specs;
-    if (!set) {
-        err = knd_set_new(mempool, &set);                                         RET_ERR();
-        hub->specs = set;
+        err = knd_set_add(set, topic->id, topic->id_size, (void*)ref);
+        KND_TASK_ERR("failed to register class ref");
     }
 
-    /* spec is already registered? */
-    err = set->get(set, spec->entry->id, spec->entry->id_size, &entry);
-    if (err == knd_OK) {
-        return knd_OK;
+    if (topic_inst) {
+        err = knd_class_inst_ref_new(mempool, &inst_ref);
+        KND_TASK_ERR("failed to alloc a class inst ref");
+        inst_ref->entry = topic_inst;
+
+        inst_ref->next = ref->insts;
+        ref->insts = inst_ref;
     }
-
-    err = set->add(set, spec->entry->id, spec->entry->id_size, (void*)spec->entry);                                           RET_ERR();
-
     return knd_OK;
 }
 
-static int index_inner_class_ref(struct kndClass   *self, struct kndAttrVar *item, struct kndAttr *attr, struct kndTask *task)
+int knd_attr_index(struct kndClass *self, struct kndAttr *attr, struct kndTask *task)
 {
-    // TODO atomic
-    struct kndClass *base = attr->ref_class_entry->class;
-    struct kndClass *topic = NULL; // task->attr->parent_class;
-    struct kndClass *spec = item->class;
-    struct kndClassRef *ref;
-    struct kndClass *curr_class;
+    struct kndClass *base;
     int err;
 
-    if (DEBUG_ATTR_INDEX_LEVEL_TMP) {
-        knd_log("\n.. index path from \"%.*s\" (template:\"%.*s\")",
-                spec->name_size, spec->name,
-                base->name_size, base->name);
-        knd_log("   as \"%.*s\"", attr->name_size, attr->name);
-        str_hub_path(item);
-        knd_log("   of \"%.*s\" (desc of: %.*s)",
-                self->name_size, self->name,
-                topic->name_size, topic->name);
+    if (DEBUG_ATTR_INDEX_LEVEL_2) {
+        knd_log(".. indexing attr \"%.*s\" [type:%d] of class \"%.*s\" (id:%.*s)"
+                " refclass: \"%.*s\"",
+                attr->name_size, attr->name, attr->type,
+                self->entry->name_size, self->entry->name,
+                self->entry->id_size, self->entry->id,
+                attr->ref_classname_size, attr->ref_classname);
     }
+    if (!attr->ref_classname_size) return knd_OK;
 
-    err = update_attr_hub(self, spec, spec, item, attr, task, false);                               RET_ERR();
-
-    /* update the ancestors */
-    for (ref = spec->ancestors; ref; ref = ref->next) {
-        curr_class = ref->class;
-        err = knd_is_base(base, curr_class);
-        if (err) continue;
-        err = update_attr_hub(self, spec, curr_class,
-                              item, attr, task, true);                            RET_ERR();
+    /* template base class */
+    err = knd_get_class(self->entry->repo, attr->ref_classname, attr->ref_classname_size, &base, task);
+    KND_TASK_ERR("failed to get class %.*s", attr->ref_classname_size, attr->ref_classname);
+    if (!base->is_resolved) {
+        err = knd_class_resolve(base, task);
+        KND_TASK_ERR("failed to resolve base class %.*s", base->name_size, base->name);
     }
     return knd_OK;
 }
 
-static int index_attr_item(struct kndClass *self, struct kndAttr *attr, struct kndAttrVar *item, struct kndTask *task)
-{
-    char buf[KND_NAME_SIZE];
-    size_t buf_size = 0;
-    int err;
 
-    switch (attr->type) {
-    case KND_ATTR_NUM:
-        if (!attr->is_indexed) break;
-
-        if (DEBUG_ATTR_INDEX_LEVEL_2)
-            knd_log(".. indexing num attr: %.*s val:%.*s",
-                    item->name_size, item->name,
-                    item->val_size, item->val);
-
-        if (item->val_size) {
-            memcpy(buf, item->val, item->val_size);
-            buf_size = item->val_size;
-            buf[buf_size] = '\0';
-            
-            err = knd_parse_num(buf, &item->numval);
-            // TODO: float parsing
-        }
-        break;
-    case KND_ATTR_INNER:
-        if (DEBUG_ATTR_INDEX_LEVEL_2)
-            knd_log("== nested inner item found: %.*s", item->name_size, item->name);
-        err = knd_index_inner_attr_var(self, item, task);
-        if (err) return err;
-        break;
-    case KND_ATTR_REF:
-        if (!attr->is_indexed) break;
-        err = index_inner_class_ref(self, item, attr, task);                      RET_ERR();
-        break;
-    default:
-        break;
-    }
-    return knd_OK;
-}
-
-extern int knd_index_inner_attr_var(struct kndClass *self, struct kndAttrVar *var, struct kndTask *task)
-{
-    struct kndAttrVar *item;
-    int err;
-
-    if (DEBUG_ATTR_INDEX_LEVEL_2)
-        knd_log(".. index inner attr var \"%.*s\" (val:%.*s) "
-                " in class \"%.*s\" is list item:%d..",
-                var->name_size, var->name, var->val_size, var->val,
-                self->name_size, self->name, var->is_list_item);
-
-    if (var->implied_attr) {
-        err = index_attr_item(self, var->implied_attr, var, task);
-        if (err) return err;
-    }
-
-    /* index nested children */
-    for (item = var->children; item; item = item->next) {
-        err = index_attr_item(self, item->attr, item, task);                      RET_ERR();
-    }
-    return knd_OK;
-}

@@ -17,8 +17,20 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose the type of build." FORCE)
 endif()
 
+set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules)
+
+#parsing the semantic version
+include(GetGitRevisionDescription)
+git_describe(VERSION --tags --dirty=-dirty)
+string(REGEX REPLACE "^v([0-9]+)\\..*" "\\1" VERSION_MAJOR "${VERSION}")
+string(REGEX REPLACE "^v[0-9]+\\.([0-9]+).*" "\\1" VERSION_MINOR "${VERSION}")
+string(REGEX REPLACE "^v[0-9]+\\.[0-9]+\\.([0-9]+).*" "\\1" VERSION_PATCH "${VERSION}")
+string(REGEX REPLACE "^v[0-9]+\\.[0-9]+\\.[0-9]+(.*)" "\\1" VERSION_SHA1 "${VERSION}")
+set(VERSION_SHORT "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/knd_version.h.in
+                ${CMAKE_CURRENT_SOURCE_DIR}/include/knd_version.h)
+
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-  set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules)
   include(CodeCoverage)
   #APPEND_COVERAGE_COMPILER_FLAGS()
   #SETUP_TARGET_FOR_COVERAGE_LCOV(NAME ${PROJECT_NAME}_coverage
@@ -65,13 +77,19 @@ set(HEADERS include/knd_attr.h
         include/knd_set.h include/knd_shared_set.h include/knd_set_idx.h include/knd_shard.h
         include/knd_state.h include/knd_commit.h
         include/knd_task.h include/knd_text.h
-        include/knd_user.h include/knd_utils.h)
-set(SOURCES src/knd_attr.c src/knd_attr.gsp.c src/knd_attr.import.c src/knd_attr.index.c src/knd_attr.resolve.c src/knd_attr.select.c src/knd_attr.json.c src/knd_attr.gsl.c
-        src/knd_attr_var.import.c src/knd_attr_var.gsl.c src/knd_attr_var.gsp.c
-        src/knd_class.c src/knd_class.gsl.c src/knd_class.gsp.c
+        include/knd_user.h include/knd_utils.h include/knd_version.h)
+set(SOURCES src/knd_attr.c src/knd_attr.import.c src/knd_attr.index.c
+        src/knd_attr.read.c src/knd_attr.resolve.c src/knd_attr.select.c
+        src/knd_attr.json.c src/knd_attr.gsl.c src/knd_attr.gsp.c
+        src/knd_attr_var.import.c src/knd_attr_var.index.c src/knd_attr_var.resolve.c src/knd_attr_var.read.c
+        src/knd_attr_var.gsl.c src/knd_attr_var.json.c src/knd_attr_var.gsp.c
+        src/knd_class.c src/knd_class.gsl.c src/knd_class.gsp.c src/knd_class.read.c
         src/knd_class.import.c src/knd_class.json.c src/knd_class.resolve.c src/knd_class.index.c
         src/knd_class.select.c src/knd_class.states.c
-        src/knd_class_inst.c src/knd_class_inst.gsl.c src/knd_class_inst.gsp.c src/knd_class_inst.import.c src/knd_class_inst.json.c src/knd_class_inst.select.c src/knd_class_inst.resolve.c src/knd_class_inst.index.c
+        src/knd_class_inst.c src/knd_class_inst.gsl.c src/knd_class_inst.gsp.c
+        src/knd_class_inst.import.c src/knd_class_inst.read.c
+        src/knd_class_inst.json.c src/knd_class_inst.select.c
+        src/knd_class_inst.resolve.c src/knd_class_inst.index.c
         src/knd_cache.c
         src/knd_dict.c src/knd_shared_dict.c
         src/knd_mempool.c src/knd_num.c src/knd_output.c
@@ -85,7 +103,8 @@ set(SOURCES src/knd_attr.c src/knd_attr.gsp.c src/knd_attr.import.c src/knd_attr
         src/knd_state.c src/knd_commit.c
         src/knd_task.c src/knd_task.select.c
         src/knd_text.c src/knd_text.import.c src/knd_text.resolve.c src/knd_text.index.c
-        src/knd_text.search.c src/knd_text.select.c src/knd_text.export.c src/knd_text.gsp.c
+        src/knd_text.read.c src/knd_text.search.c src/knd_text.select.c
+        src/knd_text.gsl.c src/knd_text.gsp.c src/knd_text.json.c
         src/knd_user.c src/knd_utils.c)
 
 add_library(${PROJECT_NAME}_obj OBJECT ${HEADERS} ${SOURCES})
@@ -99,6 +118,3 @@ add_subdirectory(shell)
 
 install(DIRECTORY etc/knowdy/ DESTINATION etc/knowdy)
 install(DIRECTORY etc/systemd/system/ DESTINATION usr/lib/systemd/system)
-
-set(VERSION "0.8.0")
-

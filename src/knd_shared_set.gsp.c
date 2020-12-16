@@ -120,20 +120,23 @@ static int fetch_elem_linear_scan(const char *block, size_t block_size, const ch
 static int unmarshall_elems(struct kndSharedSetDir *dir, const char *block, size_t block_size,
                             char *idbuf, size_t idbuf_size, elem_unmarshall_cb cb, struct kndTask *task)
 {
-    char spec;
+    unsigned char spec;
     bool use_keys = false;
     size_t footer_size = 0;
     size_t cell_size = 0;
     size_t dir_size = 0;
+    size_t dir_field_size = 0;
     const char *b, *e;
     const unsigned char *c;
     size_t numval;
     size_t remainder;
+    size_t elem_id_val = 0;
     void *result;
+    size_t num_elems = KND_RADIX_BASE;
     int err;
 
     if (DEBUG_SHARED_SET_GSP_LEVEL_2)
-        knd_log(".. unmarshall payload block \"%.*s\"", block_size, block);
+        knd_log(".. unmarshall payload block \"%.*s\" (idbuf:%.*s)", block_size, block, idbuf_size, idbuf);
 
     // use keys spec
     spec = block[block_size - 1];
@@ -148,39 +151,67 @@ static int unmarshall_elems(struct kndSharedSetDir *dir, const char *block, size
 
     cell_size = spec;
 
-    if (DEBUG_SHARED_SET_GSP_LEVEL_3)
-        knd_log("== \"%.*s\" use keys:%d  cell size:%zu", idbuf_size, idbuf, use_keys, cell_size);
+    if (use_keys && cell_size > 0) {
+        footer_size++;
+        spec = block[block_size - footer_size];
+        num_elems = spec;
+        if (num_elems > KND_RADIX_BASE)
+            return knd_LIMIT;
+    }
 
-    // linear scan needed
-    if (use_keys) {
+    if (DEBUG_SHARED_SET_GSP_LEVEL_2)
+        knd_log("== \"%.*s\" use keys:%d  cell size:%zu  num elems:%zu",
+                idbuf_size, idbuf, use_keys, cell_size, num_elems);
+
+    /* linear scan of explicitly separated recs */
+    if (use_keys && cell_size == 0) {
         err = payload_linear_scan(dir, block, block_size - footer_size, idbuf, idbuf_size, cb, task);
         KND_TASK_ERR("failed to scan payload");
         dir->elems_linear_scan = true;
-    } else {
-        // fixed cell size
-        dir_size = KND_RADIX_BASE * cell_size;
-        if (block_size < dir_size + footer_size) return knd_LIMIT;
+        return knd_OK;
+    }
 
-        remainder = block_size - (dir_size + footer_size);
-        b = block + remainder;
-        e = block;
+    /* iterate over directory */
+    dir_field_size = cell_size;
+    if (use_keys)
+        dir_field_size = cell_size + 1; // add length of elem id
+        
+    dir_size = KND_RADIX_BASE * dir_field_size;
+    if (use_keys) {
+        dir_size = num_elems * dir_field_size;
+    }
+    if (block_size < (dir_size + footer_size)) return knd_LIMIT;
 
-        for (size_t i = 0; i < KND_RADIX_BASE; i++) {
-            c = (unsigned char*)b + (i * cell_size);
+    remainder = block_size - (dir_size + footer_size);
+    b = block + remainder;
+    e = block;
+    
+    for (size_t i = 0; i < num_elems; i++) {
+        c = (unsigned char*)b + (i * dir_field_size);
+        if (use_keys) {
+            numval = knd_unpack_int(c + 1, cell_size);  // skip over subdir's id
+            idbuf[idbuf_size] = *c;
+            elem_id_val = obj_id_base[*c];
+
+            if (DEBUG_SHARED_SET_GSP_LEVEL_2)
+                knd_log("%zu of %zu: elem id:%c numval:%zu payload \"%.*s\"",
+                        i, num_elems, *c, numval, numval, e);
+        } else {
             numval = knd_unpack_int(c, cell_size);
-            if (numval == 0) continue;
-            if (numval > remainder) return knd_LIMIT;
             idbuf[idbuf_size] = obj_id_seq[i];
-
-            dir->elem_block_sizes[i] = numval;
-
-            err = cb(idbuf, idbuf_size + 1, e, numval, &result, task);
-            KND_TASK_ERR("failed to unmarshall elem \"%.*s\"", idbuf_size + 1, idbuf);
-            dir->num_elems++;
-
-            e += numval;
-            remainder -= numval;
+            elem_id_val = i;
         }
+        if (numval == 0) continue;
+        if (numval > remainder) return knd_LIMIT;
+
+        dir->elem_block_sizes[elem_id_val] = numval;
+
+        err = cb(idbuf, idbuf_size + 1, e, numval, &result, task);
+        KND_TASK_ERR("failed to unmarshall elem \"%.*s\"", idbuf_size + 1, idbuf);
+        dir->num_elems++;
+
+        e += numval;
+        remainder -= numval;
     }
     return knd_OK;
 }
@@ -233,6 +264,7 @@ static int read_subdirs(struct kndSharedSet *self, struct kndSharedSetDir *dir,
 {
     unsigned char buf[KND_NAME_SIZE];
     struct kndSharedSetDir *subdir;
+    size_t num_subdirs = KND_RADIX_BASE;
     size_t spec_size = 2;
     ssize_t num_bytes;
     size_t subdir_area_size;
@@ -242,14 +274,17 @@ static int read_subdirs(struct kndSharedSet *self, struct kndSharedSetDir *dir,
     const unsigned char *c;
     size_t numval;
     size_t block_offset = 0;
+    size_t elem_id_val = 0;
     int err;
 
     if (DEBUG_SHARED_SET_GSP_LEVEL_2)
-        knd_log(".. reading subdirs from offset %zu + %zu", offset, parent_block_size);
+        knd_log(".. reading subdirs of \"%.*s\" from offset %zu + %zu",
+                idbuf_size, idbuf, offset, parent_block_size);
 
     // the last three bytes contain a dir size spec:
-    // dir_size (optional)   cell_size (1-4)   use_keys (0/1)
-    // [2]                   [1]               [0]
+    // num subdirs (if use_keys)  cell_size (1-4)   use_keys (0/1)
+    // [2]                        [1]               [0]
+
     lseek(fd, offset + parent_block_size - 3, SEEK_SET);
     num_bytes = read(fd, buf, 3);
     if (num_bytes != 3) return knd_IO_FAIL;
@@ -263,7 +298,8 @@ static int read_subdirs(struct kndSharedSet *self, struct kndSharedSetDir *dir,
 
     subdir_footer_size = KND_RADIX_BASE * cell_size;
     if (use_keys) {
-        subdir_footer_size = buf[0];
+        num_subdirs = buf[0];
+        subdir_footer_size = (num_subdirs * cell_size) + num_subdirs;
         spec_size = 3;
     }
     // make sure buf len is enough
@@ -279,9 +315,33 @@ static int read_subdirs(struct kndSharedSet *self, struct kndSharedSetDir *dir,
     if (num_bytes != (ssize_t)subdir_footer_size) return knd_IO_FAIL;
 
     if (use_keys) {
-        // TODO: subdir linear traversal
+        if (DEBUG_SHARED_SET_GSP_LEVEL_2)
+            knd_log(">> dir %.*s: subdir linear traversal needed (cell size:%zu footer size:%zu)",
+                    idbuf_size, idbuf, cell_size, subdir_footer_size);
+
+        for (size_t i = 0; i < num_subdirs; i++) {
+            c = (unsigned char*)buf + (i * (1 + cell_size));
+            numval = knd_unpack_int(c + 1, cell_size); // skip over subdir's id
+            if (numval == 0) continue;
+            idbuf[idbuf_size] = *c;
+            elem_id_val = obj_id_base[*c];
+
+            err = knd_shared_set_dir_new(self->mempool, &subdir);
+            KND_TASK_ERR("failed to alloc a set subdir");
+            subdir->total_size = numval;
+            subdir->global_offset = offset + block_offset;
+
+            err = unmarshall_block(self, subdir, fd, numval, idbuf, idbuf_size + 1, cb, task);
+            KND_TASK_ERR("failed to unmarshall subdir block %.*s", idbuf_size + 1, idbuf);
+
+            dir->subdirs[elem_id_val] = subdir;
+            dir->total_elems += subdir->total_elems;
+            block_offset += numval;
+        }
         return knd_OK;
     }
+
+    /* all subdirs are present in a footer */
     for (size_t i = 0; i < KND_RADIX_BASE; i++) {
         c = (unsigned char*)buf + (i * cell_size);
         numval = knd_unpack_int(c, cell_size);
@@ -312,8 +372,10 @@ static int unmarshall_block(struct kndSharedSet *self, struct kndSharedSetDir *d
     ssize_t num_bytes;
     size_t subdir_block_size;
     int err;
+
     if (DEBUG_SHARED_SET_GSP_LEVEL_2)
-        knd_log(".. unmarshall block from offset %zu (size: %zu)", dir->global_offset, block_size);
+        knd_log(">> id \"%.*s\" to unmarshall block from offset %zu (size: %zu)",
+                idbuf_size, idbuf, dir->global_offset, block_size);
 
     err = read_payload_size(dir, fd, dir->global_offset, block_size);
     KND_TASK_ERR("failed to read payload size");
@@ -390,8 +452,6 @@ int knd_shared_set_unmarshall_file(struct kndSharedSet *self, const char *filena
     self->dir = dir;
     self->num_elems = dir->total_elems;
 
-    knd_log("== total elems: %zu", self->num_elems);
-
  final:
     close(fd);
     return err;
@@ -413,7 +473,12 @@ static int read_elem(struct kndSharedSet *self, int fd, struct kndSharedSetDir *
 
     assert(dir != NULL);
 
-    idx_pos = obj_id_base[(unsigned int)*id];
+    idx_pos = obj_id_base[(unsigned char)*id];
+    if (idx_pos == -1) {
+        knd_log("-- invalid elem id");
+        return knd_FORMAT;
+    }
+
     if (id_size > 1) {
         subdir = atomic_load_explicit(&dir->subdirs[idx_pos], memory_order_relaxed);
         if (!subdir) return knd_NO_MATCH;
@@ -457,7 +522,7 @@ static int read_elem(struct kndSharedSet *self, int fd, struct kndSharedSetDir *
     num_bytes = read(fd, b, elem_block_size);
     if (num_bytes != (ssize_t)elem_block_size) return knd_IO_FAIL;
     
-    if (DEBUG_SHARED_SET_GSP_LEVEL_3)
+    if (DEBUG_SHARED_SET_GSP_LEVEL_2)
         knd_log("PAYLOAD BLOCK: %s (size: %zu)", b, elem_block_size);
 
     if (dir->elems_linear_scan) {

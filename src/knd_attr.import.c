@@ -2,6 +2,10 @@
 
 #include "knd_mempool.h"
 #include "knd_text.h"
+#include "knd_shared_set.h"
+#include "knd_set.h"
+#include "knd_repo.h"
+#include "knd_user.h"
 #include "knd_utils.h"
 
 #include <gsl-parser.h>
@@ -32,9 +36,23 @@ struct LocalContext {
 
 static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
 {
-    struct kndAttr *self = obj;
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    struct kndRepo *repo = task->repo;
+    struct kndAttr *self = ctx->attr;
+    struct kndCharSeq *seq;
+    int err;
+
     self->name = name;
     self->name_size = name_size;
+
+    /* register as a charseq */
+    err = knd_charseq_fetch(repo, name, name_size, &seq, task);
+    if (err) {
+        KND_TASK_LOG("failed to encode a class name charseq %.*s", name_size, name);
+        return make_gsl_err_external(err);
+    }
+    self->seq = seq;
     return make_gsl_err(gsl_OK);
 }
 
@@ -71,7 +89,7 @@ static gsl_err_t parse_proc(void *obj, const char *rec, size_t *total_size)
     struct kndAttr *self = ctx->attr;
     struct kndProc *proc;
     struct kndProcEntry *entry;
-    struct kndMemPool *mempool = task->mempool;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
     int err;
 
     err = knd_proc_new(mempool, &proc);
@@ -214,7 +232,6 @@ static gsl_err_t confirm_unique(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-
 gsl_err_t knd_import_attr(struct kndAttr *self, struct kndTask *task, const char *rec, size_t *total_size)
 {
     struct LocalContext ctx = {
@@ -225,7 +242,7 @@ gsl_err_t knd_import_attr(struct kndAttr *self, struct kndTask *task, const char
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_set_name,
-          .obj = self
+          .obj = &ctx
         },
         { .type = GSL_GET_ARRAY_STATE,
           .name = "_gloss",
@@ -286,6 +303,12 @@ gsl_err_t knd_import_attr(struct kndAttr *self, struct kndTask *task, const char
 
     err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (err.code) return err;
+
+    /* reassign glosses */
+    if (task->ctx->tr) {
+        self->tr = task->ctx->tr;
+        task->ctx->tr = NULL;
+    }
 
     if (self->type == KND_ATTR_INNER) {
         if (!self->ref_classname_size) {

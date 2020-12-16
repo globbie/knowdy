@@ -57,11 +57,8 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     struct kndClass *self = ctx->class;
     struct kndTask *task = ctx->task;
     struct kndRepo *repo = ctx->repo;
-    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
     struct kndClassEntry *entry;
     struct kndClass *c;
-    char idbuf[KND_ID_SIZE];
-    size_t idbuf_size;
     struct kndCharSeq *seq;
     int err;
 
@@ -81,34 +78,20 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
             self->name_size = name_size;
 
             /* register as a uniq class name */
-            err = knd_shared_dict_set(repo->class_name_idx, name, name_size, (void*)entry, task->mempool, NULL, NULL, false);
+            err = knd_shared_dict_set(repo->class_name_idx, name, name_size, (void*)entry,
+                                      task->user_ctx->mempool, NULL, NULL, false);
             if (err) {
-                knd_log("failed to register a class name");
+                KND_TASK_LOG("failed to register a class name");
                 return make_gsl_err_external(err);
             }
+            if (DEBUG_CLASS_IMPORT_LEVEL_2)
+                knd_log("++ new class registered: %.*s", name_size, name);
 
-            /* register as a normal charseq */
-            seq = knd_shared_dict_get(repo->str_dict, name, name_size);
-            if (!seq) {
-                err = knd_charseq_new(mempool, &seq);
-                seq->val = name;
-                seq->val_size = name_size;
-
-                seq->numid = atomic_fetch_add_explicit(&repo->num_strs, 1, memory_order_relaxed);
-
-                err = knd_shared_dict_set(repo->str_dict, name, name_size, (void*)seq,
-                                          mempool, NULL, &seq->item, false);
-                if (err) {
-                    KND_TASK_LOG("failed to register a class name charseq");
-                    return make_gsl_err_external(err);
-                }
-                knd_uid_create(seq->numid, idbuf, &idbuf_size);
-                err = knd_shared_set_add(repo->str_idx, idbuf, idbuf_size, (void*)seq);
-                if (err) {
-                    KND_TASK_LOG("failed to register a charseq by numid");
-                    return make_gsl_err_external(err);
-                }
-                // knd_log(">> class name as a str: \"%.*s\"", name_size, name);
+            /* register as a charseq */
+            err = knd_charseq_fetch(repo, name, name_size, &seq, task);
+            if (err) {
+                KND_TASK_LOG("failed to encode a class name charseq %.*s", name_size, name);
+                return make_gsl_err_external(err);
             }
             entry->seq = seq;
             return make_gsl_err(gsl_OK);
@@ -179,7 +162,7 @@ static gsl_err_t set_class_var(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx      = obj;
     struct kndTask *task          = ctx->task;
-    struct kndMemPool *mempool    = task->mempool;
+    struct kndMemPool *mempool    = task->user_ctx->mempool;
     struct kndClassVar *self      = ctx->class_var;
     struct kndRepo *repo          = task->repo;
     struct kndDict *class_name_idx = task->class_name_idx;
@@ -235,7 +218,7 @@ static gsl_err_t parse_attr(void *obj,
     struct kndClass *self = ctx->class;
     struct kndTask *task = ctx->task;
     struct kndAttr *attr;
-    struct kndMemPool *mempool = task->mempool;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
     const char *c;
     int err;
     gsl_err_t parser_err;
@@ -347,7 +330,7 @@ static gsl_err_t parse_baseclass(void *obj, const char *rec, size_t *total_size)
     struct kndTask *task = ctx->task;
     struct kndClass *self = ctx->class;
     struct kndClassVar *class_var;
-    struct kndMemPool *mempool = task->mempool;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
     gsl_err_t parser_err;
     int err;
 
@@ -392,7 +375,7 @@ static gsl_err_t add_uniq_attr(void *obj, const char *name, size_t name_size,
     struct LocalContext *ctx = obj;
     struct kndClass *self = ctx->class;
     struct kndTask *task = ctx->task;
-    struct kndMemPool *mempool = task->mempool;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndAttrRef *ref;
     int err;
 
@@ -435,7 +418,7 @@ static gsl_err_t parse_uniq_attr_constraint(void *obj, const char *rec, size_t *
 
 gsl_err_t knd_class_import(struct kndRepo *repo, const char *rec, size_t *total_size, struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndClass *c;
     struct kndClassEntry *entry;
     int err;

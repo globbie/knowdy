@@ -148,93 +148,91 @@ int knd_export_class_inst_state_JSON(struct kndClass *self, struct kndTask *task
     return knd_OK;
 }
 
-static int export_class_set_elem(void *obj,
-                                 const char *elem_id,
-                                 size_t elem_id_size,
-                                 size_t count,
-                                 void *elem)
+static int export_class_ref(void *obj, const char *unused_var(elem_id), size_t unused_var(elem_id_size),
+                            size_t unused_var(count), void *elem)
 {
     struct kndTask *task = obj;
-    if (count < task->start_from) return knd_OK;
-    if (task->batch_size >= task->batch_max) return knd_RANGE;
+    size_t indent_size = task->ctx->format_indent;
+    size_t depth = task->depth;
+    // if (count < task->start_from) return knd_OK;
+    // if (task->batch_size >= task->batch_max) return knd_RANGE;
 
     struct kndOutput *out = task->out;
-    struct kndClassEntry *entry = elem;
-    struct kndClass *c = entry->class;
-    struct kndState *state;
-    size_t state_gt = task->state_gt;
-    size_t curr_state = 0;
+    struct kndClassRef *ref = elem;
+    struct kndClassEntry *entry = ref->entry;
+    struct kndClassInstRef *inst_ref;
+    size_t inst_ref_count = 0;
     int err;
 
-    if (DEBUG_JSON_LEVEL_2)
-        knd_log(".. JSON export set elem: %.*s gt:%zu start from:%zu   batch max size:%zu",
-                elem_id_size, elem_id, task->state_gt, task->start_from, task->batch_max);
-    if (!c) {
-        //err = unfreeze_class(self, entry, &c);                                      RET_ERR();
-        return knd_OK;
-    }
-
-    state = c->states;
-    if (state && state->commit) {
-       curr_state = state->commit->numid;
-    }
-
-    //if (!task->show_removed_objs) {
-    //    if (state && state->phase == KND_REMOVED) return knd_OK;
-    //}
-
-    // TODO: move to select module
-
-    /* filter out the irrelevant states */
-    if (curr_state < state_gt)
-        return knd_OK;
-
-    /* any logical clause to filter? */
-    //if (task->attr_var) {
-        //knd_log("\n.. clause filtering is required: %p",
-        //        task->attr_var);
-        /* return early if the query conditions are not met */
-    //  err = knd_class_match_query(c, task->attr_var);
-    //  if (err) return knd_OK;
-    //}
-
-    /* separator */
     if (task->batch_size) {
-        err = out->writec(out, ',');                                              RET_ERR();
+        OUT(",", 1);
     }
-    task->depth = 0;
-    err = knd_class_export_JSON(c, task);                                         RET_ERR();
+    if (indent_size) {
+        OUT("\n", 1);
+        err = knd_print_offset(out, (depth) * indent_size);
+        RET_ERR();
+    }
+    OUT("{", 1);
+    if (indent_size) {
+        OUT("\n", 1);
+        err = knd_print_offset(out, (depth + 1) * indent_size);
+        RET_ERR();
+    }
+    OUT("\"class\":", strlen("\"class\":"));
+    if (indent_size) {
+        OUT(" ", 1);
+    }
+    OUT("\"", 1);
+    OUT(entry->name, entry->name_size);
+    OUT("\"", 1);
+
+    if (ref->insts) {
+        OUT(",", 1);
+        if (indent_size) {
+            OUT("\n", 1);
+            err = knd_print_offset(out, (depth + 1) * indent_size);
+            RET_ERR();
+        }
+        OUT("\"insts\":", strlen("\"insts\":"));
+        if (indent_size) {
+            OUT(" ", 1);
+        }
+        OUT("[", 1);
+        
+        FOREACH (inst_ref, ref->insts) {
+            if (inst_ref_count) {
+                OUT(",", 1);
+            }
+            OUT("{", 1);
+            OUT("\"name\":", strlen("\"name\":"));
+            if (indent_size) {
+                OUT(" ", 1);
+            }
+            OUT("\"", 1);
+            if (inst_ref->entry) {
+                OUT(inst_ref->entry->name, inst_ref->entry->name_size);
+            } else {
+                OUT(inst_ref->name, inst_ref->name_size);
+            }
+            OUT("\"", 1);
+            OUT("}", 1);
+            inst_ref_count++;
+        }
+        OUT("]", 1);
+    }
+    
+    if (indent_size) {
+        OUT("\n", 1);
+        err = knd_print_offset(out, (depth) * indent_size);
+        RET_ERR();
+    }
+    OUT("}", 1);
 
     task->batch_size++;
     return knd_OK;
 }
 
-
-
-static int export_gloss_JSON(struct kndClass *self,
-                             struct kndTask *task)
-{
-    struct kndOutput *out = task->out;
-    struct kndText *tr;
-    int err;
-
-    for (tr = self->tr; tr; tr = tr->next) {
-        if (task->ctx->locale_size != tr->locale_size) continue;
-
-        if (memcmp(task->ctx->locale, tr->locale, tr->locale_size)) {
-            continue;
-        }
-        err = out->write(out, ",\"_gloss\":\"", strlen(",\"_gloss\":\""));        RET_ERR();
-        err = out->write_escaped(out, tr->seq->val,  tr->seq->val_size);                    RET_ERR();
-        err = out->write(out, "\"", 1);                                           RET_ERR();
-        break;
-    }
-
-    return knd_OK;
-}
-
-static int export_concise_JSON(struct kndClass *self,
-                               struct kndTask *task)
+static int export_concise_JSON(struct kndClass *self, struct kndTask *task)
 {
     struct kndClassVar *item;
     int err;
@@ -243,12 +241,11 @@ static int export_concise_JSON(struct kndClass *self,
         knd_log(".. export concise JSON for %.*s..",
                 self->entry->name_size, self->entry->name);
 
-    for (item = self->baseclass_vars; item; item = item->next) {
+    FOREACH (item, self->baseclass_vars) {
         if (!item->attrs) continue;
-        err = knd_attr_vars_export_JSON(item->attrs,
-                                        task, true);      RET_ERR();
+        err = knd_attr_vars_export_JSON(item->attrs, task, true, 0);
+        KND_TASK_ERR("failed to export attr vars JSON");
     }
-
     if (DEBUG_JSON_LEVEL_2)
         knd_log(".. export inherited attrs of %.*s..",
                 self->entry->name_size, self->entry->name);
@@ -271,35 +268,6 @@ extern int knd_empty_set_export_JSON(struct kndClass *unused_var(self),
     return knd_OK;
 }
 
-/*static int export_class_ref(void *obj,
-                            const char *unused_var(elem_id),
-                            size_t unused_var(elem_id_size),
-                            size_t count,
-                            void *elem)
-{
-    struct kndTask *task = obj;
-    struct kndOutput *out = task->out;
-    struct kndClassEntry *entry = elem;
-    struct kndClass *c = entry->class;
-    size_t curr_depth = 0;
-    size_t curr_max_depth = 0;
-    int err;
-
-    if (count) {
-        err = out->writec(out, ',');                                              RET_ERR();
-    }
-    curr_depth = task->depth;
-    curr_max_depth = task->max_depth;
-    task->depth = 0;
-    task->max_depth = 0;
-    err = knd_class_export_JSON(c, task);
-    if (err) return err;
-    task->depth = curr_depth;
-    task->max_depth = curr_max_depth;
-    return knd_OK;
-}
-*/
-
 static int export_facet(struct kndClassFacet *parent_facet, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
@@ -315,7 +283,7 @@ static int export_facet(struct kndClassFacet *parent_facet, struct kndTask *task
                      parent_facet->base->name_size);                               RET_ERR();
     err = out->writec(out, '"');                                                  RET_ERR();
 
-    err = export_gloss_JSON(parent_facet->base->class, task);                     RET_ERR();
+    // err = export_gloss_JSON(parent_facet->base->class, task);                     RET_ERR();
 
     err = export_concise_JSON(parent_facet->base->class, task);                   RET_ERR();
     
@@ -341,7 +309,8 @@ static int export_facet(struct kndClassFacet *parent_facet, struct kndTask *task
             if (in_list) {
                 err = out->writec(out, ',');                                      RET_ERR();
             }
-            err = knd_class_export_JSON(ref->entry->class, task);                 RET_ERR();
+            err = knd_class_export_JSON(ref->entry->class, task, false, 0);
+            RET_ERR();
             in_list = true;
         }
         err = out->writec(out, ']');                                              RET_ERR();
@@ -352,9 +321,10 @@ static int export_facet(struct kndClassFacet *parent_facet, struct kndTask *task
     return knd_OK;
 }
 
-extern int knd_class_facets_export_JSON(struct kndTask *task)
+int knd_class_facets_export_JSON(struct kndTask *task)
 {
     struct kndClassFacet *facet;
+    struct kndClassFacet *facets = NULL;
     struct kndOutput *out = task->out;
     bool in_list = false;
     int err;
@@ -362,7 +332,7 @@ extern int knd_class_facets_export_JSON(struct kndTask *task)
     err = out->write(out, "{\"_facets\":[",
                      strlen("{\"_facets\":["));                                   RET_ERR();
 
-    for (facet = task->facet->children; facet; facet = facet->next) {
+    FOREACH (facet, facets) {
         if (in_list) {
             err = out->writec(out, ',');                                          RET_ERR();
         }
@@ -376,8 +346,7 @@ extern int knd_class_facets_export_JSON(struct kndTask *task)
     return knd_OK;
 }
 
-extern int knd_class_set_export_JSON(struct kndSet *set,
-                                     struct kndTask *task)
+extern int knd_class_set_export_JSON(struct kndSet *set, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     size_t curr_depth = 0;
@@ -387,8 +356,8 @@ extern int knd_class_set_export_JSON(struct kndSet *set,
 
     /* TODO: present child clauses */
     if (set->base) {
-        err = out->write(out, "\"_is\":\"",
-                         strlen("\"_is\":\""));                                   RET_ERR();
+        err = out->write(out, "\"is\":\"",
+                         strlen("\"is\":\""));                                   RET_ERR();
         err = out->write(out, set->base->name,  set->base->name_size);            RET_ERR();
         err = out->writec(out, '"');                                              RET_ERR();
     }
@@ -408,8 +377,8 @@ extern int knd_class_set_export_JSON(struct kndSet *set,
     curr_depth = task->ctx->max_depth;
     task->ctx->max_depth = 1;
 
-    err = set->map(set, export_class_set_elem, (void*)task);
-    if (err && err != knd_RANGE) return err;
+    // err = set->map(set, export_class_set_elem, (void*)task);
+    // if (err && err != knd_RANGE) return err;
     task->ctx->max_depth = curr_depth;
 
     err = out->writec(out, ']');                                                  RET_ERR();
@@ -439,275 +408,364 @@ extern int knd_class_set_export_JSON(struct kndSet *set,
     return knd_OK;
 }
 
-
-static int present_subclass(struct kndClassRef *ref,
-                            struct kndTask *task)
+static int present_subclass(struct kndClassRef *ref, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     struct kndClassEntry *entry = ref->entry;
     struct kndClass *c;
+    size_t indent_size = task->ctx->format_indent;
     int err;
 
-    err = out->write(out, "{\"_name\":\"", strlen("{\"_name\":\""));              RET_ERR();
-    err = out->write(out, entry->name, entry->name_size);                         RET_ERR();
-    err = out->write(out, "\"", 1);                                               RET_ERR();
+    if (indent_size) {
+        OUT("\n", 1);
+        err = knd_print_offset(out, depth * indent_size);
+        RET_ERR();
+    }
 
-    err = out->write(out, ",\"_id\":", strlen(",\"_id\":"));                      RET_ERR();
-    err = out->writef(out, "%zu", entry->numid);                                  RET_ERR();
+    OUT("{", 1);
+    if (indent_size) {
+        OUT("\n", 1);
+        err = knd_print_offset(out, (depth + 1) * indent_size);
+        RET_ERR();
+    }
+    OUT("\"name\":", strlen("\"name\":"));
+    if (indent_size) {
+        OUT(" ", 1);
+    }
+    OUT("\"", 1);
+    OUT(entry->name, entry->name_size);
+    OUT("\"", 1);
 
-    if (ref->entry->class->num_terminals) {
+    /*if (ref->entry->class->num_terminals) {
         err = out->write(out, ",\"_num_terminals\":",
                          strlen(",\"_num_terminals\":"));                         RET_ERR();
         err = out->writef(out, "%zu", ref->entry->class->num_terminals);                      RET_ERR();
-    }
+        }*/
 
-    /* localized glosses */
-    c = entry->class;
-    if (!c) {
-        //err = unfreeze_class(self, entry, &c);                          RET_ERR();
+    /* get localized gloss */
+    err = knd_class_acquire(entry, &c, task);
+    KND_TASK_ERR("failed to acquire a subclass %.*s", entry->name_size, entry->name);
+    if (c->tr) {
+        err = knd_text_gloss_export_JSON(c->tr, task, depth + 1);
+        KND_TASK_ERR("failed to export subclass gloss JSON");
     }
-    err = export_gloss_JSON(c, task);                                             RET_ERR();
-    err = export_concise_JSON(c, task);                                           RET_ERR();
-    err = out->writec(out, '}');                                                  RET_ERR();
+    if (indent_size) {
+        OUT("\n", 1);
+        err = knd_print_offset(out, depth * indent_size);
+        RET_ERR();
+    }
+    OUT("}", 1);
     return knd_OK;
 }
 
-static int present_subclasses(struct kndClass *self, size_t num_children, struct kndTask *task)
+static int present_subclasses(struct kndClass *self, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     struct kndClassRef *ref;
-    struct kndClassEntry *entry = self->entry;
-    struct kndClassEntry *orig_entry = entry->base;
-    struct kndClass *c;
-    struct kndState *state;
     bool in_list = false;
+    size_t indent_size = task->ctx->format_indent;
     int err;
 
-    err = out->write(out, ",\"_num_subclasses\":",
-                     strlen(",\"_num_subclasses\":"));                            RET_ERR();
-
-    err = out->writef(out, "%zu", num_children);                                  RET_ERR();
-
-    if (self->num_terminals) {
-        err = out->write(out, ",\"_num_terminals\":",
-                         strlen(",\"_num_terminals\":"));                         RET_ERR();
-        err = out->writef(out, "%zu", self->num_terminals);                      RET_ERR();
+    OUT(",", 1);
+    if (indent_size) {
+        OUT("\n", 1);
+        err = knd_print_offset(out, depth * indent_size);
+        RET_ERR();
     }
+    OUT("\"num-subclasses\":", strlen("\"num-subclasses\":"));
+    if (indent_size) {
+        OUT(" ", 1);
+    }
+    OUTF("%zu", self->num_children);
+    OUT(",", 1);
 
-    err = out->write(out, ",\"_subclasses\":[",
-                     strlen(",\"_subclasses\":["));                               RET_ERR();
-    
-    for (ref = self->children; ref; ref = ref->next) {
-        c = ref->class;
-        // TODO: defreeze
-        if (!c) continue;
-        
-        state = ref->entry->class->states;
-        if (state && state->phase == KND_REMOVED) continue;
+    /*if (self->num_terminals) {
+        OUT("\"num-terminals\":", strlen("\"num-terminals\":"));
+        OUT("%zu,", self->num_terminals);
+        }*/
 
+    if (indent_size) {
+        OUT("\n", 1);
+        err = knd_print_offset(out, depth * indent_size);
+        RET_ERR();
+    }
+  
+    OUT("\"subclasses\":", strlen("\"subclasses\":"));
+    if (indent_size) {
+        OUT(" ", 1);
+    }
+    OUT("[", 1);
+
+    FOREACH (ref, self->children) {
         if (in_list) {
-            err = out->write(out, ",", 1);                                        RET_ERR();
+            OUT(",", 1);
         }
-
-        err = present_subclass(ref, task);                                        RET_ERR();
+        err = present_subclass(ref, task, depth + 1);
+        KND_TASK_ERR("failed to present subclass JSON");
         in_list = true;
     }
-
-    if (orig_entry) {
-        for (ref = orig_entry->class->children; ref; ref = ref->next) {
-            c = ref->class;
-            // TODO: defreeze
-            if (!c) continue;
-
-            state = ref->entry->class->states;
-            if (state && state->phase == KND_REMOVED) continue;
-
-            if (in_list) {
-                err = out->write(out, ",", 1);                                    RET_ERR();
-            }
-            err = present_subclass(ref, task);                                    RET_ERR();
-            in_list = true;
-        }
+    if (indent_size) {
+        OUT("\n", 1);
+        err = knd_print_offset(out, depth * indent_size);
+        RET_ERR();
     }
-    
-    err = out->write(out, "]", 1);                                                RET_ERR();
-    
+    OUT("]", 1);    
     return knd_OK;
 }
 
-static int export_attrs(struct kndClass *self,
-                        struct kndTask *task)
+static int export_attrs(struct kndClass *self, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndAttr *attr;
-    size_t i = 0;
+    size_t count = 0;
     int err;
-    err = out->write(out, ",\"_attrs\":{",
-                     strlen(",\"_attrs\":{"));   RET_ERR();
-    
-    for (attr = self->attrs; attr; attr = attr->next) {
-        if (i) {
-            err = out->write(out, ",", 1);  RET_ERR();
+    OUT(",\"attrs\":{", strlen(",\"attrs\":{"));
+    FOREACH (attr, self->attrs) {
+        if (count) {
+            OUT(",", 1);
         }
         err = knd_attr_export(attr, KND_FORMAT_JSON, task);
-        if (err) {
-            if (DEBUG_JSON_LEVEL_TMP)
-                knd_log("-- failed to export %.*s attr",
-                        attr->name_size, attr->name);
-            return err;
-        }
-        i++;
+        KND_TASK_ERR("failed to export %.*s attr", attr->name_size, attr->name);
+        count++;
     }
-    err = out->writec(out, '}'); RET_ERR();
+    OUT("}", 1);
     return knd_OK;
 }
 
-static int export_inverse_attrs(struct kndClass *self,
-                                struct kndTask *task)
+static int export_inverse_rels(struct kndClass *self, struct kndTask *task, size_t depth)
 {
     struct kndAttrHub *attr_hub;
     struct kndAttr *attr;
-    struct kndSet *set;
     struct kndOutput *out = task->out;
     bool in_list = false;
     size_t curr_depth = 0;
+    size_t indent_size = task->ctx->format_indent;
     int err;
 
-    err = out->write(out,
-                     ",\"_inverse_attrs\":[",
-                     strlen(",\"_inverse_attrs\":["));                            RET_ERR();
+    OUT(",", 1);
+    if (indent_size) {
+        OUT("\n", 1);
+        err = knd_print_offset(out, (depth) * indent_size);
+        RET_ERR();
+    }
 
+    OUT("\"rels\":", strlen("\"rels\":"));
+    if (indent_size) {
+        OUT(" ", 1);
+    }
+    OUT("[", 1);
+    
     FOREACH (attr_hub, self->attr_hubs) {
         if (in_list) {
-                err = out->writec(out, ',');                                      RET_ERR();
+            OUT(",", 1);
+        }
+        if (!attr_hub->attr) {
+            err = knd_attr_hub_resolve(attr_hub, task);
+            KND_TASK_ERR("failed to resolve attr hub");
         }
         attr = attr_hub->attr;
+        if (indent_size) {
+            OUT("\n", 1);
+            err = knd_print_offset(out, (depth + 1) * indent_size);
+            RET_ERR();
+        }
 
-        err = out->writec(out, '{');                                              RET_ERR();
-        err = out->write(out, "\"class\":\"",
-                         strlen("\"class\":\""));                            RET_ERR();
-        err = out->write(out,
-                         attr->parent_class->name,
-                         attr->parent_class->name_size);                      RET_ERR();
-        err = out->writec(out, '"');                                          RET_ERR();
-        
-        err = out->write(out, ",\"attr\":\"",
-                         strlen(",\"attr\":\""));                             RET_ERR();
-        err = out->write(out, attr->name,
-                         attr->name_size);                                    RET_ERR();
-        err = out->writec(out, '"');                                          RET_ERR();
+        OUT("{", 1);
+        if (indent_size) {
+            OUT("\n", 1);
+            err = knd_print_offset(out, (depth + 2) * indent_size);
+            RET_ERR();
+        }
+        OUT("\"class\":", strlen("\"class\":"));
+        if (indent_size) {
+            OUT(" ", 1);
+        }
+        OUT("\"", 1);
+        OUT(attr->parent_class->name, attr->parent_class->name_size);
+        OUT("\"", 1);
+
+        OUT(",", 1);
+        if (indent_size) {
+            OUT("\n", 1);
+            err = knd_print_offset(out, (depth + 2) * indent_size);
+            RET_ERR();
+        }
+        OUT("\"attr\":", strlen("\"attr\":"));
+        if (indent_size) {
+            OUT(" ", 1);
+        }
+        OUT("\"", 1);
+        OUT(attr->name, attr->name_size);
+        OUT("\"", 1);
         
         if (attr_hub->topics) {
-            err = out->write(out, ",\"total\":",
-                             strlen(",\"total\":"));                          RET_ERR();
-            err = out->writef(out, "%zu",
-                              attr_hub->topics->num_valid_elems);             RET_ERR();
+            OUT(",", 1);
+            if (indent_size) {
+                OUT("\n", 1);
+                err = knd_print_offset(out, (depth + 2) * indent_size);
+                RET_ERR();
+            }
+            OUT("\"total\":", strlen("\"total\":"));
+            if (indent_size) {
+                OUT(" ", 1);
+            }
+            OUTF("%zu", attr_hub->topics->num_valid_elems);
         
-            //if (task->show_inverse_rels) {
             curr_depth = task->ctx->max_depth;
             task->ctx->max_depth = 0;
+            task->depth = depth + 3;
             task->batch_size = 0;
-            set = attr_hub->topics;
-            err = out->write(out, ",\"topics\":[",
-                             strlen(",\"topics\":["));                         RET_ERR();
-            err = set->map(set, export_class_set_elem, (void*)task);
+            OUT(",", 1);
+            if (indent_size) {
+                OUT("\n", 1);
+                err = knd_print_offset(out, (depth + 2) * indent_size);
+                RET_ERR();
+            }
+            OUT("\"topics\":", strlen("\"topics\":"));
+            if (indent_size) {
+                OUT(" ", 1);
+            }
+            OUT("[", 1);
+            err = knd_set_map(attr_hub->topics, export_class_ref, (void*)task);
             if (err && err != knd_RANGE) return err;
-            err = out->writec(out, ']');                                      RET_ERR();
+
+            if (indent_size) {
+                OUT("\n", 1);
+                err = knd_print_offset(out, (depth + 2) * indent_size);
+                RET_ERR();
+            }
+            OUT("]", 1);
             task->ctx->max_depth = curr_depth;
         }
-        err = out->writec(out, '}');                                          RET_ERR();
+
+        if (indent_size) {
+            OUT("\n", 1);
+            err = knd_print_offset(out, (depth + 1) * indent_size);
+            RET_ERR();
+        }
+        OUT("}", 1);
         in_list = true;
     }
-    err = out->writec(out, ']');                                              RET_ERR();
-    
+    if (indent_size) {
+        OUT("\n", 1);
+        err = knd_print_offset(out, (depth) * indent_size);
+        RET_ERR();
+    }
+    OUT("]", 1);
     return knd_OK;
 }
 
-static int export_baseclass_vars(struct kndClass *self,
-                                 struct kndTask *task)
+static int export_baseclasses(struct kndClass *self, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
-    struct kndClassVar *item;
-    size_t item_count = 0;
+    struct kndClassVar *cvar;
+    struct kndClass *c;
+    size_t count = 0;
+    size_t indent_size = task->ctx->format_indent;
     int err;
 
-    err = out->write(out, ",\"_is\":[", strlen(",\"_is\":["));                    RET_ERR();
+    if (DEBUG_JSON_LEVEL_2)
+        knd_log(".. export baseclasses of %.*s", self->name_size, self->name);
 
-    for (item = self->baseclass_vars; item; item = item->next) {
-        if (item_count) {
-            err = out->write(out, ",", 1);                                        RET_ERR();
-        }
-
-        err = out->write(out, "{\"_name\":\"", strlen("{\"_name\":\""));          RET_ERR();
-        err = out->write(out, item->entry->name, item->entry->name_size);         RET_ERR();
-        err = out->write(out, "\"", 1);                                           RET_ERR();
-
-        err = out->write(out, ",\"_id\":", strlen(",\"_id\":"));                  RET_ERR();
-        err = out->writef(out, "%zu", item->numid);                               RET_ERR();
-
-        if (item->entry->class) {
-            err = export_gloss_JSON(item->entry->class, task);                     RET_ERR();
-        }
-
-        if (item->attrs) {
-            //item->attrs->depth = task->depth;
-            //item->attrs->max_depth = task->ctx->max_depth;
-            err = knd_attr_vars_export_JSON(item->attrs,
-                                            task, false);      RET_ERR();
-        }
-
-        /*if (self->num_computed_attrs) {
-            if (DEBUG_JSON_LEVEL_TMP)
-                knd_log("\n.. export computed attrs of class %.*s",
-                        self->name_size, self->name);
-            err = present_computed_class_attrs(self, item);
-            if (err) return err;
-            }*/
-
-
-        err = out->write(out, "}", 1);      RET_ERR();
-        item_count++;
+    OUT(",", 1);
+    if (indent_size) {
+        OUT("\n", 1);
+        err = knd_print_offset(out, depth * indent_size);
+        RET_ERR();
     }
-    err = out->write(out, "]", 1);
-    if (err) return err;
 
+    OUT("\"is\":", strlen("\"is\":"));
+    if (indent_size) {
+        OUT(" ", 1);
+    }
+    OUT("[", 1);
+
+    FOREACH (cvar, self->baseclass_vars) {
+        if (count) {
+            OUT(",", 1);
+        }
+        if (indent_size) {
+            OUT("\n", 1);
+            err = knd_print_offset(out, (depth + 1) * indent_size);
+            RET_ERR();
+        }
+        OUT("{", 1);
+        if (indent_size) {
+            OUT("\n", 1);
+            err = knd_print_offset(out, (depth + 2) * indent_size);
+            RET_ERR();
+        }
+        OUT("\"name\":", strlen("\"name\":"));
+        if (indent_size) {
+            OUT(" ", 1);
+        }
+        OUT("\"", 1);
+        OUT(cvar->entry->name, cvar->entry->name_size);
+        OUT("\"", 1);
+
+        /* get localized gloss */
+        err = knd_class_acquire(cvar->entry, &c, task);
+        KND_TASK_ERR("failed to acquire base class %.*s", cvar->entry->name_size, cvar->entry->name);
+        if (c->tr) {
+            err = knd_text_gloss_export_JSON(c->tr, task, depth + 2);
+            KND_TASK_ERR("failed to export baseclass gloss JSON");
+        }
+
+        /* attr vars */
+        if (cvar->attrs) {
+            err = knd_attr_vars_export_JSON(cvar->attrs, task, false, depth + 2);
+            KND_TASK_ERR("failed to export attr vars JSON");
+        }
+
+        if (indent_size) {
+            OUT("\n", 1);
+            err = knd_print_offset(out, (depth + 1) * indent_size);
+            RET_ERR();
+        }
+        OUT("}", 1);
+        count++;
+    }
+    if (indent_size) {
+        OUT("\n", 1);
+        err = knd_print_offset(out, depth * indent_size);
+        RET_ERR();
+    }
+    OUT("]", 1);
     return knd_OK;
 }
                                      
-int knd_class_export_JSON(struct kndClass *self, struct kndTask *task)
+int knd_class_export_JSON(struct kndClass *self, struct kndTask *task, bool unused_var(is_list_item), size_t depth)
 {
     struct kndClassEntry *entry = self->entry;
     struct kndClassEntry *orig_entry = entry->base;
     struct kndOutput *out = task->out;
-    //struct kndSet *set;
     struct kndState *state = self->states;
-    size_t num_children;
+    size_t indent_size = task->ctx->format_indent;
     int err;
 
-    if (DEBUG_JSON_LEVEL_2) {
-        knd_log("\n.. JSON export: \"%.*s\" (repo:%.*s)  depth:%zu max depth:%zu",
-                entry->name_size, entry->name,
-                entry->repo->name_size, entry->repo->name,
+    if (DEBUG_JSON_LEVEL_2)
+        knd_log(".. JSON export: \"%.*s\" (repo:%.*s)  depth:%zu max depth:%zu",
+                entry->name_size, entry->name, entry->repo->name_size, entry->repo->name,
                 task->depth, task->ctx->max_depth);
-    }
 
-    err = out->write(out, "{", 1);                                                RET_ERR();
-    err = out->write(out, "\"_name\":\"", strlen("\"_name\":\""));                RET_ERR();
+    OUT("{", 1);
+    if (indent_size) {
+        OUT("\n", 1);
+        err = knd_print_offset(out, (depth + 1) * indent_size);
+        RET_ERR();
+    }
+    OUT("\"name\":", strlen("\"name\":"));
+    if (indent_size) {
+        OUT(" ", 1);
+    }
+    OUT("\"", 1);
     err = out->write_escaped(out, entry->name, entry->name_size);                 RET_ERR();
-    err = out->writec(out, '"');                                                  RET_ERR();
+    OUT("\"", 1);
 
-    err = out->write(out, ",\"_id\":", strlen(",\"_id\":"));                      RET_ERR();
-    err = out->writef(out, "%zu", entry->numid);                                  RET_ERR();
-
-    if (task->ctx->max_depth == 0) {
-        err = export_gloss_JSON(self, task);                                      RET_ERR();
-        goto final;
+    if (self->tr) {
+        err = knd_text_gloss_export_JSON(self->tr, task, depth + 1);
+        KND_TASK_ERR("failed to export gloss JSON");
     }
-
-    err = out->write(out, ",\"_repo\":\"", strlen(",\"_repo\":\""));              RET_ERR();
-    err = out->write(out, entry->repo->name,
-                     entry->repo->name_size);                                     RET_ERR();
-    err = out->writec(out, '"');                                                  RET_ERR();
 
     if (state) {
         err = out->write(out, ",\"_state\":", strlen(",\"_state\":"));            RET_ERR();
@@ -740,8 +798,7 @@ int knd_class_export_JSON(struct kndClass *self, struct kndTask *task)
         }
     }
 
-    if (task->depth >= task->ctx->max_depth) {
-        /* any concise fields? */
+    if (task->depth > task->ctx->max_depth) {
         err = export_concise_JSON(self, task);                                    RET_ERR();
         goto final;
     }
@@ -753,23 +810,20 @@ int knd_class_export_JSON(struct kndClass *self, struct kndTask *task)
         err = knd_export_class_state_JSON(entry, task);                            RET_ERR();
     }
 
-    /*if (self->num_inst_states) {
-        err = out->writec(out, ',');
-        if (err) return err;
-        err = export_class_inst_state_JSON(self);                                      RET_ERR();
-        }*/
-
     /* display base classes only once */
     if (self->num_baseclass_vars) {
-        err = export_baseclass_vars(self, task);                          RET_ERR();
-    } else {
+        err = export_baseclasses(self, task, depth + 1);
+        KND_TASK_ERR("failed to export baseclass JSON");
+    }
+    /*else {
         if (orig_entry && orig_entry->class->num_baseclass_vars) {
             err = export_baseclass_vars(orig_entry->class, task);         RET_ERR();
         }
-    }
+        }*/
 
     if (self->attrs) {
-        err = export_attrs(self, task); RET_ERR();
+        err = export_attrs(self, task);
+        KND_TASK_ERR("failed to export attrs JSON");
     } else {
         if (orig_entry && orig_entry->class->num_attrs) {
             err = export_attrs(orig_entry->class, task);                   RET_ERR();
@@ -781,44 +835,37 @@ int knd_class_export_JSON(struct kndClass *self, struct kndTask *task)
     //err = set->map(set, knd_export_inherited_attr, (void*)task); 
     //if (err && err != knd_RANGE) return err;
 
-    num_children = entry->class->num_children;
-    if (self->desc_states) {
-        state = self->desc_states;
-        if (state->val) 
-            num_children = state->val->val_size;
-    }
-
-    if (orig_entry)
-        num_children += orig_entry->class->num_children;
-
-    if (num_children) {
-        err = present_subclasses(self, num_children, task);                        RET_ERR();
+    if (self->num_children) {
+        err = present_subclasses(self, task, depth + 1);
+        KND_TASK_ERR("failed to export subclasses in JSON");
     }
 
     /* instances */
     if (self->inst_idx) {
-        err = out->write(out, ",\"_insts\":{",
-                         strlen(",\"_insts\":{"));                            RET_ERR();
-
+        OUT(",\"instances\":{", strlen(",\"instances\":{"));
         if (self->inst_states) {
-            err = knd_export_class_inst_state_JSON(self, task);                         RET_ERR();
+            err = knd_export_class_inst_state_JSON(self, task);
+            RET_ERR();
         }
 
         // TODO navigation facets?
-
         err = out->writec(out, '}');
         if (err) return err;
     }
 
     /* inverse relations */
     if (self->attr_hubs) {
-        err = export_inverse_attrs(self, task);                         RET_ERR();
+        err = export_inverse_rels(self, task, depth + 1);
+        KND_TASK_ERR("failed to export JSON inverse rels");
     }
     
  final:
-    err = out->write(out, "}", 1);
-    if (err) return err;
-
+    if (indent_size) {
+        OUT("\n", 1);
+        err = knd_print_offset(out, (depth) * indent_size);
+        RET_ERR();
+    }
+    OUT("}", 1);
     return knd_OK;
 }
 

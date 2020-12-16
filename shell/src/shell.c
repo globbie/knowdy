@@ -32,6 +32,7 @@
 
 #include "knd_config.h"
 #include "knd_shard.h"
+#include "knd_user.h"
 #include "knd_utils.h"
 
 static const char *options_string = "c:h?";
@@ -48,12 +49,50 @@ static void display_usage(void)
     fprintf(stderr, "\nUsage: knd-shell --config=path_to_your_config\n\n");
 }
 
+static int check_file_rec(struct kndTask *task, const char *rec, size_t rec_size,
+                          struct kndMemBlock **result) 
+{
+    char buf[1024];
+    size_t buf_size;
+    size_t prefix_size = strlen("{file ");
+    struct stat st;
+    struct kndMemBlock *memblock;
+    int err;
+
+    if (memcmp(rec, "{file ", prefix_size)) {
+        return knd_OK;
+    }
+    rec += prefix_size;
+    buf_size = rec_size - prefix_size - 1; 
+    memcpy(buf, rec, buf_size);
+    buf[buf_size] = '\0';
+
+    knd_log(".. reading input file \"%.*s\"", buf_size, buf);
+
+    if (stat(buf, &st)) {
+        knd_log("-- no such file: \"%.*s\"", buf_size, buf);
+        return knd_FAIL;
+    }
+    if ((size_t)st.st_size >= 1024 * 1024) {
+        err = knd_LIMIT;
+        KND_TASK_ERR("max input file size limit reached");
+    }
+
+    err = knd_task_read_file_block(task, buf, (size_t)st.st_size, &memblock);
+    KND_TASK_ERR("failed to read memblock from file \"%.*s\"", buf_size, buf);
+
+    *result = memblock;
+    return knd_OK;
+}
+
 static int knd_interact(struct kndShard *shard)                      
 {
     struct kndTask *writer_task, *reader_task;
+    struct kndOutput *out;
     char  *buf;
     size_t buf_size;
-    const char  *block;
+    struct kndMemBlock *memblock = NULL;
+    const char *block;
     size_t block_size;
     int err;
 
@@ -69,7 +108,15 @@ static int knd_interact(struct kndShard *shard)
     if (!reader_task->ctx) return knd_NOMEM;
     reader_task->role = KND_READER;
 
-    knd_log("\n++ Knowdy shard service is up and running! (agent role:%d)\n", shard->role);
+    out = reader_task->out;
+    out->reset(out);
+    shard->mempool->present(shard->mempool, out);
+    knd_log("** System Mempool\n%.*s", out->buf_size, out->buf);
+    out->reset(out);
+    shard->user->mempool->present(shard->user->mempool, out);
+    knd_log("** User Space Mempool\n%.*s", out->buf_size, out->buf);
+
+    knd_log("\n++ Knowdy shard service is up and running! (agent role:%d  Knowdy version:%s)\n", shard->role, KND_VERSION);
     knd_log("   (finish session by pressing Ctrl+C)\n");
 
     while ((buf = readline(">> ")) != NULL) {
@@ -80,16 +127,30 @@ static int knd_interact(struct kndShard *shard)
         if (!buf_size) continue;
 
         printf("[%s :%zu]\n", buf, buf_size);
+        block = buf;
+        block_size = buf_size;
 
+        err = check_file_rec(reader_task, buf, buf_size, &memblock);
+        if (err) goto next_line;
+
+        if (memblock) {
+            block = memblock->buf;
+            block_size = memblock->buf_size;
+        }
+            
         knd_task_reset(reader_task);
-        err = knd_task_run(reader_task, buf, buf_size);
+        err = knd_task_run(reader_task, block, block_size);
         if (err != knd_OK) {
-            knd_log("-- task run failed: %.*s",
-                    reader_task->output_size, reader_task->output);
+            knd_log("-- task run failed: %.*s", reader_task->output_size, reader_task->output);
             goto next_line;
         }
-        knd_log("== READER RESULT ==\n%.*s", reader_task->output_size, reader_task->output);
+        knd_log("== Reader's output:\n%.*s", reader_task->output_size, reader_task->output);
+        
 
+        // out->reset(out);
+        // reader_task->mempool->present(reader_task->mempool, out);
+        // knd_log("** Task Mempool (%p)\n%.*s", reader_task->mempool, out->buf_size, out->buf);
+        
         /* update tasks require another run,
            possibly involving network communication */
         switch (reader_task->ctx->phase) {
@@ -103,20 +164,22 @@ static int knd_interact(struct kndShard *shard)
             knd_task_reset(writer_task);
             err = knd_task_run(writer_task, block, block_size);
             if (err != knd_OK) {
-                knd_log("-- update confirm failed: %.*s",
-                        writer_task->output_size, writer_task->output);
+                knd_log("-- update confirm failed: %.*s", writer_task->output_size, writer_task->output);
                 goto next_line;
             }
-            knd_log("== ARBITER RESULT ==\n%.*s",
-                    writer_task->output_size, writer_task->output);
+            knd_log("== Arbiter's output:\n%.*s", writer_task->output_size, writer_task->output);
             break;
         default:
             break;
         }
-
         /* readline allocates a new buffer every time */
     next_line:
         free(buf);
+        if (memblock) {
+            // free(memblock->buf);
+            //free(memblock);
+            memblock = NULL;
+        }
     }
     return knd_OK;
 }

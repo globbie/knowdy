@@ -49,52 +49,45 @@ int knd_attr_export_GSL(struct kndAttr *self, struct kndTask *task, size_t depth
     size_t type_name_size = strlen(knd_attr_names[self->type]);
     int err;
 
-    err = out->write(out, "{", 1);                                                RET_ERR();
-    err = out->write(out, type_name, type_name_size);                             RET_ERR();
-    err = out->write(out, " ", 1);                                                RET_ERR();
-    err = out->write(out, self->name, self->name_size);                           RET_ERR();
+    OUT("{", 1);              
+    OUT(type_name, type_name_size);  
+    OUT(" ", 1);                     
+    OUT(self->name, self->name_size);
+
+    OUT("{id ", strlen("{id"));
+    OUT(" ", 1);
+    OUT(self->id, self->id_size);
+    OUT("}", 1);
 
     if (self->is_a_set) {
-        err = out->write(out, " {t set}", strlen(" {t set}"));
-        if (err) return err;
+        OUT(" {t set}", strlen(" {t set}"));
     }
 
     if (self->is_implied) {
-        err = out->write(out, " {impl}", strlen(" {impl}"));
-        if (err) return err;
+        OUT(" {impl}", strlen(" {impl}"));
     }
 
     if (self->is_indexed) {
-        err = out->write(out, " {idx}", strlen(" {idx}"));
-        if (err) return err;
+        OUT(" {idx}", strlen(" {idx}"));
     }
 
     if (self->concise_level) {
         buf_size = sprintf(buf, "%zu", self->concise_level);
-        err = out->write(out, " {concise ", strlen(" {concise "));
-        if (err) return err;
-        err = out->write(out, buf, buf_size);
-        if (err) return err;
-        err = out->writec(out, '}');
-        if (err) return err;
+        OUT(" {concise ", strlen(" {concise "));
+        OUT(buf, buf_size);
+        OUT("}", 1);
     }
 
     if (self->ref_classname_size) {
-        err = out->write(out, " {c ", strlen(" {c "));
-        if (err) return err;
-        err = out->write(out, self->ref_classname, self->ref_classname_size);
-        if (err) return err;
-        err = out->write(out, "}", 1);
-        if (err) return err;
+        OUT(" {c ", strlen(" {c "));
+        OUT(self->ref_classname, self->ref_classname_size);
+        OUT("}", 1);
     }
 
     if (self->ref_procname_size) {
-        err = out->write(out, " {p ", strlen(" {p "));
-        if (err) return err;
-        err = out->write(out, self->ref_procname, self->ref_procname_size);
-        if (err) return err;
-        err = out->write(out, "}", 1);
-        if (err) return err;
+        OUT(" {p ", strlen(" {p "));
+        OUT(self->ref_procname, self->ref_procname_size);
+        OUT("}", 1);
     }
 
     /* choose gloss */
@@ -103,30 +96,21 @@ int knd_attr_export_GSL(struct kndAttr *self, struct kndTask *task, size_t depth
             err = out->writec(out, '\n');                                         RET_ERR();
             err = knd_print_offset(out, (depth + 1) * task->ctx->format_offset);  RET_ERR();
         }
-        err = out->write(out,
-                         "[_g", strlen("[_g"));
-        if (err) return err;
+        OUT("[_g", strlen("[_g"));
     }
 
     for (tr = self->tr; tr; tr = tr->next) {
-        err = out->write(out, "{", 1);
-        if (err) return err;
-        err = out->write(out, tr->locale,  tr->locale_size);
-        if (err) return err;
-        err = out->write(out, "{t ", 3);
-        if (err) return err;
-        err = out->write(out, tr->seq->val,  tr->seq->val_size);
-        if (err) return err;
-        err = out->write(out, "}}", 2);
-        if (err) return err;
+        OUT("{", 1);
+        OUT(tr->locale,  tr->locale_size);
+        OUT("{t ", 3);
+        OUT(tr->seq->val,  tr->seq->val_size);
+        OUT("}}", 2);
     }
     if (self->tr) {
-        err = out->write(out, "]", 1);
-        if (err) return err;
+        OUT("]", 1);
     }
 
-    err = out->write(out, "}", 1);
-    if (err) return err;
+    OUT("}", 1);
 
     return knd_OK;
 }

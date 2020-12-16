@@ -122,6 +122,7 @@ struct kndTaskContext {
 
     knd_format format;
     size_t format_offset;
+    size_t format_indent;
 
     struct kndText *tr;
 
@@ -212,12 +213,12 @@ struct kndTask
     size_t max_depth;
 
     struct kndUserContext *user_ctx;
+    struct kndUserContext *default_user_ctx;
 
     struct kndRepo *system_repo;
     struct kndRepo *repo;
 
-    struct kndClassFacet *facet;
-    struct kndSet *set;
+    void *payload;
 
     struct kndConcFolder *folders;
     size_t num_folders;

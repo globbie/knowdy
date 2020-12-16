@@ -142,16 +142,15 @@ static int present_latest_state_JSON(struct kndRepo *self, struct kndOutput *out
     return knd_OK;
 }
 
-static gsl_err_t present_repo_state(void *obj,
-                                    const char *unused_var(name),
-                                    size_t unused_var(name_size))
+static gsl_err_t present_repo_state(void *obj, const char *unused_var(name), size_t unused_var(name_size))
 {
     struct kndTask *task = obj;
     struct kndRepo *repo = task->repo;
     struct kndOutput *out = task->out;
-    struct kndMemPool *mempool = task->mempool;
-    struct kndSet *set;
+    // struct kndMemPool *mempool = task->mempool;
     int err;
+
+    knd_log(".. present repo state..");
 
     if (!repo) {
         knd_log("-- no repo selected");
@@ -163,7 +162,9 @@ static gsl_err_t present_repo_state(void *obj,
         return make_gsl_err(gsl_OK);
     }
 
+    
     task->type = KND_SELECT_STATE;
+
     /* restore:    if (!repo->commits) goto show_curr_state;
     commit = repo->commits;
     if (task->state_gt >= commit->numid) goto show_curr_state;
@@ -173,52 +174,19 @@ static gsl_err_t present_repo_state(void *obj,
     //if (task->state_lt && task->state_lt < task->state_gt) goto show_curr_state;
 
     // TODO
-    size_t latest_commit_id = atomic_load_explicit(&repo->snapshots->num_commits, memory_order_relaxed);
-    task->state_lt = latest_commit_id + 1;
+    // size_t latest_commit_id = atomic_load_explicit(&repo->snapshots->num_commits, memory_order_relaxed);
+    // task->state_lt = latest_commit_id + 1;
 
-    if (DEBUG_REPO_LEVEL_2) {
-        knd_log(".. select repo delta:  gt %zu  lt %zu  eq:%zu..",
-                task->state_gt, task->state_lt, task->state_eq);
-    }
-
-    err = knd_set_new(mempool, &set);
-    if (err) return make_gsl_err_external(err);
-    set->mempool = mempool;
-
-    /*err = select_commit_range(repo,
-                              task->state_gt, task->state_lt,
-                              task->state_eq, set);
-    if (err) return make_gsl_err_external(err);
-    */
-
-    // export
-    task->show_removed_objs = true;
-
-    // TODO: formats
-    err = knd_class_set_export_JSON(set, task);
-    if (err) return make_gsl_err_external(err);
-
-    return make_gsl_err(gsl_OK);
-    
-    /*show_curr_state:
-
-    switch (task->format) {
-    case KND_FORMAT_JSON:
+    switch (task->ctx->format) {
+    default:
         err = present_latest_state_JSON(repo, out);  
         if (err) return make_gsl_err_external(err);
         break;
-    default:
-        err = present_latest_state_GSL(repo, out);  
-        if (err) return make_gsl_err_external(err);
-        break;
     }
-    */
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_repo_state(void *obj,
-                                  const char *rec,
-                                  size_t *total_size)
+static gsl_err_t parse_repo_state(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
 
@@ -268,40 +236,32 @@ static gsl_err_t run_select_repo(void *obj, const char *name, size_t name_size)
 
     if (!name_size) return make_gsl_err(gsl_FAIL);
 
-    if (task->user_ctx) {
-        switch (*name) {
-        case '~':
-            // knd_log("== private repo selected: %p", task->user_ctx->repo);
-            return make_gsl_err(gsl_OK);
-        default:
-            break;
-        }
-        knd_log("== read-only base repo selected!");
-        task->repo = task->shard->user->repo;
+    switch (*name) {
+    case '/':
         return make_gsl_err(gsl_OK);
+    case '~':
+        repo = task->user_ctx->repo;
+        if (DEBUG_REPO_LEVEL_2)
+            knd_log("== user base repo selected: %.*s",
+                    repo->name_size, repo->name);
+        task->repo = repo;
+        return make_gsl_err(gsl_OK);
+    default:
+        task->repo = task->user_ctx->repo;
+        break;
     }
 
-    /* system repo */
-    if (name_size == 1) {
-        switch (*name) {
-        case '/':
-            return make_gsl_err(gsl_OK);
-        default:
-            break;
-        }
-    }
-    repo = knd_shared_dict_get(task->shard->repo_name_idx, name, name_size);
+    /*repo = knd_shared_dict_get(task->shard->repo_name_idx, name, name_size);
     if (!repo) {
         KND_TASK_LOG("no such repo: %.*s", name_size, name);
         return make_gsl_err(gsl_FAIL);
     }
     task->repo = repo;
+    */
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_class_select(void *obj,
-                                    const char *rec,
-                                    size_t *total_size)
+static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
     struct kndUserContext *ctx = task->user_ctx;
@@ -311,13 +271,10 @@ static gsl_err_t parse_class_select(void *obj,
     if (ctx && ctx->repo) {
         repo = ctx->repo;
     }
-
     return knd_class_select(repo, rec, total_size, task);
 }
 
-static gsl_err_t parse_class_import(void *obj,
-                                    const char *rec,
-                                    size_t *total_size)
+static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
     struct kndUserContext *ctx = task->user_ctx;
@@ -342,12 +299,43 @@ static gsl_err_t parse_class_import(void *obj,
     return knd_class_import(repo, rec, total_size, task);
 }
 
+static gsl_err_t parse_snapshot_task(void *obj, const char *unused_var(rec), size_t *total_size)
+{
+    struct kndTask *task = obj;
+    int err;
+
+    task->type = KND_SNAPSHOT_STATE;
+    err = knd_repo_snapshot(task->repo, task);
+    if (err) {
+        KND_TASK_LOG("failed to build a snapshot of repo %.*s", task->repo->name_size, task->repo->name);
+        return *total_size = 0, make_gsl_err(gsl_FAIL);
+    }
+    return *total_size = 0, make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t decode_seq(void *obj, const char *val, size_t val_size)
+{
+    struct kndTask *task = obj;
+    struct kndCharSeq *seq;
+    int err;
+
+    err = knd_charseq_decode(task->repo, val, val_size, &seq, task);
+    if (err) {
+        KND_TASK_LOG("failed to decode a text charseq %.*s", val_size, val);
+        return make_gsl_err_external(err);
+    }
+    if (DEBUG_REPO_LEVEL_3)
+        knd_log(">> text seq:%.*s", seq->val_size, seq->val);
+    return make_gsl_err(gsl_OK);
+}
+
 gsl_err_t knd_parse_repo(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
 
     struct gslTaskSpec specs[] = {
         {   .is_implied = true,
+            .is_selector = true,
             .run = run_select_repo,
             .obj = task
         },
@@ -371,6 +359,20 @@ gsl_err_t knd_parse_repo(void *obj, const char *rec, size_t *total_size)
           .name_size = strlen("_commit_from"),
           .parse = gsl_parse_size_t,
           .obj = &task->state_eq
+        },
+        { .name = "_snapshot",
+          .name_size = strlen("_snapshot"),
+          .parse = parse_snapshot_task,
+          .obj = task
+        },
+        { .name = "_seq",
+          .name_size = strlen("_seq"),
+          .run = decode_seq,
+          .obj = task
+        },
+        { .is_default = true,
+          .run = present_repo_state,
+          .obj = task
         }
     };
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
@@ -384,8 +386,7 @@ static gsl_err_t run_read_include(void *obj, const char *name, size_t name_size)
     int err;
 
     if (DEBUG_REPO_LEVEL_2)
-        knd_log(".. include file name: \"%.*s\" [%zu]",
-                (int)name_size, name, name_size);
+        knd_log(".. include file name: \"%.*s\" [%zu]", (int)name_size, name, name_size);
     if (!name_size) return make_gsl_err(gsl_FORMAT);
 
     err = knd_conc_folder_new(mempool, &folder);
@@ -620,7 +621,7 @@ static int restore_journals(struct kndRepo *self, struct kndRepoSnapshot *snapsh
             KND_TASK_ERR("journal size limit reached");
         }
 
-        if (DEBUG_REPO_LEVEL_TMP)
+        if (DEBUG_REPO_LEVEL_2)
             knd_log(".. restoring the journal file: %.*s", buf_size, buf);
 
         err = knd_task_read_file_block(task, buf, (size_t)st.st_size, &memblock);
@@ -650,7 +651,7 @@ static int fetch_str_idx(struct kndRepo *self, const char *path, size_t path_siz
     if (stat(out->buf, &st)) {
         return knd_NO_MATCH;
     }
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_2)
         knd_log(".. reading str idx \"%.*s\" [%zu]", out->buf_size, out->buf, (size_t)st.st_size);
 
     err = knd_shared_set_unmarshall_file(self->str_idx, out->buf, out->buf_size,
@@ -675,7 +676,6 @@ static int fetch_class_storage(struct kndRepo *self, const char *path, size_t pa
     if (stat(out->buf, &st)) {
         return knd_NO_MATCH;
     }
-
     if (DEBUG_REPO_LEVEL_TMP)
         knd_log(".. reading class storage: %.*s [%zu]", out->buf_size, out->buf, (size_t)st.st_size);
 
@@ -699,7 +699,7 @@ static int apply_commit(void *obj, const char *unused_var(elem_id), size_t unuse
     size_t total_size = commit->rec_size;
     int err;
 
-    if (DEBUG_REPO_LEVEL_TMP)
+    if (DEBUG_REPO_LEVEL_2)
         knd_log(".. applying commit #%zu: %.*s", commit->numid, commit->rec_size, commit->rec);
 
     task->mempool = NULL;
@@ -1038,7 +1038,7 @@ static int read_source_files(struct kndRepo *self, struct kndTask *task)
     int err;
 
     if (DEBUG_REPO_LEVEL_TMP)
-        knd_log(".. loading schema GSL files");
+        knd_log(".. initial loading of schema GSL files");
 
     /* read a system-wide schema */
     task->type = KND_LOAD_STATE;
@@ -1053,6 +1053,7 @@ static int read_source_files(struct kndRepo *self, struct kndTask *task)
 
     err = index_classes(self, task);
     KND_TASK_ERR("class indexing failed");
+    
     return knd_OK;
 }
 
@@ -1067,9 +1068,13 @@ int knd_repo_restore(struct kndRepo *self, struct kndRepoSnapshot *snapshot, str
     if (DEBUG_REPO_LEVEL_TMP) {
         const char *owner_name = "/";
         size_t owner_name_size = 1;
-        if (task->user_ctx) {
+        switch (task->user_ctx->type) {
+        case KND_USER_AUTHENTICATED:
             owner_name = task->user_ctx->inst->name;
             owner_name_size =  task->user_ctx->inst->name_size;
+            break;
+        default:
+            break;
         }
         knd_log(".. restoring the latest snapshot #%zu of repo \"%.*s\" (owner:%.*s) ",
                 snapshot->numid, self->name_size, self->name, owner_name_size, owner_name);
@@ -1134,29 +1139,39 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
     if (DEBUG_REPO_LEVEL_TMP) {
         const char *owner_name = "/";
         size_t owner_name_size = 1;
-        if (task->user_ctx) {
+        switch (task->user_ctx->type) {
+        case KND_USER_AUTHENTICATED:
             owner_name = task->user_ctx->inst->name;
             owner_name_size =  task->user_ctx->inst->name_size;
+            break;
+        default:
+            break;
         }
-        knd_log(".. open repo \"%.*s\" (owner:%.*s  open mode:%d)",
-                self->name_size, self->name, owner_name_size, owner_name, task->role);
+        knd_log(".. open \"%.*s\" Repo (owner:%.*s  open mode:%d acls:%p)",
+                self->name_size, self->name, owner_name_size, owner_name,
+                task->role, task->user_ctx->acls);
+
+        out->reset(out);
+        mempool->present(mempool, out);
+        knd_log("** Repo Mempool\n%.*s", out->buf_size, out->buf);
     }
     out->reset(out);
-    err = out->write(out, task->path, task->path_size);
-    KND_TASK_ERR("system path construction failed");
+    OUT(task->path, task->path_size);
 
-    if (task->user_ctx) {
+    if (task->user_ctx && task->user_ctx->path_size) {
         OUT(task->user_ctx->path, task->user_ctx->path_size);
     }
     if (self->path_size) {
-        err = out->write(out, self->path, self->path_size);
-        KND_TASK_ERR("repo path construction failed");
+        OUT(self->path, self->path_size);
     }
 
     for (size_t i = 0; i < KND_MAX_SNAPSHOTS; i++) {
         buf_size = snprintf(buf, KND_TEMP_BUF_SIZE, "snapshot_%zu/", i);
-        err = out->write(out, buf, buf_size);
-        KND_TASK_ERR("snapshot path construction failed");
+        OUT(buf, buf_size);
+
+        if (DEBUG_REPO_LEVEL_2)
+            knd_log(".. try snapshot path: %.*s", out->buf_size, out->buf);
+
         if (stat(out->buf, &st)) {
             out->rtrim(out, buf_size);
             break;
@@ -1167,9 +1182,13 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
 
     if (latest_snapshot_id < 0) {
         knd_log("no snapshots of \"%.*s\" found", self->name_size, self->name);
-        if (!task->user_ctx) {
+        switch (task->user_ctx->type) {
+        case KND_USER_DEFAULT:
             err = read_source_files(self, task);
             KND_TASK_ERR("failed to read GSL source files");
+            break;
+        default:
+            break;
         }
         return knd_OK;
     }
@@ -1197,10 +1216,13 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
     err = fetch_class_storage(self, snapshot->path, snapshot->path_size, task);
     switch (err) {
     case knd_NO_MATCH:
-        // read classes from source files
-        if (!task->user_ctx) {
+        switch (task->user_ctx->type) {
+        case KND_USER_DEFAULT:
             err = read_source_files(self, task);
             KND_TASK_ERR("failed to read GSL source files");
+            break;
+        default:
+            break;
         }
         break;
     case knd_OK:
@@ -1289,10 +1311,14 @@ static int export_commit_GSL(struct kndRepo *self, struct kndCommit *commit, str
     task->ctx->max_depth = KND_MAX_DEPTH;
     OUT("{task", strlen("{task"));
 
-    if (task->user_ctx) {
+    switch (task->user_ctx->type) {
+    case KND_USER_AUTHENTICATED:
         user_inst = task->user_ctx->inst;
         OUT("{user ", strlen("{user "));
         OUT(user_inst->name, user_inst->name_size);
+        break;
+    default:
+        break;
     }
 
     OUT("{repo ", strlen("{repo "));
@@ -1347,7 +1373,7 @@ static int update_indices(struct kndRepo *self, struct kndCommit *commit, struct
     struct kndSharedDict *name_idx = repo->class_name_idx;
     int err;
 
-    if (DEBUG_REPO_LEVEL_3)
+    if (DEBUG_REPO_LEVEL_2)
         knd_log(".. commit #%zu to update the indices of %.*s [shard role:%d]",
                 commit->numid, self->name_size, self->name, task->role);
 
@@ -1356,7 +1382,7 @@ static int update_indices(struct kndRepo *self, struct kndCommit *commit, struct
         name_idx = repo->class_name_idx;
     }
 
-    for (ref = commit->class_state_refs; ref; ref = ref->next) {
+    FOREACH (ref, commit->class_state_refs) {
         entry = ref->obj;
         if (DEBUG_REPO_LEVEL_2)
             knd_log(".. idx update of class \"%.*s\" (phase:%d)",
@@ -1393,7 +1419,6 @@ static int update_indices(struct kndRepo *self, struct kndCommit *commit, struct
             }
             break;
         }
-
     }
 
     name_idx = self->proc_name_idx;
@@ -1522,7 +1547,7 @@ static int build_commit_WAL(struct kndRepo *self, struct kndCommit *commit, stru
     err = out->write(out, task->path, task->path_size);
     KND_TASK_ERR("system path construction failed");
 
-    if (task->user_ctx) {
+    if (task->user_ctx && task->user_ctx->path_size) {
         OUT(task->user_ctx->path, task->user_ctx->path_size);
     }
 

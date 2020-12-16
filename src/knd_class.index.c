@@ -49,34 +49,32 @@ struct LocalContext {
     struct kndClassVar *class_var;
 };
 
-static int index_attr(void *obj,
-                      const char *unused_var(elem_id),
-                      size_t unused_var(elem_id_size),
-                      size_t unused_var(count),
-                      void *elem)
+static int index_attr(void *obj, const char *unused_var(elem_id), size_t unused_var(elem_id_size),
+                      size_t unused_var(count), void *elem)
 {
     struct LocalContext *ctx = obj;
     struct kndTask    *task = ctx->task;
     struct kndClass   *self = ctx->class;
     struct kndAttrRef *src_ref  = elem;
     struct kndAttr    *attr     = src_ref->attr;
-    // struct kndAttrVar *item;
+    struct kndAttrVar *var     = src_ref->attr_var;
     int err;
-
     if (!attr->is_indexed) return knd_OK;
-    if (!src_ref->attr_var) return knd_OK;
 
-    if (DEBUG_CLASS_INDEX_LEVEL_2) 
-        knd_log("..  \"%.*s\" attr indexed by %.*s..",
-                attr->name_size, attr->name,
-                self->name_size, self->name);
-
-    if (attr->is_a_set) {
-        err = knd_index_attr_var_list(self, attr, src_ref->attr_var, task);       RET_ERR();
+    if (!var) {
+        err = knd_attr_index(self, attr, task);
+        KND_TASK_ERR("failed to index attr %.*s", attr->name_size, attr->name);
         return knd_OK;
     }
 
-    err = knd_index_attr(self, attr, src_ref->attr_var, task);                    RET_ERR();
+    if (attr->is_a_set) {
+        err = knd_index_attr_var_list(self->entry, NULL, attr, var, task);
+        KND_TASK_ERR("failed to index attr var list %.*s", attr->name_size, attr->name);
+        return knd_OK;
+    }
+
+    // err = knd_index_attr_var(self, attr, var, task);
+    // KND_TASK_ERR("failed to index attr var %.*s", attr->name_size, attr->name);
 
     return knd_OK;
 }
@@ -148,13 +146,12 @@ static int index_ancestor(struct kndClass *self,
 static inline void set_child_ref(struct kndClassEntry *self, struct kndClassRef *child_ref)
 {
     child_ref->next = self->class->children;
-    // atomic
+    // TODO atomic
     self->class->children = child_ref;
+    self->class->num_children++;
 }
 
-static int index_baseclass(struct kndClass *self,
-                           struct kndClass *base,
-                           struct kndTask *task)
+static int index_baseclass(struct kndClass *self, struct kndClass *base, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
     struct kndClassRef *ref, *baseref;
@@ -254,19 +251,16 @@ int knd_class_index(struct kndClass *self, struct kndTask *task)
     struct kndRepo *repo = self->entry->repo;
     int err;
 
-    if (self->is_indexed) {
-        return knd_OK;
-    }
+    if (self->is_indexed) return knd_OK;
 
     if (self->indexing_in_progress) {
         knd_log("-- vicious circle detected in \"%.*s\" while indexing", self->name_size, self->name);
         return knd_FAIL;
     }
-
     self->indexing_in_progress = true;
 
     if (DEBUG_CLASS_INDEX_LEVEL_2) {
-        knd_log(".. indexing class \"%.*s\" (id:%.*s) ..",
+        knd_log(".. indexing class \"%.*s\" (id:%.*s)",
                 self->entry->name_size, self->entry->name, self->entry->id_size, self->entry->id);
     }
 
@@ -281,12 +275,12 @@ int knd_class_index(struct kndClass *self, struct kndTask *task)
         .task = task,
         .class = self
     };
-    err = self->attr_idx->map(self->attr_idx, index_attr, (void*)&ctx);              RET_ERR();
+    err = knd_set_map(self->attr_idx, index_attr, (void*)&ctx);
+    KND_TASK_ERR("failed to index attrs of class %.*s", self->name_size, self->name);
 
     if (DEBUG_CLASS_INDEX_LEVEL_2)
         knd_log("++ class \"%.*s\" (id:%.*s) indexed!",
-                self->entry->name_size, self->entry->name,
-                self->entry->id_size, self->entry->id);
+                self->entry->name_size, self->entry->name, self->entry->id_size, self->entry->id);
 
     self->is_indexed = true;
     return knd_OK;

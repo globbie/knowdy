@@ -83,14 +83,12 @@ static int kndOutput_write(struct kndOutput *self, const char *buf, size_t buf_s
     return knd_OK;
 }
 
-static int
-kndOutput_write_escaped(struct kndOutput *self,
-                        const char *buf,
-                        size_t buf_size)
+static int kndOutput_write_escaped(struct kndOutput *self, const char *buf, size_t buf_size)
 {
     size_t free_space = self->capacity - self->buf_size;
     size_t chunk_size = 0;
     char *c = self->buf + self->buf_size;
+    bool in_whitespace = false;
     const char *b;
 
     for (size_t i = 0; i < buf_size; i++) {
@@ -105,13 +103,19 @@ kndOutput_write_escaped(struct kndOutput *self,
         case '\'':
             break;
         case '\n':
-            *c = '\\';
+        case '\r':
+        case '\t':
+        case ' ':
+            if (in_whitespace) {
+                break;
+            }
+            in_whitespace = true;
+            *c = ' ';
             c++;
-            *c = 'n';
-            c++;
-            chunk_size += 2;
+            chunk_size++;
             break;
         default:
+            in_whitespace = false;
             *c = *b;
             c++;
             chunk_size++;

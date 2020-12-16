@@ -23,22 +23,61 @@ void knd_mempool_del(struct kndMemPool *self)
 
 static int present_status(struct kndMemPool *self, struct kndOutput *out)
 {
+    size_t total_mem_usage = 0;
+    size_t max_mem_usage = 0;
+    size_t pages_used = self->pages_used;
+    size_t num_pages = self->num_pages;
+    size_t tiny_pages_used = self->tiny_pages_used;
+    size_t num_tiny_pages = self->num_tiny_pages;
+    size_t small_pages_used = self->small_pages_used;
+    size_t num_small_pages = self->num_small_pages;
+    size_t small_x2_pages_used = self->small_x2_pages_used;
+    size_t num_small_x2_pages = self->num_small_x2_pages;
+    size_t small_x4_pages_used = self->small_x4_pages_used;
+    size_t num_small_x4_pages = self->num_small_x4_pages;
     int err;
+
+    switch (self->type) {
+    case KND_ALLOC_SHARED:
+        pages_used = self->shared_pages_used;
+        tiny_pages_used = self->shared_tiny_pages_used;
+        small_pages_used = self->shared_small_pages_used;
+        small_x2_pages_used = self->shared_small_x2_pages_used;
+        small_x4_pages_used = self->shared_small_x4_pages_used;
+        break;
+    default:
+        break;
+    }
+    total_mem_usage = (pages_used * KND_BASE_MEMPAGE_SIZE) +
+        (tiny_pages_used * KND_TINY_MEMPAGE_SIZE) +
+        (small_pages_used * KND_SMALL_MEMPAGE_SIZE) +
+        (small_x2_pages_used * KND_SMALL_X2_MEMPAGE_SIZE) +
+        (small_x4_pages_used * KND_SMALL_X4_MEMPAGE_SIZE);
+    max_mem_usage = (num_pages * KND_BASE_MEMPAGE_SIZE) +
+        (num_tiny_pages * KND_TINY_MEMPAGE_SIZE) +
+        (num_small_pages * KND_SMALL_MEMPAGE_SIZE) +
+        (num_small_x2_pages * KND_SMALL_X2_MEMPAGE_SIZE) +
+        (num_small_x4_pages * KND_SMALL_X4_MEMPAGE_SIZE);
+
     err = out->writef(out, "{base-pages     %zu of %zu {used %.2f%%}}\n",
-                      self->pages_used, self->num_pages,
-                      (double)self->pages_used / self->num_pages * 100);                      RET_ERR();
+                      pages_used, num_pages,
+                      (double)pages_used / num_pages * 100);                      RET_ERR();
     err = out->writef(out, "{small-x4-pages %zu of %zu {used %.2f%%}}\n",
-                      self->small_x4_pages_used, self->num_small_x4_pages,
-                      (double)self->small_x4_pages_used / self->num_small_x4_pages * 100);    RET_ERR();
+                      small_x4_pages_used, num_small_x4_pages,
+                      (double)small_x4_pages_used / num_small_x4_pages * 100);    RET_ERR();
     err = out->writef(out, "{small-x2-pages %zu of %zu {used %.2f%%}}\n",
-                      self->small_x2_pages_used, self->num_small_x2_pages,
-                      (double)self->small_x2_pages_used / self->num_small_x2_pages * 100);    RET_ERR();
+                      small_x2_pages_used, num_small_x2_pages,
+                      (double)small_x2_pages_used / num_small_x2_pages * 100);    RET_ERR();
     err = out->writef(out, "{small-pages    %zu of %zu {used %.2f%%}}\n",
-                      self->small_pages_used, self->num_small_pages,
-                      (double)self->small_pages_used / self->num_small_pages * 100);          RET_ERR();
+                      small_pages_used, num_small_pages,
+                      (double)small_pages_used / num_small_pages * 100);          RET_ERR();
     err = out->writef(out, "{tiny-pages     %zu of %zu {used %.2f%%}}\n",
-                      self->tiny_pages_used, self->num_tiny_pages,
-                      (double)self->tiny_pages_used / self->num_tiny_pages * 100);            RET_ERR();
+                      tiny_pages_used, num_tiny_pages,
+                      (double)tiny_pages_used / num_tiny_pages * 100);            RET_ERR();
+    err = out->writef(out, "{total %.2fM of max %.2fM}\n",
+                      (double)total_mem_usage / (1024 * 1024),
+                      (double)max_mem_usage / (1024 * 1024));            RET_ERR();
+    
     return knd_OK;
 }
 

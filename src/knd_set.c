@@ -141,7 +141,7 @@ static int save_elem(struct kndSet *self, struct kndSetElemIdx *parent_idx, void
     if (DEBUG_SET_LEVEL_2)
         knd_log("== set idx to save ID remainder: \"%.*s\"", id_size, id);
 
-    idx_pos = obj_id_base[(unsigned int)*id];
+    idx_pos = obj_id_base[(unsigned char)*id];
     if (id_size > 1) {
         idx = parent_idx->idxs[idx_pos];
         if (!idx) {
@@ -177,7 +177,7 @@ static int get_elem(struct kndSet *self, struct kndSetElemIdx *parent_idx,
     int idx_pos;
     int err;
 
-    idx_pos = obj_id_base[(unsigned int)*id];
+    idx_pos = obj_id_base[(unsigned char)*id];
 
     if (DEBUG_SET_LEVEL_2)
         knd_log(".. get elem by ID, remainder \"%.*s\" POS:%d", id_size, id, idx_pos);
@@ -399,10 +399,7 @@ static int traverse_sync(struct kndSetElemIdx *parent_idx,
     return knd_OK;
 }
 
-int knd_set_sync(struct kndSet *self,
-                 map_cb_func cb,
-                 size_t *total_size,
-                 struct kndTask *task)
+int knd_set_sync(struct kndSet *self, map_cb_func cb, size_t *total_size, struct kndTask *task)
 {
     struct kndSetDir *root_dir;
     int err;

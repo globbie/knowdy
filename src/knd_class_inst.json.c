@@ -21,7 +21,7 @@ static int export_concise_JSON(struct kndClassInst *self, struct kndTask *task)
     err = out->write(out, ",\"_class\":\"", strlen(",\"_class\":\""));
     if (err) return err;
 
-    err = out->write(out, self->blueprint->name, self->blueprint->name_size);
+    err = out->write(out, self->entry->blueprint->name, self->entry->blueprint->name_size);
     if (err) return err;
 
     err = out->write(out, "\"", 1);
@@ -31,29 +31,26 @@ static int export_concise_JSON(struct kndClassInst *self, struct kndTask *task)
 }
 #endif
 
-int knd_class_inst_export_JSON(struct kndClassInst *self, bool is_list_item, struct kndTask *task)
+int knd_class_inst_export_JSON(struct kndClassInst *self, bool is_list_item, knd_state_phase unused_var(phase),
+                               struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     struct kndState *state = self->states;
+    size_t curr_depth = 0;
     int err;
 
     if (DEBUG_INST_LEVEL_2) {
         knd_log(".. JSON export class inst \"%.*s\" curr depth:%zu max depth:%zu is_list:%d",
                 self->name_size, self->name, task->depth, task->max_depth, is_list_item);
-        if (self->blueprint) {
+        if (self->entry->blueprint) {
             knd_log("   (class: %.*s)",
-                    self->blueprint->name_size, self->blueprint->name);
+                    self->entry->blueprint->name_size, self->entry->blueprint->name);
         }
     }
 
-    err = out->write(out, "{\"_name\":\"", strlen("{\"_name\":\""));              RET_ERR();
-    err = out->write(out, self->name, self->name_size);
-    if (err) return err;
-    err = out->write(out, "\"", 1);
-    if (err) return err;
-
-    err = out->write(out, ",\"_id\":", strlen(",\"_id\":"));                      RET_ERR();
-    err = out->writef(out, "%zu", self->entry->numid);                            RET_ERR();
+    OUT("{\"name\":\"", strlen("{\"name\":\""));
+    OUT(self->name, self->name_size);
+    OUT("\"", 1);
 
     if (state) {
         err = out->write(out, ",\"_state\":", strlen(",\"_state\":"));            RET_ERR();
@@ -81,32 +78,28 @@ int knd_class_inst_export_JSON(struct kndClassInst *self, bool is_list_item, str
         }
     }
 
-    err = out->write(out, ",\"_class\":\"", strlen(",\"_class\":\""));
-    if (err) return err;
+    OUT(",\"class\":\"", strlen(",\"class\":\""));
+    OUT(self->entry->blueprint->name, self->entry->blueprint->name_size);
+    OUT("\"", 1);
 
-    err = out->write(out, self->blueprint->name, self->blueprint->name_size);
-    if (err) return err;
-
-    err = out->write(out, "\"", 1);
-    if (err) return err;
-
-    err = out->write(out, "}", 1);
-    if (err) return err;
-
-    return err;
+    if (self->class_var->attrs) {
+        curr_depth = task->ctx->depth;
+        err = knd_attr_vars_export_JSON(self->class_var->attrs, task, false, depth + 1);
+        KND_TASK_ERR("failed to export JSON of class inst attr vars");
+        task->ctx->depth = curr_depth;
+    }
+    OUT("}", 1);
+    return knd_OK;
 }
 
-static int export_class_inst_JSON(void *obj,
-                                  const char *unused_var(attr_inst_id),
-                                  size_t unused_var(attr_inst_id_size),
-                                  size_t count,
-                                  void *attr_inst)
+int knd_class_inst_iterate_export_JSON(void *obj, const char *unused_var(inst_id),
+                                       size_t unused_var(inst_id_size), size_t count, void *elem)
 {
     struct kndTask *task = obj;
     if (count < task->start_from) return knd_OK;
-    if (task->batch_size >= task->batch_max) return knd_RANGE;
+    // if (task->batch_size >= task->batch_max) return knd_RANGE;
     struct kndOutput *out = task->out;
-    struct kndClassInstEntry *entry = attr_inst;
+    struct kndClassInstEntry *entry = elem;
     struct kndClassInst *inst = entry->inst;
     struct kndState *state;
     int err;
@@ -128,8 +121,8 @@ static int export_class_inst_JSON(void *obj,
         err = out->writec(out, ',');                                              RET_ERR();
     }
 
-    // TODO: depth
-    err = knd_class_inst_export_JSON(inst, false, task);                                 RET_ERR();
+    err = knd_class_inst_export_JSON(inst, false, KND_SELECTED, task, 0);
+    KND_TASK_ERR("failed to export class inst JSON");
     task->batch_size++;
 
     return knd_OK;
@@ -152,7 +145,7 @@ int knd_class_inst_set_export_JSON(struct kndSet *set, struct kndTask *task)
     }
     err = out->write(out, ",\"batch\":[",
                      strlen(",\"batch\":["));                                     RET_ERR();
-    err = set->map(set, export_class_inst_JSON, (void*)task);
+    err = set->map(set, knd_class_inst_iterate_export_JSON, (void*)task);
     if (err && err != knd_RANGE) return err;
     err = out->writec(out, ']');                                                  RET_ERR();
 

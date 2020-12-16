@@ -91,9 +91,7 @@ static gsl_err_t run_set_format(void *obj,
     return make_gsl_err_external(knd_NO_MATCH);
 }
 
-static gsl_err_t parse_format(void *obj,
-                              const char *rec,
-                              size_t *total_size)
+static gsl_err_t parse_format(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *self = obj;
 
@@ -102,10 +100,10 @@ static gsl_err_t parse_format(void *obj,
           .run = run_set_format,
           .obj = self
         },
-        { .name = "offset",
-          .name_size = strlen("offset"),
+        { .name = "indent",
+          .name_size = strlen("indent"),
           .parse = gsl_parse_size_t,
-          .obj = &self->ctx->format_offset
+          .obj = &self->ctx->format_indent
         },
         { .name = "depth",
           .name_size = strlen("depth"),

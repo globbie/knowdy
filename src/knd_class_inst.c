@@ -36,15 +36,14 @@ void knd_class_inst_str(struct kndClassInst *self, size_t depth)
     if (self->type == KND_OBJ_ADDR) {
         knd_log("\n%*s>>> class inst \"%.*s::%.*s\"  numid:%zu",
                 depth * KND_OFFSET_SIZE, "",
-                self->blueprint->name_size, self->blueprint->name,
+                self->entry->blueprint->name_size, self->entry->blueprint->name,
                 self->name_size, self->name, self->entry->numid);
         //if (state) {
         //    knd_log("    state:%zu  phase:%d", state->numid, state->phase);
         //}
     }
-
     if (self->class_var->attrs) {
-        for (item = self->class_var->attrs; item; item = item->next)
+        FOREACH (item, self->class_var->attrs)
             knd_attr_var_str(item, depth + 1);
     }
 }
@@ -54,7 +53,7 @@ int knd_class_inst_export(struct kndClassInst *self, knd_format format, bool is_
 {
     switch (format) {
         case KND_FORMAT_JSON:
-            return knd_class_inst_export_JSON(self, is_list_item, task);
+            return knd_class_inst_export_JSON(self, is_list_item, KND_SELECTED, task, 0);
         case KND_FORMAT_GSL:
             return knd_class_inst_export_GSL(self, is_list_item, KND_SELECTED, task, 0);
         case KND_FORMAT_GSP:
@@ -119,6 +118,18 @@ int knd_class_inst_export_commit(struct kndStateRef *state_refs, struct kndTask 
 
         err = out->writec(out, '}');                                              RET_ERR();
     }
+    return knd_OK;
+}
+
+int knd_class_inst_ref_new(struct kndMemPool *mempool, struct kndClassInstRef **result)
+{
+    void *page;
+    int err;
+    assert(mempool->tiny_page_size >= sizeof(struct kndClassInstRef));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
+    if (err) return err;
+    memset(page, 0,  sizeof(struct kndClassInstRef));
+    *result = page;
     return knd_OK;
 }
 
