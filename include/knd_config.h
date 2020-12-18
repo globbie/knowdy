@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <stddef.h>
 
+#include "knd_version.h"
 #include "knd_err.h"
 
 /* comparison codes */

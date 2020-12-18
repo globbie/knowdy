@@ -1,0 +1,3 @@
+/* auto-generated from the latest git tag */
+#define KND_VERSION "@VERSION@"
+#define KND_VERSION_SHORT "@VERSION_SHORT@"
