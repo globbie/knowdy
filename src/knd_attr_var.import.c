@@ -115,7 +115,7 @@ static gsl_err_t confirm_attr_var(void *obj, const char *unused_var(name), size_
     struct kndAttrVar *attr_var = ctx->attr_var;
 
     KND_TASK_LOG("NB: attr var value not set in \"%.*s\"",
-                 attr_var->parent->name_size, attr_var->parent->name);
+                 attr_var->name_size, attr_var->name);
 
     return make_gsl_err(gsl_FORMAT);
 }
@@ -358,7 +358,6 @@ static gsl_err_t import_nested_attr_var(void *obj, const char *name, size_t name
     if (err) return *total_size = 0, make_gsl_err_external(err);
     attr_var->class_var = self->class_var;
     attr_var->parent = self;
-
     attr_var->name = name;
     attr_var->name_size = name_size;
 

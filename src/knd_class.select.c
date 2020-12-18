@@ -63,6 +63,7 @@ static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
         ctx->class_entry = ctx->repo->root_class->entry;
         return make_gsl_err(gsl_OK);
     }
+
     err = knd_get_class_entry(ctx->repo, name, name_size, true, &entry, task);
     if (err) {
         KND_TASK_LOG("\"%.*s\" class name not found", name_size, name);
@@ -76,6 +77,8 @@ static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
         return make_gsl_err_external(err);
     }
     ctx->class_entry = entry;
+
+    knd_log("== class entry repo: %.*s", entry->repo->name_size, entry->repo->name);
     return make_gsl_err(gsl_OK);
 }
 
@@ -657,14 +660,14 @@ static gsl_err_t parse_import_class_inst(void *obj, const char *rec, size_t *tot
     struct kndCommit *commit = task->ctx->commit;
     struct kndMemPool *mempool = task->mempool;
     struct kndClassEntry *entry = ctx->class_entry;
-    struct kndRepo *repo = task->repo;
+    struct kndRepo *repo = ctx->repo;
     struct kndRepoSnapshot *snapshot = atomic_load_explicit(&repo->snapshots, memory_order_relaxed);
     knd_task_spec_type orig_task_type = task->type;
     struct kndRepoAccess *acl;
     struct kndClass *c;
     int err;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_2)
+    if (DEBUG_CLASS_SELECT_LEVEL_TMP)
         knd_log(".. parse import class inst..");
 
     if (!entry) {
@@ -677,43 +680,40 @@ static gsl_err_t parse_import_class_inst(void *obj, const char *rec, size_t *tot
         KND_TASK_LOG("failed to acquire class \"%.*s\"", entry->id_size, entry->id);
         return *total_size = 0, make_gsl_err_external(err);
     }
-    if (task->user_ctx) {
-        acl = task->user_ctx->acls;
-        assert(acl != NULL);
 
-        if (!acl->allow_write) {
-            KND_TASK_LOG("writing not allowed");
-            err = knd_ACCESS;
-            if (err) return make_gsl_err_external(err);
+    acl = task->user_ctx->acls;
+    assert(acl != NULL);
+    if (!acl->allow_write) {
+        KND_TASK_LOG("writing not allowed");
+        err = knd_ACCESS;
+        if (err) return make_gsl_err_external(err);
+    }
+
+    if (entry->repo != repo) {
+        err = knd_class_entry_clone(ctx->class_entry, repo, &entry, task);
+        if (err) {
+            KND_TASK_LOG("failed to clone class entry");
+            return *total_size = 0, make_gsl_err_external(err);
         }
+        ctx->class_entry = entry;
+    }
 
-        repo = task->user_ctx->repo;
-        if (entry->repo != repo) {
-            err = knd_class_entry_clone(ctx->class_entry, repo, &entry, task);
-            if (err) {
-                KND_TASK_LOG("failed to clone class entry");
-                return *total_size = 0, make_gsl_err_external(err);
-            }
-            ctx->class_entry = entry;
+    snapshot = atomic_load_explicit(&repo->snapshots, memory_order_relaxed);
+    switch (snapshot->role) {
+    case KND_READER:
+        if (DEBUG_CLASS_SELECT_LEVEL_TMP)
+            knd_log(">> snapshot %.*s (role:%d  task role:%d)", snapshot->path_size, snapshot->path, snapshot->role, task->role);
+        
+        snapshot->role = KND_WRITER;
+        err = knd_repo_restore(repo, snapshot, task);
+        if (err) {
+            KND_TASK_LOG("failed to restore snapshot commits");
+            return *total_size = 0, make_gsl_err_external(err);
         }
-        snapshot = atomic_load_explicit(&repo->snapshots, memory_order_relaxed);
-
-        switch (snapshot->role) {
-        case KND_READER:
-            if (DEBUG_CLASS_SELECT_LEVEL_TMP)
-                knd_log(">> snapshot %.*s (role:%d  task role:%d)", snapshot->path_size, snapshot->path, snapshot->role, task->role);
-
-            snapshot->role = KND_WRITER;
-            err = knd_repo_restore(repo, snapshot, task);
-            if (err) {
-                KND_TASK_LOG("failed to restore snapshot commits");
-                return *total_size = 0, make_gsl_err_external(err);
-            }
-            task->type = orig_task_type;
-            break;
-        default:
-            break;
-        }
+        task->type = orig_task_type;
+        break;
+    default:
+        break;
     }
 
     switch (task->type) {
@@ -933,7 +933,7 @@ gsl_err_t knd_class_select(struct kndRepo *repo, const char *rec, size_t *total_
     gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_2)
+    if (DEBUG_CLASS_SELECT_LEVEL_TMP)
         knd_log(".. parsing class select rec: \"%.*s\" (repo:%.*s)", 32, rec, repo->name_size, repo->name);
 
     struct LocalContext ctx = {

@@ -283,6 +283,7 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     struct kndMemPool *mempool = NULL;
     struct kndRepo *repo;
     struct kndTask *task = NULL;
+    struct kndRepoAccess *acl;
     struct kndUser *user;
     int err;
 
@@ -331,6 +332,13 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     task->user_ctx->mempool = mempool;
     self->task = task;
 
+    err = knd_repo_access_new(mempool, &acl);
+    KND_TASK_ERR("failed to alloc repo acl");
+    acl->repo = repo;
+    acl->allow_read = true;
+    acl->allow_write = true;
+    task->user_ctx->acls = acl;
+    
     err = knd_repo_open(repo, task);
     if (err != knd_OK) {
         knd_log("ERR LOG:%.*s", task->output_size, task->output);

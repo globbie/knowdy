@@ -95,7 +95,8 @@ int knd_resolve_proc_ref(struct kndClass *self, const char *name, size_t name_si
     if (DEBUG_PROC_RESOLVE_LEVEL_2)
         knd_log(".. resolving proc ref:  %.*s", name_size, name);
 
-    err = knd_get_proc(self->entry->repo, name, name_size, &proc, task);                             RET_ERR();
+    err = knd_get_proc(self->entry->repo, name, name_size, &proc, task);
+    KND_TASK_ERR("no such proc: %.*s", name_size, name);
 
     /*c = dir->conc;
     if (!c->is_resolved) {

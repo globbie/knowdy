@@ -167,9 +167,7 @@ static gsl_err_t parse_locale(void *obj,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static gsl_err_t parse_class_import(void *obj,
-                                    const char *rec,
-                                    size_t *total_size)
+static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
     int err;
@@ -189,15 +187,15 @@ static gsl_err_t parse_class_import(void *obj,
     return knd_class_import(task->repo, rec, total_size, task);
 }
 
-static gsl_err_t parse_class_select(void *obj,
-                                    const char *rec,
-                                    size_t *total_size)
+static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
 
-    if (DEBUG_TASK_LEVEL_2)
-        knd_log(".. parsing the system class select: \"%.*s\"", 64, rec);
+    // no explicit repo selection -> defaults to system repo
+    task->user_ctx->repo = task->repo;
 
+    if (DEBUG_TASK_LEVEL_TMP)
+        knd_log(".. parsing the system repo class selection: \"%.*s\"", 64, rec);
     return knd_class_select(task->repo, rec, total_size, task);
 }
 
@@ -266,7 +264,6 @@ static gsl_err_t parse_snapshot_task(void *obj, const char *unused_var(rec), siz
 gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
-    struct kndRepo *repo;
     gsl_err_t parser_err;
     int err;
 
@@ -336,10 +333,7 @@ gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
     /* any commits? */
     switch (task->type) {
     case KND_COMMIT_STATE:
-        repo = task->repo;
-        if (task->user_ctx) repo = task->user_ctx->repo;
-
-        err = knd_confirm_commit(repo, task);
+        err = knd_confirm_commit(task->user_ctx->repo, task);
         if (err) {
             parser_err = make_gsl_err(gsl_FAIL);
             knd_log("commit confirm err:%d code:%d", err, parser_err.code);

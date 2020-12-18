@@ -232,12 +232,16 @@ static gsl_err_t parse_repo_state(void *obj, const char *rec, size_t *total_size
 static gsl_err_t run_select_repo(void *obj, const char *name, size_t name_size)
 {
     struct kndTask *task = obj;
-    struct kndRepo *repo;
+    struct kndRepo *repo = task->repo;
 
     if (!name_size) return make_gsl_err(gsl_FAIL);
 
     switch (*name) {
     case '/':
+        task->user_ctx->repo = repo;
+        // default system repo stays
+        if (DEBUG_REPO_LEVEL_TMP)
+            knd_log("== system repo selected: %.*s", repo->name_size, repo->name);
         return make_gsl_err(gsl_OK);
     case '~':
         repo = task->user_ctx->repo;
@@ -265,12 +269,7 @@ static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_si
 {
     struct kndTask *task = obj;
     struct kndUserContext *ctx = task->user_ctx;
-    struct kndRepo *repo;
-
-    repo = task->repo;
-    if (ctx && ctx->repo) {
-        repo = ctx->repo;
-    }
+    struct kndRepo *repo = ctx->repo ? ctx->repo : task->repo;
     return knd_class_select(repo, rec, total_size, task);
 }
 
@@ -278,13 +277,8 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
 {
     struct kndTask *task = obj;
     struct kndUserContext *ctx = task->user_ctx;
-    struct kndRepo *repo = task->repo;
+    struct kndRepo *repo = ctx->repo ? ctx->repo : task->repo;
     int err;
-
-    if (ctx) {
-        repo = ctx->repo;
-        task->repo = repo;
-    }
 
     if (task->type != KND_LOAD_STATE) {
         task->type = KND_COMMIT_STATE;
@@ -1643,7 +1637,7 @@ int knd_confirm_commit(struct kndRepo *self, struct kndTask *task)
     assert(commit != NULL);
 
     if (DEBUG_REPO_LEVEL_TMP)
-        knd_log(".. \"%.*s\" repo to confirm commit #%zu", self->name_size, self->name, commit->numid);
+        knd_log(">> \"%.*s\" repo to confirm commit #%zu", self->name_size, self->name, commit->numid);
 
     commit->repo = self;
 

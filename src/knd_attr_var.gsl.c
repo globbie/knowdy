@@ -209,15 +209,15 @@ static int ref_var_export_GSL(struct kndAttrVar *var, struct kndTask *task, size
     return knd_OK;
 }
 
-static int proc_item_export_GSL(struct kndAttrVar *item,
-                                struct kndTask *task)
+static int proc_item_export_GSL(struct kndAttrVar *item, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndProc *proc;
     int err;
     assert(item->proc != NULL);
     proc = item->proc;
-    err = knd_proc_export(proc, KND_FORMAT_GSL, task, out);  RET_ERR();
+    err = knd_proc_export(proc, KND_FORMAT_GSL, task, out);
+    KND_TASK_ERR("failed to export proc GSL");
     return knd_OK;
 }
 
@@ -257,10 +257,11 @@ static int attr_var_list_export_GSL(struct kndAttrVar *var, struct kndTask *task
             if (err) return err;
             break;
         case KND_ATTR_PROC_REF:
-            if (item->proc) {
+            /*if (item->proc) {
                 err = proc_item_export_GSL(item, task);
                 if (err) return err;
-            }
+                }*/
+            OUT(item->val, item->val_size);
             break;
         case KND_ATTR_STR:
             OUT(item->name, item->name_size);
@@ -376,9 +377,8 @@ int knd_attr_var_export_GSL(struct kndAttrVar *var, struct kndTask *task, size_t
         /*if (var->proc) {
             err = proc_var_export_GSL(var, task);
             KND_TASK_ERR("proc var GSL export failed");
-        } else {
-            OUT(var->val, var->val_size);
-            }*/
+            } else { */
+        OUT(var->val, var->val_size);
         break;
     case KND_ATTR_INNER:
         err = inner_var_export_GSL(var, task, depth + 1);

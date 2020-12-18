@@ -84,7 +84,6 @@ int knd_create_user_repo(struct kndTask *task)
     struct kndUserContext *ctx = task->user_ctx;
     struct kndRepo *repo;
     int err;
-
     assert(ctx->repo == NULL);
 
     err = knd_repo_new(&repo, "~", 1, NULL, 0, ctx->mempool);
