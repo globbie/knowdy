@@ -1122,13 +1122,15 @@ int knd_repo_restore(struct kndRepo *self, struct kndRepoSnapshot *snapshot, str
 int knd_repo_open(struct kndRepo *self, struct kndTask *task)
 {
     struct kndOutput *out = task->file_out;
-    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndRepoSnapshot *snapshot;
     char buf[KND_PATH_SIZE];
     size_t buf_size;
     struct stat st;
     int latest_snapshot_id = -1;
     int err;
+
+    assert(mempool != NULL);
 
     if (DEBUG_REPO_LEVEL_TMP) {
         const char *owner_name = "/";
