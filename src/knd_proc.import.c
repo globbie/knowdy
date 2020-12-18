@@ -40,7 +40,7 @@ static gsl_err_t parse_proc_arg_item(void *obj, const char *rec, size_t *total_s
     int err;
     gsl_err_t parser_err;
 
-    err = knd_proc_arg_new(ctx->task->mempool, &arg);
+    err = knd_proc_arg_new(ctx->task->user_ctx->mempool, &arg);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
     parser_err = knd_proc_arg_parse(arg, rec, total_size, ctx->task);
@@ -60,7 +60,7 @@ static gsl_err_t parse_proc_call_item(void *obj, const char *rec, size_t *total_
     int err;
     gsl_err_t parser_err;
 
-    err = knd_proc_call_new(ctx->task->mempool, &call);
+    err = knd_proc_call_new(ctx->task->user_ctx->mempool, &call);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
     parser_err = knd_proc_call_parse(call, rec, total_size, ctx->task);
@@ -94,6 +94,7 @@ static gsl_err_t validate_base_arg(void *obj, const char *name, size_t name_size
 {
     struct LocalContext *ctx = obj;
     struct kndProcVar *base = ctx->proc_var;
+    struct kndMemPool *mempool = ctx->task->user_ctx->mempool;
 
     if (name_size > sizeof ((struct kndProcArgVar *)NULL)->name)
         return *total_size = 0, make_gsl_err(gsl_LIMIT);
@@ -101,7 +102,7 @@ static gsl_err_t validate_base_arg(void *obj, const char *name, size_t name_size
     struct kndProcArgVar *proc_arg_var;
     int err;
 
-    err = knd_proc_arg_var_new(ctx->task->mempool, &proc_arg_var);
+    err = knd_proc_arg_var_new(mempool, &proc_arg_var);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     proc_arg_var->name = name;
     proc_arg_var->name_size = name_size;
@@ -146,7 +147,7 @@ static gsl_err_t parse_base(void *obj, const char *rec, size_t *total_size)
     struct kndProcVar *proc_var;
     int err;
 
-    err = knd_proc_var_new(ctx->task->mempool, &proc_var);
+    err = knd_proc_var_new(ctx->task->user_ctx->mempool, &proc_var);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     proc_var->parent = self->entry;
     ctx->proc_var = proc_var;
@@ -232,6 +233,9 @@ static gsl_err_t set_proc_name(void *obj, const char *name, size_t name_size)
     struct kndProcEntry *entry;
     int err;
 
+    assert(repo != NULL);
+    assert(repo->proc_name_idx != NULL);
+
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     self->entry->name = name;
     self->entry->name_size = name_size;
@@ -249,10 +253,8 @@ static gsl_err_t set_proc_name(void *obj, const char *name, size_t name_size)
             self->name_size = name_size;
 
             /* register globally */
-            err = knd_shared_dict_set(repo->proc_name_idx,
-                                      name, name_size,
-                                      (void*)entry,
-                                      task->mempool,
+            err = knd_shared_dict_set(repo->proc_name_idx, name, name_size,
+                                      (void*)entry, task->user_ctx->mempool,
                                       NULL, NULL, false);
             if (err) return make_gsl_err_external(err);
             return make_gsl_err(gsl_OK);
@@ -358,7 +360,7 @@ int knd_inner_proc_import(struct kndProc *proc, const char *rec, size_t *total_s
 
 gsl_err_t knd_proc_import(struct kndRepo *repo, const char *rec, size_t *total_size, struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->mempool;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndProcEntry *entry;
     struct kndProc *proc;
     int err;
