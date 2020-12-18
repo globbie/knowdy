@@ -327,6 +327,8 @@ int knd_attr_hub_resolve(struct kndAttrHub *hub, struct kndTask *task);
 int knd_attr_index(struct kndClass *self, struct kndAttr *attr, struct kndTask *task);
 
 // knd_attr_var.index.c
+int knd_index_attr_var(struct kndClassEntry *topic, struct kndClassInstEntry *topic_inst,
+                       struct kndAttr *attr, struct kndAttrVar *var, struct kndTask *task);
 int knd_index_attr_var_list(struct kndClassEntry *topic, struct kndClassInstEntry *topic_inst,
                             struct kndAttr *attr, struct kndAttrVar *var, struct kndTask *task);
 int knd_index_inner_attr_var(struct kndClass *self, struct kndAttrVar *var, struct kndTask *task);

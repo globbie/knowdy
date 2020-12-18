@@ -72,9 +72,8 @@ static int index_attr(void *obj, const char *unused_var(elem_id), size_t unused_
         KND_TASK_ERR("failed to index attr var list %.*s", attr->name_size, attr->name);
         return knd_OK;
     }
-
-    // err = knd_index_attr_var(self, attr, var, task);
-    // KND_TASK_ERR("failed to index attr var %.*s", attr->name_size, attr->name);
+    err = knd_index_attr_var(self->entry, NULL, attr, var, task);
+    KND_TASK_ERR("failed to index attr var %.*s", attr->name_size, attr->name);
 
     return knd_OK;
 }

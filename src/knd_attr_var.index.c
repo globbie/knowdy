@@ -162,6 +162,40 @@ static int index_attr_var(struct kndClass *self, struct kndAttr *attr, struct kn
     return knd_OK;
 }
 
+int knd_index_attr_var(struct kndClassEntry *topic, struct kndClassInstEntry *topic_inst,
+                       struct kndAttr *attr, struct kndAttrVar *var, struct kndTask *task)
+{
+    struct kndClass *spec;
+    struct kndClassInstEntry *spec_inst = NULL;
+    int err;
+
+    if (DEBUG_ATTR_VAR_INDEX_LEVEL_TMP)
+        knd_log(".. attr var indexing (class:%.*s) attr \"%.*s\" [type:%d]",
+                topic->name_size, topic->name, attr->name_size, attr->name, attr->type);
+    
+    switch (attr->type) {
+    case KND_ATTR_REL:
+        // fall through
+    case KND_ATTR_REF:
+        assert(var->class_entry != NULL);
+        err = knd_class_acquire(var->class_entry, &spec, task);
+        KND_TASK_ERR("failed to acquire class %.*s",
+                     var->class_entry->name_size, var->class_entry->name);
+
+        if (var->class_inst_entry)
+            spec_inst = var->class_inst_entry;
+
+        /* update immediate hub */
+        err = knd_attr_hub_update(spec, topic, topic_inst, var->class_entry, spec_inst, attr, var, task, false);
+        KND_TASK_ERR("failed to update attr hub");
+        
+        break;
+    default:
+        break;
+    }
+    return knd_OK;
+}
+
 int knd_index_attr_var_list(struct kndClassEntry *topic, struct kndClassInstEntry *topic_inst,
                             struct kndAttr *attr, struct kndAttrVar *var, struct kndTask *task)
 {
