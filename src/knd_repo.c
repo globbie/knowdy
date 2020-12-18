@@ -398,19 +398,12 @@ static gsl_err_t run_read_include(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_proc_import(void *obj,
-                                   const char *rec,
-                                   size_t *total_size)
+static gsl_err_t parse_proc_import(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
     struct kndUserContext *ctx = task->user_ctx;
-    struct kndRepo *repo = task->repo;
+    struct kndRepo *repo = ctx->repo ? ctx->repo : task->repo;
     int err;
-
-    if (ctx) {
-        repo = ctx->repo;
-        task->repo = repo;
-    }
 
     if (task->type != KND_LOAD_STATE) {
         task->type = KND_COMMIT_STATE;
@@ -419,11 +412,11 @@ static gsl_err_t parse_proc_import(void *obj,
             err = knd_commit_new(task->mempool, &task->ctx->commit);
             if (err) return make_gsl_err_external(err);
 
-            task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshots->num_commits,
+            task->ctx->commit->orig_state_id = atomic_load_explicit(&repo->snapshots->num_commits,
                                                                     memory_order_relaxed);
         }
     }
-    return knd_proc_import(task->repo, rec, total_size, task);
+    return knd_proc_import(repo, rec, total_size, task);
 }
 
 static gsl_err_t run_get_schema(void *obj, const char *name, size_t name_size)

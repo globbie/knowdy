@@ -366,7 +366,7 @@ gsl_err_t knd_proc_import(struct kndRepo *repo, const char *rec, size_t *total_s
     int err;
 
     if (DEBUG_PROC_IMPORT_LEVEL_2)
-        knd_log(".. import proc: \"%.*s\"..", 32, rec);
+        knd_log(".. import proc: \"%.*s\" (repo:%p)", 32, rec, repo);
 
     err = knd_proc_entry_new(mempool, &entry);
     if (err) return *total_size = 0, make_gsl_err_external(err);
