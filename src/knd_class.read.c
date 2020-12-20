@@ -422,11 +422,29 @@ static gsl_err_t parse_rel_topic_array(void *obj, const char *rec, size_t *total
 static gsl_err_t set_rel_attr(void *obj, const char *id, size_t id_size)
 {
     struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
     struct kndAttrHub *hub = ctx->attr_hub;
+    struct kndClassEntry *entry = hub->topic_template;
+    struct kndClass *c;
+    struct kndAttrRef *ref;
+    int err;
+
     if (!id_size) return make_gsl_err(gsl_FORMAT);
     if (id_size > KND_ID_SIZE) return make_gsl_err(gsl_LIMIT);
     hub->attr_id = id;
     hub->attr_id_size = id_size;
+
+    err = knd_class_acquire(entry, &c, task);
+    if (err) {
+        KND_TASK_LOG("failed to acquire class %.*s", entry->name_size, entry->name);
+        return make_gsl_err_external(err);
+    }
+    err = knd_set_get(c->attr_idx, id, id_size, (void**)&ref);
+    if (err) {
+        KND_TASK_LOG("failed to get attr %.*s in class %.*s", id_size, id, c->name_size, c->name);
+        return make_gsl_err_external(err);
+    }
+    hub->attr = ref->attr;
     return make_gsl_err(gsl_OK);
 }
 
@@ -466,6 +484,7 @@ static gsl_err_t parse_rel_item(void *obj, const char *rec, size_t *total_size)
 
     hub->next = self->attr_hubs;
     self->attr_hubs = hub;
+
     return make_gsl_err(gsl_OK);
 }
 
