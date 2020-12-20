@@ -63,7 +63,8 @@ static int find_attr_var(void *obj,
     const char *name = ctx->name;
     size_t name_size = ctx->name_size;
 
-    knd_log("== attr \"%.*s\" (var: %p)", ref->attr->name_size, ref->attr->name, ref->attr_var);
+    if (DEBUG_CLASS_LEVEL_3)
+        knd_log("== attr \"%.*s\" (var: %p)", ref->attr->name_size, ref->attr->name, ref->attr_var);
 
     if (ref->attr->name_size != name_size) return knd_OK;
     if (memcmp(ref->attr->name, name, name_size)) return knd_OK;
