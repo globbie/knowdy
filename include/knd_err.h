@@ -27,10 +27,25 @@
 
 /* return error codes */
 typedef enum { knd_OK, knd_FAIL, knd_NOMEM, knd_CONFLICT, knd_LIMIT, knd_RANGE, knd_AUTH,
-        knd_INVALID_DATA, knd_ACCESS, knd_NO_MATCH, knd_MATCH_FOUND, knd_FORMAT,
-        knd_IO_FAIL, knd_EXISTS, knd_EOB, knd_STOP, knd_NEED_WAIT, 
-        knd_EXPIRED } 
+        knd_INVALID_DATA, knd_ACCESS, knd_NO_MATCH, knd_FORMAT,
+        knd_IO_FAIL, knd_EXISTS } 
   knd_err_codes;
+
+static const char* const knd_err_names[] = {
+    "OK",
+    "FAIL",
+    "NOT ENOUGH MEMORY",
+    "CONFLICT",
+    "LIMIT",
+    "RANGE",
+    "AUTH",
+    "INVALID DATA",
+    "ACCESS",
+    "NO MATCH",
+    "INCORRECT FORMAT",
+    "IO FAIL",
+    "EXISTS"
+};
 
 static inline int gsl_err_to_knd_err_codes(gsl_err_t gsl_err) {
     switch (gsl_err.code) {

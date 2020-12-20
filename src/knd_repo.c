@@ -1124,6 +1124,7 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
     int err;
 
     assert(mempool != NULL);
+    assert(task->path_size != 0);
 
     if (DEBUG_REPO_LEVEL_TMP) {
         const char *owner_name = "/";
@@ -1136,9 +1137,9 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
         default:
             break;
         }
-        knd_log(".. open \"%.*s\" Repo (owner:%.*s  open mode:%d acls:%p)",
+        knd_log(">> open \"%.*s\" Repo (owner:%.*s   open mode:%d  system path:%.*s)",
                 self->name_size, self->name, owner_name_size, owner_name,
-                task->role, task->user_ctx->acls);
+                task->role, task->path_size, task->path);
 
         out->reset(out);
         mempool->present(mempool, out);
@@ -1146,10 +1147,17 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
     }
     out->reset(out);
     OUT(task->path, task->path_size);
-
-    if (task->user_ctx && task->user_ctx->path_size) {
-        OUT(task->user_ctx->path, task->user_ctx->path_size);
+    if (task->path[task->path_size - 1] != '/') {
+        OUT("/", 1);
     }
+    if (task->user_ctx && task->user_ctx->path_size) {
+        out->reset(out);
+        OUT(task->user_ctx->path, task->user_ctx->path_size);
+        if (task->user_ctx->path[task->user_ctx->path_size - 1] != '/') {
+            OUT("/", 1);
+        }
+    }
+
     if (self->path_size) {
         OUT(self->path, self->path_size);
     }
@@ -1158,7 +1166,7 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
         buf_size = snprintf(buf, KND_TEMP_BUF_SIZE, "snapshot_%zu/", i);
         OUT(buf, buf_size);
 
-        if (DEBUG_REPO_LEVEL_2)
+        if (DEBUG_REPO_LEVEL_TMP)
             knd_log(".. try snapshot path: %.*s", out->buf_size, out->buf);
 
         if (stat(out->buf, &st)) {

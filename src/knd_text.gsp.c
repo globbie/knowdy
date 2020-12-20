@@ -53,10 +53,10 @@ int knd_charseq_unmarshall(const char *elem_id, size_t elem_id_size,
     seq->val_size = val_size;
 
     err = knd_shared_set_add(task->repo->str_idx, elem_id, elem_id_size, (void*)seq);
-    KND_TASK_ERR("failed to register charseq \"%.*s\"", val_size, val);
+    KND_TASK_ERR("failed to register charseq \"%.*s\" (err:%s)", val_size, val, knd_err_names[err]);
 
     err = knd_shared_dict_set(str_dict, val, val_size, (void*)seq, mempool, NULL, &seq->item, false);
-    KND_TASK_ERR("failed to register charseq \"%.*s\" in str dict", val_size, val);
+    KND_TASK_ERR("failed to register charseq \"%.*s\" in str dict (err:%s)", val_size, val, knd_err_names[err]);
     
     *result = seq;
     return knd_OK;
