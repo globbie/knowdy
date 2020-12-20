@@ -169,7 +169,7 @@ int knd_index_attr_var(struct kndClassEntry *topic, struct kndClassInstEntry *to
     struct kndClassInstEntry *spec_inst = NULL;
     int err;
 
-    if (DEBUG_ATTR_VAR_INDEX_LEVEL_TMP)
+    if (DEBUG_ATTR_VAR_INDEX_LEVEL_2)
         knd_log(".. attr var indexing (class:%.*s) attr \"%.*s\" [type:%d]",
                 topic->name_size, topic->name, attr->name_size, attr->name, attr->type);
     

@@ -51,7 +51,6 @@ static gsl_err_t parse_ctx_mem_config(void *obj, const char *rec, size_t *total_
             .obj = &self->ctx_mem_config.num_tiny_pages
         }
     };
-   
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
@@ -303,11 +302,11 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
 
     err = knd_mempool_new(&mempool, KND_ALLOC_INCR, 0);
     if (err) goto error;
-    mempool->num_pages = self->ctx_mem_config.num_pages;
-    mempool->num_small_x4_pages = self->ctx_mem_config.num_small_x4_pages;
-    mempool->num_small_x2_pages = self->ctx_mem_config.num_small_x2_pages;
-    mempool->num_small_pages = self->ctx_mem_config.num_small_pages;
-    mempool->num_tiny_pages = self->ctx_mem_config.num_tiny_pages;
+    mempool->num_pages = self->mem_config.num_pages;
+    mempool->num_small_x4_pages = self->mem_config.num_small_x4_pages;
+    mempool->num_small_x2_pages = self->mem_config.num_small_x2_pages;
+    mempool->num_small_pages = self->mem_config.num_small_pages;
+    mempool->num_tiny_pages = self->mem_config.num_tiny_pages;
     err = mempool->alloc(mempool);
     if (err) goto error;
     self->mempool = mempool;
@@ -319,7 +318,8 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     if (err) goto error;
 
     /* system repo */
-    err = knd_repo_new(&repo, "/", 1, self->schema_path, self->schema_path_size, mempool);
+    err = knd_repo_new(&repo, "/", 1, self->path, self->path_size,
+                       self->schema_path, self->schema_path_size, mempool);
     if (err) goto error;
     self->repo = repo;
 

@@ -482,7 +482,10 @@ int knd_is_base(struct kndClass *self, struct kndClass *child)
 int knd_class_get_attr(struct kndClass *self, const char *name, size_t name_size, struct kndAttrRef **result)
 {
     struct kndAttrRef *ref;
+
+    assert(self->entry->repo != NULL);
     struct kndSharedDict *attr_name_idx = self->entry->repo->attr_name_idx;
+
     struct kndSet     *attr_idx = self->attr_idx;
     struct kndAttr    *attr = NULL;
     int err;
@@ -547,8 +550,7 @@ int knd_class_get_attr_var(struct kndClass *self, const char *name, size_t name_
     if (err) return err;
 
     attr = ref->attr;
-    err = self->attr_idx->get(self->attr_idx,
-                              attr->id, attr->id_size, (void**)&ref);
+    err = knd_set_get(self->attr_idx, attr->id, attr->id_size, (void**)&ref);
     if (err) return err;
 
     if (!ref->attr_var) {

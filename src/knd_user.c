@@ -86,7 +86,7 @@ int knd_create_user_repo(struct kndTask *task)
     int err;
     assert(ctx->repo == NULL);
 
-    err = knd_repo_new(&repo, "~", 1, NULL, 0, ctx->mempool);
+    err = knd_repo_new(&repo, "~", 1, ctx->path, ctx->path_size, NULL, 0, ctx->mempool);
     KND_TASK_ERR("failed to alloc new repo");
     repo->base = ctx->base_repo;
     ctx->repo = repo;
@@ -559,7 +559,9 @@ int knd_user_new(struct kndUser **user, const char *classname, size_t classname_
     /* read-only base repo for all users */
     self->reponame = reponame;
     self->reponame_size = reponame_size;
-    err = knd_repo_new(&self->repo, reponame, reponame_size, schema_path, schema_path_size, mempool);
+    err = knd_repo_new(&self->repo, reponame, reponame_size,
+                       self->path, self->path_size,
+                       schema_path, schema_path_size, mempool);
     if (err) goto error;
     err = knd_shared_dict_set(shard->repo_name_idx, reponame, reponame_size,
                               (void*)self->repo, mempool, NULL, &dict_item, true);
@@ -578,8 +580,6 @@ int knd_user_new(struct kndUser **user, const char *classname, size_t classname_
     task->user_ctx->mempool = mempool;
     task->user_ctx->acls = self->default_acls;
     task->mempool = mempool;
-
-    knd_log(">> User Repo acls:%p", self->default_acls);
 
     err = knd_repo_open(self->repo, task);
     if (err) goto error;

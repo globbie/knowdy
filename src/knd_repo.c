@@ -1124,7 +1124,6 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
     int err;
 
     assert(mempool != NULL);
-    assert(task->path_size != 0);
 
     if (DEBUG_REPO_LEVEL_TMP) {
         const char *owner_name = "/";
@@ -1139,28 +1138,14 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
         }
         knd_log(">> open \"%.*s\" Repo (owner:%.*s   open mode:%d  system path:%.*s)",
                 self->name_size, self->name, owner_name_size, owner_name,
-                task->role, task->path_size, task->path);
+                task->role, self->path_size, self->path);
 
         out->reset(out);
         mempool->present(mempool, out);
         knd_log("** Repo Mempool\n%.*s", out->buf_size, out->buf);
     }
     out->reset(out);
-    OUT(task->path, task->path_size);
-    if (task->path[task->path_size - 1] != '/') {
-        OUT("/", 1);
-    }
-    if (task->user_ctx && task->user_ctx->path_size) {
-        out->reset(out);
-        OUT(task->user_ctx->path, task->user_ctx->path_size);
-        if (task->user_ctx->path[task->user_ctx->path_size - 1] != '/') {
-            OUT("/", 1);
-        }
-    }
-
-    if (self->path_size) {
-        OUT(self->path, self->path_size);
-    }
+    OUT(self->path, self->path_size);
 
     for (size_t i = 0; i < KND_MAX_SNAPSHOTS; i++) {
         buf_size = snprintf(buf, KND_TEMP_BUF_SIZE, "snapshot_%zu/", i);
@@ -1710,6 +1695,7 @@ int knd_repo_snapshot_new(struct kndMemPool *mempool, struct kndRepoSnapshot **r
 }
 
 int knd_repo_new(struct kndRepo **repo, const char *name, size_t name_size,
+                 const char *path, size_t path_size,
                  const char *schema_path, size_t schema_path_size, struct kndMemPool *mempool)
 {
     struct kndRepo *self;
@@ -1729,16 +1715,25 @@ int knd_repo_new(struct kndRepo **repo, const char *name, size_t name_size,
     memcpy(self->name, name, name_size);
     self->name_size = name_size;
 
+    if (path_size) {
+        memcpy(self->path, path, path_size);
+        self->path_size = path_size;
+        if (path[path_size - 1] != '/') {
+            self->path[path_size] = '/';
+            self->path_size++;
+        }
+    }
+
     /* special repo names */
     switch (self->name[0]) {
     case '/':
     case '~':
         break;
     default:
-        memcpy(self->path, name, name_size);
-        self->path[name_size] = '/';
-        self->path[name_size + 1] = '\0';
-        self->path_size = name_size + 1;
+        memcpy(self->path + self->path_size, name, name_size);
+        self->path_size += name_size;
+        self->path[self->path_size] = '/';
+        self->path_size++;
     }
 
     self->schema_path = schema_path;

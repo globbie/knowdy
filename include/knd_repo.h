@@ -136,4 +136,5 @@ void knd_repo_del(struct kndRepo *self);
 int knd_repo_snapshot_new(struct kndMemPool *mempool, struct kndRepoSnapshot **result);
 int knd_conc_folder_new(struct kndMemPool *mempool, struct kndConcFolder **result);
 int knd_repo_new(struct kndRepo **self, const char *name, size_t name_size,
+                 const char *path, size_t path_size,
                  const char *schema_path, size_t schema_path_size, struct kndMemPool *mempool);
