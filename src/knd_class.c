@@ -43,6 +43,36 @@
 #define DEBUG_CLASS_LEVEL_5 0
 #define DEBUG_CLASS_LEVEL_TMP 1
 
+struct LocalContext {
+    struct kndTask *task;
+    struct kndRepo *repo;
+    struct kndClass *class;
+    struct kndAttrVar *attr_var;
+    const char *name;
+    size_t name_size;
+};
+
+static int find_attr_var(void *obj,
+                         const char *unused_var(elem_id),
+                         size_t unused_var(elem_id_size),
+                         size_t unused_var(count),
+                         void *elem)
+{
+    struct LocalContext *ctx = obj;
+    struct kndAttrRef *ref = elem;
+    const char *name = ctx->name;
+    size_t name_size = ctx->name_size;
+
+    knd_log("== attr \"%.*s\" (var: %p)", ref->attr->name_size, ref->attr->name, ref->attr_var);
+
+    if (ref->attr->name_size != name_size) return knd_OK;
+    if (memcmp(ref->attr->name, name, name_size)) return knd_OK;
+    if (!ref->attr_var) return knd_OK;
+
+    ctx->attr_var = ref->attr_var;
+    return knd_EXISTS;
+}
+
 static int str_attr_idx_rec(void *unused_var(obj),
                             const char *unused_var(elem_id),
                             size_t unused_var(elem_id_size),
@@ -141,7 +171,7 @@ static void str(struct kndClass *self, size_t depth)
                 entry->name_size, entry->name, entry->repo->name_size, entry->repo->name);
     }
 
-    err = self->attr_idx->map(self->attr_idx, str_attr_idx_rec, (void*)self);
+    err = knd_set_map(self->attr_idx, str_attr_idx_rec, (void*)self);
     if (err) return;
 
     knd_log("%*s the end of %.*s}", depth * KND_OFFSET_SIZE, "", self->entry->name_size, self->entry->name);
@@ -503,12 +533,10 @@ int knd_class_get_attr(struct kndClass *self, const char *name, size_t name_size
             ref = knd_shared_dict_get(attr_name_idx, name, name_size);
         }
         if (!ref) {
-            if (DEBUG_CLASS_LEVEL_TMP)
-                knd_log("-- no such attr: \"%.*s\"", name_size, name);
-            return knd_NO_MATCH;
+            err = knd_NO_MATCH;
+            goto final;
         }
     }
-
     /* iterating over synonymous attrs */
     for (; ref; ref = ref->next) {
         attr = ref->attr;
@@ -526,9 +554,7 @@ int knd_class_get_attr(struct kndClass *self, const char *name, size_t name_size
         goto final;
     }
     err = attr_idx->get(attr_idx, attr->id, attr->id_size, (void**)&ref);
-    if (err) {
-        goto final;
-    }
+    if (err) goto final;
 
     *result = ref;
     return knd_OK;
@@ -542,25 +568,20 @@ int knd_class_get_attr(struct kndClass *self, const char *name, size_t name_size
 
 int knd_class_get_attr_var(struct kndClass *self, const char *name, size_t name_size, struct kndAttrVar **result)
 {
-    struct kndAttrRef *ref;
-    struct kndAttr *attr;
-    int err;
-
-    err = knd_class_get_attr(self, name, name_size, &ref);
-    if (err) return err;
-
-    attr = ref->attr;
-    err = knd_set_get(self->attr_idx, attr->id, attr->id_size, (void**)&ref);
-    if (err) return err;
-
-    if (!ref->attr_var) {
-        if (DEBUG_CLASS_LEVEL_2)
-            knd_log("-- no attr var %.*s in class %.*s",
-                    name_size, name, self->name_size, self->name);
-        return knd_FAIL;
+    struct LocalContext ctx = {
+        .name = name,
+        .name_size = name_size
+    };
+   
+    int err = knd_set_map(self->attr_idx, find_attr_var, &ctx);
+    switch (err) {
+    case knd_EXISTS:
+        *result = ctx.attr_var;
+        return knd_OK;
+    default:
+        break;
     }
-    *result = ref->attr_var; 
-    return knd_OK;
+    return knd_NO_MATCH;
 }
 
 int knd_class_set_export(struct kndSet *self, knd_format format, struct kndTask *task)

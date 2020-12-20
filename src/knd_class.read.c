@@ -579,7 +579,7 @@ static gsl_err_t read_glosses(void *obj, const char *rec, size_t *total_size)
 
 int knd_class_read(struct kndClass *self, const char *rec, size_t *total_size, struct kndTask *task)
 {
-    if (DEBUG_CLASS_READ_LEVEL_2)
+    if (DEBUG_CLASS_READ_LEVEL_TMP)
         knd_log(".. reading class GSP: \"%.*s\"", 128, rec);
 
     if (self->resolving_in_progress) {

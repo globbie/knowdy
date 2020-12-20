@@ -195,8 +195,8 @@ static int export_concise_GSL(struct kndClass *self,
 
     for (item = self->baseclass_vars; item; item = item->next) {
         if (!item->attrs) continue;
-        err = knd_attr_vars_export_GSL(item->attrs,
-                                       task, true, depth);                        RET_ERR();
+        err = knd_attr_vars_export_GSL(item->attrs, task, true, depth);
+        RET_ERR();
     }
 
     /*if (DEBUG_GSL_LEVEL_2)
@@ -393,9 +393,7 @@ static int present_subclasses(struct kndClass *self, size_t num_children, struct
     return knd_OK;
 }
 
-static int export_attrs(struct kndClass *self,
-                        struct kndTask *task,
-                        size_t depth)
+static int export_attrs(struct kndClass *self, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     struct kndAttr *attr;
@@ -409,13 +407,8 @@ static int export_attrs(struct kndClass *self,
             err = out->writec(out, '\n');                                         RET_ERR();
             err = knd_print_offset(out, (depth + 2) * task->ctx->format_indent);       RET_ERR();
         }
-
         err = knd_attr_export_GSL(attr, task, depth + 1);
-        if (err) {
-            knd_log("-- failed to export %.*s attr",
-                    attr->name_size, attr->name);
-            return err;
-        }
+        KND_TASK_ERR("failed to export %.*s attr", attr->name_size, attr->name);
         i++;
     }
     err = out->writec(out, ']');                                                  RET_ERR();

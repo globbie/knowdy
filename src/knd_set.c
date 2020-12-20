@@ -261,10 +261,8 @@ int knd_set_map(struct kndSet *self, map_cb_func cb, void *obj)
             knd_log("NB: -- set has no root idx");
         return knd_OK;
     }
-
     err = kndSet_traverse_idx(self->idx, cb, obj, &count);
     if (err) return err;
-
     return knd_OK;
 }
 

@@ -65,6 +65,8 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
         knd_log(".. set class name: \"%.*s\" num strs:%zu", name_size, name, repo->num_strs);
 
+    assert(repo != NULL);
+
     /* initial bulk load in progress */
     switch (task->type) {
     case KND_LOAD_STATE:
@@ -124,7 +126,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     }
 
     /* check user shared repo */
-    if (task->user_ctx) {
+    if (task->user_ctx->base_repo) {
         err = knd_get_class(task->user_ctx->base_repo, name, name_size, &c, task);
         if (!err) {
             KND_TASK_LOG("\"%.*s\" class already exists in a base repo: %.*s",
@@ -145,9 +147,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
         entry->name_size = name_size;
         self->name = name;
         self->name_size = name_size;
-        err = knd_dict_set(task->class_name_idx,
-                           name, name_size,
-                           (void*)entry);
+        err = knd_dict_set(task->class_name_idx, name, name_size, (void*)entry);
         if (err) return make_gsl_err_external(err);
         return make_gsl_err(gsl_OK);
     }

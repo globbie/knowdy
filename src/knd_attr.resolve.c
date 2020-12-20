@@ -112,12 +112,10 @@ static int check_attr_name_conflict(struct kndClass *self,
 
     if (DEBUG_ATTR_RESOLVE_LEVEL_2)
         knd_log(".. checking attrs name conflict: %.*s",
-                attr_candidate->name_size,
-                attr_candidate->name);
+                attr_candidate->name_size, attr_candidate->name);
 
     /* global attr name search */
-    attr_ref = knd_shared_dict_get(attr_name_idx,
-                                   attr_candidate->name, attr_candidate->name_size);
+    attr_ref = knd_shared_dict_get(attr_name_idx, attr_candidate->name, attr_candidate->name_size);
     if (!attr_ref) return knd_OK;
 
     while (attr_ref) {
