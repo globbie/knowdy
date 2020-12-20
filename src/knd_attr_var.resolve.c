@@ -209,6 +209,7 @@ static int resolve_inner_var(struct kndClass *self, struct kndAttrVar *var, stru
             err = knd_resolve_class_ref(self, item->val, item->val_size,
                                         attr->ref_class_entry->class, &item->class, task);
             if (err) return err;
+            item->class_entry = item->class->entry;
             break;
         case KND_ATTR_REL:
             err = knd_get_class_inst(item->attr->ref_class_entry->class, item->val, item->val_size, task, &ci);
