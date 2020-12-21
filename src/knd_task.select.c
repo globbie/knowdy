@@ -194,7 +194,7 @@ static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_si
     // no explicit repo selection -> defaults to system repo
     task->user_ctx->repo = task->repo;
 
-    if (DEBUG_TASK_LEVEL_TMP)
+    if (DEBUG_TASK_LEVEL_3)
         knd_log(".. parsing the system repo class selection: \"%.*s\"", 64, rec);
     return knd_class_select(task->repo, rec, total_size, task);
 }

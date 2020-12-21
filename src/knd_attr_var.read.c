@@ -58,6 +58,19 @@ static gsl_err_t read_nested_attr_var(void *obj, const char *name, size_t name_s
 static gsl_err_t set_attr_var_value(void *obj, const char *val, size_t val_size);
 static gsl_err_t confirm_attr_var(void *obj, const char *unused_var(name), size_t unused_var(name_size));
 
+static void append_attr_var(struct kndClassVar *ci, struct kndAttrVar *attr_var)
+{
+    if (!ci->tail) {
+        ci->tail  = attr_var;
+        ci->attrs = attr_var;
+    }
+    else {
+        ci->tail->next = attr_var;
+        ci->tail = attr_var;
+    }
+    ci->num_attrs++;
+}
+
 static gsl_err_t parse_text(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
@@ -108,12 +121,10 @@ static gsl_err_t read_nested_attr_var_list(void *obj, const char *id, size_t id_
     attr = ref->attr;
 
     if (DEBUG_ATTR_VAR_READ_LEVEL_2)
-        knd_log(">> attr decoded: %.*s  (type:%d)", attr->name_size, attr->name, attr->type);
+        knd_log(">> list attr decoded: %.*s  (type:%d)", attr->name_size, attr->name, attr->type);
 
     err = knd_attr_var_new(mempool, &attr_var);
-    if (err) {
-        return make_gsl_err(err);
-    }
+    if (err) return make_gsl_err(err);
     attr_var->attr = attr;
     attr_var->name = attr->name;
     attr_var->name_size = attr->name_size;
@@ -177,8 +188,9 @@ static gsl_err_t read_nested_attr_var(void *obj, const char *id, size_t id_size,
     attr = ref->attr;
 
     if (DEBUG_ATTR_VAR_READ_LEVEL_2)
-        knd_log(">> attr decoded: %.*s (type:%d)", attr->name_size, attr->name, attr->type);
-    
+        knd_log(">> attr decoded: %.*s (type: %s)", attr->name_size, attr->name,
+                knd_attr_names[attr->type]);
+
     err = knd_attr_var_new(mempool, &attr_var);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     attr_var->parent = self;
@@ -288,7 +300,7 @@ static gsl_err_t set_attr_var_name(void *obj, const char *name, size_t name_size
         }
         if (DEBUG_ATTR_VAR_READ_LEVEL_3)
             knd_log("== REF: %.*s", self->class_entry->name_size, self->class_entry->name);
-            break;
+        break;
     case KND_ATTR_STR:
         err = knd_charseq_decode(task->repo, name, name_size, &seq, task);
         if (err) {
@@ -306,6 +318,67 @@ static gsl_err_t set_attr_var_name(void *obj, const char *name, size_t name_size
     return make_gsl_err(gsl_OK);
 }
 
+static int set_implied_attr_var(struct kndClass *c, const char *val, size_t val_size,
+                                struct kndAttrVar *parent_var, struct kndTask *task)
+{
+    char buf[KND_NAME_SIZE];
+    size_t buf_size = 0;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
+    struct kndAttr *attr = c->implied_attr;
+    struct kndClassEntry *entry;
+    struct kndAttrVar *var;
+    int err;
+
+    if (DEBUG_ATTR_VAR_READ_LEVEL_2) {
+        knd_log("== class: \"%.*s\" implied attr: \"%.*s\" (type: %s) check value:%.*s",
+                c->name_size, c->name, attr->name_size, attr->name, knd_attr_names[attr->type],
+                val_size, val);
+    }
+    err = knd_attr_var_new(mempool, &var);
+    KND_TASK_ERR("failed to alloc an attr var");
+    var->parent = parent_var;
+    var->implied_attr = attr;
+    var->attr = attr;
+    var->name = attr->name;
+    var->name_size = attr->name_size;
+    var->next = parent_var->children;
+    parent_var->children = var;
+    parent_var->num_children++;
+
+    switch (attr->type) {
+    case KND_ATTR_NUM:
+        if (DEBUG_ATTR_VAR_READ_LEVEL_2)
+            knd_log(".. read implied num attr: %.*s val:%.*s",
+                    var->name_size, var->name, var->val_size, var->val);
+        if (var->val_size) {
+            memcpy(buf, var->val, var->val_size);
+            buf_size = var->val_size;
+            buf[buf_size] = '\0';
+            err = knd_parse_num(buf, &var->numval);
+            KND_TASK_ERR("failed to parse num %.*s", buf_size, buf);
+            // TODO: float parsing
+        }
+        break;
+    case KND_ATTR_REF:
+        err = knd_get_class_entry_by_id(task->repo, val, val_size, &entry, task);
+        KND_TASK_ERR("no such class entry: %.*s", val_size, val);
+
+        if (DEBUG_ATTR_VAR_READ_LEVEL_2)
+            knd_log("== ref class decoded %.*s => %.*s",
+                    val_size, val, entry->name_size, entry->name);
+
+        var->class_entry = entry;
+        break;
+    case KND_ATTR_STR:
+        var->val = var->name;
+        var->val_size = var->name_size;
+        break;
+    default:
+        break;
+    }
+    return knd_OK;
+}
+
 static gsl_err_t set_attr_var_value(void *obj, const char *val, size_t val_size)
 {
     struct LocalContext *ctx = obj;
@@ -314,6 +387,7 @@ static gsl_err_t set_attr_var_value(void *obj, const char *val, size_t val_size)
     struct kndRepo *repo = task->repo;
     struct kndClassEntry *entry;
     struct kndCharSeq *seq;
+    struct kndClass *c = ctx->class;
     int err;
 
     if (DEBUG_ATTR_VAR_READ_LEVEL_2)
@@ -339,6 +413,15 @@ static gsl_err_t set_attr_var_value(void *obj, const char *val, size_t val_size)
                     self->name_size, self->name, seq->val_size, seq->val);
         self->val = seq->val;
         self->val_size = seq->val_size;
+        break;
+    case KND_ATTR_INNER:
+        if (!c || !c->implied_attr) break;
+        err = set_implied_attr_var(c, val, val_size, self, task);
+        if (err) {
+            KND_TASK_LOG("failed to set implied attr \"%.*s\" to %.*s",
+                         c->implied_attr->name_size, c->implied_attr->name, val_size, val);
+            return make_gsl_err(gsl_FAIL);
+        }
         break;
     case KND_ATTR_REL:
         // fall through
@@ -375,18 +458,6 @@ static gsl_err_t confirm_attr_var(void *obj, const char *unused_var(name), size_
     return make_gsl_err(gsl_OK);
 }
 
-static void append_attr_var(struct kndClassVar *ci, struct kndAttrVar *attr_var)
-{
-    if (!ci->tail) {
-        ci->tail  = attr_var;
-        ci->attrs = attr_var;
-    }
-    else {
-        ci->tail->next = attr_var;
-        ci->tail = attr_var;
-    }
-    ci->num_attrs++;
-}
 
 static gsl_err_t append_attr_var_list_item(void *accu, void *obj)
 {
@@ -475,15 +546,16 @@ int knd_read_attr_var_list(struct kndClassVar *self, const char *id, size_t id_s
     attr = ref->attr;
 
     if (DEBUG_ATTR_VAR_READ_LEVEL_2)
-        knd_log(">> class %.*s to read var list \"%.*s\" (%.*s) REC: %.*s",
-                entry->name_size, entry->name, attr->name_size, attr->name, id_size, id, 32, rec);
+        knd_log(">> class %.*s to read var list \"%.*s\" (%.*s, type:%s) REC: %.*s",
+                entry->name_size, entry->name, attr->name_size, attr->name,
+                id_size, id,  knd_attr_names[attr->type], 32, rec);
 
     err = knd_attr_var_new(mempool, &var);
     KND_TASK_ERR("failed to alloc attr var");
     var->class_var = self;
-    var->attr = ref->attr;
-    var->name = ref->attr->name;
-    var->name_size = ref->attr->name_size;
+    var->attr = attr;
+    var->name = attr->name;
+    var->name_size = attr->name_size;
     append_attr_var(self, var);
 
     struct LocalContext ctx = {
@@ -522,6 +594,7 @@ int knd_read_attr_var(struct kndClassVar *self, const char *id, size_t id_size,
                       const char *rec, size_t *total_size, struct kndTask *task)
 {
     struct kndAttrRef *ref;
+    struct kndAttr *attr;
     struct kndAttrVar *var;
     struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndClassEntry *entry = self->entry;
@@ -534,23 +607,39 @@ int knd_read_attr_var(struct kndClassVar *self, const char *id, size_t id_size,
 
     err = knd_set_get(c->attr_idx, id, id_size, (void**)&ref);
     KND_TASK_ERR("no attr \"%.*s\" in class \"%.*s\"", id_size, id, entry->name_size, entry->name);
+    attr = ref->attr;
 
     if (DEBUG_ATTR_VAR_READ_LEVEL_2)
-        knd_log(".. reading attr var \"%.*s\" of class: \"%.*s\"",
-                ref->attr->name_size, ref->attr->name, entry->name_size, entry->name);
+        knd_log(".. reading attr var \"%.*s\" (type: %s) of class \"%.*s\"",
+                attr->name_size, attr->name, knd_attr_names[attr->type],
+                entry->name_size, entry->name);
 
     err = knd_attr_var_new(mempool, &var);
     KND_TASK_ERR("failed to alloc an attr var");
     var->class_var = self;
-    var->name = ref->attr->name;
-    var->name_size = ref->attr->name_size;
-    var->attr = ref->attr;
+    var->name = attr->name;
+    var->name_size = attr->name_size;
+    var->attr = attr;
 
     struct LocalContext ctx = {
         .attr_var = var,
         .class = c,
         .task = task
     };
+
+    switch (attr->type) {
+    case KND_ATTR_INNER:
+        assert(attr->ref_class_entry != NULL);
+        err = knd_class_acquire(attr->ref_class_entry, &ctx.class, task);
+        KND_TASK_ERR("failed to acquire class \"%.*s\"",
+                     attr->ref_class_entry->name_size, attr->ref_class_entry->name);
+        if (DEBUG_ATTR_VAR_READ_LEVEL_2)
+            knd_log(">> inner class: \"%.*s\"",
+                    attr->ref_class_entry->name_size, attr->ref_class_entry->name);
+        break;
+    default:
+        break;
+    }   
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,

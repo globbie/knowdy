@@ -55,7 +55,6 @@ static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
     struct kndClassEntry *entry;
     struct kndClass *c;
     int err;
-
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
     /* check root name */
@@ -63,7 +62,6 @@ static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
         ctx->class_entry = ctx->repo->root_class->entry;
         return make_gsl_err(gsl_OK);
     }
-
     err = knd_get_class_entry(ctx->repo, name, name_size, true, &entry, task);
     if (err) {
         KND_TASK_LOG("\"%.*s\" class name not found", name_size, name);
@@ -77,8 +75,6 @@ static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
         return make_gsl_err_external(err);
     }
     ctx->class_entry = entry;
-
-    knd_log("== class entry repo: %.*s", entry->repo->name_size, entry->repo->name);
     return make_gsl_err(gsl_OK);
 }
 
@@ -933,7 +929,7 @@ gsl_err_t knd_class_select(struct kndRepo *repo, const char *rec, size_t *total_
     gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_TMP)
+    if (DEBUG_CLASS_SELECT_LEVEL_2)
         knd_log(".. parsing class select rec: \"%.*s\" (repo:%.*s)", 32, rec, repo->name_size, repo->name);
 
     struct LocalContext ctx = {

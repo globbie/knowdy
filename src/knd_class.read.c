@@ -756,11 +756,11 @@ int knd_class_acquire(struct kndClassEntry *entry, struct kndClass **result, str
             return knd_OK;
         }
         if (!c) {
+            task->payload = (void*)entry;
             err = knd_shared_set_unmarshall_elem(repo->class_idx, entry->id, entry->id_size,
                                                  knd_class_unmarshall, (void**)&c, task);
-            if (err) return err;
+            KND_TASK_ERR("failed to unmarshall class entry %.*s", entry->name_size, entry->name);
             c->entry = entry;
-            // entry->class = c;
             c->name = entry->name;
             c->name_size = entry->name_size;
 
@@ -781,14 +781,15 @@ int knd_class_unmarshall(const char *unused_var(elem_id), size_t unused_var(elem
     size_t total_size = rec_size;
     int err;
 
-    if (DEBUG_CLASS_READ_LEVEL_2)
-        knd_log(">> GSP rec: \"%.*s\"", rec_size, rec);
-
     err = knd_class_new(task->user_ctx->mempool, &c);
     KND_TASK_ERR("failed to alloc a class");
+    c->entry = task->payload;
+
+    if (DEBUG_CLASS_READ_LEVEL_2)
+        knd_log(">> %.*s GSP: \"%.*s\"", c->entry->name_size, c->entry->name, rec_size, rec);
 
     err = knd_class_read(c, rec, &total_size, task);
-    KND_TASK_ERR("failed to read GSP class rec");
+    KND_TASK_ERR("failed to read GSP of %.*s", c->entry->name_size, c->entry->name);
     
     *result = c;
     return knd_OK;

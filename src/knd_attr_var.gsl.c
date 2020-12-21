@@ -209,6 +209,7 @@ static int ref_var_export_GSL(struct kndAttrVar *var, struct kndTask *task, size
     return knd_OK;
 }
 
+#if 0
 static int proc_item_export_GSL(struct kndAttrVar *item, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
@@ -220,6 +221,7 @@ static int proc_item_export_GSL(struct kndAttrVar *item, struct kndTask *task)
     KND_TASK_ERR("failed to export proc GSL");
     return knd_OK;
 }
+#endif
 
 static int attr_var_list_export_GSL(struct kndAttrVar *var, struct kndTask *task, size_t depth)
 {
