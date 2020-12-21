@@ -774,8 +774,7 @@ int knd_class_acquire(struct kndClassEntry *entry, struct kndClass **result, str
 }
 
 int knd_class_unmarshall(const char *unused_var(elem_id), size_t unused_var(elem_id_size),
-                         const char *rec, size_t rec_size,
-                         void **result, struct kndTask *task)
+                         const char *rec, size_t rec_size, void **result, struct kndTask *task)
 {
     struct kndClass *c = NULL;
     size_t total_size = rec_size;

@@ -94,6 +94,73 @@ static gsl_err_t parse_text(void *obj, const char *rec, size_t *total_size)
     return make_gsl_err(gsl_OK);
 }
 
+static gsl_err_t set_proc_ref(void *obj, const char *val, size_t val_size)
+{
+    struct LocalContext *ctx = obj;
+    struct kndAttrVar *self = ctx->attr_var;
+    struct kndTask    *task = ctx->task;
+    struct kndRepo *repo = task->repo;
+    struct kndClassEntry *entry;
+    struct kndCharSeq *seq;
+    struct kndClass *c = ctx->class;
+    int err;
+
+    if (DEBUG_ATTR_VAR_READ_LEVEL_3)
+        knd_log(".. set proc ref: \"%.*s\" => \"%.*s\"",
+                self->attr->name_size, self->attr->name, val_size, val);
+
+    if (!val_size) return make_gsl_err(gsl_FORMAT);
+    self->val = val;
+    self->val_size = val_size;
+    // TODO resolve ref
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t set_proc_id(void *obj, const char *val, size_t val_size)
+{
+    struct LocalContext *ctx = obj;
+    struct kndAttrVar *self = ctx->attr_var;
+    struct kndTask    *task = ctx->task;
+    struct kndRepo *repo = task->repo;
+    struct kndClassEntry *entry;
+    struct kndCharSeq *seq;
+    struct kndClass *c = ctx->class;
+    int err;
+
+    if (DEBUG_ATTR_VAR_READ_LEVEL_3)
+        knd_log(".. set proc id: \"%.*s\" => \"%.*s\"",
+                self->attr->name_size, self->attr->name, val_size, val);
+
+    if (!val_size) return make_gsl_err(gsl_FORMAT);
+    // self->val = val;
+    // self->val_size = val_size;
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_proc_ref(void *obj, const char *rec, size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+    int err;
+
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = set_proc_ref,
+          .obj = ctx
+        },
+        { .name = "_id",
+          .name_size = strlen("_id"),
+          .run = set_proc_id,
+          .obj = ctx
+        }        
+    };
+    gsl_err_t parser_err;
+
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) return parser_err;
+    return make_gsl_err(gsl_OK);
+}
+
 static gsl_err_t read_nested_attr_var_list(void *obj, const char *id, size_t id_size,
                                            const char *rec, size_t *total_size)
 {
@@ -113,7 +180,7 @@ static gsl_err_t read_nested_attr_var_list(void *obj, const char *id, size_t id_
 
     err = knd_set_get(ctx->class->attr_idx, id, id_size, (void**)&ref);
     if (err) {
-        KND_TASK_LOG("class \"%.*s\" has no such attr: %.*s",
+        KND_TASK_LOG("class \"%.*s\" has no list attr: %.*s",
                      ctx->class->name_size, ctx->class->name, id_size, id);
         return *total_size = 0, make_gsl_err_external(err);
     }
@@ -180,7 +247,7 @@ static gsl_err_t read_nested_attr_var(void *obj, const char *id, size_t id_size,
 
     err = knd_set_get(ctx->class->attr_idx, id, id_size, (void**)&ref);
     if (err) {
-        KND_TASK_LOG("class \"%.*s\" has no such attr: %.*s",
+        KND_TASK_LOG("class \"%.*s\" failed to decode attr id \"%.*s\"",
                      ctx->class->name_size, ctx->class->name, id_size, id);
         return *total_size = 0, make_gsl_err_external(err);
     }
@@ -231,6 +298,11 @@ static gsl_err_t read_nested_attr_var(void *obj, const char *id, size_t id_size,
         { .name = "_t",
           .name_size = strlen("_t"),
           .parse = parse_text,
+          .obj = &attr_var_ctx
+        },
+        { .name = "proc",
+          .name_size = strlen("proc"),
+          .parse = parse_proc_ref,
           .obj = &attr_var_ctx
         },
         { .validate = read_nested_attr_var,
@@ -610,8 +682,8 @@ int knd_read_attr_var(struct kndClassVar *self, const char *id, size_t id_size,
     attr = ref->attr;
 
     if (DEBUG_ATTR_VAR_READ_LEVEL_2)
-        knd_log(".. reading attr var \"%.*s\" (type: %s) of class \"%.*s\"",
-                attr->name_size, attr->name, knd_attr_names[attr->type],
+        knd_log(">> reading attr var \"%.*s\" (id:%.*s, type: %s) of class \"%.*s\"",
+                attr->name_size, attr->name, id_size, id, knd_attr_names[attr->type],
                 entry->name_size, entry->name);
 
     err = knd_attr_var_new(mempool, &var);
@@ -639,7 +711,7 @@ int knd_read_attr_var(struct kndClassVar *self, const char *id, size_t id_size,
         break;
     default:
         break;
-    }   
+    }
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -649,6 +721,11 @@ int knd_read_attr_var(struct kndClassVar *self, const char *id, size_t id_size,
         { .name = "_t",
           .name_size = strlen("_t"),
           .parse = parse_text,
+          .obj = &ctx
+        },
+        { .name = "proc",
+          .name_size = strlen("proc"),
+          .parse = parse_proc_ref,
           .obj = &ctx
         },
         { .validate = read_nested_attr_var,

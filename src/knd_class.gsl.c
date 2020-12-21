@@ -445,9 +445,6 @@ static int export_baseclasses(struct kndClass *self, struct kndTask *task, size_
         err = knd_class_acquire(cvar->entry, &c, task);
         KND_TASK_ERR("failed to acquire baseclass %.*s", cvar->entry->name_size, cvar->entry->name);
 
-        if (DEBUG_GSL_LEVEL_TMP)
-            knd_log(">> base class: %.*s", c->name_size, c->name);
-
         if (c->tr) {
             err = knd_text_gloss_export_GSL(c->tr, task, depth + 2);
             KND_TASK_ERR("failed to export baseclass gloss GSL");
