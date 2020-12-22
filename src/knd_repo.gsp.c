@@ -117,13 +117,9 @@ int knd_repo_snapshot(struct kndRepo *self, struct kndTask *task)
                 self->name_size, self->name, latest_commit_id);
 
     out->reset(out);
-    err = out->write(out, task->path, task->path_size);
-    KND_TASK_ERR("system path construction failed");
+    err = out->write(out, self->path, self->path_size);
+    KND_TASK_ERR("repo path construction failed");
 
-    if (self->path_size) {
-        err = out->write(out, self->path, self->path_size);
-        KND_TASK_ERR("repo path construction failed");
-    }
     err = out->writef(out, "snapshot_%zu/", self->snapshots->numid);
     KND_TASK_ERR("snapshot path construction failed");
 

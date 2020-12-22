@@ -560,8 +560,7 @@ int knd_user_new(struct kndUser **user, const char *classname, size_t classname_
     self->reponame = reponame;
     self->reponame_size = reponame_size;
     err = knd_repo_new(&self->repo, reponame, reponame_size,
-                       self->path, self->path_size,
-                       schema_path, schema_path_size, mempool);
+                       path, path_size, schema_path, schema_path_size, mempool);
     if (err) goto error;
     err = knd_shared_dict_set(shard->repo_name_idx, reponame, reponame_size,
                               (void*)self->repo, mempool, NULL, &dict_item, true);

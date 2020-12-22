@@ -98,12 +98,7 @@ static gsl_err_t set_proc_ref(void *obj, const char *val, size_t val_size)
 {
     struct LocalContext *ctx = obj;
     struct kndAttrVar *self = ctx->attr_var;
-    struct kndTask    *task = ctx->task;
-    struct kndRepo *repo = task->repo;
-    struct kndClassEntry *entry;
-    struct kndCharSeq *seq;
-    struct kndClass *c = ctx->class;
-    int err;
+    // int err;
 
     if (DEBUG_ATTR_VAR_READ_LEVEL_3)
         knd_log(".. set proc ref: \"%.*s\" => \"%.*s\"",
@@ -116,28 +111,6 @@ static gsl_err_t set_proc_ref(void *obj, const char *val, size_t val_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t set_proc_id(void *obj, const char *val, size_t val_size)
-{
-    struct LocalContext *ctx = obj;
-    struct kndAttrVar *self = ctx->attr_var;
-    struct kndTask    *task = ctx->task;
-    struct kndRepo *repo = task->repo;
-    struct kndClassEntry *entry;
-    struct kndCharSeq *seq;
-    struct kndClass *c = ctx->class;
-    int err;
-
-    if (DEBUG_ATTR_VAR_READ_LEVEL_3)
-        knd_log(".. set proc id: \"%.*s\" => \"%.*s\"",
-                self->attr->name_size, self->attr->name, val_size, val);
-
-    if (!val_size) return make_gsl_err(gsl_FORMAT);
-    // self->val = val;
-    // self->val_size = val_size;
-
-    return make_gsl_err(gsl_OK);
-}
-
 static gsl_err_t parse_proc_ref(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
@@ -146,11 +119,6 @@ static gsl_err_t parse_proc_ref(void *obj, const char *rec, size_t *total_size)
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_proc_ref,
-          .obj = ctx
-        },
-        { .name = "_id",
-          .name_size = strlen("_id"),
-          .run = set_proc_id,
           .obj = ctx
         }        
     };
@@ -300,8 +268,8 @@ static gsl_err_t read_nested_attr_var(void *obj, const char *id, size_t id_size,
           .parse = parse_text,
           .obj = &attr_var_ctx
         },
-        { .name = "proc",
-          .name_size = strlen("proc"),
+        { .name = "_p",
+          .name_size = strlen("_p"),
           .parse = parse_proc_ref,
           .obj = &attr_var_ctx
         },
@@ -723,8 +691,8 @@ int knd_read_attr_var(struct kndClassVar *self, const char *id, size_t id_size,
           .parse = parse_text,
           .obj = &ctx
         },
-        { .name = "proc",
-          .name_size = strlen("proc"),
+        { .name = "_p",
+          .name_size = strlen("_p"),
           .parse = parse_proc_ref,
           .obj = &ctx
         },
