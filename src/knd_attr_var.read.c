@@ -596,6 +596,7 @@ int knd_read_attr_var_list(struct kndClassVar *self, const char *id, size_t id_s
     var->attr = attr;
     var->name = attr->name;
     var->name_size = attr->name_size;
+    ref->attr_var = var;
     append_attr_var(self, var);
 
     struct LocalContext ctx = {
@@ -660,6 +661,8 @@ int knd_read_attr_var(struct kndClassVar *self, const char *id, size_t id_size,
     var->name = attr->name;
     var->name_size = attr->name_size;
     var->attr = attr;
+    ref->attr_var = var;
+    append_attr_var(self, var);
 
     struct LocalContext ctx = {
         .attr_var = var,
@@ -713,6 +716,5 @@ int knd_read_attr_var(struct kndClassVar *self, const char *id, size_t id_size,
         knd_log("-- attr var parsing failed: %d", parser_err.code);
         return parser_err.code;
     }
-    append_attr_var(self, var);
     return knd_OK;
 }

@@ -784,7 +784,7 @@ int knd_class_unmarshall(const char *unused_var(elem_id), size_t unused_var(elem
     KND_TASK_ERR("failed to alloc a class");
     c->entry = task->payload;
 
-    if (DEBUG_CLASS_READ_LEVEL_TMP)
+    if (DEBUG_CLASS_READ_LEVEL_2)
         knd_log(">> %.*s GSP: \"%.*s\"", c->entry->name_size, c->entry->name, rec_size, rec);
 
     err = knd_class_read(c, rec, &total_size, task);
