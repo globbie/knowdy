@@ -40,8 +40,8 @@
 #define DEBUG_ATTR_INDEX_LEVEL_5 0
 #define DEBUG_ATTR_INDEX_LEVEL_TMP 1
 
-static int attr_hub_fetch(struct kndClass *owner, struct kndClassEntry *topic, struct kndAttr *attr,
-                          struct kndAttrHub **result, struct kndTask *task)
+static int attr_hub_fetch(struct kndClass *owner, struct kndAttr *attr, struct kndAttrHub **result,
+                          struct kndTask *task)
 {
     struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndAttrHub *hub = NULL;
@@ -54,7 +54,7 @@ static int attr_hub_fetch(struct kndClass *owner, struct kndClassEntry *topic, s
     if (!hub) {
         err = knd_attr_hub_new(mempool, &hub);
         KND_TASK_ERR("failed to alloc attr hub");
-        hub->topic_template = topic;
+        // hub->topic_template = topic;
         hub->attr = attr;
         // hub->owner = owner;
         hub->next = owner->attr_hubs;
@@ -81,7 +81,7 @@ int knd_attr_hub_update(struct kndClass *owner, struct kndClassEntry *topic, str
                 topic->name_size, topic->name, topic_inst, spec->name_size, spec->name, spec_inst);
     }
 
-    err = attr_hub_fetch(owner, topic, attr, &hub, task);
+    err = attr_hub_fetch(owner, attr, &hub, task);
     KND_TASK_ERR("failed to fetch attr hub");
 
     set = hub->topics;

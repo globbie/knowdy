@@ -512,7 +512,7 @@ int knd_class_export_GSL(struct kndClassEntry *entry, struct kndTask *task, bool
     size_t num_children;
     int err;
 
-    if (DEBUG_GSL_LEVEL_TMP) {
+    if (DEBUG_GSL_LEVEL_2) {
         knd_log(".. GSL export: \"%.*s\" (repo:%.*s) "
                 " depth:%zu max depth:%zu indent size:%zu",
                 entry->name_size, entry->name, entry->repo->name_size, entry->repo->name,

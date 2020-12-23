@@ -236,7 +236,7 @@ static int export_inverse_rels(struct kndClass *self, struct kndTask *task)
         attr = attr_hub->attr;
 
         OUT("{", 1);
-        OUT(attr_hub->topic_template->id, attr_hub->topic_template->id_size);
+        OUT(attr->parent_class->entry->id, attr->parent_class->entry->id_size);
         OUT("{a ", strlen("{a "));
         OUT(attr->id, attr->id_size);
         OUT("}", 1);

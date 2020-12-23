@@ -114,8 +114,6 @@ static gsl_err_t set_proc_ref(void *obj, const char *val, size_t val_size)
 static gsl_err_t parse_proc_ref(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
-    int err;
-
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_proc_ref,
@@ -566,60 +564,79 @@ static gsl_err_t read_attr_var_list_item(void *obj, const char *rec, size_t *tot
     return append_attr_var_list_item(self, attr_var);
 }
 
-int knd_read_attr_var_list(struct kndClassVar *self, const char *id, size_t id_size,
-                           const char *rec, size_t *total_size, struct kndTask *task)
+static int build_attr_var(struct kndClassVar *self, const char *id, size_t id_size,
+                          struct kndAttrVar **result, struct kndTask *task)
 {
-    struct kndAttrVar *var;
     struct kndMemPool *mempool = task->user_ctx->mempool;
-    struct kndAttrRef *ref;
-    struct kndAttr *attr;
     struct kndClassEntry *entry = self->entry;
     struct kndClass *c;
-    gsl_err_t parser_err;
+    struct kndAttr *attr;
+    struct kndAttrVar *var;
+    struct kndAttrRef *ref;
     int err;
 
     err = knd_class_acquire(entry, &c, task);
-    KND_TASK_ERR("failed to acquire class \"%.*s\"", entry->name_size, entry->name);
-
+    KND_TASK_ERR("failed to acquire baseclass %.*s", entry->name_size, entry->name);
+ 
     err = knd_set_get(c->attr_idx, id, id_size, (void**)&ref);
-    KND_TASK_ERR("\"%.*s\" attr not found in class \"%.*s\" ", id_size, id, c->name_size, c->name);
+    KND_TASK_ERR("no attr \"%.*s\" in class \"%.*s\"", id_size, id, entry->name_size, entry->name);
     attr = ref->attr;
 
+    err = knd_attr_ref_new(mempool, &ref);
+    KND_TASK_ERR("failed to alloc an attr ref");
+    ref->attr = attr;
+    ref->class_entry = attr->parent_class->entry;
+
+    err = knd_set_add(self->parent->attr_idx, attr->id, attr->id_size, (void*)ref);
+    KND_TASK_ERR("failed to update attr idx of %.*s", self->parent->name_size, self->parent->name);
+
     if (DEBUG_ATTR_VAR_READ_LEVEL_2)
-        knd_log(">> class %.*s to read var list \"%.*s\" (%.*s, type:%s) REC: %.*s",
-                entry->name_size, entry->name, attr->name_size, attr->name,
-                id_size, id,  knd_attr_names[attr->type], 32, rec);
+        knd_log(">> class \"%.*s\" to read \"%.*s\" var (origin: %.*s) (id:%.*s, type: %s)",
+                self->parent->name_size, self->parent->name,
+                attr->name_size, attr->name, entry->name_size, entry->name,
+                id_size, id, knd_attr_names[attr->type]);
 
     err = knd_attr_var_new(mempool, &var);
-    KND_TASK_ERR("failed to alloc attr var");
+    KND_TASK_ERR("failed to alloc an attr var");
     var->class_var = self;
-    var->attr = attr;
     var->name = attr->name;
     var->name_size = attr->name_size;
+    var->attr = attr;
     ref->attr_var = var;
     append_attr_var(self, var);
-
-    struct LocalContext ctx = {
-        .list_parent = var,
-        .class = c,
-        .task = task
-    };
 
     switch (attr->type) {
     case KND_ATTR_INNER:
         assert(attr->ref_class_entry != NULL);
-
-        err = knd_class_acquire(attr->ref_class_entry, &ctx.class, task);
+        err = knd_class_acquire(attr->ref_class_entry, &var->class, task);
         KND_TASK_ERR("failed to acquire class \"%.*s\"",
                      attr->ref_class_entry->name_size, attr->ref_class_entry->name);
-
         if (DEBUG_ATTR_VAR_READ_LEVEL_2)
-            knd_log(">> a list of inner class \"%.*s\"",
+            knd_log(">> inner class: \"%.*s\"",
                     attr->ref_class_entry->name_size, attr->ref_class_entry->name);
         break;
     default:
         break;
     }
+    *result = var;
+    return knd_OK;
+}
+
+int knd_read_attr_var_list(struct kndClassVar *self, const char *id, size_t id_size,
+                           const char *rec, size_t *total_size, struct kndTask *task)
+{
+    struct kndAttrVar *var;
+    gsl_err_t parser_err;
+    int err;
+
+    err = build_attr_var(self, id, id_size, &var, task);
+    KND_TASK_ERR("failed to build an attr var");
+
+    struct LocalContext ctx = {
+        .list_parent = var,
+        .class = var->class,
+        .task = task
+    };
 
     struct gslTaskSpec read_attr_var_spec = {
         .is_list_item = true,
@@ -634,55 +651,19 @@ int knd_read_attr_var_list(struct kndClassVar *self, const char *id, size_t id_s
 int knd_read_attr_var(struct kndClassVar *self, const char *id, size_t id_size,
                       const char *rec, size_t *total_size, struct kndTask *task)
 {
-    struct kndAttrRef *ref;
-    struct kndAttr *attr;
     struct kndAttrVar *var;
-    struct kndMemPool *mempool = task->user_ctx->mempool;
-    struct kndClassEntry *entry = self->entry;
-    struct kndClass *c;
     gsl_err_t parser_err;
     int err;
+    assert(self->parent != NULL);
 
-    err = knd_class_acquire(entry, &c, task);
-    KND_TASK_ERR("failed to get class %.*s", entry->name_size, entry->name);
-
-    err = knd_set_get(c->attr_idx, id, id_size, (void**)&ref);
-    KND_TASK_ERR("no attr \"%.*s\" in class \"%.*s\"", id_size, id, entry->name_size, entry->name);
-    attr = ref->attr;
-
-    if (DEBUG_ATTR_VAR_READ_LEVEL_2)
-        knd_log(">> reading attr var \"%.*s\" (id:%.*s, type: %s) of class \"%.*s\"",
-                attr->name_size, attr->name, id_size, id, knd_attr_names[attr->type],
-                entry->name_size, entry->name);
-
-    err = knd_attr_var_new(mempool, &var);
-    KND_TASK_ERR("failed to alloc an attr var");
-    var->class_var = self;
-    var->name = attr->name;
-    var->name_size = attr->name_size;
-    var->attr = attr;
-    ref->attr_var = var;
-    append_attr_var(self, var);
+    err = build_attr_var(self, id, id_size, &var, task);
+    KND_TASK_ERR("failed to build an attr var");
 
     struct LocalContext ctx = {
         .attr_var = var,
-        .class = c,
+        .class = var->class,
         .task = task
     };
-
-    switch (attr->type) {
-    case KND_ATTR_INNER:
-        assert(attr->ref_class_entry != NULL);
-        err = knd_class_acquire(attr->ref_class_entry, &ctx.class, task);
-        KND_TASK_ERR("failed to acquire class \"%.*s\"",
-                     attr->ref_class_entry->name_size, attr->ref_class_entry->name);
-        if (DEBUG_ATTR_VAR_READ_LEVEL_2)
-            knd_log(">> inner class: \"%.*s\"",
-                    attr->ref_class_entry->name_size, attr->ref_class_entry->name);
-        break;
-    default:
-        break;
-    }
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,

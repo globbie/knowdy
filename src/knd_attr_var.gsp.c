@@ -133,10 +133,10 @@ static int inner_var_export_GSP(struct kndAttrVar *var, struct kndTask *task)
     return knd_OK;
 }
 
-static int proc_item_export_GSP(struct kndAttrVar *item, struct kndTask *task, struct kndOutput *out)
+static int proc_item_export_GSP(struct kndAttrVar *item, struct kndTask *task)
 {
     struct kndProc *proc = item->proc;
-    int err;
+    struct kndOutput *out = task->out;
     assert(proc != NULL);
     OUT("{_p ", strlen("{_p "));
     OUT(proc->entry->id, proc->entry->id_size);
@@ -240,7 +240,7 @@ int knd_attr_var_export_GSP(struct kndAttrVar *var, struct kndTask *task, struct
         OUT(var->class->entry->id, var->class->entry->id_size);
         break;
     case KND_ATTR_PROC_REF:
-        err = proc_item_export_GSP(var, task, out);
+        err = proc_item_export_GSP(var, task);
         KND_TASK_ERR("failed to export proc var GSP");
         break;
     case KND_ATTR_INNER:

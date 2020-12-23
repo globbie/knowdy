@@ -149,7 +149,7 @@ void knd_attr_var_str(struct kndAttrVar *var, size_t depth)
             knd_log("%*s%.*s (\"%.*s\" class ref) => %.*s", depth * KND_OFFSET_SIZE, "",
                     var->name_size, var->name,
                     attr->ref_class_entry->name_size, attr->ref_class_entry->name,
-                    var->class->name_size, var->class->name);
+                    var->class_entry->name_size, var->class_entry->name);
             break;
         case KND_ATTR_REL:
             knd_log("%*s%.*s (\"%.*s\" class inst rel) => \"%.*s\"", depth * KND_OFFSET_SIZE, "",

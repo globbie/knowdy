@@ -98,8 +98,8 @@ static gsl_err_t set_baseclass(void *obj, const char *id, size_t id_size)
     }
     class_var->entry = entry;
 
-    if (DEBUG_CLASS_READ_LEVEL_3)
-        knd_log("== conc item baseclass: %.*s (id:%.*s)", entry->name_size, entry->name, id_size, id);
+    if (DEBUG_CLASS_READ_LEVEL_2)
+        knd_log("== conc baseclass: %.*s (id:%.*s)", entry->name_size, entry->name, id_size, id);
     
     return make_gsl_err(gsl_OK);
 }
@@ -138,6 +138,7 @@ static gsl_err_t parse_baseclass_array_item(void *obj, const char *rec, size_t *
 
     err = knd_class_var_new(mempool, &class_var);
     if (err) return *total_size = 0, make_gsl_err_external(err);
+    class_var->parent = self;
     ctx->class_var = class_var;
 
     struct gslTaskSpec specs[] = {
@@ -164,6 +165,8 @@ static gsl_err_t parse_baseclass_array_item(void *obj, const char *rec, size_t *
     class_var->next = self->baseclass_vars;
     self->baseclass_vars = class_var;
     self->num_baseclass_vars++;
+    ctx->class_var = NULL;
+
     return make_gsl_err(gsl_OK);
 }
 
@@ -693,6 +696,10 @@ static int inherit_attr(struct kndClass *self, struct kndAttr *attr, struct kndT
                 attr->parent_class->name_size, attr->parent_class->name,
                 self->name_size, self->name);
 
+    // attr var already set?
+    err = knd_set_get(attr_idx, attr->id, attr->id_size, (void**)&ref);
+    if (!err) return knd_OK;
+
     err = knd_attr_ref_new(mempool, &ref);
     KND_TASK_ERR("failed to alloc an attr ref");
     ref->attr = attr;
@@ -739,7 +746,7 @@ int knd_class_acquire(struct kndClassEntry *entry, struct kndClass **result, str
     // int num_readers;
     int err;
 
-    if (DEBUG_CLASS_READ_LEVEL_3)
+    if (DEBUG_CLASS_READ_LEVEL_2)
         knd_log(">> acquire class \"%.*s\"", entry->name_size, entry->name);
 
     // TODO read/write conflicts
@@ -781,8 +788,10 @@ int knd_class_unmarshall(const char *unused_var(elem_id), size_t unused_var(elem
     int err;
 
     err = knd_class_new(task->user_ctx->mempool, &c);
-    KND_TASK_ERR("failed to alloc a class");
+    KND_TASK_ERR("failed to alloc a class to unmarshall");
     c->entry = task->payload;
+    c->name = c->entry->name;
+    c->name_size = c->entry->name_size;
 
     if (DEBUG_CLASS_READ_LEVEL_2)
         knd_log(">> %.*s GSP: \"%.*s\"", c->entry->name_size, c->entry->name, rec_size, rec);

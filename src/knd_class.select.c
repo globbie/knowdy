@@ -663,7 +663,7 @@ static gsl_err_t parse_import_class_inst(void *obj, const char *rec, size_t *tot
     struct kndClass *c;
     int err;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_TMP)
+    if (DEBUG_CLASS_SELECT_LEVEL_2)
         knd_log(".. parse import class inst..");
 
     if (!entry) {
@@ -697,7 +697,7 @@ static gsl_err_t parse_import_class_inst(void *obj, const char *rec, size_t *tot
     snapshot = atomic_load_explicit(&repo->snapshots, memory_order_relaxed);
     switch (snapshot->role) {
     case KND_READER:
-        if (DEBUG_CLASS_SELECT_LEVEL_TMP)
+        if (DEBUG_CLASS_SELECT_LEVEL_2)
             knd_log(">> snapshot %.*s (role:%d  task role:%d)", snapshot->path_size, snapshot->path, snapshot->role, task->role);
         
         snapshot->role = KND_WRITER;
@@ -902,6 +902,9 @@ static gsl_err_t present_class_selection(void *obj, const char *unused_var(val),
             KND_TASK_LOG("class export failed");
             return make_gsl_err_external(err);
         }
+
+        if (DEBUG_CLASS_SELECT_LEVEL_2)
+            c->str(c, 1);
         return make_gsl_err(gsl_OK);
     }
 
