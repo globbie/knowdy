@@ -466,10 +466,7 @@ int knd_class_export_state(struct kndClassEntry *self, knd_format format, struct
 
 int knd_is_base(struct kndClass *self, struct kndClass *child)
 {
-    //struct kndClassEntry *entry = child->entry;
     struct kndClassRef *ref;
-    struct kndClass *c;
-    size_t count = 0;
 
     if (DEBUG_CLASS_LEVEL_2) {
         knd_log(".. check inheritance: %.*s (repo:%.*s) [resolved: %d] => "
@@ -482,32 +479,19 @@ int knd_is_base(struct kndClass *self, struct kndClass *child)
                 self->num_ancestors,
                 self->base_is_resolved, self->is_resolved);
     }
-
     for (ref = child->ancestors; ref; ref = ref->next) {
-         c = ref->class;
-         if (DEBUG_CLASS_LEVEL_2) {
-             knd_log("  => is %zu): %.*s (repo:%.*s)  base resolved:%d",
-                     count,
-                     c->name_size, c->name,
-                     c->entry->repo->name_size, c->entry->repo->name,
-                     c->base_is_resolved);
-         }
-         count++;
-
-         if (c == self) {
+         if (ref->entry == self->entry)
              return knd_OK;
-         }
-         if (self->entry->base) {
-             if (self->entry->base->class == c)
+         
+         if (self->entry->base)
+             if (self->entry->base->class->entry == ref->entry)
                  return knd_OK;
-         }
     }
-
     if (DEBUG_CLASS_LEVEL_2)
         knd_log("-- no inheritance from  \"%.*s\" to \"%.*s\" :(",
                 self->entry->name_size, self->entry->name,
                 child->name_size, child->name);
-    return knd_FAIL;
+    return knd_NO_MATCH;
 }
 
 int knd_class_get_attr(struct kndClass *self, const char *name, size_t name_size, struct kndAttrRef **result)
