@@ -569,26 +569,15 @@ static int build_attr_var(struct kndClassVar *self, const char *id, size_t id_si
 {
     struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndClassEntry *entry = self->entry;
-    struct kndClass *c;
+    struct kndClass *c = self->parent;
     struct kndAttr *attr;
     struct kndAttrVar *var;
     struct kndAttrRef *ref;
     int err;
 
-    err = knd_class_acquire(entry, &c, task);
-    KND_TASK_ERR("failed to acquire baseclass %.*s", entry->name_size, entry->name);
- 
     err = knd_set_get(c->attr_idx, id, id_size, (void**)&ref);
-    KND_TASK_ERR("no attr \"%.*s\" in class \"%.*s\"", id_size, id, entry->name_size, entry->name);
+    KND_TASK_ERR("no attr \"%.*s\" in class \"%.*s\"", id_size, id, c->name_size, c->name);
     attr = ref->attr;
-
-    err = knd_attr_ref_new(mempool, &ref);
-    KND_TASK_ERR("failed to alloc an attr ref");
-    ref->attr = attr;
-    ref->class_entry = attr->parent_class->entry;
-
-    err = knd_set_add(self->parent->attr_idx, attr->id, attr->id_size, (void*)ref);
-    KND_TASK_ERR("failed to update attr idx of %.*s", self->parent->name_size, self->parent->name);
 
     if (DEBUG_ATTR_VAR_READ_LEVEL_2)
         knd_log(">> class \"%.*s\" to read \"%.*s\" var (origin: %.*s) (id:%.*s, type: %s)",
@@ -602,6 +591,7 @@ static int build_attr_var(struct kndClassVar *self, const char *id, size_t id_si
     var->name = attr->name;
     var->name_size = attr->name_size;
     var->attr = attr;
+    // set inherited attr var
     ref->attr_var = var;
     append_attr_var(self, var);
 

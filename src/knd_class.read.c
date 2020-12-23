@@ -75,6 +75,37 @@ static gsl_err_t read_attr_var_list(void *obj, const char *name, size_t name_siz
     return make_gsl_err(gsl_OK);
 }
 
+static int inherit_base_attr(void *obj, const char *unused_var(elem_id), size_t unused_var(elem_id_size),
+                             size_t unused_var(count), void *elem)
+{
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
+    struct kndAttrRef *baseref = elem;
+    struct kndAttr *attr = baseref->attr;
+    struct kndAttrRef *ref;
+    struct kndClassVar *class_var = ctx->class_var;
+    struct kndClass *c = class_var->parent;
+    int err;
+
+    if (DEBUG_CLASS_READ_LEVEL_2)
+        knd_log(">> %.*s to inherit base attr %.*s (var:%p)",
+                c->name_size, c->name, attr->name_size, attr->name, baseref->attr_var);
+    err = knd_set_get(c->attr_idx, attr->id, attr->id_size, (void**)&ref);
+    if (!err) return knd_OK;
+
+    err = knd_attr_ref_new(mempool, &ref);
+    KND_TASK_ERR("failed to alloc an attr ref");
+    ref->attr = attr;
+    ref->class_entry = baseref->class_entry;
+    ref->attr_var = baseref->attr_var;
+
+    err = knd_set_add(c->attr_idx, attr->id, attr->id_size, (void*)ref);
+    KND_TASK_ERR("failed to update attr idx of %.*s", c->name_size, c->name);
+    
+    return knd_OK;
+}
+
 static gsl_err_t set_baseclass(void *obj, const char *id, size_t id_size)
 {
     struct LocalContext *ctx = obj;
@@ -82,6 +113,7 @@ static gsl_err_t set_baseclass(void *obj, const char *id, size_t id_size)
     struct kndClassVar *class_var = ctx->class_var;
     struct kndRepo *repo = ctx->task->repo;
     struct kndClassEntry *entry;
+    struct kndClass *base;
     int err;
 
     if (!id_size) return make_gsl_err(gsl_FORMAT);
@@ -100,7 +132,18 @@ static gsl_err_t set_baseclass(void *obj, const char *id, size_t id_size)
 
     if (DEBUG_CLASS_READ_LEVEL_2)
         knd_log("== conc baseclass: %.*s (id:%.*s)", entry->name_size, entry->name, id_size, id);
-    
+
+    err = knd_class_acquire(entry, &base, task);
+    if (err) {
+        KND_TASK_LOG("failed to acquire base class %.*s", entry->name_size, entry->name);
+        return make_gsl_err_external(err);
+    }
+    err = knd_set_map(base->attr_idx, inherit_base_attr, (void*)ctx);
+    if (err) {
+        KND_TASK_LOG("failed to inherit base attrs from %.*s (err:%s)",
+                     entry->name_size, entry->name, knd_err_names[err]);
+        return make_gsl_err_external(err);
+    }    
     return make_gsl_err(gsl_OK);
 }
 
@@ -683,62 +726,6 @@ int knd_class_read(struct kndClass *self, const char *rec, size_t *total_size, s
     return knd_OK;
 }
 
-static int inherit_attr(struct kndClass *self, struct kndAttr *attr, struct kndTask *task)
-{
-    struct kndMemPool *mempool = task->user_ctx->mempool;
-    struct kndSet     *attr_idx = self->attr_idx;
-    struct kndAttrRef *ref = NULL;
-    int err;
-
-    if (DEBUG_CLASS_READ_LEVEL_3)
-        knd_log("..  \"%.*s\" (id:%.*s size:%zu) attr of \"%.*s\" to be inherited by %.*s",
-                attr->name_size, attr->name, attr->id_size, attr->id, attr->id_size,
-                attr->parent_class->name_size, attr->parent_class->name,
-                self->name_size, self->name);
-
-    // attr var already set?
-    err = knd_set_get(attr_idx, attr->id, attr->id_size, (void**)&ref);
-    if (!err) return knd_OK;
-
-    err = knd_attr_ref_new(mempool, &ref);
-    KND_TASK_ERR("failed to alloc an attr ref");
-    ref->attr = attr;
-    ref->class_entry = attr->parent_class->entry;
-
-    err = knd_set_add(attr_idx, attr->id, attr->id_size, (void*)ref);
-    KND_TASK_ERR("failed to update attr idx of %.*s", self->name_size, self->name);
-
-    return knd_OK;
-}
-
-static int resolve_class(struct kndClass *self, struct kndTask *task)
-{
-    struct kndClassRef *ref;
-    struct kndClassEntry *entry;
-    struct kndClass *c;
-    struct kndAttr *attr;
-    int err;
-
-    FOREACH (ref, self->ancestors) {
-        entry = ref->entry;
-        err = knd_class_acquire(entry, &c, task);
-        KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
-
-        if (DEBUG_CLASS_READ_LEVEL_2)
-            knd_log(".. class \"%.*s\" to inherit attrs from \"%.*s\"",
-                    self->name_size, self->name, c->name_size, c->name);
-
-        FOREACH (attr, c->attrs) {
-            err = inherit_attr(self, attr, task);
-            KND_TASK_ERR("class \"%.*s\" failed to inherit attr %.*s from \"%.*s\"",
-                         self->name_size, self->name,
-                         attr->name_size, attr->name, c->name_size, c->name);
-        }
-        ref->class = c;
-    }
-    return knd_OK;
-}
-
 int knd_class_acquire(struct kndClassEntry *entry, struct kndClass **result, struct kndTask *task)
 {
     struct kndRepo *repo = entry->repo;
@@ -771,8 +758,8 @@ int knd_class_acquire(struct kndClassEntry *entry, struct kndClass **result, str
             c->name = entry->name;
             c->name_size = entry->name_size;
 
-            err = resolve_class(c, task);
-            KND_TASK_ERR("failed to resolve class %.*s", c->name_size, c->name);
+            // err = resolve_class(c, task);
+            //KND_TASK_ERR("failed to resolve class %.*s", c->name_size, c->name);
         }
     } while (!atomic_compare_exchange_weak(&entry->class, &prev_c, c));
 
