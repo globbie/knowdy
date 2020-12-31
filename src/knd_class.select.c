@@ -903,7 +903,7 @@ static gsl_err_t present_class_selection(void *obj, const char *unused_var(val),
             return make_gsl_err_external(err);
         }
 
-        if (DEBUG_CLASS_SELECT_LEVEL_2)
+        if (DEBUG_CLASS_SELECT_LEVEL_TMP)
             c->str(c, 1);
         return make_gsl_err(gsl_OK);
     }

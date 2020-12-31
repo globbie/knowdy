@@ -92,7 +92,19 @@ static int inherit_base_attr(void *obj, const char *unused_var(elem_id), size_t 
         knd_log(">> %.*s to inherit base attr %.*s (var:%p)",
                 c->name_size, c->name, attr->name_size, attr->name, baseref->attr_var);
     err = knd_set_get(c->attr_idx, attr->id, attr->id_size, (void**)&ref);
-    if (!err) return knd_OK;
+    if (!err) {
+        if (baseref->attr_var) {
+            if (ref->attr_var) {
+                if (ref->attr_var != baseref->attr_var) {
+                    knd_log("-- conflicting attr vars detected in %.*s (base attr %.*s)?",
+                            c->name_size, c->name, attr->name_size, attr->name);
+                }
+                return knd_OK;
+            }
+            ref->attr_var = baseref->attr_var;
+        }
+        return knd_OK;
+    }
 
     err = knd_attr_ref_new(mempool, &ref);
     KND_TASK_ERR("failed to alloc an attr ref");
