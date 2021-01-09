@@ -222,8 +222,7 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
     return knd_OK;
 }
 
-int knd_task_copy_block(struct kndTask *task,
-                        const char *input, size_t input_size,
+int knd_task_copy_block(struct kndTask *task, const char *input, size_t input_size,
                         const char **output, size_t *output_size)
 {
     int err;
@@ -256,8 +255,7 @@ int knd_task_copy_block(struct kndTask *task,
     return knd_OK;
 }
 
-int knd_task_read_file_block(struct kndTask *task,
-                             const char *filename, size_t file_size,
+int knd_task_read_file_block(struct kndTask *task, const char *filename, size_t file_size,
                              struct kndMemBlock **result)
 {
     FILE *file_stream;
@@ -282,7 +280,6 @@ int knd_task_read_file_block(struct kndTask *task,
         err = knd_IO_FAIL;
         KND_TASK_ERR("error opening FILE \"%s\"", filename);
     }
-
     read_size = fread(b, 1, file_size, file_stream);
 
     b[file_size] = '}';
@@ -330,7 +327,8 @@ int knd_task_context_new(struct kndMemPool *mempool, struct kndTaskContext **res
     return knd_OK;
 }
 
-int knd_task_new(struct kndShard *shard, struct kndMemPool *mempool, int task_id, struct kndTask **task)
+int knd_task_new(struct kndShard *shard, struct kndMemPool *mempool, int task_id,
+                 struct kndTask **task)
 {
     struct kndTask *self;
     struct kndRepo *repo = shard->repo;
@@ -398,7 +396,11 @@ int knd_task_new(struct kndShard *shard, struct kndMemPool *mempool, int task_id
     err = knd_user_context_new(NULL, &self->default_user_ctx);
     if (err) goto error;
     self->user_ctx = self->default_user_ctx;
-
+    if (shard->user) {
+        self->user_ctx->mempool = shard->user->mempool;
+        self->user_ctx->repo = shard->user->repo;
+        self->user_ctx->acls = shard->user->default_acls;
+    }
     *task = self;
 
     return knd_OK;
