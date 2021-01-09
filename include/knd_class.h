@@ -212,6 +212,7 @@ int knd_get_class_entry_by_id(struct kndRepo *repo, const char *id, size_t id_si
 
 int knd_is_base(struct kndClass *self, struct kndClass *child);
 
+// int knd_class_get_attr(struct kndClass *self, const char *name, size_t name_size, struct kndAttrRef **result);
 int knd_class_get_attr(struct kndClass *self, const char *name, size_t name_size, struct kndAttrRef **result);
 int knd_class_get_attr_var(struct kndClass *self, const char *name, size_t name_size, struct kndAttrVar **result);
 

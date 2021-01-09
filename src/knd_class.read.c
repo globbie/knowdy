@@ -735,6 +735,10 @@ int knd_class_read(struct kndClass *self, const char *rec, size_t *total_size, s
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return parser_err.code;
+
+    self->resolving_in_progress = false;
+    self->is_resolved = true;
+
     return knd_OK;
 }
 

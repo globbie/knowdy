@@ -94,22 +94,18 @@ int knd_dedup_commit(struct kndCommit *commit, struct kndTask *unused_var(task))
 int knd_resolve_commit(struct kndCommit *commit, struct kndTask *task)
 {
     struct kndState *state;
-    struct kndClassEntry *entry;
     struct kndProcEntry *proc_entry;
     struct kndStateRef *ref;
+    struct kndClassEntry *entry;
+    struct kndClass *c;
     int err;
 
-    if (DEBUG_COMMIT_LEVEL_2)
+    if (DEBUG_COMMIT_LEVEL_TMP)
         knd_log(".. resolving commit #%zu", commit->numid);
     
-    for (ref = commit->class_state_refs; ref; ref = ref->next) {
+    FOREACH (ref, commit->class_state_refs) {
         if (ref->state->phase == KND_REMOVED) {
             continue;
-        }
-        entry = ref->obj;
-        if (!entry->class->is_resolved) {
-            err = knd_class_resolve(entry->class, task);
-            KND_TASK_ERR("failed to resolve class \"%.*s\"", entry->name_size, entry->name);
         }
 
         state = ref->state;
@@ -121,7 +117,7 @@ int knd_resolve_commit(struct kndCommit *commit, struct kndTask *task)
     }
 
     /* PROCS */
-    for (ref = commit->proc_state_refs; ref; ref = ref->next) {
+    FOREACH (ref, commit->proc_state_refs) {
         if (ref->state->phase == KND_REMOVED) {
             // knd_log(".. proc to be removed");
             continue;
@@ -130,7 +126,8 @@ int knd_resolve_commit(struct kndCommit *commit, struct kndTask *task)
 
         /* proc resolving */
         if (!proc_entry->proc->is_resolved) {
-            err = knd_proc_resolve(proc_entry->proc, task);                       RET_ERR();
+            err = knd_proc_resolve(proc_entry->proc, task);
+            RET_ERR();
         }
     }
     return knd_OK;

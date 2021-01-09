@@ -47,16 +47,13 @@ struct LocalContext {
     struct kndTask *task;
     struct kndRepo *repo;
     struct kndClass *class;
-    struct kndAttrVar *attr_var;
+    struct kndAttrRef *attr_ref;
     const char *name;
     size_t name_size;
 };
 
-static int find_attr_var(void *obj,
-                         const char *unused_var(elem_id),
-                         size_t unused_var(elem_id_size),
-                         size_t unused_var(count),
-                         void *elem)
+static int match_attr(void *obj, const char *unused_var(elem_id), size_t unused_var(elem_id_size),
+                      size_t unused_var(count), void *elem)
 {
     struct LocalContext *ctx = obj;
     struct kndAttrRef *ref = elem;
@@ -68,9 +65,8 @@ static int find_attr_var(void *obj,
 
     if (ref->attr->name_size != name_size) return knd_OK;
     if (memcmp(ref->attr->name, name, name_size)) return knd_OK;
-    if (!ref->attr_var) return knd_OK;
 
-    ctx->attr_var = ref->attr_var;
+    ctx->attr_ref = ref;
     return knd_EXISTS;
 }
 
@@ -494,7 +490,7 @@ int knd_is_base(struct kndClass *self, struct kndClass *child)
     return knd_NO_MATCH;
 }
 
-int knd_class_get_attr(struct kndClass *self, const char *name, size_t name_size, struct kndAttrRef **result)
+static int find_attr(struct kndClass *self, const char *name, size_t name_size, struct kndAttrRef **result)
 {
     struct kndAttrRef *ref;
 
@@ -551,17 +547,45 @@ int knd_class_get_attr(struct kndClass *self, const char *name, size_t name_size
     return err;
 }
 
+int knd_class_get_attr(struct kndClass *self, const char *name, size_t name_size,
+                       struct kndAttrRef **result)
+{
+    struct kndAttrRef *ref;
+    struct LocalContext ctx = {
+        .name = name,
+        .name_size = name_size
+    };
+    int err = knd_set_map(self->attr_idx, match_attr, &ctx);
+    switch (err) {
+    case knd_EXISTS:
+        ref = ctx.attr_ref;
+        *result = ref;
+        return knd_OK;
+    default:
+        break;
+    }
+
+    // err = find_attr(self, name, name_size, result);
+    // if (!err) return knd_OK;
+
+    return knd_NO_MATCH;
+}
+
 int knd_class_get_attr_var(struct kndClass *self, const char *name, size_t name_size, struct kndAttrVar **result)
 {
+    struct kndAttrRef *ref;
     struct LocalContext ctx = {
         .name = name,
         .name_size = name_size
     };
    
-    int err = knd_set_map(self->attr_idx, find_attr_var, &ctx);
+    int err = knd_set_map(self->attr_idx, match_attr, &ctx);
     switch (err) {
     case knd_EXISTS:
-        *result = ctx.attr_var;
+        ref = ctx.attr_ref;
+        if (!ref->attr_var) return knd_NO_MATCH;
+
+        *result = ref->attr_var;
         return knd_OK;
     default:
         break;

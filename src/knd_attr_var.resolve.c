@@ -414,7 +414,7 @@ int knd_resolve_attr_vars(struct kndClass *self, struct kndClassVar *cvar, struc
     int err;
 
     if (DEBUG_ATTR_VAR_RESOLVE_LEVEL_2) {
-        knd_log(".. resolving attr vars of class \"%.*s\" (base:%.*s) (repo:%.*s) ..",
+        knd_log(".. resolving attr vars of class \"%.*s\" (base:%.*s) (repo:%.*s)",
                 self->entry->name_size, self->entry->name, cvar->entry->name_size, cvar->entry->name,
                 repo->name_size, repo->name);
     }
