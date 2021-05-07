@@ -33,6 +33,7 @@
 #include "knd_config.h"
 #include "knd_shard.h"
 #include "knd_user.h"
+#include "knd_text.h"
 #include "knd_utils.h"
 
 static const char *options_string = "c:h?";
@@ -116,7 +117,10 @@ static int knd_interact(struct kndShard *shard)
     shard->user->mempool->present(shard->user->mempool, out);
     knd_log("** User Space Mempool\n%.*s", out->buf_size, out->buf);
 
-    knd_log("\n++ Knowdy shard service is up and running! (agent role:%d  Knowdy version:%s)\n", shard->role, KND_VERSION);
+    const char *shard_role_name = knd_agent_role_names[shard->role];
+
+    knd_log("\n++ Knowdy shard service is up and running! (agent role:%s  Knowdy version:%s)\n",
+            shard_role_name, KND_VERSION);
     knd_log("   (finish session by pressing Ctrl+C)\n");
 
     while ((buf = readline(">> ")) != NULL) {
@@ -129,6 +133,16 @@ static int knd_interact(struct kndShard *shard)
         printf("[%s :%zu]\n", buf, buf_size);
         block = buf;
         block_size = buf_size;
+
+        if (block[0] == '[') {
+            knd_log(">> parse text  mem:%p repo:%p", reader_task->user_ctx->mempool, reader_task->user_ctx->repo);
+            knd_task_reset(reader_task);
+            // memcpy(reader_task->ctx->locale, "ru", strlen("ru"));
+            // reader_task->ctx->locale_size = strlen("ru");
+            err = knd_text_build_JSON(block, block_size, reader_task);
+            if (err) goto next_line;
+            knd_log("== JSON: %.*s", reader_task->output_size, reader_task->output);
+        }
 
         err = check_file_rec(reader_task, buf, buf_size, &memblock);
         if (err) goto next_line;
@@ -175,11 +189,7 @@ static int knd_interact(struct kndShard *shard)
         /* readline allocates a new buffer every time */
     next_line:
         free(buf);
-        if (memblock) {
-            // free(memblock->buf);
-            //free(memblock);
-            memblock = NULL;
-        }
+        memblock = NULL;
     }
     return knd_OK;
 }
