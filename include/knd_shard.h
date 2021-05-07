@@ -1,15 +1,23 @@
 #pragma once
 
-#include <pthread.h>
-
 #include <knd_err.h>
 #include <knd_config.h>
-#include <knd_task.h>
-#include <knd_storage.h>
 
 struct kndMemPool;
 struct kndUser;
 struct kndSharedDict;
+
+typedef enum knd_agent_role_type {
+    KND_READER,
+    KND_WRITER,
+    KND_ARBITER
+} knd_agent_role_type;
+
+static const char* const knd_agent_role_names[] = {
+    [KND_READER] = "READER",
+    [KND_WRITER] = "WRITER",
+    [KND_ARBITER] = "ARBITER"
+};
 
 struct kndMemConfig {
     size_t num_pages;
@@ -55,15 +63,7 @@ struct kndShard
 int knd_shard_new(struct kndShard **self, const char *config, size_t config_size);
 void knd_shard_del(struct kndShard *self);
 
-int knd_shard_serve(struct kndShard *self);
-int knd_shard_stop(struct kndShard *self);
-
-int knd_shard_push_task(struct kndShard *self,
-                        const char *input, size_t input_size,
-                        const char **task_id, size_t *task_id_size,
-                        task_cb_func cb, void *obj);
-int knd_shard_run_task(struct kndShard *self,
-                       const char *input, size_t input_size,
+int knd_shard_run_task(struct kndShard *self, const char *input, size_t input_size,
                        char *output, size_t *output_size);
 
 int knd_shard_report_task(struct kndShard *self,

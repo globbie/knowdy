@@ -143,11 +143,11 @@ static int export_baseclass_vars(struct kndClass *self, struct kndTask *task, st
     struct kndClass *c;
     int err;
 
-    err = out->write(out, "[is", strlen("[is"));                              RET_ERR();
-    for (item = self->baseclass_vars; item; item = item->next) {
-        err = out->writec(out, '{');                                              RET_ERR();
+    OUT("[is", strlen("[is"));
+    FOREACH (item, self->baseclass_vars) {
+        OUT("{", 1);
         c = item->entry->class;
-        err = out->write(out, c->entry->id, c->entry->id_size);             RET_ERR();
+        OUT(c->entry->id, c->entry->id_size);
         if (item->attrs) {
             err = knd_attr_vars_export_GSP(item->attrs, out, task, 0, false);
             if (err) return err;
@@ -229,12 +229,11 @@ static int export_inverse_rels(struct kndClass *self, struct kndTask *task)
     int err;
     OUT("[rel", strlen("[rel"));
     FOREACH (attr_hub, self->attr_hubs) {
-        if (!attr_hub->attr) {
+        attr = attr_hub->attr;
+        if (!attr) {
             err = knd_attr_hub_resolve(attr_hub, task);
             KND_TASK_ERR("failed to resolve attr hub");
         }
-        attr = attr_hub->attr;
-
         OUT("{", 1);
         OUT(attr->parent_class->entry->id, attr->parent_class->entry->id_size);
         OUT("{a ", strlen("{a "));
@@ -460,10 +459,11 @@ int knd_class_marshall(void *elem, size_t *output_size, struct kndTask *task)
     return knd_OK;
 }
 
-int knd_class_entry_unmarshall(const char *elem_id, size_t elem_id_size, const char *rec, size_t rec_size,
+int knd_class_entry_unmarshall(const char *elem_id, size_t elem_id_size,
+                               const char *rec, size_t rec_size,
                                void **result, struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndClassEntry *entry = NULL;
     struct kndRepo *repo = task->repo;
     struct kndCharSeq *seq;

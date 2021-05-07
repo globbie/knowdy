@@ -96,8 +96,6 @@ int knd_resolve_commit(struct kndCommit *commit, struct kndTask *task)
     struct kndState *state;
     struct kndProcEntry *proc_entry;
     struct kndStateRef *ref;
-    struct kndClassEntry *entry;
-    struct kndClass *c;
     int err;
 
     if (DEBUG_COMMIT_LEVEL_TMP)
@@ -107,7 +105,6 @@ int knd_resolve_commit(struct kndCommit *commit, struct kndTask *task)
         if (ref->state->phase == KND_REMOVED) {
             continue;
         }
-
         state = ref->state;
         state->commit = commit;
         if (!state->children) continue;
@@ -127,7 +124,7 @@ int knd_resolve_commit(struct kndCommit *commit, struct kndTask *task)
         /* proc resolving */
         if (!proc_entry->proc->is_resolved) {
             err = knd_proc_resolve(proc_entry->proc, task);
-            RET_ERR();
+            KND_TASK_ERR("failed to resolve proc commit");
         }
     }
     return knd_OK;

@@ -475,7 +475,7 @@ int knd_is_base(struct kndClass *self, struct kndClass *child)
                 self->num_ancestors,
                 self->base_is_resolved, self->is_resolved);
     }
-    for (ref = child->ancestors; ref; ref = ref->next) {
+    FOREACH (ref, child->ancestors) {
          if (ref->entry == self->entry)
              return knd_OK;
          
@@ -488,63 +488,6 @@ int knd_is_base(struct kndClass *self, struct kndClass *child)
                 self->entry->name_size, self->entry->name,
                 child->name_size, child->name);
     return knd_NO_MATCH;
-}
-
-static int find_attr(struct kndClass *self, const char *name, size_t name_size, struct kndAttrRef **result)
-{
-    struct kndAttrRef *ref;
-
-    assert(self->entry->repo != NULL);
-    struct kndSharedDict *attr_name_idx = self->entry->repo->attr_name_idx;
-
-    struct kndSet     *attr_idx = self->attr_idx;
-    struct kndAttr    *attr = NULL;
-    int err;
-
-    if (DEBUG_CLASS_LEVEL_2)
-        knd_log(".. \"%.*s\" class (repo: %.*s) to select attr \"%.*s\"",
-                self->entry->name_size, self->entry->name,
-                self->entry->repo->name_size, self->entry->repo->name,
-                name_size, name);
-
-    ref = knd_shared_dict_get(attr_name_idx, name, name_size);
-    if (!ref) {
-        if (self->entry->repo->base) {
-            attr_name_idx = self->entry->repo->base->attr_name_idx;
-            ref = knd_shared_dict_get(attr_name_idx, name, name_size);
-        }
-        if (!ref) {
-            err = knd_NO_MATCH;
-            goto final;
-        }
-    }
-    /* iterating over synonymous attrs */
-    for (; ref; ref = ref->next) {
-        attr = ref->attr;
-        if (DEBUG_CLASS_LEVEL_3)
-            knd_log("== attr %.*s is used in class: %.*s (repo:%.*s)",
-                    name_size, name, ref->class_entry->name_size, ref->class_entry->name,
-                    ref->class_entry->repo->name_size, ref->class_entry->repo->name);
-
-        if (attr->parent_class == self) break;
-        err = knd_is_base(attr->parent_class, self);
-        if (!err) break;
-    }
-    if (!attr) {
-        err = knd_NO_MATCH;
-        goto final;
-    }
-    err = attr_idx->get(attr_idx, attr->id, attr->id_size, (void**)&ref);
-    if (err) goto final;
-
-    *result = ref;
-    return knd_OK;
-
- final:
-    if (DEBUG_CLASS_LEVEL_2)
-        knd_log("-- no attr \"%.*s\" in class \"%.*s\"",
-                name_size, name, self->entry->name_size, self->entry->name);
-    return err;
 }
 
 int knd_class_get_attr(struct kndClass *self, const char *name, size_t name_size,
@@ -926,31 +869,6 @@ int knd_class_entry_new(struct kndMemPool *mempool, struct kndClassEntry **resul
     if (err) return err;
     memset(page, 0,  sizeof(struct kndClassEntry));
     *result = page;
-    return knd_OK;
-}
-
-int knd_class_commit_new(struct kndMemPool *mempool, struct kndClassCommit **result)
-{
-    void *page;
-    int err;
-    assert(mempool->small_page_size >= sizeof(struct kndClassCommit));
-    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
-    if (err) return err;
-    memset(page, 0,  sizeof(struct kndClassCommit));
-    *result = page;
-    return knd_OK;
-}
-
-int knd_inner_class_new(struct kndMemPool *mempool, struct kndClass **self)
-{
-    void *page;
-    int err;
-    assert(mempool->small_x4_page_size >= sizeof(struct kndClass));
-    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL_X4, &page);
-    if (err) return err;
-    memset(page, 0,  sizeof(struct kndClass));
-    *self = page;
-    kndClass_init(*self);
     return knd_OK;
 }
 

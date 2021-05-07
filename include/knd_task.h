@@ -21,11 +21,11 @@
 #pragma once
 
 #include <stdatomic.h>
-#include <pthread.h>
 #include <time.h>
 
 #include "knd_config.h"
 #include "knd_state.h"
+#include "knd_shard.h"
 #include "knd_dict.h"
 #include "knd_http_codes.h"
 
@@ -43,12 +43,6 @@ struct kndConcFolder;
 struct kndText;
 
 typedef int (*task_cb_func)(void *obj, const char *msg, size_t msg_size, void *ctx);
-
-typedef enum knd_agent_role_type {
-    KND_READER,
-    KND_WRITER,
-    KND_ARBITER
-} knd_agent_role_type;
 
 typedef enum knd_task_spec_type {
     KND_GET_STATE,

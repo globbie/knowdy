@@ -177,7 +177,7 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
 
     task->type = KND_COMMIT_STATE;
     if (!task->ctx->commit) {
-        err = knd_commit_new(task->mempool, &task->ctx->commit);
+        err = knd_commit_new(task->user_ctx->mempool, &task->ctx->commit);
         if (err) return make_gsl_err_external(err);
 
         task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshots->num_commits,

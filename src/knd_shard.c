@@ -320,7 +320,10 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     /* system repo */
     err = knd_repo_new(&repo, "/", 1, self->path, self->path_size,
                        self->schema_path, self->schema_path_size, mempool);
-    if (err) goto error;
+    if (err) {
+        knd_log("failed to create a system repo: %d", err);
+        goto error;
+    }
     self->repo = repo;
 
     err = knd_task_new(self, mempool, 0, &task);
@@ -338,7 +341,7 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     acl->allow_read = true;
     acl->allow_write = true;
     task->user_ctx->acls = acl;
-    
+
     err = knd_repo_open(repo, task);
     if (err != knd_OK) {
         knd_log("ERR LOG:%.*s", task->output_size, task->output);
