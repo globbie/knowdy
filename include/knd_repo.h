@@ -121,11 +121,14 @@ struct kndRepo
 int knd_present_repo_state(struct kndRepo *self, struct kndTask *task);
 int knd_confirm_commit(struct kndRepo *self, struct kndTask *task);
 gsl_err_t knd_parse_repo(void *obj, const char *rec, size_t *total_size);
+int knd_repo_read_source_files(struct kndRepo *self, struct kndTask *task);
 
 int knd_repo_index_proc_arg(struct kndRepo *repo, struct kndProc *self, struct kndProcArg *arg, struct kndTask *task);
 int knd_repo_commit_indices(struct kndRepo *self, struct kndTaskContext *ctx);
 int knd_repo_check_conflicts(struct kndRepo *self, struct kndTaskContext *ctx);
 gsl_err_t knd_repo_parse_commit(void *obj, const char *rec, size_t *total_size);
+int knd_apply_commit(void *obj, const char *unused_var(elem_id), size_t unused_var(elem_id_size),
+                     size_t unused_var(count), void *elem);
 
 int knd_repo_open(struct kndRepo *self, struct kndTask *task);
 int knd_repo_restore(struct kndRepo *self, struct kndRepoSnapshot *snapshot, struct kndTask *task);

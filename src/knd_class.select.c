@@ -698,8 +698,9 @@ static gsl_err_t parse_import_class_inst(void *obj, const char *rec, size_t *tot
     switch (snapshot->role) {
     case KND_READER:
         if (DEBUG_CLASS_SELECT_LEVEL_2)
-            knd_log(">> snapshot %.*s (role:%d  task role:%d)", snapshot->path_size, snapshot->path, snapshot->role, task->role);
-        
+            knd_log(">> snapshot %.*s (role:%d  task role:%d)",
+                    snapshot->path_size, snapshot->path, snapshot->role, task->role);
+
         snapshot->role = KND_WRITER;
         err = knd_repo_restore(repo, snapshot, task);
         if (err) {

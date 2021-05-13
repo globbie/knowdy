@@ -401,7 +401,6 @@ gsl_err_t knd_proc_import(struct kndRepo *repo, const char *rec, size_t *total_s
         .obj = &ctx
     }; 
 
-
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_proc_name,
