@@ -44,11 +44,6 @@ static const char *const knd_format_names[] = {
     [KND_FORMAT_GSP] = "GSP"
 };
 
-typedef enum knd_logic { KND_LOGIC_AND, 
-                          KND_LOGIC_OR,
-                          KND_LOGIC_NOT
-} knd_logic;
-
 #define RET_ERR(S)  if (err) { printf("%s", "" #S);                               \
                               printf ("-- <%s> failed at line %d of file \"%s\"\n",\
                                       __func__, __LINE__, __FILE__); return err; } 
@@ -157,7 +152,7 @@ typedef enum knd_logic { KND_LOGIC_AND,
 
 #define KND_MAX_JOURNALS 64
 #define KND_MAX_JOURNAL_SIZE 10 * 1024 * 1024
-#define KND_MAX_SNAPSHOTS 256
+#define KND_MAX_SNAPSHOTS 32
 
 #define KND_RESULT_BATCH_SIZE 10
 #define KND_RESULT_MAX_BATCH_SIZE 500
