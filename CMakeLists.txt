@@ -70,7 +70,7 @@ set(HEADERS include/knd_attr.h
         include/knd_cache.h include/knd_dict.h include/knd_shared_dict.h
         include/knd_err.h
         include/knd_facet.h include/knd_http_codes.h
-        include/knd_mempool.h include/knd_num.h
+        include/knd_logic.h include/knd_ignore.h include/knd_mempool.h include/knd_num.h
         include/knd_proc.h include/knd_proc_arg.h include/knd_proc_call.h
         include/knd_queue.h include/knd_query.h
         include/knd_repo.h
@@ -90,8 +90,8 @@ set(SOURCES src/knd_attr.c src/knd_attr.import.c src/knd_attr.index.c
         src/knd_class_inst.import.c src/knd_class_inst.read.c
         src/knd_class_inst.json.c src/knd_class_inst.select.c
         src/knd_class_inst.resolve.c src/knd_class_inst.index.c
-        src/knd_cache.c
-        src/knd_dict.c src/knd_shared_dict.c
+        src/knd_cache.c src/knd_logic.c src/knd_logic.import.c
+        src/knd_dict.c src/knd_shared_dict.c src/knd_ignore.c
         src/knd_mempool.c src/knd_num.c src/knd_output.c
         src/knd_proc.c src/knd_proc.import.c  src/knd_proc.resolve.c src/knd_proc.select.c 
         src/knd_proc.gsl.c src/knd_proc.json.c

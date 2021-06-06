@@ -31,7 +31,9 @@
 #include "knd_proc_arg.h"
 #include "knd_set.h"
 #include "knd_shared_set.h"
+#include "knd_logic.h"
 #include "knd_utils.h"
+#include "knd_ignore.h"
 #include "knd_output.h"
 #include "knd_http_codes.h"
 
@@ -210,8 +212,29 @@ static gsl_err_t set_state_top_option(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_attr(void *obj,
-                            const char *name, size_t name_size,
+static gsl_err_t parse_logic_clause(void *obj, const char *rec, size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+    // struct kndClass *self = ctx->class;
+    struct kndTask *task = ctx->task;
+    struct kndLogicClause *clause;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
+    int err;
+    gsl_err_t parser_err;
+
+    if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
+        knd_log(".. parsing logic clause: \"%.*s\"", 32, rec);
+
+    err = knd_logic_clause_new(mempool, &clause);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
+
+    err = knd_logic_clause_parse(clause, rec, total_size, task);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
+    
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_attr(void *obj, const char *name, size_t name_size,
                             const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
@@ -268,8 +291,7 @@ static gsl_err_t parse_attr(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t import_attr_var(void *obj,
-                                 const char *name, size_t name_size,
+static gsl_err_t import_attr_var(void *obj, const char *name, size_t name_size,
                                  const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
@@ -282,8 +304,7 @@ static gsl_err_t import_attr_var(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t import_attr_var_list(void *obj,
-                                      const char *name, size_t name_size,
+static gsl_err_t import_attr_var_list(void *obj, const char *name, size_t name_size,
                                       const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
@@ -477,6 +498,11 @@ gsl_err_t knd_class_import(struct kndRepo *repo, const char *rec, size_t *total_
         { .name = "uniq",
           .name_size = strlen("uniq"),
           .parse = parse_uniq_attr_constraint,
+          .obj = &ctx
+        },
+        { .name = "clause",
+          .name_size = strlen("clause"),
+          .parse = knd_ignore_obj,
           .obj = &ctx
         },
         { .validate = parse_attr,
