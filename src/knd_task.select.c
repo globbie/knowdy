@@ -115,9 +115,7 @@ static gsl_err_t parse_format(void *obj, const char *rec, size_t *total_size)
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static gsl_err_t run_set_locale(void *obj,
-                                const char *name,
-                                size_t name_size)
+static gsl_err_t run_set_locale(void *obj, const char *name, size_t name_size)
 {
     struct kndTask *self = obj;
 
@@ -151,9 +149,7 @@ static gsl_err_t run_set_locale(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_locale(void *obj,
-                              const char *rec,
-                              size_t *total_size)
+static gsl_err_t parse_locale(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *self = obj;
 
@@ -218,9 +214,7 @@ static gsl_err_t parse_proc_import(void *obj, const char *rec, size_t *total_siz
     return knd_proc_import(task->repo, rec, total_size, task);
 }
 
-static gsl_err_t parse_proc_select(void *obj,
-                                    const char *rec,
-                                    size_t *total_size)
+static gsl_err_t parse_proc_select(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
 
@@ -328,7 +322,15 @@ gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
         }
     };
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) goto final;
+    switch (parser_err.code) {
+    case gsl_OK:
+        break;
+    case gsl_NO_MATCH:
+        KND_TASK_LOG("unknown tag: %.*s", parser_err.val_size, parser_err.val);
+        // fall through
+    default:
+        return parser_err;
+    }
 
     /* any commits? */
     switch (task->type) {
@@ -337,7 +339,7 @@ gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
         if (err) {
             parser_err = make_gsl_err(gsl_FAIL);
             knd_log("commit confirm err:%d code:%d", err, parser_err.code);
-            goto final;
+            return parser_err;
         }
         // TODO
         // knd_log(".. building report for commit %zu", task->ctx->commit->numid);
@@ -346,22 +348,6 @@ gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
         task->ctx->phase = KND_COMPLETE;
         break;
     }
-    parser_err = make_gsl_err(gsl_OK);
-
- final:
-    /*
-    if (task->user_ctx && task->user_ctx->cache_cell_num) {
-        struct kndUser *user = task->shard->user;
-        if (DEBUG_TASK_LEVEL_TMP)
-            knd_log(".. done reading user ctx, cell idx:%zu", task->user_ctx->cache_cell_num - 1);
-        int err = knd_cache_release(user->cache, task->user_ctx->cache_cell_num - 1, task->user_ctx);
-        if (err) {
-            KND_TASK_LOG("failed to release user ctx");
-            return make_gsl_err_external(err);
-        }
-        atomic_fetch_add_explicit(&task->user_ctx->total_tasks, 1, memory_order_relaxed);
-        task->user_ctx = NULL;
-        }*/
-    return parser_err;
+    return make_gsl_err(gsl_OK);
 }
 

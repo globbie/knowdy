@@ -31,11 +31,6 @@
 #define DEBUG_REPO_GSL_LEVEL_3 0
 #define DEBUG_REPO_GSL_LEVEL_TMP 1
 
-struct LocalContext {
-    struct kndTask *task;
-    struct kndRepo *repo;
-};
-
 static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
@@ -148,10 +143,7 @@ static gsl_err_t run_read_include(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-
-static gsl_err_t parse_include(void *obj,
-                               const char *rec,
-                               size_t *total_size)
+static gsl_err_t parse_include(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
 

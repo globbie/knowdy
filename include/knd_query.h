@@ -22,7 +22,7 @@
 
 #include "knd_utils.h"
 #include "knd_config.h"
-//#include "knd_coderef.h"
+#include "knd_logic.h"
 
 struct kndSet;
 struct kndRepoCache;
@@ -48,7 +48,7 @@ struct kndQuery
     size_t val_size;
 
     bool is_negated;
-    knd_logic logic;
+    knd_logic_t logic;
 
     struct kndQuery *children[KND_MAX_ATTRS];
     size_t num_children;

@@ -31,11 +31,6 @@
 #define DEBUG_REPO_LEVEL_3 0
 #define DEBUG_REPO_LEVEL_TMP 1
 
-struct LocalContext {
-    struct kndTask *task;
-    struct kndRepo *repo;
-};
-
 static void free_blocks(struct kndRepo *repo)
 {
     struct kndMemBlock *block, *next_block = NULL;
@@ -390,13 +385,13 @@ int knd_repo_index_proc_arg(struct kndRepo *repo, struct kndProc *proc,
     return knd_OK;
 }
 
-
 int knd_present_repo_state(struct kndRepo *self, struct kndTask *task)
 {
     int err;
 
     // TODO: choose format
-    err = present_latest_state_JSON(self, task->out);                                   RET_ERR();
+    err = present_latest_state_JSON(self, task->out);
+    KND_TASK_ERR("failed to present repo state");
     return knd_OK;
 }
 
@@ -510,7 +505,8 @@ int knd_repo_new(struct kndRepo **repo, const char *name, size_t name_size,
     if (err) goto error;
 
     /*** PROC ***/
-    err = knd_proc_entry_new(mempool, &proc_entry);                               RET_ERR();
+    err = knd_proc_entry_new(mempool, &proc_entry);
+    if (err) goto error;
     proc_entry->name = "/";
     proc_entry->name_size = 1;
 

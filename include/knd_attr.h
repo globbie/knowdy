@@ -23,6 +23,7 @@
 #include "knd_dict.h"
 #include "knd_utils.h"
 #include "knd_task.h"
+#include "knd_logic.h"
 #include "knd_config.h"
 #include "knd_output.h"
 
@@ -142,7 +143,7 @@ struct kndAttrVar
 
     long numval;
     bool is_cached; // for computed fields
-    knd_logic logic;
+    knd_logic_t logic;
 
     struct kndAttr *implied_attr;
 

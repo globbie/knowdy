@@ -28,6 +28,7 @@
 #include "knd_proc_arg.h"
 #include "knd_set.h"
 #include "knd_utils.h"
+#include "knd_logic.h"
 #include "knd_output.h"
 #include "knd_http_codes.h"
 
@@ -50,7 +51,7 @@ struct LocalContext {
     struct kndAttrVar *clauses;
     struct kndAttrVar *attr_var;
     struct kndAttr    *attr;
-    knd_logic logic;
+    knd_logic_t logic;
 };
 
 static gsl_err_t parse_nested_attr_var(void *obj,

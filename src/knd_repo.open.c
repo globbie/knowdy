@@ -6,7 +6,6 @@
 #include <stdatomic.h>
 
 #include "knd_repo.h"
-#include "knd_attr.h"
 #include "knd_set.h"
 #include "knd_shared_set.h"
 #include "knd_user.h"
@@ -431,7 +430,8 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
     }
 
     if (DEBUG_REPO_LEVEL_2)
-        knd_log("== the latest snapshot of \"%.*s\" is #%d", self->name_size, self->name, latest_snapshot_id);
+        knd_log("== the latest snapshot of \"%.*s\" is #%d",
+                self->name_size, self->name, latest_snapshot_id);
 
     err = out->writef(out, "snapshot_%d/", latest_snapshot_id);
     KND_TASK_ERR("snapshot path construction failed");

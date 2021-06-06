@@ -1025,7 +1025,7 @@ gsl_err_t knd_class_select(struct kndRepo *repo, const char *rec, size_t *total_
 int knd_class_match_query(struct kndClass *self, struct kndAttrVar *query)
 {
     struct kndSet *attr_idx = self->attr_idx;
-    knd_logic logic = query->logic;
+    knd_logic_t logic = query->logic;
     struct kndAttrRef *attr_ref;
     struct kndAttrVar *attr_var;
     struct kndAttr *attr;

@@ -540,7 +540,7 @@ static gsl_err_t parse_statement(void *obj, const char *rec, size_t *total_size)
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
     struct kndSentence *sent = ctx->sent;
-    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndStatement *stm;
     gsl_err_t parser_err;
     int err;

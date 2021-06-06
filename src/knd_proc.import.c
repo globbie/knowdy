@@ -198,9 +198,7 @@ static gsl_err_t run_set_cost(void *obj, const char *val, size_t val_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_estimate(void *obj,
-                                const char *rec,
-                                size_t *total_size)
+static gsl_err_t parse_estimate(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndProc *self = ctx->proc;
