@@ -216,10 +216,15 @@ static gsl_err_t parse_baseclass_array_item(void *obj, const char *rec, size_t *
 
     knd_calc_num_id(class_var->id, class_var->id_size, &class_var->numid);
 
-    // append
-    class_var->next = self->baseclass_vars;
-    self->baseclass_vars = class_var;
+    if (!self->baseclass_vars) {
+        self->baseclass_tail = class_var;
+        self->baseclass_vars = class_var;
+    } else {
+        self->baseclass_tail->next = class_var;
+        self->baseclass_tail = class_var;
+    }
     self->num_baseclass_vars++;
+
     ctx->class_var = NULL;
 
     return make_gsl_err(gsl_OK);
@@ -612,12 +617,12 @@ static gsl_err_t read_attr(void *obj, const char *name, size_t name_size, const 
     if (attr->is_implied)
         self->implied_attr = attr;
 
-    if (!self->tail_attr) {
-        self->tail_attr = attr;
+    if (!self->attr_tail) {
+        self->attr_tail = attr;
         self->attrs = attr;
     } else {
-        self->tail_attr->next = attr;
-        self->tail_attr = attr;
+        self->attr_tail->next = attr;
+        self->attr_tail = attr;
     }
     self->num_attrs++;
 

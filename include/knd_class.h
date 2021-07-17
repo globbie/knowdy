@@ -146,10 +146,11 @@ struct kndClass
     struct kndText *summary;
 
     struct kndClassVar *baseclass_vars;
+    struct kndClassVar *baseclass_tail;
     size_t num_baseclass_vars;
 
     struct kndAttr *attrs;
-    struct kndAttr *tail_attr;
+    struct kndAttr *attr_tail;
     size_t num_attrs;
 
     struct kndSet *attr_idx;

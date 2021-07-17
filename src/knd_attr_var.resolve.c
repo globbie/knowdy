@@ -59,7 +59,8 @@ static int resolve_text(struct kndAttrVar *attr_var, struct kndTask *task)
     return knd_OK;
 }
 
-static int resolve_implied_attr_var(struct kndClass *self, struct kndClass *c, const char *val, size_t val_size,
+static int resolve_implied_attr_var(struct kndClass *self, struct kndClass *c,
+                                    const char *val, size_t val_size,
                                     struct kndAttrVar *var, struct kndTask *task)
 {
     char buf[KND_NAME_SIZE];

@@ -273,12 +273,12 @@ static gsl_err_t parse_attr(void *obj, const char *name, size_t name_size,
         return parser_err;
     }
 
-    if (!self->tail_attr) {
-        self->tail_attr = attr;
+    if (!self->attr_tail) {
+        self->attr_tail = attr;
         self->attrs = attr;
     } else {
-        self->tail_attr->next = attr;
-        self->tail_attr = attr;
+        self->attr_tail->next = attr;
+        self->attr_tail = attr;
     }
     self->num_attrs++;
 
@@ -369,10 +369,13 @@ static gsl_err_t parse_baseclass(void *obj, const char *rec, size_t *total_size)
     parser_err = parse_class_var(rec, total_size, ctx);
     if (parser_err.code) return parser_err;
 
-    class_var->next = self->baseclass_vars;
-
-    // TODO: atomic
-    self->baseclass_vars = class_var;
+    if (!self->baseclass_vars) {
+        self->baseclass_tail = class_var;
+        self->baseclass_vars = class_var;
+    } else {
+        self->baseclass_tail->next = class_var;
+        self->baseclass_tail = class_var;
+    }
     self->num_baseclass_vars++;
 
     return make_gsl_err(gsl_OK);

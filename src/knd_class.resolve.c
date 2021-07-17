@@ -69,17 +69,28 @@ static int inherit_attr(void *obj, const char *unused_var(elem_id), size_t unuse
     if (!err) {
         if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
             knd_log("..  \"%.*s\" (id:%.*s) attr already active in \"%.*s\"..",
-                    attr->name_size, attr->name,
-                    attr->id_size, attr->id,
+                    attr->name_size, attr->name, attr->id_size, attr->id,
                     self->name_size, self->name);
         }
-        /* no need to override an existing attr var */
-        if (ref->attr_var) return knd_OK;
+        /* override an existing attr var */
+        if (ref->attr_var && src_ref->attr_var) {
+            if (DEBUG_CLASS_RESOLVE_LEVEL_3) {
+                knd_log("..  \"%.*s\" (id:%.*s) attr var already set in \"%.*s\" => %.*s",
+                        attr->name_size, attr->name, attr->id_size, attr->id,
+                        self->name_size, self->name, ref->attr_var->val_size, ref->attr_var->val);
+                knd_log("override with new val: %.*s",
+                            src_ref->attr_var->val_size, src_ref->attr_var->val);
+            }
+            ref->attr_var = src_ref->attr_var;
+            ref->class_entry = src_ref->class_entry;
+            return knd_OK;
+        }
     }
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2) 
         knd_log("..  \"%.*s\" (id:%.*s attr_var:%p) attr inherited by %.*s..",
-                attr->name_size, attr->name, attr->id_size, attr->id, src_ref->attr_var, self->name_size, self->name);
+                attr->name_size, attr->name, attr->id_size, attr->id, src_ref->attr_var,
+                self->name_size, self->name);
 
     if (ref) {
         if (src_ref->attr_var) {
@@ -88,7 +99,6 @@ static int inherit_attr(void *obj, const char *unused_var(elem_id), size_t unuse
         }
         return knd_OK;
     }
-
     /* new attr entry */
     err = knd_attr_ref_new(mempool, &ref);
     KND_TASK_ERR("failed to alloc an attr ref");
@@ -329,7 +339,8 @@ int knd_class_resolve(struct kndClass *self, struct kndTask *task)
         if (!self->base_is_resolved) {
             err = resolve_baseclasses(self, task);                                RET_ERR();
         }
-        for (cvar = self->baseclass_vars; cvar; cvar = cvar->next) {
+
+        FOREACH (cvar, self->baseclass_vars) {
             err = inherit_attrs(self, cvar->entry->class, task);
             RET_ERR();
             

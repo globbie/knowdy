@@ -101,7 +101,6 @@ static gsl_err_t set_attr_var_value(void *obj, const char *val, size_t val_size)
                 self->name_size, self->name, val_size, val);
 
     if (!val_size) return make_gsl_err(gsl_FORMAT);
-
     self->val = val;
     self->val_size = val_size;
 
@@ -229,8 +228,7 @@ int knd_import_attr_var(struct kndClassVar *self, const char *name, size_t name_
     return knd_OK;
 }
 
-static gsl_err_t append_attr_var_list_item(void *accu,
-                                           void *obj)
+static gsl_err_t append_attr_var_list_item(void *accu, void *obj)
 {
     struct kndAttrVar *self = accu;
     struct kndAttrVar *attr_var = obj;

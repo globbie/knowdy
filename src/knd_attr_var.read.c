@@ -380,6 +380,7 @@ static int set_implied_attr_var(struct kndClass *c, const char *val, size_t val_
     var->name = attr->name;
     var->name_size = attr->name_size;
     var->next = parent_var->children;
+
     parent_var->children = var;
     parent_var->num_children++;
 
@@ -406,6 +407,8 @@ static int set_implied_attr_var(struct kndClass *c, const char *val, size_t val_
                     val_size, val, entry->name_size, entry->name);
 
         var->class_entry = entry;
+        // direct link from parent
+        parent_var->class_entry = entry;
         break;
     case KND_ATTR_STR:
         var->val = var->name;
