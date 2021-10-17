@@ -14,6 +14,7 @@
 #include "knd_class.h"
 #include "knd_proc.h"
 #include "knd_text.h"
+#include "knd_logic.h"
 #include "knd_output.h"
 
 #define DEBUG_ATTR_VAR_LEVEL_1 0
@@ -424,7 +425,7 @@ static void append_attr_var(struct kndClassVar *ci, struct kndAttrVar *attr_var)
 {
     struct kndAttrVar *curr_var;
 
-    for (curr_var = ci->attrs; curr_var; curr_var = curr_var->next) {
+    FOREACH (curr_var, ci->attrs) {
         if (curr_var->name_size != attr_var->name_size) continue;
         if (!memcmp(curr_var->name, attr_var->name, attr_var->name_size)) {
             if (!curr_var->list_tail) {

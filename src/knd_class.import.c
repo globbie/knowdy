@@ -297,8 +297,7 @@ static gsl_err_t import_attr_var(void *obj, const char *name, size_t name_size,
     struct LocalContext *ctx = obj;
     int err;
 
-    err = knd_import_attr_var(ctx->class_var, name, name_size,
-                              rec, total_size, ctx->task);
+    err = knd_import_attr_var(ctx->class_var, name, name_size, rec, total_size, ctx->task);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);
@@ -335,6 +334,11 @@ static gsl_err_t parse_class_var(const char *rec, size_t *total_size, struct Loc
         },
         { .type = GSL_GET_ARRAY_STATE,
           .validate = import_attr_var_list,
+          .obj = ctx
+        },
+        { .name = "_stm",
+          .name_size = strlen("_stm"),
+          .parse = parse_logic_clause,
           .obj = ctx
         }
     };
