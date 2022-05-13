@@ -155,9 +155,9 @@ static int resolve_inner_var(struct kndClass *self, struct kndAttrVar *var, stru
         return knd_OK;
     }
 
-    if (c->implied_attr) {
+    if (c->implied_attr && classname_size) {
         if (DEBUG_ATTR_VAR_RESOLVE_LEVEL_2)
-            knd_log("== class %.*s has implied attr \"%.*s\" var:%.*s (class:%.*s)",
+            knd_log("== class %.*s has implied attr \"%.*s\" var:%.*s (class name:%.*s)",
                     c->name_size, c->name, c->implied_attr->name_size, c->implied_attr->name,
                     var->name_size, var->name, classname_size, classname);
 

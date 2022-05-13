@@ -1,0 +1,26 @@
+{schema knd-basic
+
+{!class Time Line View
+        [_gloss {ru {t восприятие временной шкалы}}]
+    {is Abstraction}}
+
+{!class Present Moment
+        [_gloss {ru {t настоящий момент времени}}]
+    {is Time Line View}}
+
+{!class Past
+        [_gloss {ru {t прошлое}}]
+    {is Time Line View}}
+
+{!class Future
+        [_gloss {ru {t будущее}}]
+    {is Time Line View}}
+
+{!class Calendar Date
+        [_gloss {ru {t календарная дата}}]
+    {is Information}
+        {num year}
+        {num month}
+        {num date} }
+
+}

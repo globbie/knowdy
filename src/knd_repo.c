@@ -380,7 +380,8 @@ int knd_repo_index_proc_arg(struct kndRepo *repo, struct kndProc *proc,
 
     if (DEBUG_REPO_LEVEL_2)
         knd_log("++ new primary arg: \"%.*s\" (id:%.*s) of \"%.*s\" (repo:%.*s)",
-                arg->name_size, arg->name, arg->id_size, arg->id, proc->name_size, proc->name, repo->name_size, repo->name);
+                arg->name_size, arg->name, arg->id_size, arg->id,
+                proc->name_size, proc->name, repo->name_size, repo->name);
 
     return knd_OK;
 }

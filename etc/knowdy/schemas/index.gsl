@@ -1,2 +1,163 @@
-{include basic/index}
-{-- include mindmap/index --}
+{-- abstract --}
+{include quant}
+{include time}
+{include physics}
+{include math}
+{include geometry}
+
+{-- sensors --}
+{include color}
+{include taste}
+{include temperature}
+
+{-- objects --}
+{include substance}
+{include nature}
+{include geo}
+
+{include organism/index}
+{include person}
+{include emotion}
+
+{include product/index}
+
+{-- include device --}
+
+{-- information --}
+{include info/index}
+
+{-- society --}
+{include social/index}
+
+{include proc/index}
+
+{schema knd
+
+{!class Concept
+        [_gloss {ru {t концепт}}]}
+
+{-- Agent vs Object / Me vs It --}
+{!class Agent
+        [_gloss {ru {t субъект}}]
+    {is Concept}}
+
+{!class Object
+        [_gloss {ru {t объект}}
+                {ja {t 物体}}]
+    {is Concept}
+    {-- совокупность сенсорных восприятий и
+        когнитивных представлений субъекта
+        о любой части внешнего мира --}
+    {--_state_top--}}
+
+{!class Abstraction
+        [_gloss {ru {t абстракция}}
+            {ja {t 概念}}]
+    {-- [_summary {ru {t абстрактное понятие, формируемое сознанием человека
+                     путем обобщения признаков конкретных объектов}}
+                 {en {t a general concept formed by extracting common features
+                       from   specific examples}}] --}
+    {is Object}}
+
+{!class Physical Matter
+        [_gloss {ru {t физическая материя}}]
+    {is     Object}
+    {str    img  {concise 1}}
+    {inner  color           {c Color}}
+    {inner  temperature     {c Absolute Temperature}}
+    {inner  temperature-rel {c Relative Temperature}}
+    {inner  aggr-state      {c Physical Aggregate State}}}
+
+{!class Solid Physical Object
+    [_gloss {ru {t твердый физический объект}}]
+    {is     Physical Matter}
+    {ref    flatshape {c 2D Shape}}
+    {ref    shape     {c 3D Shape}}
+    {inner  location  {c Spatial Location}}
+    {str    img       {concise 1}}}
+
+{!class Physical Substance
+    [_gloss {ru {t физическое вещество}}]
+    {is  Physical Matter}}
+
+{!class Granular Substance
+    [_gloss {ru {t сыпучее физическое вещество}}]
+    {is  Physical Substance
+         {aggr-state Granular State}}}
+
+{!class Liquid
+        [_gloss {ru {t жидкость}}]
+    {is Physical Substance
+        {aggr-state Liquid State}}}
+
+{!class Gas
+        [_gloss {ru {t газообразное вещество}}]
+    {is Physical Substance
+        {aggr-state Gas State}}}
+
+{!class Information
+    [_gloss {ru {t информация}}]
+    {is   Abstraction}}
+
+{!class Digital Object
+    [_gloss {ru {t цифровой объект}}]
+    {is Information}}
+
+{!class Situation
+    [_gloss {ru {t ситуация}}]
+    {is Abstraction}}
+
+{!class System
+    [_gloss {ru {t система}}]
+    {is Abstraction}}
+
+{!class Collection
+    [_gloss {ru {t множество}}]
+    {is Abstraction}
+    {ref unit-type {c Object}}}
+
+{!class Custom Class
+    [_gloss {ru {t класс с произвольной семантикой}}]
+    {is Abstraction}}
+
+{!class Organic Object
+        [_gloss {ru {t органический объект}}]
+    {is Physical Matter}}
+
+{!class Eukaryote
+    {is Organic Object}}
+
+{!class Plant
+    [_gloss {ru {t растение}}]
+    {is Eukaryote}}
+
+{!class Fungi
+    [_gloss {ru {t гриб}}]
+    {is Eukaryote}}
+
+{!class Group
+        [_gloss {ru {t группа объектов}}]
+    {is Abstraction}}
+
+{!class Linear Sequence
+    {is Group}}
+
+{!class    Sensory Object
+           [_gloss    {ru {t объект восприятия}}]
+    {is    Object}}
+
+{!class  Activity
+         [_gloss    {ru {t деятельность}}]
+    {is  Abstraction}
+    {ref emotion {c Agent Emotion}}
+    {ref dynamics {c Change Dynamics}}}
+
+{!class  Change Dynamics
+         [_gloss    {ru {t динамика изменений состояния}}]
+    {is  Abstraction}}
+
+{!class  Highly Dynamic Change
+         [_gloss    {ru {t высокая динамика изменений}}]
+    {is  Change Dynamics}}
+
+}

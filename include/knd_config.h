@@ -147,8 +147,7 @@ static const char *const knd_format_names[] = {
 
 #define MAX_DEQUE_ATTEMPTS 100
 #define TASK_TIMEOUT_USECS 100
-#define TASK_MAX_TIMEOUT_SECS 5
-#define TASK_QUEUE_CAPACITY 20
+#define KND_MAX_TASKS 64
 
 #define KND_MAX_JOURNALS 64
 #define KND_MAX_JOURNAL_SIZE 10 * 1024 * 1024

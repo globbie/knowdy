@@ -43,7 +43,7 @@ struct kndRepoSnapshot
     atomic_size_t  commit_id_count;
     size_t         max_commits;
 
-    /* array of ints => each task/writer can produce a number of WAL journals */
+    /* array of integers => each task/writer can produce a number of WAL journals */
     size_t num_journals[KND_MAX_TASKS];
     size_t max_journals;
     size_t max_journal_size;

@@ -416,10 +416,7 @@ extern void knd_remove_nonprintables(char *data)
     }
 }
 
-int knd_read_UTF8_char(const char *rec,
-                   size_t rec_size,
-                   size_t *val,
-                   size_t *len)
+int knd_read_UTF8_char(const char *rec, size_t rec_size, size_t *val, size_t *len)
 {
     size_t num_bytes = 0;
     long numval = 0;

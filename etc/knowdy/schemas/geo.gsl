@@ -1,0 +1,210 @@
+{schema knd-basic
+
+{!class Spatial Object
+  [_gloss {ru {t пространственный объект}}]
+  {is Abstraction}}
+
+{!class Geographical Region
+    [_gloss {ru {t географический регион}}]
+    {is Spatial Object}}
+
+{!class Country
+  [_gloss {ru {t страна}}]
+  {is Geographical Region}
+}
+
+{!class Republic
+  [_gloss {ru {t республика}}]
+  {is Geographical Region}
+}
+
+{!class Abkhazia
+  [_gloss {ru {t Абхазия}}]
+  {is Country}
+}
+
+{!class Armenia
+  [_gloss {ru {t Армения}}]
+  {is Country}
+}
+
+{!class Azerbaijan
+  [_gloss {ru {t Азербайджан}}]
+  {is Country}
+}
+
+{!class America
+  [_gloss {ru {t Америка}}]
+  {is Geographical Region}
+}
+
+{!class Asia
+  [_gloss {ru {t Азия}}]
+  {is Geographical Region}
+}
+
+{!class Austria
+  [_gloss {ru {t Австрия}}]
+  {is Country}
+}
+
+{!class Belarus
+  [_gloss {ru {t Беларусь}}]
+  {is Country}
+}
+
+{!class Bulgaria
+  [_gloss {ru {t Болгария}}]
+  {is Country}
+}
+
+{!class Buryatia
+  [_gloss {ru {t Бурятия}}]
+  {is Republic}
+}
+
+{!class England
+  [_gloss {ru {t Англия}}]
+  {is Country}
+}
+
+{!class Europe
+  [_gloss {ru {t Европа}}]
+  {is Geographical Region}
+}
+
+{!class Eastern Europe
+  [_gloss {ru {t восточная Европа}}]
+  {is Geographical Region}
+}
+
+{!class Caucasus
+  [_gloss {ru {t Кавказ}}]
+  {is Geographical Region}
+}
+
+{!class China
+  [_gloss {ru {t Китай}}]
+  {is Country}
+}
+
+{!class Finland
+  [_gloss {ru {t Финляндия}}]
+  {is Country}
+}
+
+{!class France
+  [_gloss {ru {t Франция}}]
+  {is Country}
+}
+
+{!class Georgia
+  [_gloss {ru {t Грузия}}]
+  {is Country}
+}
+{!class Germany
+  [_gloss {ru {t Германия}}]
+  {is Country}
+}
+
+{!class Greece
+  [_gloss {ru {t Греция}}]
+  {is Country}
+}
+
+{!class India
+  [_gloss {ru {t Индия}}]
+  {is Country}
+}
+
+{!class Israel
+  [_gloss {ru {t Израиль}}]
+  {is Country}
+}
+
+{!class Italy
+  [_gloss {ru {t Италия}}]
+  {is Country}
+}
+
+{!class Japan
+  [_gloss {ru {t Япония}}]
+  {is Country}
+}
+
+{!class Korea
+  [_gloss {ru {t Корея}}]
+  {is Country}
+}
+
+{!class Mexico
+  [_gloss {ru {t Мексика}}]
+  {is Country}
+}
+
+{!class Middle East
+  [_gloss {ru {t ближний Восток}}]
+  {is Geographical Region}
+}
+
+{!class Norway
+  [_gloss {ru {t Норвегия}}]
+  {is Country}
+}
+
+{!class Ossetia
+  [_gloss {ru {t Оссетия}}]
+  {is Republic}
+}
+
+{!class Portugal
+  [_gloss {ru {t Португалия}}]
+  {is Country}
+}
+
+{!class Russia
+  [_gloss {ru {t Россия}}]
+  {is Country}
+}
+
+{!class Scandinavia
+  [_gloss {ru {t Скандинавия}}]
+  {is Geographical Region}
+}
+
+{!class Spain
+  [_gloss {ru {t Испания}}]
+  {is Country}
+}
+
+{!class Sweden
+  [_gloss {ru {t Швеция}}]
+  {is Country}
+}
+
+{!class Thailand
+  [_gloss {ru {t Таиланд}}]
+  {is Country}
+}
+
+{!class Tatarstan
+  [_gloss {ru {t Татарстан}}]
+  {is Republic}
+}
+
+{!class Ukraine
+  [_gloss {ru {t Украина}}]
+  {is Country}
+}
+{!class Uzbekistan
+  [_gloss {ru {t Узбекистан}}]
+  {is Country}
+}
+
+{!class USA
+  [_gloss {ru {t США}}]
+  {is Country}
+}
+
+
+}

@@ -1,0 +1,74 @@
+{schema knd
+
+{!class Human
+        [_gloss {ru {t человек}}]
+    {is Agent}
+    {is Human Organism}
+    {inner biometrics {c Personal Biometrics}}}
+
+{!class Gender
+        [_gloss {ru {t гендерная принадлежность}}]
+    {is Information}}
+
+{!class Sex
+        [_gloss {ru {t пол}}]
+    {is Information}}
+
+{!class Female Gender
+        [_gloss {ru {t женский гендер}}]
+    {is Gender}}
+
+{!class Male Gender
+        [_gloss {ru {t мужской гендер}}]
+    {is Gender}}
+
+{!class Neutral Gender
+        [_gloss {ru {t нейтральный гендер}}]
+    {is Gender}}
+
+{!class Female Sex
+        [_gloss {ru {t женский пол}}]
+    {is Sex}}
+
+{!class Male Sex
+        [_gloss {ru {t мужской пол}}]
+    {is Sex}}
+
+{!class Personal Name
+        [_gloss {ru {t имя персоны}}]
+    {is Information}}
+
+{!class Nickname
+        [_gloss {ru {t псевдоним}}]
+    {is Personal Name}
+    {str nick}}
+
+{!class Official Russian Citizen Name
+        [_gloss {ru {t имя гражданина РФ}}]
+    {is Personal Name}
+    {str forename}
+    {str patronymic}
+    {str surname}}
+
+{!class Official Russian Female Name
+    {is Official Russian Citizen Name}
+    {str maiden-name}}
+
+{!class Personal Biometrics
+        [_gloss {ru {t биометрические данные}}]
+    {is Abstraction}
+    {date birth-date}
+    {num age}
+    {---    {proc
+              {do _subtract}} ---}
+    {ref sex {c Sex}}}
+
+{!class Female Human
+    {is Human
+        {biometrics {sex Female Sex}}}}
+
+{!class Male Human
+    {is Human
+        {biometrics {sex Male Sex}}}}
+
+}

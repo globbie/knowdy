@@ -1,0 +1,7 @@
+{schema knd-basic
+
+{!class Tree
+        [_gloss {ru {t дерево}}]
+    {is Plant}}
+
+}
