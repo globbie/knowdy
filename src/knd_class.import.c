@@ -336,8 +336,8 @@ static gsl_err_t parse_class_var(const char *rec, size_t *total_size, struct Loc
           .validate = import_attr_var_list,
           .obj = ctx
         },
-        { .name = "_stm",
-          .name_size = strlen("_stm"),
+        { .name = "_pred",
+          .name_size = strlen("_pred"),
           .parse = parse_logic_clause,
           .obj = ctx
         }
