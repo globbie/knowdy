@@ -272,9 +272,10 @@ static int read_GSL_file(struct kndRepo *repo, struct kndConcFolder *parent_fold
                 /* right trim the folder's name */
                 folder->name_size = folder_name_size;
 
-                err = read_GSL_file(repo, folder, index_folder_name, index_folder_name_size, task);
+                err = read_GSL_file(repo, folder,
+                                    index_folder_name, index_folder_name_size, task);
                 if (err) {
-                    knd_log("-- failed to read file: %.*s",
+                    knd_log("-- failed to read GSL file: %.*s",
                             index_folder_name_size, index_folder_name);
                     return err;
                 }
@@ -283,7 +284,14 @@ static int read_GSL_file(struct kndRepo *repo, struct kndConcFolder *parent_fold
         }
         err = read_GSL_file(repo, parent_folder, folder->name, folder->name_size, task);
         if (err) {
-            knd_log("-- failed to read GSL file: %.*s", folder->name_size, folder->name);
+            c = "/";
+            folder_name_size = 1;
+            if (parent_folder) {
+                c = parent_folder->name;
+                folder_name_size = parent_folder->name_size;
+            }
+            KND_TASK_LOG("failed to include \"%.*s\" (parent folder: %.*s)",
+                         folder->name_size, folder->name, folder_name_size, c);
             return err;
         }
     }
