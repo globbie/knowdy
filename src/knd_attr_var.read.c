@@ -180,7 +180,7 @@ static gsl_err_t read_nested_attr_var_list(void *obj, const char *id, size_t id_
     case KND_ATTR_INNER:
         assert(attr->ref_class_entry != NULL);
 
-        err = knd_class_acquire(attr->ref_class_entry, &attr_var_ctx.class, task);
+        err = knd_class_acquire(attr->ref_class_entry, &attr->ref_class, task);
         if (err) {
             KND_TASK_LOG("failed to acquire class \"%.*s\"",
                          attr->ref_class_entry->name_size, attr->ref_class_entry->name);
@@ -601,7 +601,7 @@ static int build_attr_var(struct kndClassVar *self, const char *id, size_t id_si
     switch (attr->type) {
     case KND_ATTR_INNER:
         assert(attr->ref_class_entry != NULL);
-        err = knd_class_acquire(attr->ref_class_entry, &var->class, task);
+        err = knd_class_acquire(attr->ref_class_entry, &attr->ref_class, task);
         KND_TASK_ERR("failed to acquire class \"%.*s\"",
                      attr->ref_class_entry->name_size, attr->ref_class_entry->name);
         if (DEBUG_ATTR_VAR_READ_LEVEL_2)
@@ -627,7 +627,7 @@ int knd_read_attr_var_list(struct kndClassVar *self, const char *id, size_t id_s
 
     struct LocalContext ctx = {
         .list_parent = var,
-        .class = var->class,
+        .class = var->attr->ref_class,
         .task = task
     };
 
@@ -654,7 +654,7 @@ int knd_read_attr_var(struct kndClassVar *self, const char *id, size_t id_size,
 
     struct LocalContext ctx = {
         .attr_var = var,
-        .class = var->class,
+        .class = var->attr->ref_class,
         .task = task
     };
 

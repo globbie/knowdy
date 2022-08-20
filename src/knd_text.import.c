@@ -80,7 +80,8 @@ static gsl_err_t parse_gloss_item(void *obj, const char *rec, size_t *total_size
     struct kndTask *task = obj;
     struct kndText *t;
     int err;
-    err = knd_text_new(task->mempool, &t);
+
+    err = knd_text_new(task->user_ctx->mempool, &t);
     if (err) {
         KND_TASK_LOG("failed to alloc a text");
         return *total_size = 0, make_gsl_err_external(err);
@@ -115,7 +116,7 @@ static gsl_err_t parse_gloss_item(void *obj, const char *rec, size_t *total_size
     if (t->locale_size == 0 || t->seq == NULL)
         return make_gsl_err(gsl_FORMAT);  // error: both attrs required
 
-    if (DEBUG_TEXT_IMPORT_LEVEL_2)
+    if (DEBUG_TEXT_IMPORT_LEVEL_3)
         knd_log(".. read gloss translation: \"%.*s\",  text: \"%.*s\"",
                 t->locale_size, t->locale, t->seq->val_size, t->seq->val);
 
@@ -698,7 +699,8 @@ static gsl_err_t parse_par(void *obj, const char *rec, size_t *total_size)
     if (parser_err.code) {
         switch (parser_err.code) {
         case gsl_NO_MATCH:
-            KND_TASK_LOG("text par got an unrecognized tag \"%.*s\"", parser_err.val_size, parser_err.val);
+            KND_TASK_LOG("text par got an unrecognized tag \"%.*s\"",
+                         parser_err.val_size, parser_err.val);
             break;
         default:
             break;

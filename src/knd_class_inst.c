@@ -48,14 +48,14 @@ void knd_class_inst_str(struct kndClassInst *self, size_t depth)
     }
 }
 
-
-int knd_class_inst_export(struct kndClassInst *self, knd_format format, bool is_list_item, struct kndTask *task)
+int knd_class_inst_export(struct kndClassInst *self, knd_format format,
+                          bool is_list_item, knd_state_phase phase, struct kndTask *task)
 {
     switch (format) {
         case KND_FORMAT_JSON:
-            return knd_class_inst_export_JSON(self, is_list_item, KND_SELECTED, task, 0);
+            return knd_class_inst_export_JSON(self, is_list_item, phase, task, 0);
         case KND_FORMAT_GSL:
-            return knd_class_inst_export_GSL(self, is_list_item, KND_SELECTED, task, 0);
+            return knd_class_inst_export_GSL(self, is_list_item, phase, task, 0);
         case KND_FORMAT_GSP:
             return knd_class_inst_export_GSP(self, task);
         default:
@@ -103,20 +103,20 @@ int knd_class_inst_export_commit(struct kndStateRef *state_refs, struct kndTask 
     struct kndClassInstEntry *entry;
     int err;
 
-    for (ref = state_refs; ref; ref = ref->next) {
+    FOREACH (ref, state_refs) {
         entry = ref->obj;
         if (!entry) continue;
 
-        err = out->writec(out, '{');                                              RET_ERR();
+        OUT("{", 1);
         if (ref->state->phase == KND_CREATED) {
-            err = out->writec(out, '!');                                          RET_ERR();
+            OUT("!", 1);
         }
+        OUT("inst ", strlen("inst "));
 
-        err = out->write(out, "inst ", strlen("inst "));                          RET_ERR();
+        err = knd_class_inst_export(entry->inst, KND_FORMAT_GSL, true, ref->state->phase, task);
+        RET_ERR();
 
-        err = knd_class_inst_export(entry->inst, KND_FORMAT_GSL, true, task);     RET_ERR();
-
-        err = out->writec(out, '}');                                              RET_ERR();
+        OUT("}", 1);
     }
     return knd_OK;
 }

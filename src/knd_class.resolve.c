@@ -402,6 +402,8 @@ int knd_resolve_class_ref(struct kndClass *self, const char *name, size_t name_s
     struct kndSharedDict *class_name_idx = self->entry->repo->class_name_idx;
     int err;
 
+    assert (name_size != 0 && name != NULL);
+
     if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
         knd_log(".. checking class ref:  \"%.*s\"..", name_size, name);
         if (base) {
@@ -410,7 +412,7 @@ int knd_resolve_class_ref(struct kndClass *self, const char *name, size_t name_s
     }
 
     /* initial bulk load */
-    if (task->type == KND_LOAD_STATE) {
+    if (task->type == KND_BULK_LOAD_STATE) {
         entry = knd_shared_dict_get(class_name_idx, name, name_size);
         if (!entry) {
             err = knd_NO_MATCH;

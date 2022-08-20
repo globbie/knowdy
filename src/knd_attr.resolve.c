@@ -70,7 +70,7 @@ static int register_attr(struct kndClass *self, struct kndAttr *attr, struct knd
     switch (task->type) {
     case KND_RESTORE_STATE:
         // fall through
-    case KND_LOAD_STATE:
+    case KND_BULK_LOAD_STATE:
         next_attr_ref = knd_shared_dict_get(repo->attr_name_idx, name, name_size);
         attr_ref->next = next_attr_ref;
 
@@ -171,6 +171,8 @@ int knd_resolve_primary_attrs(struct kndClass *self, struct kndTask *task)
 
         switch (attr->type) {
         case KND_ATTR_INNER:
+            // fall through
+        case KND_ATTR_REL:
             // fall through
         case KND_ATTR_REF:
             if (!attr->ref_classname_size) {

@@ -41,6 +41,11 @@ struct glbOutput;
 struct kndClassInstEntry;
 struct kndAttrRef;
 
+typedef enum knd_classvar_t {
+    KND_BASE_CLASS,
+    KND_INSTANCE_BLUEPRINT
+} knd_classvar_t;
+
 struct kndClassCommit
 {
     struct kndCommit     *commit;
@@ -95,6 +100,7 @@ struct kndClassVar
     size_t id_size;
     size_t numid;
 
+    knd_classvar_t type;
     struct kndClassEntry *entry;
 
     struct kndAttrVar *attrs;

@@ -71,7 +71,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
 
     /* initial bulk load in progress */
     switch (task->type) {
-    case KND_LOAD_STATE:
+    case KND_BULK_LOAD_STATE:
         knd_build_conc_abbr(name, name_size, self->abbr, &self->abbr_size);
         entry = knd_shared_dict_get(repo->class_name_idx, name, name_size);
         if (!entry) {
@@ -220,9 +220,8 @@ static gsl_err_t parse_logic_clause(void *obj, const char *rec, size_t *total_si
     struct kndLogicClause *clause;
     struct kndMemPool *mempool = task->user_ctx->mempool;
     int err;
-    gsl_err_t parser_err;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
+    if (DEBUG_CLASS_IMPORT_LEVEL_2)
         knd_log(".. parsing logic clause: \"%.*s\"", 32, rec);
 
     err = knd_logic_clause_new(mempool, &clause);
@@ -268,7 +267,7 @@ static gsl_err_t parse_attr(void *obj, const char *name, size_t name_size,
 
     parser_err = knd_import_attr(attr, task, rec, total_size);
     if (parser_err.code) {
-        if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
+        if (DEBUG_CLASS_IMPORT_LEVEL_3)
             knd_log("-- failed to parse the attr field: %d", parser_err.code);
         return parser_err;
     }
@@ -390,7 +389,7 @@ static gsl_err_t set_uniq_type(void *obj, const char *name, size_t name_size)
     struct LocalContext *ctx = obj;
     struct kndClass *self = ctx->class;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_TMP)
+    if (DEBUG_CLASS_IMPORT_LEVEL_2)
         knd_log(".. set uniq type: \"%.*s\" for \"%.*s\"",
                 name_size, name, self->name_size, self->name);
 

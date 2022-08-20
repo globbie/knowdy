@@ -267,7 +267,7 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
     struct kndRepo *repo = ctx->repo ? ctx->repo : task->repo;
     int err;
 
-    if (task->type != KND_LOAD_STATE) {
+    if (task->type != KND_BULK_LOAD_STATE) {
         task->type = KND_COMMIT_STATE;
         if (!task->ctx->commit) {
             err = knd_commit_new(task->mempool, &task->ctx->commit);
@@ -355,7 +355,7 @@ int knd_repo_index_proc_arg(struct kndRepo *repo, struct kndProc *proc,
     switch (task->type) {
     case KND_RESTORE_STATE:
         // fall through
-    case KND_LOAD_STATE:
+    case KND_BULK_LOAD_STATE:
 
         err = knd_proc_get_arg(proc, arg->name, arg->name_size, &ref);
 

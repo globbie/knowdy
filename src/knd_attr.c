@@ -101,13 +101,15 @@ void knd_attr_var_str(struct kndAttrVar *var, size_t depth)
     struct kndAttrVar *item;
     const char *type_name = "";
 
+    assert (attr != NULL);
+
     type_name = knd_attr_names[attr->type];
     if (var->is_list_item) {
-        
         switch (attr->type) {
         case KND_ATTR_INNER:
             knd_log("%*s* inner \"%.*s\" (class:%p):", depth * KND_OFFSET_SIZE, "",
-                    attr->ref_class_entry->name_size, attr->ref_class_entry->name, attr->ref_class_entry->class);
+                    attr->ref_class_entry->name_size, attr->ref_class_entry->name,
+                    attr->ref_class_entry->class);
             break;
         case KND_ATTR_REF:
             knd_log("%*s* ref \"%.*s\":", depth * KND_OFFSET_SIZE, "",
@@ -124,15 +126,14 @@ void knd_attr_var_str(struct kndAttrVar *var, size_t depth)
                     var->implied_attr->name_size, var->implied_attr->name,
                     type_name, var->val_size, var->val);
         }
-        for (item = var->children; item; item = item->next)
-            knd_attr_var_str(item, depth + 1);
         return;
     }
 
     if (attr->is_a_set) {
-        knd_log("%*s%.*s (%s)  [", depth * KND_OFFSET_SIZE, "", var->name_size, var->name, type_name);
+        knd_log("%*s%.*s (%s)  [", depth * KND_OFFSET_SIZE, "",
+                var->name_size, var->name, type_name);
 
-        for (item = var->list; item; item = item->next)
+        FOREACH (item, var->list)
             knd_attr_var_str(item, depth + 1);
 
         knd_log("%*s]", depth * KND_OFFSET_SIZE, "");
@@ -144,19 +145,26 @@ void knd_attr_var_str(struct kndAttrVar *var, size_t depth)
             knd_log("%*s%.*s (inner \"%.*s\")", depth * KND_OFFSET_SIZE, "",
                     var->name_size, var->name,
                     attr->ref_class_entry->name_size, attr->ref_class_entry->name);
+            FOREACH (item, var->children) {
+                knd_log("var: %.*s %p", item->name_size, item->name, item->attr);
+                knd_attr_var_str(item, depth + 1);
+            }
             break;
         case KND_ATTR_REF:
             knd_log("%*s%.*s (\"%.*s\" class ref) => %.*s", depth * KND_OFFSET_SIZE, "",
                     var->name_size, var->name,
                     attr->ref_class_entry->name_size, attr->ref_class_entry->name,
                     var->class_entry->name_size, var->class_entry->name);
-            break;
+            return;
         case KND_ATTR_REL:
-            knd_log("%*s%.*s (\"%.*s\" class inst rel) => \"%.*s\"", depth * KND_OFFSET_SIZE, "",
+            knd_log("%*s%.*s (\"%.*s\" rel)", depth * KND_OFFSET_SIZE, "",
                     var->name_size, var->name,
-                    attr->ref_class_entry->name_size, attr->ref_class_entry->name,
+                    attr->ref_class_entry->name_size, attr->ref_class_entry->name);
+            if (var->class_inst_entry) {
+                knd_log("%*s=> \"%.*s\"", depth * KND_OFFSET_SIZE, "",
                     var->class_inst_entry->name_size, var->class_inst_entry->name);
-            break;
+            }
+            return;
         case KND_ATTR_TEXT:
             knd_log("%*s%.*s:", depth * KND_OFFSET_SIZE, "", var->name_size, var->name);
             knd_text_str(var->text, depth + 1);
@@ -166,9 +174,6 @@ void knd_attr_var_str(struct kndAttrVar *var, size_t depth)
                    var->name_size, var->name,  type_name, var->val_size, var->val);
             break;
     }
-
-    for (item = var->children; item; item = item->next)
-        knd_attr_var_str(item, depth + 1);
 }
 
 int knd_attr_export(struct kndAttr *self, knd_format format, struct kndTask *task)
@@ -382,7 +387,8 @@ static int compute_attr_var(struct kndAttrVar *unused_var(parent_item),
     return knd_OK;
 }
 
-int knd_get_arg_value(struct kndAttrVar *src, struct kndAttrVar *query, struct kndProcCallArg *result_arg)
+int knd_get_arg_value(struct kndAttrVar *src, struct kndAttrVar *query,
+                      struct kndProcCallArg *result_arg)
 {
     struct kndAttrVar *curr_var;
     struct kndAttr *attr;
@@ -436,7 +442,9 @@ int knd_get_arg_value(struct kndAttrVar *src, struct kndAttrVar *query, struct k
                 // knd_log("++ match ref: %.*s",
                 //        src->class->name_size, src->class->name);
 
-                return knd_get_class_attr_value(src->class, query->children, result_arg);
+                assert (src->class_entry->class != NULL);
+                return knd_get_class_attr_value(src->class_entry->class,
+                                                query->children, result_arg);
                 break;
             default:
                 break;
@@ -445,7 +453,7 @@ int knd_get_arg_value(struct kndAttrVar *src, struct kndAttrVar *query, struct k
     }
 
     /* iterate children */
-    for (curr_var = src->children; curr_var; curr_var = curr_var->next) {
+    FOREACH (curr_var, src->children) {
         if (DEBUG_ATTR_LEVEL_2)
             knd_log("== child:%.*s val: %.*s",
                     curr_var->name_size, curr_var->name,

@@ -115,7 +115,8 @@ static gsl_err_t read_attr_var_list(void *obj, const char *name, size_t name_siz
     return make_gsl_err(gsl_OK);
 }
 
-int knd_class_inst_read(struct kndClassInst *self, const char *rec, size_t *total_size, struct kndTask *task)
+int knd_class_inst_read(struct kndClassInst *self, const char *rec, size_t *total_size,
+                        struct kndTask *task)
 {
     struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndClassEntry *entry = task->payload;
@@ -127,9 +128,10 @@ int knd_class_inst_read(struct kndClassInst *self, const char *rec, size_t *tota
         knd_log(".. reading class inst GSP (entry:%p): \"%.*s\"..", entry, 128, rec);
         entry->class->str(entry->class, 1);
     }
-    
+
     err = knd_class_var_new(mempool, &class_var);
     KND_TASK_ERR("failed to alloc a class var");
+    class_var->type = KND_INSTANCE_BLUEPRINT;
     class_var->entry = entry;
     class_var->parent = entry->class;
     class_var->inst = self;

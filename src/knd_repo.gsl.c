@@ -39,7 +39,7 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
     struct kndCommit *commit = task->ctx->commit;
     int err;
 
-    if (task->type != KND_LOAD_STATE) {
+    if (task->type != KND_BULK_LOAD_STATE) {
         task->type = KND_COMMIT_STATE;
         if (!commit) {
             err = knd_commit_new(task->mempool, &commit);
@@ -53,6 +53,16 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
     return knd_class_import(repo, rec, total_size, task);
 }
 
+static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_size)
+{
+    struct kndTask *task = obj;
+    struct kndUserContext *ctx = task->user_ctx;
+    struct kndRepo *repo = ctx->repo ? ctx->repo : task->repo;
+    // struct kndCommit *commit = task->ctx->commit;
+
+    return knd_class_select(repo, rec, total_size, task);
+}
+
 static gsl_err_t parse_proc_import(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
@@ -60,7 +70,7 @@ static gsl_err_t parse_proc_import(void *obj, const char *rec, size_t *total_siz
     struct kndRepo *repo = ctx->repo ? ctx->repo : task->repo;
     int err;
 
-    if (task->type != KND_LOAD_STATE) {
+    if (task->type != KND_BULK_LOAD_STATE) {
         task->type = KND_COMMIT_STATE;
 
         if (!task->ctx->commit) {
@@ -117,6 +127,67 @@ static gsl_err_t parse_schema(void *obj, const char *rec, size_t *total_size)
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
+static gsl_err_t confirm_init_data(void *unused_var(obj),
+                                   const char *unused_var(name), size_t unused_var(name_size))
+{
+    // TODO: reject empty files
+    if (DEBUG_REPO_GSL_LEVEL_TMP) {
+        knd_log("-- warning: empty GSL file?");
+    }
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_logic_clause(void *obj, const char *rec, size_t *total_size)
+{
+    struct kndTask *task = obj;
+    struct kndLogicClause *clause;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
+    int err;
+
+    if (DEBUG_REPO_GSL_LEVEL_2)
+        knd_log(".. parsing logic clause: \"%.*s\"", 32, rec);
+
+    err = knd_logic_clause_new(mempool, &clause);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
+
+    err = knd_logic_clause_parse(clause, rec, total_size, task);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
+    
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_init_data(void *obj, const char *rec, size_t *total_size)
+{
+    struct kndTask *task = obj;
+
+    if (DEBUG_REPO_GSL_LEVEL_2)
+        knd_log(".. parse init data REC: \"%.*s\"..", 64, rec);
+
+    struct gslTaskSpec specs[] = {
+        { .name = "class",
+          .name_size = strlen("class"),
+          .parse = parse_class_select,
+          .obj = task
+        },
+        { .type = GSL_SET_STATE,
+          .name = "stm",
+          .name_size = strlen("stm"),
+          .parse = parse_logic_clause,
+          .obj = task
+        },
+        { .name = "proc",
+          .name_size = strlen("proc"),
+          .parse = parse_proc_import,
+          .obj = task
+        },
+        { .is_default = true,
+          .run = confirm_init_data,
+          .obj = task
+        }
+    };
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
 static gsl_err_t run_read_include(void *obj, const char *name, size_t name_size)
 {
     struct kndTask *task = obj;
@@ -167,6 +238,11 @@ static int parse_GSL(struct kndTask *task, const char *rec, size_t *total_size)
           .parse = parse_schema,
           .obj = task
         },
+        { .name = "init",
+          .name_size = strlen("init"),
+          .parse = parse_init_data,
+          .obj = task
+        },
         { .name = "include",
           .name_size = strlen("include"),
           .parse = parse_include,
@@ -193,7 +269,8 @@ static int write_filepath(struct kndOutput *out, struct kndConcFolder *folder)
 }
 
 static int read_GSL_file(struct kndRepo *repo, struct kndConcFolder *parent_folder,
-                         const char *filename, size_t filename_size, struct kndTask *task)
+                         const char *filename, size_t filename_size,
+                         knd_content_type content_type, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndOutput *file_out = task->file_out;
@@ -210,23 +287,33 @@ static int read_GSL_file(struct kndRepo *repo, struct kndConcFolder *parent_fold
     int err;
 
     out->reset(out);
-    OUT(repo->schema_path, repo->schema_path_size);
+    switch (content_type) {
+    case KND_GSL_SCHEMA:
+        OUT(repo->schema_path, repo->schema_path_size);
+        break;
+    case KND_GSL_INIT_DATA:
+        OUT(repo->data_path, repo->data_path_size);
+        break;
+    default:
+        break;
+    }
     OUT("/", 1);
+
     if (parent_folder) {
         err = write_filepath(out, parent_folder);
         KND_TASK_ERR("failed to write a filepath");
     }
-
     OUT(filename, filename_size);
     OUT(file_ext, file_ext_size);
 
-    if (DEBUG_REPO_GSL_LEVEL_2)
-        knd_log(".. reading GSL file: %.*s", out->buf_size, out->buf);
+    if (DEBUG_REPO_GSL_LEVEL_3)
+        knd_log(".. reading GSL {file %.*s} {content-type %d}",
+                out->buf_size, out->buf, content_type);
 
     file_out->reset(file_out);
     err = file_out->write_file_content(file_out, (const char*)out->buf);
     if (err) {
-        knd_log("failed to read GSL class file \"%s\"", out->buf);
+        knd_log("failed to read GSL file \"%.*s\"", out->buf_size, out->buf);
         return err;
     }
 
@@ -273,7 +360,8 @@ static int read_GSL_file(struct kndRepo *repo, struct kndConcFolder *parent_fold
                 folder->name_size = folder_name_size;
 
                 err = read_GSL_file(repo, folder,
-                                    index_folder_name, index_folder_name_size, task);
+                                    index_folder_name, index_folder_name_size,
+                                    content_type, task);
                 if (err) {
                     c = "/";
                     folder_name_size = 1;
@@ -288,7 +376,8 @@ static int read_GSL_file(struct kndRepo *repo, struct kndConcFolder *parent_fold
                 continue;
             }
         }
-        err = read_GSL_file(repo, parent_folder, folder->name, folder->name_size, task);
+        err = read_GSL_file(repo, parent_folder, folder->name, folder->name_size,
+                            content_type, task);
         if (err) {
             c = "/";
             folder_name_size = 1;
@@ -362,15 +451,13 @@ static int resolve_classes(struct kndRepo *self, struct kndTask *task)
             if (c->is_resolved) continue;
 
             err = knd_class_resolve(c, task);
-            KND_TASK_ERR("failed to resolve a class: \"%.*s\"", c->entry->name_size, c->entry->name);
+            KND_TASK_ERR("failed to resolve {class %.*s}", c->entry->name_size, c->entry->name);
             if (DEBUG_REPO_GSL_LEVEL_2)
                 c->str(c, 1);
         }
     }
     return knd_OK;
 }
-
-
 
 static int resolve_procs(struct kndRepo *self, struct kndTask *task)
 {
@@ -399,7 +486,6 @@ static int resolve_procs(struct kndRepo *self, struct kndTask *task)
                         entry->proc->name_size, entry->proc->name);
                 return err;
             }
-
             entry->numid = atomic_fetch_add_explicit(&self->proc_id_count, 1, \
                                                      memory_order_relaxed);
             entry->numid++;
@@ -413,7 +499,6 @@ static int resolve_procs(struct kndRepo *self, struct kndTask *task)
             }
         }
     }
-
     /*for (size_t i = 0; i < proc_name_idx->size; i++) {
         item = atomic_load_explicit(&proc_name_idx->hash_array[i],
                                     memory_order_relaxed);
@@ -433,18 +518,79 @@ static int resolve_procs(struct kndRepo *self, struct kndTask *task)
     return knd_OK;
 }
 
+static int iterate_class_insts(struct kndClass *c, struct kndTask *task)
+{
+    struct kndClassInstEntry *entry;
+    struct kndSharedDictItem *item;
+    struct kndSharedDict *name_idx = c->inst_name_idx;
+    int err;
+
+    if (DEBUG_REPO_GSL_LEVEL_TMP)
+        knd_log(".. resolving insts of {class %.*s}..", c->name_size, c->name);
+
+    // TODO: iterate func in kndSharedDict
+    for (size_t i = 0; i < name_idx->size; i++) {
+        item = atomic_load_explicit(&name_idx->hash_array[i], memory_order_relaxed);
+        for (; item; item = item->next) {
+            entry = item->data;
+
+            err = knd_class_inst_resolve(entry->inst, task);
+            KND_TASK_ERR("failed to resolve {class %.*s {inst %.*s}}",
+                         c->name_size, c->name, entry->name_size, entry->name);
+        }
+    }
+    return knd_OK;
+}
+
+static int resolve_class_insts(struct kndRepo *self, struct kndTask *task)
+{
+    struct kndClass *c;
+    struct kndClassEntry *entry;
+    struct kndSharedDictItem *item;
+    struct kndSharedDict *name_idx = self->class_name_idx;
+    int err;
+
+    if (DEBUG_REPO_GSL_LEVEL_TMP)
+        knd_log(".. resolving class instances in {repo %.*s}..", self->name_size, self->name);
+
+    // TODO: iterate func in kndSharedDict
+    for (size_t i = 0; i < name_idx->size; i++) {
+        item = atomic_load_explicit(&name_idx->hash_array[i], memory_order_relaxed);
+        for (; item; item = item->next) {
+            entry = item->data;
+            if (!entry->class) {
+                knd_log("-- unresolved class entry: %.*s", entry->name_size, entry->name);
+                return knd_FAIL;
+            }
+            c = entry->class;
+            if (!c->inst_name_idx) continue;
+
+            if (DEBUG_REPO_GSL_LEVEL_TMP) {
+                knd_log(".. resolving insts of {class %.*s}..",
+                        entry->name_size, entry->name);
+                c->str(c, 1);
+            }
+            err = iterate_class_insts(c, task);
+            KND_TASK_ERR("failed to iterate insts of class %.*s",
+                         entry->name_size, entry->name);
+
+        }
+    }
+    return knd_OK;
+}
+
 int knd_repo_read_source_files(struct kndRepo *self, struct kndTask *task)
 {
     int err;
 
     if (DEBUG_REPO_GSL_LEVEL_TMP)
-        knd_log(".. initial loading of schema GSL files");
+        knd_log(".. initial loading of schema files");
 
     /* read a system-wide schema */
-    task->type = KND_LOAD_STATE;
-    err = read_GSL_file(self, NULL, "index", strlen("index"), task);
+    task->type = KND_BULK_LOAD_STATE;
+    err = read_GSL_file(self, NULL, "index", strlen("index"), KND_GSL_SCHEMA, task);
     KND_TASK_ERR("schema import failed");
-        
+
     err = resolve_classes(self, task);
     KND_TASK_ERR("class resolving failed");
         
@@ -453,7 +599,17 @@ int knd_repo_read_source_files(struct kndRepo *self, struct kndTask *task)
 
     err = index_classes(self, task);
     KND_TASK_ERR("class indexing failed");
-    
+
+    if (self->data_path_size) {
+        if (DEBUG_REPO_GSL_LEVEL_TMP)
+            knd_log(".. initial loading of data files");
+        task->type = KND_BULK_LOAD_STATE;
+        err = read_GSL_file(self, NULL, "index", strlen("index"), KND_GSL_INIT_DATA, task);
+        KND_TASK_ERR("init data import failed");
+
+        err = resolve_class_insts(self, task);
+        KND_TASK_ERR("class insts resolving failed");
+    }
     return knd_OK;
 }
 

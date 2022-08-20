@@ -62,7 +62,7 @@ static int export_commit_GSL(struct kndRepo *self, struct kndCommit *commit, str
     OUT("{repo ", strlen("{repo "));
     OUT(self->name, self->name_size);
 
-    for (ref = commit->class_state_refs; ref; ref = ref->next) {
+    FOREACH (ref, commit->class_state_refs) {
         entry = ref->obj;
         if (!entry) continue;
 
@@ -86,16 +86,14 @@ static int export_commit_GSL(struct kndRepo *self, struct kndCommit *commit, str
             err = knd_class_inst_export_commit(state->children, task);
             KND_TASK_ERR("failed to export class inst commit");
         }
-        err = out->writec(out, '}');                                              RET_ERR();
+        OUT("}", 1);
     }    
-    
-    err = out->writec(out, '}');                                                  RET_ERR();
 
+    OUT("}", 1);
     if (task->user_ctx) {
-        err = out->writec(out, '}');                                                  RET_ERR();
+        OUT("}", 1);
     }
-
-    err = out->writec(out, '}');                                                  RET_ERR();
+    OUT("}", 1);
 
     return knd_OK;
 }

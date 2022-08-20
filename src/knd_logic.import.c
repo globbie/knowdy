@@ -30,7 +30,8 @@ struct LocalContext {
     struct kndLogicClause  *clause;
 };
 
-int knd_logic_clause_parse(struct kndLogicClause *self, const char *rec, size_t *total_size, struct kndTask *task)
+int knd_logic_clause_parse(struct kndLogicClause *self, const char *rec,
+                           size_t *total_size, struct kndTask *task)
 {
     if (DEBUG_LOGIC_IMPORT_LEVEL_2)
         knd_log(".. import logic clause: \"%.*s\"", 128, rec);

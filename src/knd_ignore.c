@@ -33,11 +33,9 @@ struct LocalContext {
 gsl_err_t knd_ignore_value(void *obj, const char *val, size_t val_size)    
 {
     struct LocalContext *ctx = obj;
-    struct kndTask *task = ctx->task;
-    int err;
 
     if (DEBUG_IGNORE_LEVEL_2)
-        knd_log("== val: \"%.*s\"", val_size, val);
+        knd_log("== {ctx %p} {val %.*s}", ctx, val_size, val);
 
     return make_gsl_err(gsl_OK);
 }
@@ -46,7 +44,6 @@ gsl_err_t knd_ignore_obj(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    int err;
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -84,7 +81,6 @@ gsl_err_t knd_ignore_list(void *obj, const char *name, size_t name_size,
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    int err;
 
     if (DEBUG_IGNORE_LEVEL_2)
         knd_log(".. ignore list: \"%.*s\" REC: %.*s", name_size, name, 32, rec);
@@ -108,7 +104,6 @@ gsl_err_t knd_ignore_named_area(void *obj, const char *name, size_t name_size,
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
     gsl_err_t parser_err;
-    int err;
 
     if (DEBUG_IGNORE_LEVEL_2)
         knd_log(">> named area: \"%.*s\"", name_size, name);

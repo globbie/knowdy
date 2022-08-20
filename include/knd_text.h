@@ -239,7 +239,7 @@ int knd_text_export_query_report(struct kndTask *task);
 int knd_text_export_query_report_GSL(struct kndTask *task);
 
 int knd_text_export_GSL(struct kndText *text, struct kndTask *task, size_t depth);
-int knd_text_gloss_export_GSL(struct kndText *text, struct kndTask *task, size_t depth);
+int knd_text_gloss_export_GSL(struct kndText *text, bool use_locale, struct kndTask *task, size_t depth);
 int knd_text_gloss_export_JSON(struct kndText *text, struct kndTask *task, size_t depth);
 
 int knd_text_export_GSP(struct kndText *self, struct kndTask *task);

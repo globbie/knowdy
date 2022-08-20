@@ -288,7 +288,8 @@ validate_select_by_baseclass_attr(void *obj, const char *name, size_t name_size,
         knd_log("-- no attr \"%.*s\" in class \"%.*s\"",
                 name_size, name, ctx->selected_base->name_size, ctx->selected_base->name);
         err = ctx->task->log->writef(ctx->task->log, "%.*s class has no attribute \"%.*s\"",
-                                     ctx->selected_base->name_size, ctx->selected_base->name, name_size, name);
+                                     ctx->selected_base->name_size, ctx->selected_base->name,
+                                     name_size, name);
         //ctx->task->http_code = HTTP_NOT_FOUND;  // TODO(k15tfu): remove this
         return *total_size = 0, make_gsl_err_external(err);
     }
@@ -362,8 +363,6 @@ parse_select_by_baseclass(void *obj, const char *rec, size_t *total_size)
           .obj = &task->ctx->max_depth
         }
     };
-
-    //task->type = KND_SELECT_STATE;
 
     err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (err.code) return err;
@@ -643,7 +642,8 @@ static gsl_err_t parse_select_class_inst(void *obj, const char *rec, size_t *tot
 
     err = knd_class_acquire(ctx->class_entry, &c, task);
     if (err) {
-        KND_TASK_LOG("failed to acquire class \"%.*s\"", ctx->class_entry->id_size, ctx->class_entry->id);
+        KND_TASK_LOG("failed to acquire class \"%.*s\"",
+                     ctx->class_entry->id_size, ctx->class_entry->id);
         return *total_size = 0, make_gsl_err_external(err);
     }
     return knd_select_class_inst(c, rec, total_size, ctx->task);
@@ -732,7 +732,8 @@ static gsl_err_t parse_import_class_inst(void *obj, const char *rec, size_t *tot
 }
 
 static gsl_err_t
-validate_select_class_attr(void *obj, const char *name, size_t name_size, const char *rec, size_t *total_size)
+validate_select_class_attr(void *obj, const char *name, size_t name_size,
+                           const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
 
@@ -742,7 +743,8 @@ validate_select_class_attr(void *obj, const char *name, size_t name_size, const 
         if (err) return *total_size = 0, make_gsl_err_external(err);
         return *total_size = 0, make_gsl_err_external(knd_FAIL);
     }
-    return knd_select_attr_var(ctx->selected_class, name, name_size, rec, total_size, ctx->task);
+    return knd_select_attr_var(ctx->selected_class, name, name_size,
+                               rec, total_size, ctx->task);
 }
 
 static gsl_err_t
@@ -790,7 +792,8 @@ run_remove_class(void *obj, const char *unused_var(name), size_t name_size)
 #endif
 }
 
-static gsl_err_t present_class_selection(void *obj, const char *unused_var(val), size_t unused_var(val_size))
+static gsl_err_t present_class_selection(void *obj, const char *unused_var(val),
+                                         size_t unused_var(val_size))
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
@@ -800,6 +803,10 @@ static gsl_err_t present_class_selection(void *obj, const char *unused_var(val),
     int err;
 
     switch (task->type) {
+    case KND_BULK_LOAD_STATE:
+        if (DEBUG_CLASS_SELECT_LEVEL_3)
+            knd_log("^^ init load class selection detected!");
+        break;
     case KND_INNER_STATE:
         if (DEBUG_CLASS_SELECT_LEVEL_2)
             knd_log("^^ inner state class selection detected!");
@@ -904,7 +911,7 @@ static gsl_err_t present_class_selection(void *obj, const char *unused_var(val),
             return make_gsl_err_external(err);
         }
 
-        if (DEBUG_CLASS_SELECT_LEVEL_TMP)
+        if (DEBUG_CLASS_SELECT_LEVEL_3)
             c->str(c, 1);
         return make_gsl_err(gsl_OK);
     }
@@ -928,13 +935,15 @@ static gsl_err_t present_class_selection(void *obj, const char *unused_var(val),
     return make_gsl_err(gsl_FAIL);
 }
 
-gsl_err_t knd_class_select(struct kndRepo *repo, const char *rec, size_t *total_size, struct kndTask *task)
+gsl_err_t knd_class_select(struct kndRepo *repo, const char *rec, size_t *total_size,
+                           struct kndTask *task)
 {
     gsl_err_t parser_err;
     int err;
 
     if (DEBUG_CLASS_SELECT_LEVEL_2)
-        knd_log(".. parsing class select rec: \"%.*s\" (repo:%.*s)", 32, rec, repo->name_size, repo->name);
+        knd_log(".. parsing class select rec: \"%.*s\" (repo:%.*s)",
+                32, rec, repo->name_size, repo->name);
 
     struct LocalContext ctx = {
         .task = task,
@@ -1032,7 +1041,7 @@ int knd_class_match_query(struct kndClass *self, struct kndAttrVar *query)
     void *result;
     int err;
 
-    for (attr_var = query->children; attr_var; attr_var = attr_var->next) {
+    FOREACH (attr_var, query->children) {
         attr = attr_var->attr;
 
         err = attr_idx->get(attr_idx, attr->id, attr->id_size, &result);

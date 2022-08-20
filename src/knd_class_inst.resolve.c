@@ -35,13 +35,16 @@ int knd_class_inst_resolve(struct kndClassInst *self, struct kndTask *task)
     KND_TASK_ERR("failed to acquire class \"%.*s\"",
                  self->entry->blueprint->name_size, self->entry->blueprint->name);
 
-    if (DEBUG_INST_RESOLVE_LEVEL_2) {
-        knd_log(".. resolve class inst %.*s", self->name_size, self->name);
+    if (DEBUG_INST_RESOLVE_LEVEL_TMP) {
+        knd_log(".. resolving {class %.*s {inst %.*s}}",
+                c->entry->name_size, c->entry->name,
+                self->name_size, self->name);
     }
 
     if (self->class_var->attrs) {
         err = knd_resolve_attr_vars(c, self->class_var, task);
-        KND_TASK_ERR("failed to resolve class inst %.*s::%.*s", c->entry->name_size, c->entry->name,
+        KND_TASK_ERR("failed to resolve {class %.*s {inst %.*s}}",
+                     c->entry->name_size, c->entry->name,
                      self->name_size, self->name);
     }
     self->is_resolved = true;

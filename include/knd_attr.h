@@ -86,6 +86,12 @@ static const char* const knd_attr_names[] = {
     "file"
 };
 
+typedef enum knd_rel_t {
+                        KND_REL_DEFAULT,
+                        KND_REL_CLASS_INST,
+                        KND_REL_SUBCLASS
+} knd_rel_t;
+
 typedef enum knd_attr_quant_type {
     KND_ATTR_SINGLE,
     KND_ATTR_SET,
@@ -98,18 +104,18 @@ struct kndAttrFacet
     struct kndSet *topics;
 };
 
-/* index of reverse attr paths */
+/* index of reverse attr var paths */
 struct kndAttrHub
 {
     struct kndClassEntry *topic_template;
-    const char         *attr_id;
-    size_t              attr_id_size;
-    struct kndAttr     *attr;
+    const char           *attr_id;
+    size_t                attr_id_size;
+    struct kndAttr       *attr;
 
     struct kndSet      *topics;
     struct kndSet      *specs;
 
-    struct kndAttrHub  *parent;
+    struct kndAttrHub  *children;
     struct kndAttrHub  *next;
 };
 
@@ -155,7 +161,6 @@ struct kndAttrVar
     size_t num_children;
 
     bool is_list_item;
-    bool is_class_inst_ref;
     size_t list_count;
 
     struct kndState *states;
@@ -167,12 +172,14 @@ struct kndAttrVar
     struct kndAttrVar *list_tail;
     size_t num_list_elems;
 
-    struct kndClass *class;
+    // struct kndClass *class;
     struct kndClassEntry *class_entry;
 
+    const char *class_inst_name;
+    size_t class_inst_name_size;
     struct kndClassInstEntry *class_inst_entry;
-    struct kndProc *proc;
 
+    struct kndProc *proc;
     struct kndAttr *ref_attr;
     
     struct kndAttrVar *next;
@@ -207,7 +214,6 @@ struct kndAttr
     size_t id_size;
     size_t numid;
     knd_attr_type type;
-
     knd_attr_quant_type quant_type;
 
     const char *name;
@@ -219,7 +225,6 @@ struct kndAttr
     bool is_a_set;
     bool set_is_unique;
     bool set_is_atomic;
-
     bool is_required;
     bool is_indexed;
     bool is_implied;
@@ -228,6 +233,8 @@ struct kndAttr
     const char *ref_classname;
     size_t ref_classname_size;
     struct kndClassEntry *ref_class_entry;
+    struct kndClass *ref_class;
+    knd_rel_t rel_type;
 
     const char *ref_procname;
     size_t ref_procname_size;
@@ -235,8 +242,6 @@ struct kndAttr
 
     /* concise representation */
     size_t concise_level;
-
-    const char *calc_attr;
 
     /* facet values indexing */
     struct kndSet *facet_idx;
@@ -325,7 +330,7 @@ int knd_resolve_primary_attrs(struct kndClass *self, struct kndTask *task);
 int knd_attr_hub_resolve(struct kndAttrHub *hub, struct kndTask *task);
 
 // knd_attr.index.c
-int knd_attr_index(struct kndClass *self, struct kndAttr *attr, struct kndTask *task);
+// int knd_attr_index(struct kndClass *self, struct kndAttr *attr, struct kndTask *task);
 
 // knd_attr_var.index.c
 int knd_index_attr_var(struct kndClassEntry *topic, struct kndClassInstEntry *topic_inst,

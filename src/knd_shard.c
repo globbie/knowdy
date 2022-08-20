@@ -128,10 +128,16 @@ run_check_schema(void *unused_var(obj), const char *val, size_t val_size)
 {
     const char *schema_name = "knd";
     size_t schema_name_size = strlen(schema_name);
-
     if (val_size != schema_name_size)  return make_gsl_err(gsl_FAIL);
     if (memcmp(schema_name, val, val_size)) return make_gsl_err(gsl_FAIL);
     return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t reject_unrec_tag(void *unused_var(obj), const char *name, size_t name_size,
+                                  const char *unused_var(rec), size_t *unused_var(total_size))
+{
+    knd_log("-- unrec tag \"%.*s\"", name_size, name);
+    return make_gsl_err(gsl_FORMAT);
 }
 
 static gsl_err_t
@@ -217,6 +223,12 @@ parse_schema(void *obj, const char *rec, size_t *total_size)
             .parse = parse_schema_path,
             .obj = self,
         },
+        {   .name = "init-data-path",
+            .name_size = strlen("init-data-path"),
+            .buf = self->data_path,
+            .buf_size = &self->data_path_size,
+            .max_buf_size = KND_PATH_SIZE
+        },
         {  .name = "memory",
             .name_size = strlen("memory"),
             .parse = parse_mem_config,
@@ -226,6 +238,9 @@ parse_schema(void *obj, const char *rec, size_t *total_size)
             .name_size = strlen("agent"),
             .parse = parse_agent,
             .obj = self
+        },
+        { .validate = reject_unrec_tag,
+          .obj = self
         }
     };
     gsl_err_t parser_err;
@@ -258,8 +273,7 @@ parse_schema(void *obj, const char *rec, size_t *total_size)
     return make_gsl_err(gsl_OK);
 }
 
-static int parse_config(struct kndShard *self,
-                        const char *rec, size_t *total_size)
+static int parse_config(struct kndShard *self, const char *rec, size_t *total_size)
 {
     struct gslTaskSpec specs[] = {
         {
@@ -286,12 +300,17 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
     struct kndUser *user;
     int err;
 
+    assert (config_size != 0 && config != NULL);
+
     self = malloc(sizeof(struct kndShard));
     if (!self) return knd_NOMEM;
     memset(self, 0, sizeof(struct kndShard));
 
     err = parse_config(self, config, &config_size);
-    if (err != knd_OK) goto error;
+    if (err != knd_OK) {
+        knd_log("failed to read a config file");
+        goto error;
+    }
 
     /* DB paths */
     err = knd_mkpath(self->path, self->path_size, 0755, false);
@@ -325,6 +344,10 @@ int knd_shard_new(struct kndShard **shard, const char *config, size_t config_siz
         goto error;
     }
     self->repo = repo;
+    if (self->data_path_size) {
+        repo->data_path_size = self->data_path_size;
+        repo->data_path = self->data_path;
+    }
 
     err = knd_task_new(self, mempool, 0, &task);
     if (err) goto error;

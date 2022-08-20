@@ -315,7 +315,7 @@ static int present_subclass(struct kndClassRef *ref,
     }
 
     if (c->tr) {
-        err = knd_text_gloss_export_GSL(c->tr, task, depth);
+        err = knd_text_gloss_export_GSL(c->tr, true, task, depth);
         RET_ERR();
     }
     err = out->write(out, "{_id ", strlen("{_id "));                              RET_ERR();
@@ -400,19 +400,25 @@ static int export_attrs(struct kndClass *self, struct kndTask *task, size_t dept
     size_t i = 0;
     int err;
 
-    err = out->write(out, "[attr", strlen("[attr"));                            RET_ERR();
+    if (task->ctx->format_indent) {
+        OUT("\n", 1);
+        err = knd_print_offset(out, task->ctx->format_indent);
+        RET_ERR();
+    }
 
-    for (attr = self->attrs; attr; attr = attr->next) {
+    OUT("[attr", strlen("[attr"));
+
+    FOREACH (attr, self->attrs) {
         if (task->ctx->format_indent) {
-            err = out->writec(out, '\n');                                         RET_ERR();
-            err = knd_print_offset(out, (depth + 2) * task->ctx->format_indent);       RET_ERR();
+            OUT("\n", 1);
+            err = knd_print_offset(out, (depth + 2) * task->ctx->format_indent);
+            RET_ERR();
         }
         err = knd_attr_export_GSL(attr, task, depth + 1);
         KND_TASK_ERR("failed to export %.*s attr", attr->name_size, attr->name);
         i++;
     }
-    err = out->writec(out, ']');                                                  RET_ERR();
-    
+    OUT("]", 1);
     return knd_OK;
 }
 
@@ -446,7 +452,7 @@ static int export_baseclasses(struct kndClass *self, struct kndTask *task, size_
         KND_TASK_ERR("failed to acquire baseclass %.*s", cvar->entry->name_size, cvar->entry->name);
 
         if (c->tr) {
-            err = knd_text_gloss_export_GSL(c->tr, task, depth + 2);
+            err = knd_text_gloss_export_GSL(c->tr, true, task, depth + 2);
             KND_TASK_ERR("failed to export baseclass gloss GSL");
         }
        
@@ -510,6 +516,7 @@ int knd_class_export_GSL(struct kndClassEntry *entry, struct kndTask *task, bool
     struct kndState *state = self->states;
     size_t indent_size = task->ctx->format_indent;
     size_t num_children;
+    bool use_locale = true;
     int err;
 
     if (DEBUG_GSL_LEVEL_2) {
@@ -566,7 +573,7 @@ int knd_class_export_GSL(struct kndClassEntry *entry, struct kndTask *task, bool
     }
 
     if (self->tr) {
-        err = knd_text_gloss_export_GSL(self->tr, task, depth + 1);
+        err = knd_text_gloss_export_GSL(self->tr, use_locale, task, depth + 1);
         RET_ERR();
     }
 
@@ -581,30 +588,11 @@ int knd_class_export_GSL(struct kndClassEntry *entry, struct kndTask *task, bool
         err = export_baseclasses(self, task, depth + 1);
         RET_ERR();
     }
-    /*else {
-        if (orig_entry && orig_entry->class->num_baseclass_vars) {
-            if (indent_size) {
-                err = out->writec(out, '\n');                                     RET_ERR();
-                err = knd_print_offset(out, (depth + 1) * indent_size);   RET_ERR();
-            }
-            
-            err = export_baseclass_vars(orig_entry->class, task, depth + 1);      RET_ERR();
-        }
-        }*/
 
     if (self->attrs) {
         err = export_attrs(self, task, depth + 1);
         RET_ERR();
     }
-    /*else {
-        if (orig_entry && orig_entry->class->num_attrs) {
-            if (indent_size) {
-                err = out->writec(out, '\n');                                     RET_ERR();
-                err = knd_print_offset(out, (depth + 1) * indent_size);   RET_ERR();
-            }
-            err = export_attrs(orig_entry->class, task, depth + 1);               RET_ERR();
-        }
-        }*/
 
     num_children = self->num_children;
     if (self->desc_states) {

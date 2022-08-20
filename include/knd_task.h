@@ -55,7 +55,7 @@ typedef enum knd_task_spec_type {
     KND_UNFREEZE_STATE,
     KND_SNAPSHOT_STATE,
     KND_DELTA_STATE,
-    KND_LOAD_STATE,
+    KND_BULK_LOAD_STATE,
     KND_RESTORE_STATE,
     KND_STOP_STATE
 } knd_task_spec_type;

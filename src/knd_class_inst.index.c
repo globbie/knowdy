@@ -145,11 +145,13 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *bl
                 item->phase = KND_SHARED_DICT_VALID;
             }
             err = knd_shared_set_add(idx, entry->id, entry->id_size, (void*)entry);
-            KND_TASK_ERR("class inst idx failed to register \"%.*s\"", entry->name_size, entry->name);
+            KND_TASK_ERR("class inst idx failed to register \"%.*s\"",
+                         entry->name_size, entry->name);
 
             if (entry->inst->class_var->attrs) {
                 err = update_attr_var_indices(entry, repo, task);
-                KND_TASK_ERR("failed to update attr inst indices with \"%.*s\"", entry->id_size, entry->id);
+                KND_TASK_ERR("failed to update attr inst indices with \"%.*s\"",
+                             entry->id_size, entry->id);
             }
             break;
         default:

@@ -78,7 +78,7 @@ set(HEADERS include/knd_attr.h
         include/knd_state.h include/knd_commit.h
         include/knd_task.h include/knd_text.h
         include/knd_user.h include/knd_utils.h include/knd_version.h)
-set(SOURCES src/knd_attr.c src/knd_attr.import.c src/knd_attr.index.c
+set(SOURCES src/knd_attr.c src/knd_attr.import.c
         src/knd_attr.read.c src/knd_attr.resolve.c src/knd_attr.select.c
         src/knd_attr.json.c src/knd_attr.gsl.c src/knd_attr.gsp.c
         src/knd_attr_var.import.c src/knd_attr_var.index.c src/knd_attr_var.resolve.c src/knd_attr_var.read.c
@@ -100,7 +100,8 @@ set(SOURCES src/knd_attr.c src/knd_attr.import.c src/knd_attr.index.c
         src/knd_proc_arg.gsl.c src/knd_proc_call.c
         src/knd_repo.c src/knd_repo.gsl.c src/knd_repo.gsp.c
         src/knd_repo.commit.c src/knd_repo.open.c
-        src/knd_set.c src/knd_shared_set.c src/knd_shared_set.gsp.c src/knd_set_idx.c src/knd_shard.c
+        src/knd_set.c src/knd_shared_set.c src/knd_shared_set.gsp.c src/knd_set_idx.c
+        src/knd_shard.c
         src/knd_state.c src/knd_commit.c
         src/knd_task.c src/knd_task.select.c
         src/knd_text.c src/knd_text.import.c src/knd_text.resolve.c src/knd_text.index.c

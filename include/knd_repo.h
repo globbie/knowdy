@@ -19,6 +19,13 @@ struct kndSharedDict;
 #include "knd_mempool.h"
 #include "knd_task.h"
 
+typedef enum knd_content_type {
+    KND_GSL_DEFAULT,
+    KND_GSL_CONFIG,
+    KND_GSL_SCHEMA,
+    KND_GSL_INIT_DATA
+} knd_content_type;
+
 struct kndConcFolder
 {
     const char *name;
@@ -66,6 +73,9 @@ struct kndRepo
     size_t schema_name_size;
     const char *schema_path;
     size_t schema_path_size;
+
+    const char *data_path;
+    size_t data_path_size;
 
     struct kndRepo *base;
 

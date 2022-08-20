@@ -169,9 +169,7 @@ static gsl_err_t present_state(void *obj, const char *unused_var(name), size_t u
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_select_state(void *obj,
-                                    const char *rec,
-                                    size_t *total_size)
+static gsl_err_t parse_select_state(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
@@ -261,7 +259,8 @@ static gsl_err_t remove_inst(void *obj, const char *unused_var(name), size_t unu
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t present_inst_selection(void *obj, const char *unused_var(val), size_t unused_var(val_size))
+static gsl_err_t present_inst_selection(void *obj, const char *unused_var(val),
+                                        size_t unused_var(val_size))
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
@@ -331,13 +330,14 @@ static gsl_err_t present_inst_selection(void *obj, const char *unused_var(val), 
 
     if (task->ctx->max_depth == 0) task->ctx->max_depth = 1;
 
-    err = knd_class_inst_export(ctx->inst, task->ctx->format, false, task);
+    err = knd_class_inst_export(ctx->inst, task->ctx->format, false, KND_SELECTED, task);
     if (err) return make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);
 }
 
-gsl_err_t knd_select_class_inst(struct kndClass *c, const char *rec, size_t *total_size, struct kndTask *task)
+gsl_err_t knd_select_class_inst(struct kndClass *c, const char *rec, size_t *total_size,
+                                struct kndTask *task)
 {
     gsl_err_t parser_err;
 

@@ -349,7 +349,7 @@ static gsl_err_t run_present_user(void *obj, const char *unused_var(val), size_t
     if (err) return make_gsl_err_external(err);
 
     user_inst = task->user_ctx->inst;
-    err = knd_class_inst_export(user_inst, task->ctx->format, false, task);
+    err = knd_class_inst_export(user_inst, task->ctx->format, false, KND_SELECTED, task);
     if (err) return make_gsl_err_external(err);
 
     err = user_footer_export(task);

@@ -64,10 +64,10 @@ static int inner_var_export_GSP(struct kndAttrVar *var, struct kndTask *task)
     int err;
 
     if (DEBUG_ATTR_VAR_GSP_LEVEL_2) {
-        knd_log(">> class \"%.*s\" var:%.*s (%p) class:%p  attr type:%d",
+        knd_log(">> class \"%.*s\" var:%.*s (%p) attr type:%d",
                 var->class_var->parent->name_size,
                 var->class_var->parent->name,
-                var->name_size, var->name, var, var->class, var->attr->type);
+                var->name_size, var->name, var, var->attr->type);
         // knd_log(".. GSP export inner item: %.*s",
         //        var->name_size, var->name);
     }
@@ -77,7 +77,7 @@ static int inner_var_export_GSP(struct kndAttrVar *var, struct kndTask *task)
 
         switch (attr->type) {
         case KND_ATTR_REF:
-            OUT(var->class->entry->id, var->class->entry->id_size);
+            OUT(var->class_entry->id, var->class_entry->id_size);
             break;
         case KND_ATTR_STR:
             err = knd_charseq_fetch(task->repo, var->name, var->name_size, &seq, task);
@@ -104,7 +104,7 @@ static int inner_var_export_GSP(struct kndAttrVar *var, struct kndTask *task)
 
         switch (attr->type) {
         case KND_ATTR_REF:
-            OUT(item->class->entry->id, item->class->entry->id_size);
+            OUT(item->class_entry->id, item->class_entry->id_size);
             break;
         case KND_ATTR_TEXT:
             OUT("{_t ", strlen("{_t "));
@@ -237,7 +237,7 @@ int knd_attr_var_export_GSP(struct kndAttrVar *var, struct kndTask *task, struct
 
     switch (attr_type) {
     case KND_ATTR_REF:
-        OUT(var->class->entry->id, var->class->entry->id_size);
+        OUT(var->class_entry->id, var->class_entry->id_size);
         break;
     case KND_ATTR_PROC_REF:
         err = proc_item_export_GSP(var, task);

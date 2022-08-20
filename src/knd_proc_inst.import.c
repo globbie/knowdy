@@ -148,7 +148,8 @@ static gsl_err_t run_set_state_id(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-gsl_err_t knd_proc_inst_read_state(struct kndProcInst *self, const char *rec, size_t *total_size, struct kndTask *task)
+gsl_err_t knd_proc_inst_read_state(struct kndProcInst *self, const char *rec,
+                                   size_t *total_size, struct kndTask *task)
 {
     struct LocalContext ctx = {
         .inst = self,
@@ -209,7 +210,8 @@ static gsl_err_t import_proc_inst(struct kndProcInstEntry *entry, const char *re
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-int knd_import_proc_inst(struct kndProcEntry *self, const char *rec, size_t *total_size, struct kndTask *task)
+int knd_import_proc_inst(struct kndProcEntry *self, const char *rec, size_t *total_size,
+                         struct kndTask *task)
 {
     struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
     struct kndProcInst *inst;

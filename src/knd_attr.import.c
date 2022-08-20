@@ -69,6 +69,34 @@ static gsl_err_t set_ref_class(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
+static gsl_err_t set_rel_inst_class(void *obj, const char *name, size_t name_size)
+{
+    struct kndAttr *self = obj;
+    if (!name_size) return make_gsl_err(gsl_FAIL);
+    if (!self->name_size) {
+        knd_log("-- attr name not specified");
+        return make_gsl_err(gsl_FAIL);
+    }
+    self->ref_classname = name;
+    self->ref_classname_size = name_size;
+    self->rel_type = KND_REL_CLASS_INST;
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t set_rel_subclass(void *obj, const char *name, size_t name_size)
+{
+    struct kndAttr *self = obj;
+    if (!name_size) return make_gsl_err(gsl_FAIL);
+    if (!self->name_size) {
+        knd_log("-- attr name not specified");
+        return make_gsl_err(gsl_FAIL);
+    }
+    self->ref_classname = name;
+    self->ref_classname_size = name_size;
+    self->rel_type = KND_REL_SUBCLASS;
+    return make_gsl_err(gsl_OK);
+}
+
 static gsl_err_t set_procref(void *obj, const char *name, size_t name_size)
 {
     struct kndAttr *self = obj;
@@ -232,7 +260,8 @@ static gsl_err_t confirm_unique(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-gsl_err_t knd_import_attr(struct kndAttr *self, struct kndTask *task, const char *rec, size_t *total_size)
+gsl_err_t knd_import_attr(struct kndAttr *self, struct kndTask *task,
+                          const char *rec, size_t *total_size)
 {
     struct LocalContext ctx = {
         .attr = self,
@@ -253,6 +282,16 @@ gsl_err_t knd_import_attr(struct kndAttr *self, struct kndTask *task, const char
         { .name = "c",
           .name_size = strlen("c"),
           .run = set_ref_class,
+          .obj = self
+        },
+        { .name = "inst-of",
+          .name_size = strlen("inst-of"),
+          .run = set_rel_inst_class,
+          .obj = self
+        },
+        { .name = "subclass-of",
+          .name_size = strlen("subclass-of"),
+          .run = set_rel_subclass,
           .obj = self
         },
         { .name = "_proc",

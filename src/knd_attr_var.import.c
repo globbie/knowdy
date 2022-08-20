@@ -60,13 +60,13 @@ static gsl_err_t set_class_inst_ref(void *obj, const char *name, size_t name_siz
     struct kndAttrVar *self = obj;
 
     if (DEBUG_ATTR_VAR_LEVEL_TMP)
-        knd_log(".. set class inst ref: %.*s is_list_item:%d val:%.*s",
-                name_size, name, self->is_list_item, self->val_size, self->val);
+        knd_log(">> attr var {%.*s} to set {class %.*s {inst  %.*s}}",
+                self->name_size, self->name, self->val_size, self->val,
+                name_size, name);
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
-    self->val = name;
-    self->val_size = name_size;
-    self->is_class_inst_ref = true;
+    self->class_inst_name = name;
+    self->class_inst_name_size = name_size;
     return make_gsl_err(gsl_OK);
 }
 
@@ -96,8 +96,7 @@ static gsl_err_t parse_text(void *obj, const char *rec, size_t *total_size)
 static gsl_err_t set_attr_var_value(void *obj, const char *val, size_t val_size)
 {
     struct kndAttrVar *self = obj;
-
-    if (DEBUG_ATTR_VAR_LEVEL_2)
+    if (DEBUG_ATTR_VAR_LEVEL_3)
         knd_log(".. set attr var value: \"%.*s\" => \"%.*s\"",
                 self->name_size, self->name, val_size, val);
 
@@ -184,6 +183,11 @@ int knd_import_attr_var(struct kndClassVar *self, const char *name, size_t name_
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_attr_var_value,
+          .obj = attr_var
+        },
+        { .name = "_inst",
+          .name_size = strlen("_inst"),
+          .run = set_class_inst_ref,
           .obj = attr_var
         },
         { .type = GSL_SET_STATE,
@@ -371,17 +375,10 @@ static gsl_err_t import_nested_attr_var(void *obj, const char *name, size_t name
           .run = set_attr_var_value,
           .obj = attr_var
         },
-        { .validate = import_nested_attr_var,
-          .obj = ctx
-        },
-        { .type = GSL_GET_ARRAY_STATE,
-          .validate = import_nested_attr_var_list,
-          .obj = ctx
-        },
         { .name = "_inst",
           .name_size = strlen("_inst"),
           .run = set_class_inst_ref,
-          .obj = ctx
+          .obj = attr_var
         },
         { .name = "_t",
           .name_size = strlen("_t"),
@@ -393,6 +390,13 @@ static gsl_err_t import_nested_attr_var(void *obj, const char *name, size_t name
           .parse = parse_attr_var_cdata,
           .obj = attr_var
           }*/
+        { .validate = import_nested_attr_var,
+          .obj = ctx
+        },
+        { .type = GSL_GET_ARRAY_STATE,
+          .validate = import_nested_attr_var_list,
+          .obj = ctx
+        },
         { .is_default = true,
           .run = confirm_attr_var,
           .obj = ctx
@@ -408,7 +412,7 @@ static gsl_err_t import_nested_attr_var(void *obj, const char *name, size_t name
     /* restore parent */
     ctx->attr_var = self;
 
-    if (DEBUG_ATTR_VAR_LEVEL_2)
+    if (DEBUG_ATTR_VAR_LEVEL_3)
         knd_log("++ attr var: \"%.*s\" val:%.*s (parent item: %.*s)",
                 attr_var->name_size, attr_var->name,
                 attr_var->val_size, attr_var->val,

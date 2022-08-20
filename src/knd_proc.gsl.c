@@ -79,7 +79,7 @@ int knd_proc_export_GSL(struct kndProc *self, struct kndTask *task, bool is_list
     }
 
     if (self->tr) {
-        err = knd_text_gloss_export_GSL(self->tr, task, depth);
+        err = knd_text_gloss_export_GSL(self->tr, true, task, depth);
         RET_ERR();
     }
 

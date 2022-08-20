@@ -135,7 +135,8 @@ static int knd_interact(struct kndShard *shard)
         block_size = buf_size;
 
         if (block[0] == '[') {
-            knd_log(">> parse text  mem:%p repo:%p", reader_task->user_ctx->mempool, reader_task->user_ctx->repo);
+            knd_log(">> parse text  mem:%p repo:%p",
+                    reader_task->user_ctx->mempool, reader_task->user_ctx->repo);
             knd_task_reset(reader_task);
             // memcpy(reader_task->ctx->locale, "ru", strlen("ru"));
             // reader_task->ctx->locale_size = strlen("ru");
@@ -143,28 +144,24 @@ static int knd_interact(struct kndShard *shard)
             if (err) goto next_line;
             knd_log("== JSON: %.*s", reader_task->output_size, reader_task->output);
         }
-
         err = check_file_rec(reader_task, buf, buf_size, &memblock);
         if (err) goto next_line;
-
         if (memblock) {
             block = memblock->buf;
             block_size = memblock->buf_size;
         }
-            
         knd_task_reset(reader_task);
         err = knd_task_run(reader_task, block, block_size);
         if (err != knd_OK) {
             knd_log("-- task run failed: %.*s", reader_task->output_size, reader_task->output);
             goto next_line;
         }
-        knd_log("== Reader's output:\n%.*s", reader_task->output_size, reader_task->output);
-        
+        knd_log("=== REPLY ===\n\n%.*s", reader_task->output_size, reader_task->output);
 
         // out->reset(out);
         // reader_task->mempool->present(reader_task->mempool, out);
         // knd_log("** Task Mempool (%p)\n%.*s", reader_task->mempool, out->buf_size, out->buf);
-        
+
         /* update tasks require another run,
            possibly involving network communication */
         switch (reader_task->ctx->phase) {
@@ -188,7 +185,7 @@ static int knd_interact(struct kndShard *shard)
         }
         /* readline allocates a new buffer every time */
     next_line:
-        free(buf);
+        // free(buf);
         memblock = NULL;
     }
     return knd_OK;
@@ -237,7 +234,10 @@ int main(int argc, char *argv[])
         struct stat stat;
 
         int fd = open(config_filename, O_RDONLY);
-        if (fd == -1) goto error;
+        if (fd == -1) {
+            knd_log("-- failed to open config file \"%s\"", config_filename);
+            goto error;
+        }
         fstat(fd, &stat);
 
         config_body_size = (size_t)stat.st_size;

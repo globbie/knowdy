@@ -9,7 +9,6 @@
 #include <string.h>
 #include <stddef.h>
 
-
 static gsl_err_t
 parse_memory_settings(void *obj, const char *rec, size_t *total_size)
 {
@@ -47,7 +46,6 @@ parse_base_repo(void *obj, const char *rec, size_t *total_size)
             .max_buf_size = KND_PATH_SIZE
         }
     };
-
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
@@ -112,6 +110,13 @@ parse_schema(void *obj, const char *rec, size_t *total_size)
             .parse = parse_schema_path,
             .obj = self,
         },
+        {   .name = "init-data-path",
+            .name_size = strlen("init-data-path"),
+            .buf = self->ssdata_path,
+            .buf_size = &self->data_path_size,
+            .max_buf_size = KND_NAME_SIZE
+        },
+        
         {  .name = "memory",
             .name_size = strlen("memory"),
             .parse = parse_memory_settings,

@@ -58,9 +58,7 @@ static gsl_err_t parse_nested_attr_var(void *obj,
                                        const char *name, size_t name_size,
                                        const char *rec, size_t *total_size);
 
-static gsl_err_t set_logic_OR_val(void *obj,
-                                  const char *val,
-                                  size_t val_size)
+static gsl_err_t set_logic_OR_val(void *obj, const char *val, size_t val_size)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size = 0;
@@ -84,6 +82,7 @@ static gsl_err_t set_logic_OR_val(void *obj,
         memcpy(buf, val, val_size);
         buf_size = val_size;
         buf[buf_size] = '\0';
+        // TODO
         err = knd_parse_num(buf, &attr_var->numval);
     }
     
@@ -132,8 +131,7 @@ static gsl_err_t run_set_attr_var(void *obj,
     attr = ctx->selected_attr_ref->attr;
     if (!attr) {
         log->reset(log);
-        e = log->write(log, "-- no attr selected",
-                       strlen("-- no attr selected"));
+        e = log->write(log, "-- no attr selected", strlen("-- no attr selected"));
         if (e) return make_gsl_err_external(e);
         task->http_code = HTTP_BAD_REQUEST;
         return make_gsl_err_external(knd_FAIL);
@@ -344,8 +342,7 @@ static gsl_err_t select_by_attr(void *obj, const char *val, size_t val_size)
                                (void**)&facet);
     if (err) {
         log->reset(log);
-        log->writef(log, "-- no such facet value: %.*s",
-                    val_size, val);
+        log->writef(log, "-- no such facet value: %.*s", val_size, val);
         task->ctx->error = knd_NO_MATCH;
         task->ctx->http_code = HTTP_NOT_FOUND;
         return make_gsl_err_external(knd_NO_MATCH);
@@ -609,11 +606,8 @@ static gsl_err_t parse_str_clause(struct kndAttr *attr,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-int knd_attr_select_clause(struct kndAttr *attr,
-                           struct kndClass *c,
-                           struct kndRepo *repo,
-                           struct kndTask *task,
-                           const char *rec, size_t *total_size)
+int knd_attr_select_clause(struct kndAttr *attr, struct kndClass *c, struct kndRepo *repo,
+                           struct kndTask *task, const char *rec, size_t *total_size)
 {
     struct kndMemPool *mempool = task->mempool;
     struct kndAttrVar *attr_var;
@@ -685,10 +679,8 @@ extern int knd_attr_var_match(struct kndAttrVar *self,
     return knd_OK;
 }
 
-gsl_err_t knd_select_attr_var(struct kndClass *class,
-                              const char *name, size_t name_size,
-                              const char *rec, size_t *total_size,
-                              struct kndTask *task)
+gsl_err_t knd_select_attr_var(struct kndClass *class, const char *name, size_t name_size,
+                              const char *rec, size_t *total_size, struct kndTask *task)
 {
     struct kndAttrRef *selected_attr_ref;
     int err;

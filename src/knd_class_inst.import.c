@@ -72,7 +72,8 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
         err = knd_is_base(self->entry->blueprint->class, c);
         if (err) {
             KND_TASK_LOG("no inheritance from %.*s to %.*s",
-                         self->entry->blueprint->name_size, self->entry->blueprint->name, c->name_size, c->name);
+                         self->entry->blueprint->name_size, self->entry->blueprint->name,
+                         c->name_size, c->name);
             return make_gsl_err_external(err);
         }
         self->entry->blueprint = class_entry;
@@ -91,12 +92,10 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
             return make_gsl_err(gsl_EXISTS);
         }
     }
-
     self->name = name;
     self->name_size = name_size;
     self->entry->name = name;
     self->entry->name_size = name_size;
-
     return make_gsl_err(gsl_OK);
 }
 
@@ -109,20 +108,24 @@ static gsl_err_t run_set_alias(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t import_attr_var(void *obj, const char *name, size_t name_size, const char *rec, size_t *total_size)
+static gsl_err_t import_attr_var(void *obj, const char *name, size_t name_size,
+                                 const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     int err;
-    err = knd_import_attr_var(ctx->class_inst->class_var, name, name_size, rec, total_size, ctx->task);
+    err = knd_import_attr_var(ctx->class_inst->class_var, name, name_size,
+                              rec, total_size, ctx->task);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t import_attr_var_list(void *obj, const char *name, size_t name_size, const char *rec, size_t *total_size)
+static gsl_err_t import_attr_var_list(void *obj, const char *name, size_t name_size,
+                                      const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     int err;
-    err = knd_import_attr_var_list(ctx->class_inst->class_var, name, name_size, rec, total_size, ctx->task);
+    err = knd_import_attr_var_list(ctx->class_inst->class_var, name, name_size,
+                                   rec, total_size, ctx->task);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     return make_gsl_err(gsl_OK);
 }
@@ -136,7 +139,8 @@ static gsl_err_t check_empty_inst(void *obj, const char *unused_var(name), size_
     return make_gsl_err(gsl_FORMAT);
 }
 
-static gsl_err_t import_class_inst(struct kndClassInst *self, const char *rec, size_t *total_size, struct kndTask *task)
+static gsl_err_t import_class_inst(struct kndClassInst *self, const char *rec, size_t *total_size,
+                                   struct kndTask *task)
 {
     if (DEBUG_INST_IMPORT_LEVEL_2)
         knd_log(".. class inst to import REC: %.*s", 128, rec);
@@ -149,6 +153,12 @@ static gsl_err_t import_class_inst(struct kndClassInst *self, const char *rec, s
         { .is_implied = true,
           .run = run_set_name,
           .obj = &ctx
+        },
+        { .type = GSL_GET_ARRAY_STATE,
+          .name = "_gloss",
+          .name_size = strlen("_gloss"),
+          .parse = knd_parse_gloss_array,
+          .obj = task
         },
         { .name = "_as",
           .name_size = strlen("_as"),
@@ -200,7 +210,29 @@ static int generate_uniq_inst_name(struct kndClassInst *inst, struct kndTask *ta
     return knd_OK;
 }
 
-int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *total_size, struct kndTask *task)
+static int register_by_name(struct kndClassInstEntry *entry, struct kndTask *task)
+{
+    struct kndSharedDict *name_idx = entry->blueprint->class->inst_name_idx;
+    struct kndSharedDictItem *item = NULL;
+    struct kndMemPool *mempool = task->user_ctx->mempool;
+    int err;
+
+    if (!name_idx) {
+        err = knd_shared_dict_new(&name_idx, KND_MEDIUM_DICT_SIZE);
+        KND_TASK_ERR("failed to create inst name idx");
+        entry->blueprint->class->inst_name_idx = name_idx;
+    }
+
+    err = knd_shared_dict_set(name_idx, entry->name, entry->name_size, (void*)entry,
+                              mempool, NULL, &item, false);
+    KND_TASK_ERR("name idx failed to register class inst %.*s, err:%d",
+                 entry->name_size, entry->name, err);
+
+    return knd_OK;
+}
+
+int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *total_size,
+                          struct kndTask *task)
 {
     struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndClass *c = entry->class;
@@ -215,11 +247,17 @@ int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *
     gsl_err_t parser_err;
     assert(entry->class != NULL);
 
-    if (DEBUG_INST_IMPORT_LEVEL_2)
-        knd_log(".. class \"%.*s\" (repo:%.*s) to import inst \"%.*s\"",
-                entry->name_size, entry->name, entry->repo->name_size, entry->repo->name, 128, rec);
+    if (DEBUG_INST_IMPORT_LEVEL_2) {
+        knd_log(".. {repo %.*s {class %.*s}} to import {inst %.*s} {task-type %d}",
+                entry->repo->name_size, entry->repo->name,
+                entry->name_size, entry->name, 
+                64, rec, task->type);
+        entry->class->str(entry->class, 1);
+    }
 
     switch (task->type) {
+    case KND_BULK_LOAD_STATE:
+        break;
     case KND_RESTORE_STATE:
         break;
     case KND_INNER_COMMIT_STATE:
@@ -229,8 +267,7 @@ int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *
         break;
     default:
         task->type = KND_COMMIT_STATE;
-    }
-    
+    }    
     err = knd_class_inst_entry_new(mempool, &inst_entry);
     KND_TASK_ERR("class inst  alloc failed");
     inst_entry->blueprint = entry;
@@ -242,12 +279,19 @@ int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *
 
     err = knd_class_var_new(mempool, &class_var);
     KND_TASK_ERR("failed to alloc a class var");
+    class_var->type = KND_INSTANCE_BLUEPRINT;
     class_var->entry = entry;
     class_var->parent = c;
     class_var->inst = inst;
     inst->class_var = class_var;
     parser_err = import_class_inst(inst, rec, total_size, task);
     if (parser_err.code) return parser_err.code;
+
+    /* reassign glosses if any */
+    if (task->ctx->tr) {
+        inst->tr = task->ctx->tr;
+        task->ctx->tr = NULL;
+    }
 
     /* generate unique inst id */
     inst->entry->numid = atomic_fetch_add_explicit(&c->inst_id_count, 1, memory_order_relaxed);
@@ -258,10 +302,20 @@ int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *
         err = generate_uniq_inst_name(inst, task);
         KND_TASK_ERR("failed to generate unique inst name");
     }
-    
+
     switch (task->type) {
+    case KND_BULK_LOAD_STATE:
+        if (DEBUG_INST_IMPORT_LEVEL_3)
+            knd_log("++ class inst \"%.*s::%.*s\" numid:%zu init data import  OK",
+                    entry->name_size, entry->name, inst->name_size, inst->name,
+                    inst->entry->numid);
+        /* register class inst by name */
+        err = register_by_name(inst_entry, task);
+        KND_TASK_ERR("failed to register class inst by name");
+        return knd_OK;
+
     case KND_INNER_COMMIT_STATE:
-        for (declar = ctx->class_declars; declar; declar = declar->next) {
+        FOREACH (declar, ctx->class_declars) {
             if (declar->entry == c->entry) break;
         }
         if (!declar) {

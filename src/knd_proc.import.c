@@ -241,7 +241,7 @@ static gsl_err_t set_proc_name(void *obj, const char *name, size_t name_size)
     self->name_size = name_size;
 
     /* initial bulk load in progress */
-    if (task->type == KND_LOAD_STATE) {
+    if (task->type == KND_BULK_LOAD_STATE) {
         entry = knd_shared_dict_get(repo->proc_name_idx, name, name_size);
         if (!entry) {
             entry = self->entry;

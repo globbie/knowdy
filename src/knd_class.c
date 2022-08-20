@@ -78,7 +78,8 @@ static int str_attr_idx_rec(void *unused_var(obj),
 {
     struct kndAttrRef *src_ref = elem;
 
-    knd_log("   + %.*s => %p", src_ref->attr->name_size, src_ref->attr->name, src_ref->attr_var);   
+    //knd_log("   + %.*s => %p",
+    //        src_ref->attr->name_size, src_ref->attr->name, src_ref->attr_var);   
 
     if (!src_ref->attr_var) return knd_OK;
     knd_attr_var_str(src_ref->attr_var, 2);
@@ -97,7 +98,8 @@ void knd_class_entry_str(struct kndClassEntry *self, size_t depth)
     FOREACH (ref, self->class->text_idxs) {
         assert(ref->entry != NULL);
         assert(ref->entry->repo != NULL);
-        knd_log(">> text idx: \"%.*s\" (repo:%.*s) num locs:%zu", ref->entry->name_size, ref->entry->name,
+        knd_log(">> text idx: \"%.*s\" (repo:%.*s) num locs:%zu",
+                ref->entry->name_size, ref->entry->name,
                 ref->entry->repo->name_size, ref->entry->repo->name, ref->idx->num_locs);
     }
 }
@@ -134,44 +136,45 @@ static void str(struct kndClass *self, size_t depth)
     }
     */
 
-    for (tr = self->tr; tr; tr = tr->next) {
+    FOREACH (tr, self->tr) {
         knd_log("%*s~ %.*s %.*s",
                 (depth + 1) * KND_OFFSET_SIZE, "",
                 tr->locale_size, tr->locale, tr->seq->val_size, tr->seq->val);
     }
 
     if (self->baseclass_vars) {
-        for (item = self->baseclass_vars; item; item = item->next) {
+        FOREACH (item, self->baseclass_vars) {
             resolved_state = '-';
 
             if (item->entry) {
                 name = item->entry->name;
                 name_size = item->entry->name_size;
 
-                knd_log("%*s_base \"%.*s\" id:%.*s numid:%zu [%c]",
+                knd_log("%*s_base \"%.*s\" id:%.*s [%c]",
                         (depth + 1) * KND_OFFSET_SIZE, "",
                         name_size, name,
-                        item->entry->id_size, item->entry->id, item->numid,
+                        item->entry->id_size, item->entry->id,
                         resolved_state);
             }
 
             if (item->attrs) {
-                for (var = item->attrs; var; var = var->next)
+                FOREACH (var, item->attrs)
                     knd_attr_var_str(var, depth + 1);
             }
         }
     }
 
-    for (ref = self->ancestors; ref; ref = ref->next) {
+    FOREACH (ref, self->ancestors) {
         entry = ref->entry;
-        knd_log("%*s = %.*s (repo:%.*s)", depth * KND_OFFSET_SIZE, "",
-                entry->name_size, entry->name, entry->repo->name_size, entry->repo->name);
+        knd_log("%*s{is %.*s}", depth * KND_OFFSET_SIZE, "",
+                entry->name_size, entry->name);
     }
 
     err = knd_set_map(self->attr_idx, str_attr_idx_rec, (void*)self);
     if (err) return;
 
-    knd_log("%*s the end of %.*s}", depth * KND_OFFSET_SIZE, "", self->entry->name_size, self->entry->name);
+    knd_log("%*s the end of %.*s}", depth * KND_OFFSET_SIZE, "",
+            self->entry->name_size, self->entry->name);
 }
 
 int knd_get_class_inst(struct kndClass *self, const char *name, size_t name_size,

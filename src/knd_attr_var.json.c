@@ -244,13 +244,13 @@ static int attr_var_list_export_JSON(struct kndAttrVar *parent_var, struct kndTa
     return knd_OK;
 }
 
-int knd_attr_vars_export_JSON(struct kndAttrVar *vars, struct kndTask *task, bool is_concise, size_t depth)
+int knd_attr_vars_export_JSON(struct kndAttrVar *vars, struct kndTask *task,
+                              bool is_concise, size_t depth)
 {
     struct kndOutput *out = task->out;
     struct kndAttrVar *var;
     struct kndAttr *attr;
     struct kndClass *c;
-    size_t curr_depth = 0;
     size_t indent_size = task->ctx->format_indent;
     int err;
 
@@ -341,7 +341,7 @@ int knd_attr_vars_export_JSON(struct kndAttrVar *vars, struct kndTask *task, boo
                 err = knd_print_offset(out, (depth + 2) * indent_size);
                 RET_ERR();
             }
-            if (!var->class) {
+            /*if (!var->class) {
                 err = inner_var_export_JSON(var, task, depth + 2);
                 if (err) return err;
             } else {
@@ -351,7 +351,7 @@ int knd_attr_vars_export_JSON(struct kndAttrVar *vars, struct kndTask *task, boo
                 err = knd_class_export_JSON(c, task, false, depth + 2);
                 RET_ERR();
                 task->depth = curr_depth;
-            }
+                }*/
             if (indent_size) {
                 OUT("\n", 1);
                 err = knd_print_offset(out, (depth + 2) * indent_size);
@@ -400,8 +400,8 @@ int knd_attr_var_export_JSON(struct kndAttrVar *var, struct kndTask *task, size_
         err = knd_class_acquire(var->class_entry, &c, task);
         KND_TASK_ERR("failed to acquire class %.*s", var->class_entry->name_size, var->class_entry->name);
         if (c->tr) {
-            err = knd_text_gloss_export_GSL(c->tr, task, depth);
-            KND_TASK_ERR("failed to export gloss GSL");
+            //err = knd_text_gloss_export_GSL(c->tr, task, depth);
+            //KND_TASK_ERR("failed to export gloss GSL");
         }
         break;
     case KND_ATTR_PROC_REF:
@@ -427,11 +427,11 @@ int knd_attr_var_export_JSON(struct kndAttrVar *var, struct kndTask *task, size_
             RET_ERR();
         }
 
-        if (var->class) {
+        /*if (var->class) {
             err = knd_class_export_JSON(var->class, task, false, depth + 2);
             if (err) return err;
             break;
-        }
+            }*/
         err = inner_var_export_JSON(var, task, depth + 1);
         KND_TASK_ERR("failed to export inner var JSON");
         if (indent_size) {

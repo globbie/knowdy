@@ -298,28 +298,40 @@ int knd_text_export_query_report(struct kndTask *task)
     return knd_OK;
 }
 
-int knd_text_gloss_export_GSL(struct kndText *tr, struct kndTask *task, size_t depth)
+int knd_text_gloss_export_GSL(struct kndText *tr, bool use_locale,
+                              struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     const char *locale = task->ctx->locale;
     size_t locale_size = task->ctx->locale_size;
+    bool tag_needed = false;
     int err;
 
     for (; tr; tr = tr->next) {
-        if (locale_size != tr->locale_size) continue;
-
-        if (memcmp(locale, tr->locale, tr->locale_size)) {
-            continue;
+        if (use_locale) {
+            if (locale_size != tr->locale_size) continue;
+            if (memcmp(locale, tr->locale, tr->locale_size)) {
+                continue;
+            }
         }
+
+        if (!tag_needed) {
+            if (task->ctx->format_indent) {
+                OUT("\n", 1);
+                err = knd_print_offset(out, depth * task->ctx->format_indent);
+                RET_ERR();
+            }
+            OUT("[_gloss ", strlen("[_gloss "));
+            tag_needed = true;
+        }
+
         if (task->ctx->format_offset) {
             OUT("\n", 1);
             err = knd_print_offset(out, depth * task->ctx->format_offset);
             RET_ERR();
         }
-        OUT("[gloss ", strlen("[gloss "));
         OUT("{", 1);
-        err = out->write_escaped(out, tr->locale, tr->locale_size);
-        RET_ERR();
+        OUT(tr->locale, tr->locale_size);
         OUT("{t ", strlen("{t "));
         err = out->write_escaped(out, tr->seq->val,  tr->seq->val_size);
         RET_ERR();
@@ -331,8 +343,11 @@ int knd_text_gloss_export_GSL(struct kndText *tr, struct kndTask *task, size_t d
             OUT("}", 1);
         }
         OUT("}", 1);
+        if (use_locale) break;
+    }
+
+    if (tag_needed) {
         OUT("]", 1);
-        break;
     }
     return knd_OK;
 }

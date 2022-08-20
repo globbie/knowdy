@@ -33,6 +33,7 @@ struct kndRepo;
 struct kndClassEntry;
 struct kndOutput;
 struct kndMemPool;
+struct kndText;
 
 typedef enum knd_obj_type {
     KND_OBJ_ADDR,
@@ -82,6 +83,8 @@ struct kndClassInst
     const char *alias;
     size_t alias_size;
 
+    struct kndText *tr;
+
     struct kndState *states;
     size_t init_state;
     size_t num_states;
@@ -113,7 +116,8 @@ int knd_class_inst_ref_new(struct kndMemPool *mempool, struct kndClassInstRef **
 int knd_class_inst_entry_new(struct kndMemPool *mempool, struct kndClassInstEntry **result);
 int knd_class_inst_new(struct kndMemPool *mempool, struct kndClassInst **result);
 
-int knd_class_inst_export(struct kndClassInst *self, knd_format format, bool is_list_item, struct kndTask *task);
+int knd_class_inst_export(struct kndClassInst *self, knd_format format, bool is_list_item,
+                          knd_state_phase phase, struct kndTask *task);
 int knd_class_inst_set_export(struct kndClassInst *self, knd_format format, struct kndTask *task);
 
 int knd_class_inst_commit_state(struct kndClass *self, struct kndStateRef *children, size_t num_children,
@@ -130,7 +134,8 @@ int knd_class_inst_entry_unmarshall(const char *elem_id, size_t elem_id_size, co
                                     void **result, struct kndTask *task);
 int knd_class_inst_unmarshall(const char *elem_id, size_t elem_id_size, const char *rec, size_t rec_size,
                               void **result, struct kndTask *task);
-int knd_class_inst_acquire(struct kndClassInstEntry *entry, struct kndClassInst **result, struct kndTask *task);
+int knd_class_inst_acquire(struct kndClassInstEntry *entry, struct kndClassInst **result,
+                           struct kndTask *task);
 int knd_class_inst_read(struct kndClassInst *self, const char *rec, size_t *total_size, struct kndTask *task);
 
 // knd_class_inst.gsl.c

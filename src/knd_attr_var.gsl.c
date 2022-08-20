@@ -70,7 +70,7 @@ static int inner_var_export_GSL(struct kndAttrVar *var, struct kndTask *task, si
             KND_TASK_ERR("failed to acquire class %.*s",
                          var->class_entry->name_size, var->class_entry->name);
             if (c->tr) {
-                err = knd_text_gloss_export_GSL(c->tr, task, depth);
+                err = knd_text_gloss_export_GSL(c->tr, true, task, depth);
                 KND_TASK_ERR("failed to export gloss GSL");
             }
             break;
@@ -279,19 +279,20 @@ static int attr_var_list_export_GSL(struct kndAttrVar *var, struct kndTask *task
     return knd_OK;
 }
 
-int knd_attr_vars_export_GSL(struct kndAttrVar *vars, struct kndTask *task, bool is_concise, size_t depth)
+int knd_attr_vars_export_GSL(struct kndAttrVar *vars, struct kndTask *task,
+                             bool is_concise, size_t depth)
 {
     struct kndOutput *out = task->out;
     struct kndAttrVar *var;
     struct kndAttr *attr;
     size_t curr_depth = task->ctx->depth;
     size_t indent_size = task->ctx->format_indent;
+    size_t count = 0;
     int err;
 
     FOREACH (var, vars) {
         assert(var->attr != NULL);
         attr = var->attr;
-
         if (DEBUG_ATTR_VAR_GSL_LEVEL_3)
             knd_log(">> attr var GSL export: %.*s", attr->name_size, attr->name);
 
@@ -302,17 +303,18 @@ int knd_attr_vars_export_GSL(struct kndAttrVar *vars, struct kndTask *task, bool
         }
         task->ctx->depth = curr_depth;
 
-        if (indent_size) {
+        if (indent_size && count) {
             OUT("\n", 1);
             err = knd_print_offset(out, depth * indent_size);
             KND_TASK_ERR("offset output failed");
         }
+        count++;
+
         if (attr->is_a_set) {
             err = attr_var_list_export_GSL(var, task, depth);
             KND_TASK_ERR("attr var list GSL export failed");
             continue;
         }
-
         err = knd_attr_var_export_GSL(var, task, depth + 1);
         KND_TASK_ERR("attr var GSL export failed");
     }
@@ -324,6 +326,7 @@ int knd_attr_var_export_GSL(struct kndAttrVar *var, struct kndTask *task, size_t
     struct kndOutput *out = task->out;
     struct kndAttr *attr = var->attr;
     struct kndClass *c;
+    struct kndClassInst *ci;
     size_t indent_size = task->ctx->format_indent;
     int err;
 
@@ -364,9 +367,35 @@ int knd_attr_var_export_GSL(struct kndAttrVar *var, struct kndTask *task, size_t
         KND_TASK_ERR("failed to acquire class %.*s",
                      var->class_entry->name_size, var->class_entry->name);
         if (c->tr) {
-            err = knd_text_gloss_export_GSL(c->tr, task, depth);
+            err = knd_text_gloss_export_GSL(c->tr, true, task, depth + 1);
             KND_TASK_ERR("failed to export gloss GSL");
         }
+
+        switch (var->attr->rel_type) {
+        case KND_REL_CLASS_INST:
+            if (indent_size) {
+                OUT("\n", 1);
+                err = knd_print_offset(out, (depth + 1) * indent_size);
+                KND_TASK_ERR("GSL offset output failed");
+            }
+            OUT("{inst ", strlen("{inst "));
+            OUT(var->class_inst_name, var->class_inst_name_size);
+
+            if (var->class_inst_entry) {
+                err = knd_class_inst_acquire(var->class_inst_entry, &ci, task);
+                KND_TASK_ERR("failed to acquire class inst %.*s",
+                     var->class_inst_name_size, var->class_inst_name);
+                if (ci->tr) {
+                    err = knd_text_gloss_export_GSL(ci->tr, true, task, depth + 2);
+                    KND_TASK_ERR("failed to export gloss GSL");
+                }
+            }
+            OUT("}", 1);
+            break;
+        default:
+            break;
+        }
+        
         break;
     case KND_ATTR_ATTR_REF:
         if (var->ref_attr) {

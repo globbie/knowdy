@@ -363,7 +363,6 @@ static int fetch_class_storage(struct kndRepo *self, const char *path, size_t pa
     return knd_OK;
 }
 
-
 int knd_repo_open(struct kndRepo *self, struct kndTask *task)
 {
     struct kndOutput *out = task->file_out;
