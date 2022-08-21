@@ -172,7 +172,6 @@ struct kndAttrVar
     struct kndAttrVar *list_tail;
     size_t num_list_elems;
 
-    // struct kndClass *class;
     struct kndClassEntry *class_entry;
 
     const char *class_inst_name;

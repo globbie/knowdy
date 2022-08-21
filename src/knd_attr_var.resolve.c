@@ -245,7 +245,8 @@ static int resolve_inner_var(struct kndClass *self, struct kndAttrVar *var, stru
     return knd_OK;
 }
 
-static int resolve_attr_var_list(struct kndClass *self, struct kndAttrVar *var, struct kndTask *task)
+static int resolve_attr_var_list(struct kndClass *self, struct kndAttrVar *var,
+                                 struct kndTask *task)
 {
     struct kndAttr *attr = var->attr;
     struct kndAttrVar *item;
@@ -266,13 +267,14 @@ static int resolve_attr_var_list(struct kndClass *self, struct kndAttrVar *var, 
         break;
     }
 
-    if (DEBUG_ATTR_VAR_RESOLVE_LEVEL_2) {
+    if (DEBUG_ATTR_VAR_RESOLVE_LEVEL_3) {
             const char *attr_type_name = knd_attr_names[attr->type];
             size_t attr_type_name_size = strlen(attr_type_name);
-            knd_log(".. class \"%.*s\" to resolve attr item list \"%.*s\""
+            knd_log(".. class \"%.*s\" to resolve attr var list \"%.*s\""
                     " of class \"%.*s\"  attr type:%.*s",
                     self->entry->name_size, self->entry->name, var->name_size, var->name,
-                    attr->ref_classname_size, attr->ref_classname, attr_type_name_size, attr_type_name);
+                    attr->ref_classname_size, attr->ref_classname,
+                    attr_type_name_size, attr_type_name);
     }
 
     /* resolve template class ref */
@@ -309,14 +311,18 @@ static int resolve_attr_var_list(struct kndClass *self, struct kndAttrVar *var, 
         c->str(c, 1);
 
     FOREACH (item, var->list) {
+        item->attr = attr;
+        item->val = item->name;
+        item->val_size = item->name_size;
+
         switch (attr->type) {
         case KND_ATTR_INNER:
             err = resolve_inner_var(self, item, task);
             if (err) return err;
             break;
-        case KND_ATTR_REL:
-            // fall through
         case KND_ATTR_REF:
+            // fall through
+        case KND_ATTR_REL:
             err = resolve_rel(self, item, task);
             if (err) return err;
             break;
