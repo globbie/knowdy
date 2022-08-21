@@ -55,9 +55,7 @@ static int attr_hub_fetch(struct kndClass *owner, struct kndAttr *attr,
     if (!hub) {
         err = knd_attr_hub_new(mempool, &hub);
         KND_TASK_ERR("failed to alloc attr hub");
-        // hub->topic_template = topic;
         hub->attr = attr;
-        // hub->owner = owner;
         hub->next = owner->attr_hubs;
         owner->attr_hubs = hub;
     }
@@ -66,37 +64,50 @@ static int attr_hub_fetch(struct kndClass *owner, struct kndAttr *attr,
     return knd_OK;
 }
 
-static int attr_hub_update(struct kndClass *owner, struct kndClassEntry *topic,
-                           struct kndClassInstEntry *topic_inst,
-                           struct kndClassEntry *spec, struct kndClassInstEntry *spec_inst,
-                           struct kndAttr *attr, struct kndAttrVar *unused_var(var),
-                           struct kndTask *task, bool unused_var(is_ancestor))
+#if 0
+static int attr_hub_fetch_child(struct kndAttrHub *parent, struct kndAttr *attr,
+                                struct kndAttrHub **result, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->user_ctx->mempool;
-    struct kndAttrHub *hub;
-    struct kndSet *set;
-    struct kndClassRef *ref;
-    struct kndClassInstRef *inst_ref;
+    struct kndAttrHub *hub = NULL;
     int err;
 
-    if (DEBUG_ATTR_VAR_IDX_LEVEL_TMP) {
-        knd_log(".. attr hub \"%.*s\" of class \"%.*s\" "
-                " to add topic \"%.*s\" (inst:%p) => spec \"%.*s\" (inst:%p)",
-                attr->name_size, attr->name, owner->name_size, owner->name,
-                topic->name_size, topic->name, topic_inst,
-                spec->name_size, spec->name, spec_inst);
+    FOREACH (hub, parent->children) {
+        if (hub->attr == attr) {
+            break;
+        }
     }
+    if (!hub) {
+        err = knd_attr_hub_new(mempool, &hub);
+        KND_TASK_ERR("failed to alloc attr hub");
+        hub->attr = attr;
+        hub->next = parent->children;
+        parent->children = hub;
+    }
+    *result = hub;
+    return knd_OK;
+}
+#endif
 
-    err = attr_hub_fetch(owner, attr, &hub, task);
-    KND_TASK_ERR("failed to fetch attr hub");
+static int attr_hub_add_classref(struct kndAttrHub *hub, struct kndClassEntry *topic,
+                                 struct kndTask *task)
+{
+    struct kndMemPool *mempool = task->user_ctx->mempool;   
+    struct kndSet *set;
+    struct kndClassRef *ref;
+    int err;
 
+    if (DEBUG_ATTR_VAR_IDX_LEVEL_3) {
+        knd_log(".. attr hub \"%.*s\" to add topic \"%.*s\" => spec \"%.*s\"",
+                hub->attr->name_size, hub->attr->name, 
+                topic->name_size, topic->name);
+    }
     set = hub->topics;
     if (!set) {
         err = knd_set_new(mempool, &set);
         KND_TASK_ERR("failed to alloc topic set for attr hub");
         hub->topics = set;
     }
-
     /* topic already registered? */
     err = knd_set_get(set, topic->id, topic->id_size, (void**)&ref);
     if (err) {
@@ -107,69 +118,82 @@ static int attr_hub_update(struct kndClass *owner, struct kndClassEntry *topic,
         err = knd_set_add(set, topic->id, topic->id_size, (void*)ref);
         KND_TASK_ERR("failed to register class ref");
     }
-
-    if (topic_inst) {
-        err = knd_class_inst_ref_new(mempool, &inst_ref);
-        KND_TASK_ERR("failed to alloc a class inst ref");
-        inst_ref->entry = topic_inst;
-
-        inst_ref->next = ref->insts;
-        ref->insts = inst_ref;
-    }
     return knd_OK;
 }
 
-static int index_inner_attr_var(struct kndClassEntry *topic, struct kndClassInstEntry *topic_inst,
-                                struct kndAttr *attr, struct kndAttrVar *var, struct kndTask *task)
+static int index_inner_attr_var(struct kndClassEntry *topic, struct kndAttr *attr,
+                                struct kndAttrVar *var, struct kndTask *task)
 {
     struct kndClass *spec;
-    struct kndClassInstEntry *spec_inst = NULL;
     struct kndAttrVar *item;
     struct kndAttrHub *hub;
     int err;
 
-    if (DEBUG_ATTR_VAR_IDX_LEVEL_TMP)
-        knd_log(".. index {inner %.*s} from {class %.*s} is list item:%d.. {implied-attr %p}",
-                var->name_size, var->name,
-                topic->name_size, topic->name, var->is_list_item, var->implied_attr);
-
-    err = attr_hub_fetch(topic->class, attr, &hub, task);
-    KND_TASK_ERR("failed to fetch attr hub");
-
     if (var->implied_attr) {
-        assert(var->class_entry != NULL);
-        err = knd_class_acquire(var->class_entry, &spec, task);
-        KND_TASK_ERR("failed to acquire class %.*s",
-                     var->class_entry->name_size, var->class_entry->name);
+        switch (var->implied_attr->type) {
+        case KND_ATTR_REF:
+            // fall through
+        case KND_ATTR_REL:
+            assert(var->class_entry != NULL);
+            err = knd_class_acquire(var->class_entry, &spec, task);
+            KND_TASK_ERR("failed to acquire class %.*s",
+                         var->class_entry->name_size, var->class_entry->name);
 
-        if (var->class_inst_entry)
-            spec_inst = var->class_inst_entry;
+            if (DEBUG_ATTR_VAR_IDX_LEVEL_TMP)
+                knd_log(">> idx inner implied rel {class %.*s {%.*s %.*s}}",
+                        topic->name_size, topic->name,
+                        var->name_size, var->name, spec->name_size, spec->name);
 
-        /* update immediate hub */
-        err = attr_hub_update(spec, topic, topic_inst, var->class_entry,
-                              spec_inst, var->implied_attr, var, task, false);
-        KND_TASK_ERR("failed to update attr hub");
+            err = attr_hub_fetch(spec, attr, &hub, task);
+            KND_TASK_ERR("failed to fetch attr hub");
+
+            err = attr_hub_add_classref(hub, topic, task);
+            KND_TASK_ERR("attr hub failed to add a classref");
+            break;
+        default:
+            break;
+        }
     }
 
     /* index nested children */
     FOREACH (item, var->children) {
         if (!item->attr->is_indexed) continue;
 
-        if (DEBUG_ATTR_VAR_IDX_LEVEL_TMP)
-            knd_log(".. index {inner %.*s} {%.*s %.*s} {implied-attr %p}",
-                    var->name_size, var->name,
-                    item->name_size, item->name,
-                    item->val_size, item->val, item->implied_attr);
-        
+        switch (item->attr->type) {
+        case KND_ATTR_INNER:
+            // TODO
+            break;
+        case KND_ATTR_REF:
+            // fall through
+        case KND_ATTR_REL:
+            assert(item->class_entry != NULL);
+            err = knd_class_acquire(item->class_entry, &spec, task);
+            KND_TASK_ERR("failed to acquire class %.*s",
+                         item->class_entry->name_size, item->class_entry->name);
+
+            err = attr_hub_fetch(spec, attr, &hub, task);
+            KND_TASK_ERR("failed to fetch attr hub");
+
+            if (DEBUG_ATTR_VAR_IDX_LEVEL_3)
+                knd_log("[TODO] .. index {inner %.*s} rel attr {%.*s %.*s} {implied-attr %p}",
+                        var->name_size, var->name, item->name_size, item->name,
+                        item->val_size, item->val, item->implied_attr);
+            err = attr_hub_add_classref(hub, topic, task);
+            KND_TASK_ERR("attr hub failed to add a classref");
+            break;
+        default:
+            break;
+        }
     }
     return knd_OK;
 }
 
-int knd_index_attr_var(struct kndClassEntry *topic, struct kndClassInstEntry *topic_inst,
+int knd_index_attr_var(struct kndClassEntry *topic,
+                       struct kndClassInstEntry *unused_var(topic_inst),
                        struct kndAttr *attr, struct kndAttrVar *var, struct kndTask *task)
 {
     struct kndClass *spec;
-    struct kndClassInstEntry *spec_inst = NULL;
+    struct kndAttrHub *hub;
     int err;
 
     if (DEBUG_ATTR_VAR_IDX_LEVEL_2)
@@ -185,16 +209,14 @@ int knd_index_attr_var(struct kndClassEntry *topic, struct kndClassInstEntry *to
         KND_TASK_ERR("failed to acquire class %.*s",
                      var->class_entry->name_size, var->class_entry->name);
 
-        if (var->class_inst_entry)
-            spec_inst = var->class_inst_entry;
+        err = attr_hub_fetch(spec, attr, &hub, task);
+        KND_TASK_ERR("failed to fetch attr hub");
 
-        /* update immediate hub */
-        err = attr_hub_update(spec, topic, topic_inst, var->class_entry,
-                              spec_inst, attr, var, task, false);
-        KND_TASK_ERR("failed to update attr hub");
+        err = attr_hub_add_classref(hub, topic, task);
+        KND_TASK_ERR("attr hub failed to add a classref");
         break;
     case KND_ATTR_INNER:
-        err = index_inner_attr_var(topic, topic_inst, attr, var, task);
+        err = index_inner_attr_var(topic, attr, var, task);
         KND_TASK_ERR("failed to index inner attr var");
         break;
     default:
@@ -203,12 +225,13 @@ int knd_index_attr_var(struct kndClassEntry *topic, struct kndClassInstEntry *to
     return knd_OK;
 }
 
-int knd_index_attr_var_list(struct kndClassEntry *topic, struct kndClassInstEntry *topic_inst,
+int knd_index_attr_var_list(struct kndClassEntry *topic,
+                            struct kndClassInstEntry *unused_var(topic_inst),
                             struct kndAttr *attr, struct kndAttrVar *var, struct kndTask *task)
 {
     struct kndClass *spec;
-    struct kndClassInstEntry *spec_inst = NULL;
     struct kndAttrVar *item;
+    struct kndAttrHub *hub;
     int err;
 
     if (DEBUG_ATTR_VAR_IDX_LEVEL_2)
@@ -228,13 +251,11 @@ int knd_index_attr_var_list(struct kndClassEntry *topic, struct kndClassInstEntr
             KND_TASK_ERR("failed to acquire class %.*s",
                          item->class_entry->name_size, item->class_entry->name);
 
-            if (item->class_inst_entry)
-                spec_inst = item->class_inst_entry;
+            err = attr_hub_fetch(spec, attr, &hub, task);
+            KND_TASK_ERR("failed to fetch attr hub");
 
-            /* update immediate hub */
-            err = attr_hub_update(spec, topic, topic_inst, item->class_entry,
-                                  spec_inst, attr, item, task, false);
-            KND_TASK_ERR("failed to update attr hub");
+            err = attr_hub_add_classref(hub, topic, task);
+            KND_TASK_ERR("attr hub failed to add a classref");
             break;
         default:
             break;
