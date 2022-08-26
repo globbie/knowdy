@@ -120,9 +120,9 @@ int knd_attr_export_GSP(struct kndAttr *self, struct kndTask *task)
         OUT("}", 1);
     }
 
-    if (self->ref_procname_size) {
+    if (self->ref_proc_name_size) {
         OUT("{p ", strlen("{p "));
-        OUT(self->ref_procname, self->ref_procname_size);
+        OUT(self->ref_proc_name, self->ref_proc_name_size);
         OUT("}", 1);
     }
 

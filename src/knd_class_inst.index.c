@@ -28,7 +28,8 @@
 #define DEBUG_INST_IDX_LEVEL_4 0
 #define DEBUG_INST_IDX_LEVEL_TMP 1
 
-static int update_attr_var_indices(struct kndClassInstEntry *entry, struct kndRepo *repo, struct kndTask *task)
+static int update_attr_var_indices(struct kndClassInstEntry *entry, struct kndRepo *repo,
+                                   struct kndTask *task)
 {
     struct kndAttrVar *var;
     int err;
@@ -45,15 +46,15 @@ static int update_attr_var_indices(struct kndClassInstEntry *entry, struct kndRe
             KND_TASK_ERR("failed to index text attr var \"%.*s\"", var->name_size, var->name);
             break;
         case KND_ATTR_REL:
-            if (DEBUG_INST_IDX_LEVEL_2)
+            if (DEBUG_INST_IDX_LEVEL_TMP)
                 knd_log(".. indexing Rel attr \"%.*s\" (is a set:%d)",
                         var->name_size, var->name, var->attr->is_a_set);
 
-            if (var->attr->is_a_set) {
+            /*if (var->attr->is_a_set) {
                 err = knd_index_attr_var_list(entry->blueprint, entry, var->attr, var, task);
                 KND_TASK_ERR("failed to index attr var list");
                 break;
-            }
+                }*/
             break;
         default:
             break;
@@ -88,7 +89,8 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *bl
 
     /* user repo selected: activate copy-on-write */
     if (task->user_ctx) {
-        class_entry = knd_shared_dict_get(repo->class_name_idx, blueprint->name, blueprint->name_size);
+        class_entry = knd_shared_dict_get(repo->class_name_idx,
+                                          blueprint->name, blueprint->name_size);
         if (blueprint->repo != repo) {
             if (!class_entry) {
                 if (DEBUG_INST_IDX_LEVEL_3) {
@@ -157,6 +159,49 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *bl
         default:
             break;
         }
+    }
+    return knd_OK;
+}
+
+int knd_class_inst_index(struct kndClassInst *self, struct kndTask *task)
+{
+    struct kndClass *c;
+    struct kndAttrVar *var;
+    struct kndAttr *attr;
+    int err;
+
+    assert(self->entry->blueprint != NULL);
+
+    err = knd_class_acquire(self->entry->blueprint, &c, task);
+    KND_TASK_ERR("failed to acquire class \"%.*s\"",
+                 self->entry->blueprint->name_size, self->entry->blueprint->name);
+
+    if (DEBUG_INST_IDX_LEVEL_TMP) {
+        knd_log(".. indexing {class %.*s {inst %.*s}}",
+                c->entry->name_size, c->entry->name,
+                self->name_size, self->name);
+    }
+    if (!self->class_var->attrs) return knd_OK;
+
+    FOREACH (var, self->class_var->attrs) {
+        if (DEBUG_INST_IDX_LEVEL_TMP) {
+            knd_log(".. idx inst attr var {class %.*s {inst %.*s {%.*s %.*s}} {is-indexed %d}",
+                    c->name_size, c->name, self->name_size, self->name,
+                    var->name_size, var->name, var->val_size, var->val, var->attr->is_indexed);
+        }
+        attr = var->attr;
+        if (!attr->is_indexed) continue;
+
+        /*if (attr->is_a_set) {
+            err = knd_index_attr_var_list(self->entry->blueprint, self->entry,
+                                          attr, var, task);
+            KND_TASK_ERR("failed to index class inst attr var list %.*s",
+                         attr->name_size, attr->name);
+            continue;
+            }*/
+
+        err = knd_index_inst_attr_var(self->entry, attr, var, task);
+        KND_TASK_ERR("failed to index inst attr var %.*s", attr->name_size, attr->name);
     }
     return knd_OK;
 }

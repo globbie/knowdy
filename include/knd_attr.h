@@ -235,9 +235,17 @@ struct kndAttr
     struct kndClass *ref_class;
     knd_rel_t rel_type;
 
-    const char *ref_procname;
-    size_t ref_procname_size;
+    const char *ref_proc_name;
+    size_t ref_proc_name_size;
     struct kndProc *proc;
+
+    const char *arg_name;
+    size_t arg_name_size;
+    struct kndProcArg *arg;
+
+    const char *impl_arg_name;
+    size_t impl_arg_name_size;
+    struct kndProcArg *impl_arg;
 
     /* concise representation */
     size_t concise_level;
@@ -310,8 +318,7 @@ int knd_read_attr_var_list(struct kndClassVar *self, const char *name, size_t na
                            const char *rec, size_t *total_size, struct kndTask *task);
 
 // knd_attr.select.c
-int knd_attr_var_match(struct kndAttrVar *self,
-                       struct kndAttrVar *template);
+int knd_attr_var_match(struct kndAttrVar *self, struct kndAttrVar *template);
 
 int knd_attr_select_clause(struct kndAttr *attr,
                            struct kndClass *c,
@@ -324,22 +331,25 @@ extern gsl_err_t knd_select_attr_var(struct kndClass *class, const char *name, s
                                      struct kndTask *task);
 
 // knd_attr.resolve.c
-int knd_resolve_attr_vars(struct kndClass *self, struct kndClassVar *parent_item, struct kndTask *task);
+int knd_resolve_attr_vars(struct kndClass *self, struct kndClassVar *parent_item,
+                          struct kndTask *task);
 int knd_resolve_primary_attrs(struct kndClass *self, struct kndTask *task);
 int knd_attr_hub_resolve(struct kndAttrHub *hub, struct kndTask *task);
+
 
 // knd_attr.index.c
 // int knd_attr_index(struct kndClass *self, struct kndAttr *attr, struct kndTask *task);
 
-// knd_attr_var.index.c
-int knd_index_attr_var(struct kndClassEntry *topic, struct kndClassInstEntry *topic_inst,
-                       struct kndAttr *attr, struct kndAttrVar *var, struct kndTask *task);
-int knd_index_attr_var_list(struct kndClassEntry *topic, struct kndClassInstEntry *topic_inst,
-                            struct kndAttr *attr, struct kndAttrVar *var, struct kndTask *task);
-int knd_index_inner_attr_var(struct kndClass *self, struct kndAttrVar *var, struct kndTask *task);
 
-int knd_attr_hub_update(struct kndClass *owner,
-                        struct kndClassEntry *topic, struct kndClassInstEntry *topic_inst,
-                        struct kndClassEntry *spec, struct kndClassInstEntry *spec_inst,
-                        struct kndAttr *attr, struct kndAttrVar *var, struct kndTask *task,
-                        bool is_ancestor);
+// knd_attr_var.index.c
+int knd_index_attr_var(struct kndClassEntry *topic, struct kndAttr *attr,
+                       struct kndAttrVar *var, struct kndTask *task);
+int knd_index_inst_attr_var(struct kndClassInstEntry *topic_inst,
+                            struct kndAttr *attr, struct kndAttrVar *var, struct kndTask *task);
+
+int knd_index_attr_var_list(struct kndClassEntry *topic, struct kndAttr *attr,
+                            struct kndAttrVar *var, struct kndTask *task);
+int knd_index_inst_attr_var_list(struct kndClassInstEntry *topic_inst, struct kndAttr *attr,
+                                 struct kndAttrVar *var, struct kndTask *task);
+
+int knd_index_inner_attr_var(struct kndClass *self, struct kndAttrVar *var, struct kndTask *task);

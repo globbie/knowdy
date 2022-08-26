@@ -461,7 +461,8 @@ int knd_resolve_class_ref(struct kndClass *self, const char *name, size_t name_s
             KND_TASK_ERR("failed to resolve class %.*s", base->name_size, base->name);
         }
         err = knd_is_base(base, c);
-        KND_TASK_ERR("no inheritance from %.*s to %.*s", base->name_size, base->name, c->name_size, c->name);
+        KND_TASK_ERR("no inheritance from %.*s to %.*s",
+                     base->name_size, base->name, c->name_size, c->name);
     }
 
     *result = c;

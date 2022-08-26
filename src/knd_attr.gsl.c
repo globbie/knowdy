@@ -43,10 +43,10 @@ int knd_attr_export_GSL(struct kndAttr *self, struct kndTask *task, size_t depth
 {
     char buf[KND_NAME_SIZE] = {0};
     size_t buf_size = 0;
-    struct kndText *tr;
     struct kndOutput *out = task->out;
     const char *type_name = knd_attr_names[self->type];
     size_t type_name_size = strlen(knd_attr_names[self->type]);
+    size_t indent_size = task->ctx->format_indent;
     int err;
 
     OUT("{", 1);              
@@ -54,11 +54,16 @@ int knd_attr_export_GSL(struct kndAttr *self, struct kndTask *task, size_t depth
     OUT(" ", 1);                     
     OUT(self->name, self->name_size);
 
-    OUT("{id ", strlen("{id"));
-    OUT(" ", 1);
-    OUT(self->id, self->id_size);
-    OUT("}", 1);
+    if (self->tr) {
+        err = knd_text_gloss_export_GSL(self->tr, true, task, depth + 1);
+        KND_TASK_ERR("failed to export attr gloss GSL");
+    }
 
+    if (indent_size) {
+        OUT("\n", 1);
+        err = knd_print_offset(out, (depth + 1) * indent_size);
+        RET_ERR();
+    }
     if (self->is_a_set) {
         OUT(" {t set}", strlen(" {t set}"));
     }
@@ -84,30 +89,10 @@ int knd_attr_export_GSL(struct kndAttr *self, struct kndTask *task, size_t depth
         OUT("}", 1);
     }
 
-    if (self->ref_procname_size) {
+    if (self->ref_proc_name_size) {
         OUT(" {p ", strlen(" {p "));
-        OUT(self->ref_procname, self->ref_procname_size);
+        OUT(self->ref_proc_name, self->ref_proc_name_size);
         OUT("}", 1);
-    }
-
-    /* choose gloss */
-    if (self->tr) {
-        if (task->ctx->format_offset) {
-            err = out->writec(out, '\n');                                         RET_ERR();
-            err = knd_print_offset(out, (depth + 1) * task->ctx->format_offset);  RET_ERR();
-        }
-        OUT("[_g", strlen("[_g"));
-    }
-
-    for (tr = self->tr; tr; tr = tr->next) {
-        OUT("{", 1);
-        OUT(tr->locale,  tr->locale_size);
-        OUT("{t ", 3);
-        OUT(tr->seq->val,  tr->seq->val_size);
-        OUT("}}", 2);
-    }
-    if (self->tr) {
-        OUT("]", 1);
     }
 
     OUT("}", 1);

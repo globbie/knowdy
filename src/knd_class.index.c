@@ -69,11 +69,11 @@ static int index_attr(void *obj, const char *unused_var(elem_id), size_t unused_
     if (!attr->is_indexed) return knd_OK;
 
     if (attr->is_a_set) {
-        err = knd_index_attr_var_list(self->entry, NULL, attr, var, task);
+        err = knd_index_attr_var_list(self->entry, attr, var, task);
         KND_TASK_ERR("failed to index attr var list %.*s", attr->name_size, attr->name);
         return knd_OK;
     }
-    err = knd_index_attr_var(self->entry, NULL, attr, var, task);
+    err = knd_index_attr_var(self->entry, attr, var, task);
     KND_TASK_ERR("failed to index attr var %.*s", attr->name_size, attr->name);
     return knd_OK;
 }

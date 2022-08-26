@@ -27,7 +27,7 @@
 
 struct kndState;
 struct kndSortTag;
-struct kndAttrInstRef;
+struct kndAttrHub;
 struct kndTask;
 struct kndRepo;
 struct kndClassEntry;
@@ -91,9 +91,9 @@ struct kndClassInst
 
     struct kndClassInstEntry *entry;
     struct kndClassInst *root;
-    // struct kndClassEntry *blueprint;
 
     struct kndClassVar *class_var;
+    struct kndAttrHub *attr_hubs;
 
     size_t linear_pos;
     size_t linear_len;
@@ -153,5 +153,8 @@ gsl_err_t knd_select_class_inst(struct kndClass *c, const char *rec, size_t *tot
 
 // knd_class_inst.resolve.c
 int knd_class_inst_resolve(struct kndClassInst *self, struct kndTask *task);
+
+// knd_class_inst.index.c
+int knd_class_inst_index(struct kndClassInst *self, struct kndTask *task);
 
 int knd_class_inst_iterate_export_JSON(void *obj, const char *id, size_t id_size, size_t count, void *elem);

@@ -734,7 +734,8 @@ static int export_baseclasses(struct kndClass *self, struct kndTask *task, size_
     return knd_OK;
 }
                                      
-int knd_class_export_JSON(struct kndClass *self, struct kndTask *task, bool unused_var(is_list_item), size_t depth)
+int knd_class_export_JSON(struct kndClass *self, struct kndTask *task,
+                          bool unused_var(is_list_item), size_t depth)
 {
     struct kndClassEntry *entry = self->entry;
     struct kndClassEntry *orig_entry = entry->base;

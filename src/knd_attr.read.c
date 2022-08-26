@@ -110,8 +110,8 @@ static gsl_err_t set_procref_class(void *obj, const char *id, size_t id_size)
         KND_TASK_LOG("failed to link class entry \"%.*s\"", id_size, id);
         return make_gsl_err_external(err);
         }*/
-    self->ref_procname = id;
-    self->ref_procname_size = id_size;
+    self->ref_proc_name = id;
+    self->ref_proc_name_size = id_size;
     return make_gsl_err(gsl_OK);
 }
 

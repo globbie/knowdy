@@ -59,7 +59,7 @@ static gsl_err_t set_class_inst_ref(void *obj, const char *name, size_t name_siz
 {
     struct kndAttrVar *self = obj;
 
-    if (DEBUG_ATTR_VAR_LEVEL_TMP)
+    if (DEBUG_ATTR_VAR_LEVEL_2)
         knd_log(">> attr var {%.*s} to set {class %.*s {inst  %.*s}}",
                 self->name_size, self->name, self->val_size, self->val,
                 name_size, name);
@@ -130,7 +130,8 @@ static gsl_err_t import_nested_attr_var_list(void *obj, const char *name, size_t
     int err;
 
     if (DEBUG_ATTR_VAR_LEVEL_2)
-        knd_log(".. import nested attr_var list: \"%.*s\" REC: %.*s", name_size, name, 32, rec);
+        knd_log(".. import nested attr_var list: \"%.*s\" REC: %.*s",
+                name_size, name, 32, rec);
 
     err = knd_attr_var_new(mempool, &attr_var);
     if (err) {

@@ -34,6 +34,19 @@ struct LocalContext {
     struct kndTask     *task;
 };
 
+static gsl_err_t confirm_attr(void *obj,
+                              const char *unused_var(name),
+                              size_t unused_var(name_size))
+{
+    struct kndAttr *attr = obj;
+
+    if (DEBUG_ATTR_LEVEL_2) {
+        knd_log("++ confirm attr: %.*s",
+                attr->name_size, attr->name);
+    }
+    return make_gsl_err(gsl_OK);
+}
+
 static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
@@ -97,7 +110,7 @@ static gsl_err_t set_rel_subclass(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t set_procref(void *obj, const char *name, size_t name_size)
+static gsl_err_t set_proc_ref(void *obj, const char *name, size_t name_size)
 {
     struct kndAttr *self = obj;
     if (!name_size) return make_gsl_err(gsl_FAIL);
@@ -105,36 +118,62 @@ static gsl_err_t set_procref(void *obj, const char *name, size_t name_size)
         knd_log("-- attr name not specified");
         return make_gsl_err(gsl_FAIL);
     }
-    self->ref_procname = name;
-    self->ref_procname_size = name_size;
+    self->ref_proc_name = name;
+    self->ref_proc_name_size = name_size;
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_proc(void *obj, const char *rec, size_t *total_size)
+static gsl_err_t set_arg(void *obj, const char *name, size_t name_size)
 {
-    struct LocalContext *ctx = obj;
-    struct kndTask *task = ctx->task;
-    struct kndAttr *self = ctx->attr;
-    struct kndProc *proc;
-    struct kndProcEntry *entry;
-    struct kndMemPool *mempool = task->user_ctx->mempool;
-    int err;
-
-    err = knd_proc_new(mempool, &proc);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-
-    err = knd_proc_entry_new(mempool, &entry);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-
-    entry->proc = proc;
-    proc->entry = entry;
-
-    err = knd_inner_proc_import(proc, rec, total_size, task->repo, task);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-
-    self->proc = proc;
-
+    struct kndAttr *self = obj;
+    if (!name_size) return make_gsl_err(gsl_FAIL);
+    if (!self->name_size) {
+        knd_log("-- attr name not specified");
+        return make_gsl_err(gsl_FAIL);
+    }
+    self->arg_name = name;
+    self->arg_name_size = name_size;
     return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t set_impl_arg(void *obj, const char *name, size_t name_size)
+{
+    struct kndAttr *self = obj;
+    if (!name_size) return make_gsl_err(gsl_FAIL);
+    if (!self->name_size) {
+        knd_log("-- attr name not specified");
+        return make_gsl_err(gsl_FAIL);
+    }
+    self->impl_arg_name = name;
+    self->impl_arg_name_size = name_size;
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_proc_ref(void *obj, const char *rec, size_t *total_size)
+{
+    struct kndAttr *self = obj;
+    if (!self->name_size) {
+        knd_log("-- attr name not specified");
+        return make_gsl_err(gsl_FAIL);
+    }
+
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = set_proc_ref,
+          .obj = self
+        },
+        { .name = "self",
+          .name_size = strlen("self"),
+          .run = set_arg,
+          .obj = self
+        },
+        { .name = "impl-arg",
+          .name_size = strlen("impl-arg"),
+          .run = set_impl_arg,
+          .obj = self
+        }
+    };
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
 static gsl_err_t run_set_quant(void *obj, const char *name, size_t name_size)
@@ -179,24 +218,11 @@ static gsl_err_t run_set_quant_atomic(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t confirm_attr(void *obj,
-                              const char *unused_var(name),
-                              size_t unused_var(name_size))
-{
-    struct kndAttr *attr = obj;
-
-    if (DEBUG_ATTR_LEVEL_2) {
-        knd_log("++ confirm attr: %.*s",
-                attr->name_size, attr->name);
-    }
-    return make_gsl_err(gsl_OK);
-}
-
 static gsl_err_t parse_quant_type(void *obj, const char *rec, size_t *total_size)
 {
     struct kndAttr *self = obj;
     if (!self->name_size) {
-        knd_log("-- attr name not specified");
+        knd_log("attr name not specified");
         return make_gsl_err(gsl_FAIL);
     }
 
@@ -294,15 +320,10 @@ gsl_err_t knd_import_attr(struct kndAttr *self, struct kndTask *task,
           .run = set_rel_subclass,
           .obj = self
         },
-        { .name = "_proc",
-          .name_size = strlen("_proc"),
-          .run = set_procref,
-          .obj = self
-        },
         { .name = "proc",
           .name_size = strlen("proc"),
-          .parse = parse_proc,
-          .obj = &ctx
+          .parse = parse_proc_ref,
+          .obj = self
         },
         { .name = "t",
           .name_size = strlen("t"),
@@ -349,12 +370,29 @@ gsl_err_t knd_import_attr(struct kndAttr *self, struct kndTask *task,
         task->ctx->tr = NULL;
     }
 
-    if (self->type == KND_ATTR_INNER) {
+    switch (self->type) {
+    case KND_ATTR_INNER:
         if (!self->ref_classname_size) {
-            knd_log("-- ref class not specified in %.*s",
-                    self->name_size, self->name);
-            return make_gsl_err_external(knd_FAIL);
+            KND_TASK_LOG("ref class not specified in %.*s", self->name_size, self->name);
+            return make_gsl_err_external(knd_FORMAT);
         }
+        break;
+    case KND_ATTR_REL:
+        if (!self->ref_proc_name_size) {
+            KND_TASK_LOG("proc name not specified in %.*s", self->name_size, self->name);
+            return make_gsl_err(gsl_FORMAT);
+        }
+        if (!self->arg_name_size) {
+            KND_TASK_LOG("subj arg name not specified in %.*s", self->name_size, self->name);
+            return make_gsl_err(gsl_FORMAT);
+        }
+        if (!self->impl_arg_name_size) {
+            KND_TASK_LOG("impl arg name not specified in %.*s", self->name_size, self->name);
+            return make_gsl_err(gsl_FORMAT);
+        }
+        break;
+    default:
+        break;
     }
 
     // TODO: reject attr names starting with an underscore _

@@ -241,9 +241,12 @@ static gsl_err_t parse_attr(void *obj, const char *name, size_t name_size,
     struct kndTask *task = ctx->task;
     struct kndAttr *attr;
     struct kndMemPool *mempool = task->user_ctx->mempool;
+    struct kndText *tr = task->ctx->tr;
     const char *c;
     int err;
     gsl_err_t parser_err;
+
+    task->ctx->tr = NULL;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
         knd_log(".. parsing attr: \"%.*s\" rec:\"%.*s\"",
@@ -286,7 +289,9 @@ static gsl_err_t parse_attr(void *obj, const char *name, size_t name_size,
 
     if (attr->is_implied)
         self->implied_attr = attr;
-   
+
+    /* restore parent's glosses */
+    task->ctx->tr = tr;
     return make_gsl_err(gsl_OK);
 }
 

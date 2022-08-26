@@ -525,7 +525,7 @@ static int iterate_class_insts(struct kndClass *c, struct kndTask *task)
     struct kndSharedDict *name_idx = c->inst_name_idx;
     int err;
 
-    if (DEBUG_REPO_GSL_LEVEL_TMP)
+    if (DEBUG_REPO_GSL_LEVEL_2)
         knd_log(".. resolving insts of {class %.*s}..", c->name_size, c->name);
 
     // TODO: iterate func in kndSharedDict
@@ -550,7 +550,7 @@ static int resolve_class_insts(struct kndRepo *self, struct kndTask *task)
     struct kndSharedDict *name_idx = self->class_name_idx;
     int err;
 
-    if (DEBUG_REPO_GSL_LEVEL_TMP)
+    if (DEBUG_REPO_GSL_LEVEL_2)
         knd_log(".. resolving class instances in {repo %.*s}..", self->name_size, self->name);
 
     // TODO: iterate func in kndSharedDict
@@ -565,12 +565,71 @@ static int resolve_class_insts(struct kndRepo *self, struct kndTask *task)
             c = entry->class;
             if (!c->inst_name_idx) continue;
 
-            if (DEBUG_REPO_GSL_LEVEL_TMP) {
+            if (DEBUG_REPO_GSL_LEVEL_3) {
                 knd_log(".. resolving insts of {class %.*s}..",
                         entry->name_size, entry->name);
                 c->str(c, 1);
             }
             err = iterate_class_insts(c, task);
+            KND_TASK_ERR("failed to iterate insts of class %.*s",
+                         entry->name_size, entry->name);
+        }
+    }
+    return knd_OK;
+}
+
+static int index_class_insts(struct kndClass *c, struct kndTask *task)
+{
+    struct kndClassInstEntry *entry;
+    struct kndSharedDictItem *item, *items;
+    struct kndSharedDict *name_idx = c->inst_name_idx;
+    int err;
+
+    if (DEBUG_REPO_GSL_LEVEL_2)
+        knd_log(".. resolving insts of {class %.*s}..", c->name_size, c->name);
+
+    // TODO: iterate func in kndSharedDict
+    for (size_t i = 0; i < name_idx->size; i++) {
+        items = atomic_load_explicit(&name_idx->hash_array[i], memory_order_relaxed);
+        FOREACH (item, items) {
+            entry = item->data;
+
+            err = knd_class_inst_index(entry->inst, task);
+            KND_TASK_ERR("failed to resolve {class %.*s {inst %.*s}}",
+                         c->name_size, c->name, entry->name_size, entry->name);
+        }
+    }
+    return knd_OK;
+}
+
+static int index_repo_class_insts(struct kndRepo *self, struct kndTask *task)
+{
+    struct kndClass *c;
+    struct kndClassEntry *entry;
+    struct kndSharedDictItem *item, *items;
+    struct kndSharedDict *name_idx = self->class_name_idx;
+    int err;
+
+    if (DEBUG_REPO_GSL_LEVEL_TMP)
+        knd_log(".. indexing class instances in {repo %.*s}..", self->name_size, self->name);
+
+    // TODO: iterate func in kndSharedDict
+    for (size_t i = 0; i < name_idx->size; i++) {
+        items = atomic_load_explicit(&name_idx->hash_array[i], memory_order_relaxed);
+        FOREACH (item, items) {
+            entry = item->data;
+            if (!entry->class) {
+                knd_log("-- unresolved class entry: %.*s", entry->name_size, entry->name);
+                return knd_FAIL;
+            }
+            c = entry->class;
+            if (!c->inst_name_idx) continue;
+
+            if (DEBUG_REPO_GSL_LEVEL_TMP) {
+                knd_log(".. indexing insts of {class %.*s}..",
+                        entry->name_size, entry->name);
+            }
+            err = index_class_insts(c, task);
             KND_TASK_ERR("failed to iterate insts of class %.*s",
                          entry->name_size, entry->name);
 
@@ -609,6 +668,9 @@ int knd_repo_read_source_files(struct kndRepo *self, struct kndTask *task)
 
         err = resolve_class_insts(self, task);
         KND_TASK_ERR("class insts resolving failed");
+
+        err = index_repo_class_insts(self, task);
+        KND_TASK_ERR("class insts indexing failed");
     }
     return knd_OK;
 }
