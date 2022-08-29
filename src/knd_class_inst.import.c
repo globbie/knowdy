@@ -25,11 +25,11 @@
 #define DEBUG_INST_IMPORT_LEVEL_4 0
 #define DEBUG_INST_IMPORT_LEVEL_TMP 1
 
-static gsl_err_t import_class_inst(struct kndClassInst *self, const char *rec, size_t *total_size, struct kndTask *task);
+static gsl_err_t import_class_inst(struct kndClassInst *self, const char *rec,
+                                   size_t *total_size, struct kndTask *task);
 
 struct LocalContext {
     struct kndClassInst *class_inst;
-    //struct kndClass *class;
     struct kndTask *task;
 };
 
@@ -306,7 +306,7 @@ int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *
     switch (task->type) {
     case KND_BULK_LOAD_STATE:
         if (DEBUG_INST_IMPORT_LEVEL_3)
-            knd_log("++ class inst \"%.*s::%.*s\" numid:%zu init data import  OK",
+            knd_log("++ {class %.*s {inst %.*s}} numid:%zu init data import OK!",
                     entry->name_size, entry->name, inst->name_size, inst->name,
                     inst->entry->numid);
         /* register class inst by name */
@@ -351,7 +351,7 @@ int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *
     ctx->num_class_inst_state_refs++;
 
     if (DEBUG_INST_IMPORT_LEVEL_2)
-        knd_log("++ class inst \"%.*s::%.*s\" numid:%zu initial import  OK (num inst states:%zu)",
+        knd_log("++ {class %.*s {inst %.*s {numid %zu}}} initial import  OK {num-inst-states %zu}",
                 entry->name_size, entry->name, inst->name_size, inst->name, inst->entry->numid,
                 ctx->num_class_inst_state_refs);
     return knd_OK;

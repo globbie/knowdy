@@ -12,26 +12,188 @@
 #define DEBUG_INST_LEVEL_4 0
 #define DEBUG_INST_LEVEL_TMP 1
 
-#if 0
-static int export_concise_JSON(struct kndClassInst *self, struct kndTask *task)
+static int export_class_inst(void *obj, const char *unused_var(elem_id),
+                             size_t unused_var(elem_id_size),
+                             size_t unused_var(count), void *elem)
 {
+    struct kndTask *task = obj;
+    size_t indent_size = task->ctx->format_indent;
+    size_t depth = task->depth;
+    // if (count < task->start_from) return knd_OK;
+    // if (task->batch_size >= task->batch_max) return knd_RANGE;
+
     struct kndOutput *out = task->out;
+    struct kndClassInstEntry *inst = elem;
+    struct kndClassEntry *entry = inst->blueprint;
     int err;
 
-    err = out->write(out, ",\"_class\":\"", strlen(",\"_class\":\""));
-    if (err) return err;
+    if (task->batch_size) {
+        OUT(",", 1);
+    }
+    if (indent_size) {
+        OUT("\n", 1);
+        err = knd_print_offset(out, (depth) * indent_size);
+        RET_ERR();
+    }
+    OUT("{", 1);
+    if (indent_size) {
+        OUT("\n", 1);
+        err = knd_print_offset(out, (depth + 1) * indent_size);
+        RET_ERR();
+    }
 
-    err = out->write(out, self->entry->blueprint->name, self->entry->blueprint->name_size);
-    if (err) return err;
+    OUT("\"class\":", strlen("\"class\":"));
+    if (indent_size) {
+        OUT(" ", 1);
+    }
+    OUT("\"", 1);
+    OUT(entry->name, entry->name_size);
+    OUT("\"", 1);
 
-    err = out->write(out, "\"", 1);
-    if (err) return err;
+    OUT("\"inst\":", strlen("\"inst\":"));
+    if (indent_size) {
+        OUT(" ", 1);
+    }
+    OUT("\"", 1);
+    OUT(inst->name, inst->name_size);
+    OUT("\"", 1);
 
+    if (indent_size) {
+        OUT("\n", 1);
+        err = knd_print_offset(out, (depth) * indent_size);
+        RET_ERR();
+    }
+    OUT("}", 1);
+
+    task->batch_size++;
     return knd_OK;
 }
-#endif
 
-int knd_class_inst_export_JSON(struct kndClassInst *self, bool is_list_item, knd_state_phase unused_var(phase),
+static int export_inverse_rels(struct kndClassInst *self, struct kndTask *task, size_t depth)
+{
+    struct kndAttrHub *attr_hub;
+    struct kndAttr *attr;
+    struct kndOutput *out = task->out;
+    bool in_list = false;
+    size_t curr_depth = 0;
+    size_t indent_size = task->ctx->format_indent;
+    int err;
+
+    OUT(",", 1);
+    if (indent_size) {
+        OUT("\n", 1);
+        err = knd_print_offset(out, (depth) * indent_size);
+        RET_ERR();
+    }
+
+    OUT("\"rels\":", strlen("\"rels\":"));
+    if (indent_size) {
+        OUT(" ", 1);
+    }
+    OUT("[", 1);
+    
+    FOREACH (attr_hub, self->attr_hubs) {
+        if (in_list) {
+            OUT(",", 1);
+        }
+        if (!attr_hub->attr) {
+            err = knd_attr_hub_resolve(attr_hub, task);
+            KND_TASK_ERR("failed to resolve attr hub");
+        }
+        attr = attr_hub->attr;
+        if (indent_size) {
+            OUT("\n", 1);
+            err = knd_print_offset(out, (depth + 1) * indent_size);
+            RET_ERR();
+        }
+
+        OUT("{", 1);
+        if (indent_size) {
+            OUT("\n", 1);
+            err = knd_print_offset(out, (depth + 2) * indent_size);
+            RET_ERR();
+        }
+        OUT("\"class\":", strlen("\"class\":"));
+        if (indent_size) {
+            OUT(" ", 1);
+        }
+        OUT("\"", 1);
+        OUT(attr->parent_class->name, attr->parent_class->name_size);
+        OUT("\"", 1);
+
+        OUT(",", 1);
+        if (indent_size) {
+            OUT("\n", 1);
+            err = knd_print_offset(out, (depth + 2) * indent_size);
+            RET_ERR();
+        }
+        OUT("\"attr\":", strlen("\"attr\":"));
+        if (indent_size) {
+            OUT(" ", 1);
+        }
+        OUT("\"", 1);
+        OUT(attr->name, attr->name_size);
+        OUT("\"", 1);
+        
+        if (attr_hub->topics) {
+            OUT(",", 1);
+            if (indent_size) {
+                OUT("\n", 1);
+                err = knd_print_offset(out, (depth + 2) * indent_size);
+                RET_ERR();
+            }
+            OUT("\"total\":", strlen("\"total\":"));
+            if (indent_size) {
+                OUT(" ", 1);
+            }
+            OUTF("%zu", attr_hub->topics->num_valid_elems);
+        
+            curr_depth = task->ctx->max_depth;
+            task->ctx->max_depth = 0;
+            task->depth = depth + 3;
+            task->batch_size = 0;
+            OUT(",", 1);
+            if (indent_size) {
+                OUT("\n", 1);
+                err = knd_print_offset(out, (depth + 2) * indent_size);
+                RET_ERR();
+            }
+            OUT("\"topics\":", strlen("\"topics\":"));
+            if (indent_size) {
+                OUT(" ", 1);
+            }
+            OUT("[", 1);
+            err = knd_set_map(attr_hub->topics, export_class_inst, (void*)task);
+            if (err && err != knd_RANGE) return err;
+
+            if (indent_size) {
+                OUT("\n", 1);
+                err = knd_print_offset(out, (depth + 2) * indent_size);
+                RET_ERR();
+            }
+            OUT("]", 1);
+            task->ctx->max_depth = curr_depth;
+        }
+
+        if (indent_size) {
+            OUT("\n", 1);
+            err = knd_print_offset(out, (depth + 1) * indent_size);
+            RET_ERR();
+        }
+        OUT("}", 1);
+        in_list = true;
+    }
+    if (indent_size) {
+        OUT("\n", 1);
+        err = knd_print_offset(out, (depth) * indent_size);
+        RET_ERR();
+    }
+    OUT("]", 1);
+    return knd_OK;
+}
+
+int knd_class_inst_export_JSON(struct kndClassInst *self, bool is_list_item,
+                               knd_state_phase phase,
                                struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
@@ -88,6 +250,20 @@ int knd_class_inst_export_JSON(struct kndClassInst *self, bool is_list_item, knd
         KND_TASK_ERR("failed to export JSON of class inst attr vars");
         task->ctx->depth = curr_depth;
     }
+
+
+    switch (phase) {
+    case KND_SELECTED:
+        /* display inverse relations */
+        if (self->attr_hubs) {
+            err = export_inverse_rels(self, task, depth + 1);
+            KND_TASK_ERR("failed to export GSL inverse rels");
+        }
+        break;
+    default:
+        break;
+    }
+
     OUT("}", 1);
     return knd_OK;
 }

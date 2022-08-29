@@ -314,7 +314,7 @@ int knd_index_attr_var(struct kndClassEntry *topic, struct kndAttr *attr,
 {
     int err;
 
-    if (DEBUG_ATTR_VAR_IDX_LEVEL_TMP)
+    if (DEBUG_ATTR_VAR_IDX_LEVEL_2)
         knd_log(".. {class %.*s} to index {%s %.*s {%.*s %.*s}}",
                 topic->name_size, topic->name,
                 knd_attr_names[attr->type], attr->name_size, attr->name,

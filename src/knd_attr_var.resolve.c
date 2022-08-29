@@ -348,7 +348,8 @@ static int resolve_attr_var_list(struct kndClass *self, struct kndAttrVar *var,
     return knd_OK;
 }
 
-static int resolve_attr_ref(struct kndClass *self, struct kndAttrVar *parent_item, struct kndTask *task)
+static int resolve_attr_ref(struct kndClass *self, struct kndAttrVar *parent_item,
+                            struct kndTask *task)
 {
     struct kndRepo *repo = self->entry->repo;
     struct kndSharedDict *class_name_idx = repo->class_name_idx;
@@ -450,7 +451,8 @@ static int resolve_ref(struct kndClass *self, struct kndAttrVar *var, struct knd
         }
         /* class inst resolving */
         if (var->class_var->type == KND_INSTANCE_BLUEPRINT) {
-            err = knd_get_class_inst(c, var->class_inst_name,
+
+            err = knd_get_class_inst(ref_c, var->class_inst_name,
                                      var->class_inst_name_size, task, &ci);
             KND_TASK_ERR("failed to resolve rel attr var {%.*s %.*s}",
                          var->name_size, var->name, var->val_size, var->val);

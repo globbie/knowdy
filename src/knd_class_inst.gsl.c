@@ -25,36 +25,23 @@ static int export_class_inst(void *obj, const char *unused_var(elem_id),
     struct kndClassEntry *entry = inst->blueprint;
     int err;
 
-    if (task->batch_size) {
-        OUT(",", 1);
-    }
     if (indent_size) {
         OUT("\n", 1);
         err = knd_print_offset(out, (depth) * indent_size);
         RET_ERR();
     }
     OUT("{", 1);
+    OUT(inst->name, inst->name_size);
+
     if (indent_size) {
         OUT("\n", 1);
         err = knd_print_offset(out, (depth + 1) * indent_size);
         RET_ERR();
     }
 
-    OUT("\"class\":", strlen("\"class\":"));
-    if (indent_size) {
-        OUT(" ", 1);
-    }
-    OUT("\"", 1);
+    OUT("{class ", strlen("{class "));
     OUT(entry->name, entry->name_size);
-    OUT("\"", 1);
-
-    OUT("\"inst\":", strlen("\"inst\":"));
-    if (indent_size) {
-        OUT(" ", 1);
-    }
-    OUT("\"", 1);
-    OUT(inst->name, inst->name_size);
-    OUT("\"", 1);
+    OUT("}", 1);
 
     if (indent_size) {
         OUT("\n", 1);
@@ -84,16 +71,15 @@ static int export_inverse_rels(struct kndClassInst *self, struct kndTask *task, 
         RET_ERR();
     }
 
-    OUT("\"rels\":", strlen("\"rels\":"));
+    OUT("[rel", strlen("[rel"));
     if (indent_size) {
         OUT(" ", 1);
     }
-    OUT("[", 1);
     
     FOREACH (attr_hub, self->attr_hubs) {
-        if (in_list) {
-            OUT(",", 1);
-        }
+        //if (in_list) {
+        //    OUT(",", 1);
+        //}
         if (!attr_hub->attr) {
             err = knd_attr_hub_resolve(attr_hub, task);
             KND_TASK_ERR("failed to resolve attr hub");
@@ -106,61 +92,36 @@ static int export_inverse_rels(struct kndClassInst *self, struct kndTask *task, 
         }
 
         OUT("{", 1);
-        if (indent_size) {
-            OUT("\n", 1);
-            err = knd_print_offset(out, (depth + 2) * indent_size);
-            RET_ERR();
-        }
-        OUT("\"class\":", strlen("\"class\":"));
-        if (indent_size) {
-            OUT(" ", 1);
-        }
-        OUT("\"", 1);
-        OUT(attr->parent_class->name, attr->parent_class->name_size);
-        OUT("\"", 1);
-
-        OUT(",", 1);
-        if (indent_size) {
-            OUT("\n", 1);
-            err = knd_print_offset(out, (depth + 2) * indent_size);
-            RET_ERR();
-        }
-        OUT("\"attr\":", strlen("\"attr\":"));
-        if (indent_size) {
-            OUT(" ", 1);
-        }
-        OUT("\"", 1);
         OUT(attr->name, attr->name_size);
-        OUT("\"", 1);
+        if (indent_size) {
+            OUT("\n", 1);
+            err = knd_print_offset(out, (depth + 2) * indent_size);
+            RET_ERR();
+        }
+        OUT("{class ", strlen("{class "));
+        OUT(attr->parent_class->name, attr->parent_class->name_size);
+        OUT("}", 1);
         
         if (attr_hub->topics) {
-            OUT(",", 1);
             if (indent_size) {
                 OUT("\n", 1);
                 err = knd_print_offset(out, (depth + 2) * indent_size);
                 RET_ERR();
             }
-            OUT("\"total\":", strlen("\"total\":"));
-            if (indent_size) {
-                OUT(" ", 1);
-            }
+            OUT("{total ", strlen("{total "));
             OUTF("%zu", attr_hub->topics->num_valid_elems);
-        
+            OUT("}", 1);
+ 
             curr_depth = task->ctx->max_depth;
             task->ctx->max_depth = 0;
             task->depth = depth + 3;
             task->batch_size = 0;
-            OUT(",", 1);
             if (indent_size) {
                 OUT("\n", 1);
                 err = knd_print_offset(out, (depth + 2) * indent_size);
                 RET_ERR();
             }
-            OUT("\"topics\":", strlen("\"topics\":"));
-            if (indent_size) {
-                OUT(" ", 1);
-            }
-            OUT("[", 1);
+            OUT("[topic ", strlen("[topic "));
             err = knd_set_map(attr_hub->topics, export_class_inst, (void*)task);
             if (err && err != knd_RANGE) return err;
 
