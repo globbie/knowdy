@@ -345,47 +345,33 @@ int knd_class_set_export_GSL(struct kndSet *set,
     return knd_OK;
 }
 
-static int present_subclass(struct kndClassRef *ref,
-                            struct kndTask *task,
-                            size_t depth)
+static int present_subclass(struct kndClassRef *ref, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     struct kndClassEntry *entry = ref->entry;
     struct kndClass *c;
     int err;
 
-    err = out->writec(out, '{');                                                  RET_ERR();
-    err = out->write(out, entry->name, entry->name_size);                         RET_ERR();
-    //err = out->writec(out, ' ');                                                  RET_ERR();
-
-    if (task->ctx->format_indent) {
-        err = out->writec(out, '\n');                                             RET_ERR();
-        err = knd_print_offset(out, (depth + 1) * task->ctx->format_indent);           RET_ERR();
-    }
-
-    /*if (ref->entry->num_terminals) {
-        err = out->write(out, ",\"_num_terminals\":",
-                         strlen(",\"_num_terminals\":"));                     RET_ERR();
-        err = out->writef(out, "%zu", entry->num_terminals);                  RET_ERR();
-        }*/
+    OUT("{", 1);
+    OUT(entry->name, entry->name_size);
 
     /* localized glosses */
-    c = entry->class;
-    if (!c) {
-        //err = unfreeze_class(self, entry, &c);                                  RET_ERR();
-    }
+    err = knd_class_acquire(entry, &c, task);
+    KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
 
     if (c->tr) {
-        err = knd_text_gloss_export_GSL(c->tr, true, task, depth);
+        err = knd_text_gloss_export_GSL(c->tr, true, task, depth + 1);
         RET_ERR();
     }
-    err = out->write(out, "{_id ", strlen("{_id "));                              RET_ERR();
-    err = out->writef(out, "%zu", entry->numid);                                  RET_ERR();
-    err = out->writec(out, '}');                                                  RET_ERR();
 
-    err = export_concise_GSL(c, task, depth);                                     RET_ERR();
+    //err = out->write(out, "{_id ", strlen("{_id "));                              RET_ERR();
+    //err = out->writef(out, "%zu", entry->numid);                                  RET_ERR();
+    //err = out->writec(out, '}');                                                  RET_ERR();
 
-    err = out->writec(out, '}');                                                  RET_ERR();
+    err = export_concise_GSL(c, task, depth);
+    RET_ERR();
+
+    OUT("}", 1);
     return knd_OK;
 }
 
@@ -434,7 +420,7 @@ static int present_subclasses(struct kndClass *self, size_t num_children, struct
 
     if (orig_entry) {
         // TODO acquire
-        for (ref = orig_entry->class->children; ref; ref = ref->next) {
+        FOREACH (ref, orig_entry->class->children) {
             c = ref->class;
             // TODO: defreeze
             if (!c) continue;

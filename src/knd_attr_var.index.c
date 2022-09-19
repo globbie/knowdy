@@ -180,7 +180,7 @@ static int index_inner_attr_var(struct kndClassEntry *topic, struct kndAttr *att
                          var->class_entry->name_size, var->class_entry->name);
 
             if (DEBUG_ATTR_VAR_IDX_LEVEL_TMP)
-                knd_log(">> idx inner implied rel {class %.*s {%.*s %.*s}}",
+                knd_log(">> idx inner implied ref {class %.*s {%.*s %.*s}}",
                         topic->name_size, topic->name,
                         var->name_size, var->name, spec->name_size, spec->name);
 
@@ -263,7 +263,7 @@ static int index_inst_ref(struct kndClassInstEntry *topic_inst,
         KND_TASK_ERR("failed to acquire class %.*s",
                      var->class_entry->name_size, var->class_entry->name);
 
-        if (DEBUG_ATTR_VAR_IDX_LEVEL_TMP)
+        if (DEBUG_ATTR_VAR_IDX_LEVEL_3)
             knd_log(">> idx inst -> {class %.*s {inst %.*s}} -> {class %.*s}",
                     topic_inst->blueprint->name_size, topic_inst->blueprint->name,
                     topic_inst->name_size, topic_inst->name,
@@ -279,7 +279,7 @@ static int index_inst_ref(struct kndClassInstEntry *topic_inst,
         KND_TASK_ERR("failed to acquire class inst %.*s",
                      var->class_inst_entry->name_size, var->class_inst_entry->name);
 
-        if (DEBUG_ATTR_VAR_IDX_LEVEL_TMP)
+        if (DEBUG_ATTR_VAR_IDX_LEVEL_3)
             knd_log(">> idx inst --> inst {class %.*s {inst %.*s}}"
                     "\n  -- %.*s --> "
                     "\n  {class %.*s {inst %.*s}}",
@@ -314,7 +314,7 @@ int knd_index_attr_var(struct kndClassEntry *topic, struct kndAttr *attr,
 {
     int err;
 
-    if (DEBUG_ATTR_VAR_IDX_LEVEL_2)
+    if (DEBUG_ATTR_VAR_IDX_LEVEL_TMP)
         knd_log(".. {class %.*s} to index {%s %.*s {%.*s %.*s}}",
                 topic->name_size, topic->name,
                 knd_attr_names[attr->type], attr->name_size, attr->name,
@@ -374,7 +374,7 @@ int knd_index_attr_var_list(struct kndClassEntry *topic, struct kndAttr *attr,
     int err;
 
     if (DEBUG_ATTR_VAR_IDX_LEVEL_2)
-        knd_log(".. attr var list indexing (class:%.*s) attr \"%.*s\" [type:%d]",
+        knd_log(".. attr var list indexing {class %.*s {attr %.*s} [type:%d]}",
                 topic->name_size, topic->name, attr->name_size, attr->name, attr->type);
 
     FOREACH (item, var->list) {

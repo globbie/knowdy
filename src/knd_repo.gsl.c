@@ -610,7 +610,7 @@ static int index_repo_class_insts(struct kndRepo *self, struct kndTask *task)
     struct kndSharedDict *name_idx = self->class_name_idx;
     int err;
 
-    if (DEBUG_REPO_GSL_LEVEL_TMP)
+    if (DEBUG_REPO_GSL_LEVEL_2)
         knd_log(".. indexing class instances in {repo %.*s}..", self->name_size, self->name);
 
     // TODO: iterate func in kndSharedDict
@@ -625,7 +625,7 @@ static int index_repo_class_insts(struct kndRepo *self, struct kndTask *task)
             c = entry->class;
             if (!c->inst_name_idx) continue;
 
-            if (DEBUG_REPO_GSL_LEVEL_TMP) {
+            if (DEBUG_REPO_GSL_LEVEL_3) {
                 knd_log(".. indexing insts of {class %.*s}..",
                         entry->name_size, entry->name);
             }
@@ -642,7 +642,7 @@ int knd_repo_read_source_files(struct kndRepo *self, struct kndTask *task)
 {
     int err;
 
-    if (DEBUG_REPO_GSL_LEVEL_TMP)
+    if (DEBUG_REPO_GSL_LEVEL_2)
         knd_log(".. initial loading of schema files");
 
     /* read a system-wide schema */
@@ -652,7 +652,7 @@ int knd_repo_read_source_files(struct kndRepo *self, struct kndTask *task)
 
     err = resolve_classes(self, task);
     KND_TASK_ERR("class resolving failed");
-        
+
     err = resolve_procs(self, task);
     KND_TASK_ERR("proc resolving failed");
 
@@ -660,7 +660,7 @@ int knd_repo_read_source_files(struct kndRepo *self, struct kndTask *task)
     KND_TASK_ERR("class indexing failed");
 
     if (self->data_path_size) {
-        if (DEBUG_REPO_GSL_LEVEL_TMP)
+        if (DEBUG_REPO_GSL_LEVEL_3)
             knd_log(".. initial loading of data files");
         task->type = KND_BULK_LOAD_STATE;
         err = read_GSL_file(self, NULL, "index", strlen("index"), KND_GSL_INIT_DATA, task);

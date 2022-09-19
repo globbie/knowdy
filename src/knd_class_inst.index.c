@@ -46,7 +46,7 @@ static int update_attr_var_indices(struct kndClassInstEntry *entry, struct kndRe
             KND_TASK_ERR("failed to index text attr var \"%.*s\"", var->name_size, var->name);
             break;
         case KND_ATTR_REL:
-            if (DEBUG_INST_IDX_LEVEL_TMP)
+            if (DEBUG_INST_IDX_LEVEL_3)
                 knd_log(".. indexing Rel attr \"%.*s\" (is a set:%d)",
                         var->name_size, var->name, var->attr->is_a_set);
 
@@ -176,7 +176,7 @@ int knd_class_inst_index(struct kndClassInst *self, struct kndTask *task)
     KND_TASK_ERR("failed to acquire class \"%.*s\"",
                  self->entry->blueprint->name_size, self->entry->blueprint->name);
 
-    if (DEBUG_INST_IDX_LEVEL_TMP) {
+    if (DEBUG_INST_IDX_LEVEL_2) {
         knd_log(".. indexing {class %.*s {inst %.*s}}",
                 c->entry->name_size, c->entry->name,
                 self->name_size, self->name);
@@ -184,7 +184,7 @@ int knd_class_inst_index(struct kndClassInst *self, struct kndTask *task)
     if (!self->class_var->attrs) return knd_OK;
 
     FOREACH (var, self->class_var->attrs) {
-        if (DEBUG_INST_IDX_LEVEL_TMP) {
+        if (DEBUG_INST_IDX_LEVEL_3) {
             knd_log(".. idx inst attr var {class %.*s {inst %.*s {%.*s %.*s}} {is-indexed %d}",
                     c->name_size, c->name, self->name_size, self->name,
                     var->name_size, var->name, var->val_size, var->val, var->attr->is_indexed);

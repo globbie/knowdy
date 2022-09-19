@@ -108,7 +108,7 @@ static int resolve_rel(struct kndClass *self, struct kndAttr *attr, struct kndTa
     struct kndProcArg *arg;
     int err;
 
-    if (DEBUG_ATTR_RESOLVE_LEVEL_TMP) {
+    if (DEBUG_ATTR_RESOLVE_LEVEL_2) {
         knd_log("\n>> resolving REL attr {class %.*s {%.*s %.*s}} "
                 " {self-arg %.*s} {impl-arg %.*s}}",
                 self->name_size, self->name, attr->name_size, attr->name,
@@ -152,8 +152,7 @@ static int resolve_rel(struct kndClass *self, struct kndAttr *attr, struct kndTa
     return knd_OK;
 }
 
-static int check_attr_name_conflict(struct kndClass *self,
-                                    struct kndAttr *attr_candidate,
+static int check_attr_name_conflict(struct kndClass *self, struct kndAttr *attr_candidate,
                                     struct kndTask *task)
 {
     struct kndAttrRef *attr_ref;
@@ -196,7 +195,8 @@ int knd_attr_hub_resolve(struct kndAttrHub *hub, struct kndTask *task)
     int err;
 
     err = knd_class_acquire(hub->topic_template, &c, task);
-    KND_TASK_ERR("failed to acquire a class %.*s", hub->topic_template->name_size, hub->topic_template->name);
+    KND_TASK_ERR("failed to acquire a class %.*s",
+                 hub->topic_template->name_size, hub->topic_template->name);
 
     err = knd_set_get(c->attr_idx, hub->attr_id, hub->attr_id_size, (void**)&ref);
     KND_TASK_ERR("no attr %.*s in class %.*s", hub->attr_id_size, hub->attr_id,
