@@ -179,7 +179,7 @@ static int index_inner_attr_var(struct kndClassEntry *topic, struct kndAttr *att
             KND_TASK_ERR("failed to acquire class %.*s",
                          var->class_entry->name_size, var->class_entry->name);
 
-            if (DEBUG_ATTR_VAR_IDX_LEVEL_TMP)
+            if (DEBUG_ATTR_VAR_IDX_LEVEL_3)
                 knd_log(">> idx inner implied ref {class %.*s {%.*s %.*s}}",
                         topic->name_size, topic->name,
                         var->name_size, var->name, spec->name_size, spec->name);
@@ -305,7 +305,6 @@ static int index_inst_ref(struct kndClassInstEntry *topic_inst,
         err = attr_hub_add_classref(hub, topic, task);
         KND_TASK_ERR("attr hub failed to add a classref");
     */
-
     return knd_OK;
 }
 
@@ -314,7 +313,7 @@ int knd_index_attr_var(struct kndClassEntry *topic, struct kndAttr *attr,
 {
     int err;
 
-    if (DEBUG_ATTR_VAR_IDX_LEVEL_TMP)
+    if (DEBUG_ATTR_VAR_IDX_LEVEL_2)
         knd_log(".. {class %.*s} to index {%s %.*s {%.*s %.*s}}",
                 topic->name_size, topic->name,
                 knd_attr_names[attr->type], attr->name_size, attr->name,

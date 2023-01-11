@@ -436,11 +436,8 @@ int knd_resolve_class_ref(struct kndClass *self, const char *name, size_t name_s
             }
             if (base != c) {
                 err = knd_is_base(base, c);
-                if (err) {
-                    knd_log("-- no inheritance from %.*s to %.*s",
-                            base->name_size, base->name, c->name_size, c->name);
-                    return err;
-                }
+                KND_TASK_ERR("no inheritance from %.*s to %.*s",
+                             base->name_size, base->name, c->name_size, c->name);
             }
         }
         *result = c;
