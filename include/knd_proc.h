@@ -236,7 +236,8 @@ int knd_get_proc(struct kndRepo *repo, const char *name, size_t name_size, struc
 int knd_get_proc_entry(struct kndRepo *repo, const char *name, size_t name_size, struct kndProcEntry **result, struct kndTask *task);
 int knd_proc_get_arg(struct kndProc *self, const char *name, size_t name_size, struct kndProcArgRef **result);
 int knd_resolve_proc_ref(struct kndClass *self, const char *name, size_t name_size,
-                         struct kndProc *unused_var(base), struct kndProc **result, struct kndTask *unused_var(task));
+                         struct kndProc *unused_var(base), struct kndProcEntry **result,
+                         struct kndTask *unused_var(task));
 
 int knd_proc_export(struct kndProc *self, knd_format format, struct kndTask *task, struct kndOutput *out);
 

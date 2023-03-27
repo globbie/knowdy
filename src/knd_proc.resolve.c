@@ -87,29 +87,26 @@ static int inherit_args(struct kndProc *self, struct kndProc *base, struct kndRe
 
 int knd_resolve_proc_ref(struct kndClass *self, const char *name, size_t name_size,
                          struct kndProc *unused_var(base),
-                         struct kndProc **result, struct kndTask *task)
+                         struct kndProcEntry **result, struct kndTask *task)
 {
-    struct kndProc *proc;
+    struct kndRepo *repo = self->entry->repo;
+    struct kndProcEntry *entry;
     int err;
 
     if (DEBUG_PROC_RESOLVE_LEVEL_2)
         knd_log(".. resolving proc ref:  %.*s", name_size, name);
 
-    err = knd_get_proc(self->entry->repo, name, name_size, &proc, task);
-    KND_TASK_ERR("no such proc: %.*s", name_size, name);
-
-    /*c = dir->conc;
-    if (!c->is_resolved) {
-        err = knd_class_resolve(c);                                                RET_ERR();
+    entry = knd_shared_dict_get(repo->proc_name_idx, name, name_size);
+    if (!entry) {
+        /*if (repo->base) {
+            err = knd_get_proc(repo->base, name, name_size, result, task);
+            KND_TASK_ERR("no such proc: \"%.*s\"", name_size, name);
+            return knd_OK;
+            }*/
+        err = knd_NO_MATCH;
+        KND_TASK_ERR("no such {proc %.*s}", name_size, name);
     }
-
-    if (base) {
-        err = is_base(base, c);                                                   RET_ERR();
-    }
-    */
-
-    *result = proc;
-
+    *result = entry;
     return knd_OK;
 }
 

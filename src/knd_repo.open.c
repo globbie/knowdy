@@ -309,7 +309,8 @@ int knd_repo_restore(struct kndRepo *self, struct kndRepoSnapshot *snapshot, str
     atomic_store_explicit(&snapshot->num_commits, snapshot->commit_idx->num_elems, memory_order_relaxed);
 
     if (DEBUG_REPO_LEVEL_TMP)
-        knd_log("== repo \"%.*s\", total commits applied: %zu", self->name_size, self->name, snapshot->num_commits);
+        knd_log("== repo \"%.*s\", total commits applied: %zu",
+                self->name_size, self->name, snapshot->num_commits);
 
     return knd_OK;
 }

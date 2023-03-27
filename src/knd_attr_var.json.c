@@ -144,8 +144,8 @@ static int ref_var_export_JSON(struct kndAttrVar *var, struct kndTask *task, siz
 
 static int proc_var_export_JSON(struct kndAttrVar *var, struct kndTask *task)
 {
-    assert(var->proc != NULL);
-    int err = knd_proc_export_JSON(var->proc, task, false, 0);                   RET_ERR();
+    assert(var->proc_entry != NULL);
+    // int err = knd_proc_export_JSON(var->proc, task, false, 0);                   RET_ERR();
     return knd_OK;
 }
 
@@ -204,9 +204,9 @@ static int attr_var_list_export_JSON(struct kndAttrVar *parent_var, struct kndTa
             if (err) return err;
             break;
         case KND_ATTR_PROC_REF:
-            if (var->proc) {
-                err = proc_var_export_JSON(var, task);
-                if (err) return err;
+            if (var->proc_entry) {
+                //err = proc_var_export_JSON(var, task);
+                //if (err) return err;
             }
             break;
         case KND_ATTR_STR:
@@ -322,9 +322,9 @@ int knd_attr_vars_export_JSON(struct kndAttrVar *vars, struct kndTask *task,
             KND_TASK_ERR("failed to export text JSON");
             break;
         case KND_ATTR_PROC_REF:
-            if (var->proc) {
-                err = proc_var_export_JSON(var, task);
-                if (err) return err;
+            if (var->proc_entry) {
+                //err = proc_var_export_JSON(var, task);
+                //if (err) return err;
             } else {
                 err = out->write(out, "\"", strlen("\""));
                 if (err) return err;
@@ -405,9 +405,9 @@ int knd_attr_var_export_JSON(struct kndAttrVar *var, struct kndTask *task, size_
         }
         break;
     case KND_ATTR_PROC_REF:
-        if (var->proc) {
-            err = proc_var_export_JSON(var, task);
-            if (err) return err;
+        if (var->proc_entry) {
+            //err = proc_var_export_JSON(var, task);
+            //if (err) return err;
         } else {
             OUT("\"", 1);
             OUT(var->val, var->val_size);

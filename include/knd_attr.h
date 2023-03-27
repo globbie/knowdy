@@ -88,8 +88,8 @@ static const char* const knd_attr_names[] = {
 
 typedef enum knd_rel_t {
                         KND_REL_DEFAULT,
-                        KND_REL_CLASS_INST,
-                        KND_REL_SUBCLASS
+                        KND_REL_CLASS_INST,  // ref to specific inst
+                        KND_REL_SUBCLASS     // ref to abstract class
 } knd_rel_t;
 
 typedef enum knd_attr_quant_type {
@@ -178,9 +178,11 @@ struct kndAttrVar
     size_t class_inst_name_size;
     struct kndClassInstEntry *class_inst_entry;
 
-    struct kndProc *proc;
+    struct kndProcEntry *proc_entry;
+    // struct kndProc *proc;
+
     struct kndAttr *ref_attr;
-    
+
     struct kndAttrVar *next;
 };
 

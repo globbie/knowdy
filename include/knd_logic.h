@@ -27,7 +27,6 @@ typedef enum knd_logic_t { KND_LOGIC_AND,
                            KND_LOGIC_NOT
 } knd_logic_t;
 
-
 struct kndSituation
 {
     char id[KND_ID_SIZE];

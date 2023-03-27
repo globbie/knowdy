@@ -206,7 +206,8 @@ int knd_proc_is_base(struct kndProc *self, struct kndProc *child)
     return knd_FAIL;
 }
 
-int knd_get_proc(struct kndRepo *repo, const char *name, size_t name_size, struct kndProc **result, struct kndTask *task)
+int knd_get_proc(struct kndRepo *repo, const char *name, size_t name_size,
+                 struct kndProc **result, struct kndTask *task)
 {
     struct kndProcEntry *entry;
     struct kndProc *proc;

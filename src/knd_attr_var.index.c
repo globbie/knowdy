@@ -174,7 +174,8 @@ static int index_inner_attr_var(struct kndClassEntry *topic, struct kndAttr *att
         case KND_ATTR_REL:
             break;
         case KND_ATTR_REF:
-            assert(var->class_entry != NULL);
+            if (!var->class_entry) break;
+
             err = knd_class_acquire(var->class_entry, &spec, task);
             KND_TASK_ERR("failed to acquire class %.*s",
                          var->class_entry->name_size, var->class_entry->name);
@@ -206,7 +207,7 @@ static int index_inner_attr_var(struct kndClassEntry *topic, struct kndAttr *att
         case KND_ATTR_REL:
             break;
         case KND_ATTR_REF:
-            assert(item->class_entry != NULL);
+            if (!item->class_entry) break;
             err = knd_class_acquire(item->class_entry, &spec, task);
             KND_TASK_ERR("failed to acquire class %.*s",
                          item->class_entry->name_size, item->class_entry->name);

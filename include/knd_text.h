@@ -114,6 +114,7 @@ struct kndStatement
     struct kndClassDeclaration *class_declars;
     struct kndProcDeclaration  *proc_declars;
 
+    
     struct kndStatement *next;
 };
 
