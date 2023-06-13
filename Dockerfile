@@ -29,8 +29,9 @@ USER knowdy
 
 COPY ./etc/knowdy/shard.gsl /etc/knowdy/shard.gsl
 COPY ./etc/knowdy/service.json /etc/knowdy/service.json
-COPY ./etc/knowdy/schemas /etc/knowdy/schemas
+COPY ./etc/knowdy/schema /etc/knowdy/schema
 COPY --from=builder /tmp/service/knd-service /usr/bin/knd-service
+WORKDIR /var/lib/knowdy/db
 
 EXPOSE 8080
 CMD ["/usr/bin/knd-service", "--listen-address=0.0.0.0:8080", "--config-path=/etc/knowdy/service.json"]

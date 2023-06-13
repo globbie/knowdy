@@ -50,20 +50,6 @@ static int resolve_ref(struct kndClass *self, struct kndAttrVar *var,
 static int resolve_rel(struct kndClass *self, struct kndAttrVar *var,
                        struct kndTask *task);
 
-static int resolve_text(struct kndAttrVar *attr_var, struct kndTask *task)
-{
-    if (DEBUG_ATTR_VAR_RESOLVE_LEVEL_2)
-        knd_log(".. resolving text attr var: %.*s  class:%.*s",
-                attr_var->name_size, attr_var->name,
-                attr_var->class_var->parent->name_size,
-                attr_var->class_var->parent->name);
-    if (!attr_var->text) {
-        KND_TASK_LOG("no text field (_t) found in attr var \"%.*s\"", attr_var->name_size, attr_var->name);
-        return knd_FAIL;
-    }
-    return knd_OK;
-}
-
 static int resolve_implied_attr_var(struct kndClass *self, struct kndAttr *attr,
                                     struct kndAttrVar *var, struct kndTask *task)
 {
@@ -252,7 +238,7 @@ static int resolve_inner_var(struct kndClass *self, struct kndAttrVar *var, stru
             break;
         case KND_ATTR_TEXT:
             item->attr = attr;
-            err = resolve_text(item, task);
+            err = knd_text_resolve(item, task);
             KND_TASK_ERR("failed to resolve text attr");
             break;
         case KND_ATTR_PROC_REF:
@@ -598,7 +584,7 @@ int knd_resolve_attr_vars(struct kndClass *self, struct kndClassVar *cvar, struc
             if (err) return err;
             break;
         case KND_ATTR_TEXT:
-            err = resolve_text(var, task);
+            err = knd_text_resolve(var, task);
             KND_TASK_ERR("failed to resolve text attr");
             break;
         case KND_ATTR_NUM:

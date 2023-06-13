@@ -45,7 +45,6 @@ struct LocalContext {
     } state_filter;
 
     bool create_subsets;
-
 };
 
 static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
@@ -659,7 +658,7 @@ static gsl_err_t parse_import_class_inst(void *obj, const char *rec, size_t *tot
     struct kndRepo *repo = ctx->repo;
     struct kndRepoSnapshot *snapshot = atomic_load_explicit(&repo->snapshots, memory_order_relaxed);
     knd_task_spec_type orig_task_type = task->type;
-    struct kndRepoAccess *acl;
+    //struct kndRepoAccess *acl;
     struct kndClass *c;
     int err;
 
@@ -677,14 +676,14 @@ static gsl_err_t parse_import_class_inst(void *obj, const char *rec, size_t *tot
         return *total_size = 0, make_gsl_err_external(err);
     }
 
-    acl = task->user_ctx->acls;
+    /*    acl = task->user_ctx->acls;
     assert(acl != NULL);
     if (!acl->allow_write) {
         KND_TASK_LOG("writing not allowed");
         err = knd_ACCESS;
         if (err) return make_gsl_err_external(err);
     }
-
+    */
     if (entry->repo != repo) {
         err = knd_class_entry_clone(ctx->class_entry, repo, &entry, task);
         if (err) {

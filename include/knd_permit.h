@@ -9,5 +9,4 @@ struct kndPermit
 
 };
 
-extern int knd_permit_new(struct kndMemPool *mempool,
-                          struct kndPermit **result);
+extern int knd_permit_new(struct kndMemPool *mempool, struct kndPermit **result);

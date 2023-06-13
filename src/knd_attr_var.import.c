@@ -70,29 +70,6 @@ static gsl_err_t set_class_inst_ref(void *obj, const char *name, size_t name_siz
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_text(void *obj, const char *rec, size_t *total_size)
-{
-    struct LocalContext *ctx = obj;
-    struct kndTask *task = ctx->task;
-    struct kndMemPool *mempool = task->user_ctx->mempool;
-    struct kndText *text;
-    gsl_err_t parser_err;
-    int err;
-
-    err = knd_text_new(mempool, &text);
-    if (err) return *total_size = 0, make_gsl_err_external(knd_NOMEM);
-
-    parser_err = knd_text_import(text, rec, total_size, task);
-    if (parser_err.code) {
-        KND_TASK_LOG("text import failed");
-        return parser_err;
-    }
-    ctx->attr_var->text = text;
-    text->attr_var = ctx->attr_var;
-
-    return make_gsl_err(gsl_OK);
-}
-
 static gsl_err_t set_attr_var_value(void *obj, const char *val, size_t val_size)
 {
     struct kndAttrVar *self = obj;
@@ -206,12 +183,12 @@ int knd_import_attr_var(struct kndClassVar *self, const char *name, size_t name_
           .validate = import_nested_attr_var_list,
           .obj = &ctx
         },
-        { .name = "_t",
+        /*{ .name = "_t",
           .name_size = strlen("_t"),
           .parse = parse_text,
           .obj = &ctx
         },
-        /*{ .name = "_cdata",
+        { .name = "_cdata",
           .name_size = strlen("_cdata"),
           .obj = &cdata_spec
           }*/
@@ -381,12 +358,12 @@ static gsl_err_t import_nested_attr_var(void *obj, const char *name, size_t name
           .run = set_class_inst_ref,
           .obj = attr_var
         },
-        { .name = "_t",
+        /*{ .name = "_t",
           .name_size = strlen("_t"),
           .parse = parse_text,
           .obj = ctx
         },
-        /*{ .name = "_cdata",
+        { .name = "_cdata",
           .name_size = strlen("_cdata"),
           .parse = parse_attr_var_cdata,
           .obj = attr_var

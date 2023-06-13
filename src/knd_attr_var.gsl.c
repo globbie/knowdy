@@ -403,10 +403,8 @@ int knd_attr_var_export_GSL(struct kndAttrVar *var, struct kndTask *task, size_t
         break;
     case KND_ATTR_TEXT:
         assert(var->text != NULL);
-        OUT("{_t", strlen("{_t"));
         err = knd_text_export(var->text, KND_FORMAT_GSL, task, depth + 1);
         KND_TASK_ERR("GSL text export failed");
-        OUT("}", 1);
         break;
     case KND_ATTR_BOOL:
         OUT("t", 1);

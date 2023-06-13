@@ -1,3 +1,6 @@
 [submodule "libs/gsl-parser"]
 	path = libs/gsl-parser
 	url = https://github.com/globbie/gsl-parser.git
+[submodule "etc/knowdy/schemas"]
+	path = etc/knowdy/schemas
+	url = https://github.com/globbie/knowdy-schemas

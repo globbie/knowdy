@@ -6,7 +6,7 @@
                {base-repo knd-base
                    {schema-path /etc/knowdy/schema}}}}
       {init-data-path /etc/knowdy/data}
-    {memory
+      {memory
          {max_base_pages        320008}
          {max_small_x4_pages    170000}
          {max_small_x2_pages    400002}

@@ -226,6 +226,8 @@ struct kndText
 
 void knd_text_str(struct kndText *self, size_t depth);
 gsl_err_t knd_text_import(struct kndText *self, const char *rec, size_t *total_size, struct kndTask *task);
+int knd_text_resolve(struct kndAttrVar *attr_var, struct kndTask *task);
+
 gsl_err_t knd_text_read(struct kndText *self, const char *rec, size_t *total_size, struct kndTask *task);
 int knd_text_index(struct kndText *self, struct kndRepo *repo, struct kndTask *task);
 gsl_err_t knd_text_search(struct kndRepo *repo, const char *rec, size_t *total_size, struct kndTask *task);

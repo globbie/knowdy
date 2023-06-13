@@ -131,7 +131,7 @@ static int export_translation(struct kndText *trs, struct kndTask *task)
         if (memcmp(task->ctx->locale, tr->locale, tr->locale_size)) {
             continue;
         }
-        OUT("\"seq\":\"", strlen("\"seq\":\""));
+        OUT("\"txt\":\"", strlen("\"txt\":\""));
         err = out->write_escaped(out, tr->seq->val,  tr->seq->val_size);
         KND_TASK_ERR("failed to export a charseq");
         OUT("\"", 1);
@@ -189,7 +189,7 @@ static int sent_export_JSON(struct kndSentence *sent, struct kndTask *task)
     struct kndOutput *out = task->out;
     int err;
     OUT("{", 1);
-    OUT("\"seq\":\"", strlen("\"seq\":\""));
+    OUT("\"txt\":\"", strlen("\"txt\":\""));
     OUT(sent->seq, sent->seq_size);
     OUT("\"", 1);
 
@@ -223,7 +223,7 @@ int knd_text_export_JSON(struct kndText *self, struct kndTask *task, size_t unus
     switch (err) {
     case knd_NO_MATCH:
         if (seq && seq->val_size) {
-            OUT("\"seq\":\"", strlen("\"seq\":\""));
+            OUT("\"txt\":\"", strlen("\"txt\":\""));
             err = out->write_escaped(out, seq->val,  seq->val_size);
             KND_TASK_ERR("failed to export a charseq");
             OUT("\"", 1);

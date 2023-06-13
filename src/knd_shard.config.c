@@ -112,7 +112,7 @@ parse_schema(void *obj, const char *rec, size_t *total_size)
         },
         {   .name = "init-data-path",
             .name_size = strlen("init-data-path"),
-            .buf = self->ssdata_path,
+            .buf = self->data_path,
             .buf_size = &self->data_path_size,
             .max_buf_size = KND_NAME_SIZE
         },
