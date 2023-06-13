@@ -23,7 +23,7 @@ Conceptual graph database.
 ### Before compilation
 
 ```bash
-git submodules update --init --recursive
+git submodule update --init --recursive
 ```
 
 ### Compilation
