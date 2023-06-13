@@ -112,6 +112,11 @@ func (p *kndProc) RunTask(task string, task_len int) (string, string, error) {
 	// any thresholds reached?
 
 	// TODO check what replication level is needed for new commits
+	msg := "no output"
+	if (C.int(worker.output_size) != C.int(0)) {
+		msg = C.GoStringN((*C.char)(worker.output), C.int(worker.output_size))
+	}
+	log.Printf(">> result: %s", msg)
 	
 	return C.GoStringN((*C.char)(worker.output), C.int(worker.output_size)), "meta", nil
 }

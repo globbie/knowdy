@@ -29,7 +29,7 @@ USER knowdy
 
 COPY ./etc/knowdy/shard.gsl /etc/knowdy/shard.gsl
 COPY ./etc/knowdy/service.json /etc/knowdy/service.json
-COPY ./etc/knowdy/schema /etc/knowdy/schema
+COPY ./etc/knowdy/schemas/basic /etc/knowdy/schema
 COPY --from=builder /tmp/service/knd-service /usr/bin/knd-service
 WORKDIR /var/lib/knowdy/db
 
