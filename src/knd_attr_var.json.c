@@ -142,12 +142,14 @@ static int ref_var_export_JSON(struct kndAttrVar *var, struct kndTask *task, siz
     return knd_OK;
 }
 
+#if 0
 static int proc_var_export_JSON(struct kndAttrVar *var, struct kndTask *task)
 {
     assert(var->proc_entry != NULL);
     // int err = knd_proc_export_JSON(var->proc, task, false, 0);                   RET_ERR();
     return knd_OK;
 }
+#endif
 
 static int attr_var_list_export_JSON(struct kndAttrVar *parent_var, struct kndTask *task, size_t depth)
 {

@@ -207,16 +207,18 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
         return gsl_err_to_knd_err_codes(parser_err);
     }
 
+    task->output = out->buf;
+    task->output_size = out->buf_size;
+
     switch (task->role) {
     case KND_ARBITER:
         // fall through
     case KND_WRITER:
-        task->output = task->file_out->buf;
-        task->output_size = task->file_out->buf_size;
-        break;
+        if (task->file_out->buf_size) {
+            task->output = task->file_out->buf;
+            task->output_size = task->file_out->buf_size;
+        }
     default:
-        task->output = out->buf;
-        task->output_size = out->buf_size;
         break;
     }
     return knd_OK;
