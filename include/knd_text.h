@@ -36,6 +36,12 @@ typedef enum knd_charseq_enc_type {
     KND_ASCII
 } knd_charseq_enc_type;
 
+typedef enum knd_proposition_type {
+    KND_STATE_PROPOSITION,
+    KND_PROCESS_PROPOSITION,
+    KND_RELATION_PROPOSITION
+} knd_proposition_type;
+
 struct kndCharSeq
 {
     knd_charseq_enc_type enc;
@@ -90,15 +96,17 @@ struct kndClassDeclar
     struct kndClassDeclar *next;
 };
 
-struct kndProcDeclar
+struct kndProposition
 {
-    struct kndProcEntry *entry;
+    knd_proposition_type type;
 
-    struct kndProcInstEntry *insts;
-    struct kndProcInstEntry *inst_tail;
-    size_t num_insts;
+    struct kndProcInstEntry *inst;
 
-    struct kndProcDeclar *next;
+    struct kndProposition *parent;
+
+    struct kndPropositionSpec *specs;
+    size_t num_specs;
+
 };
 
 struct kndStatement
@@ -112,6 +120,7 @@ struct kndStatement
     struct kndDiscourseContext *discourse;
 
     struct kndClassDeclar *declars;
+    size_t num_declars;
 
     // struct kndProposition *propositions;
 
