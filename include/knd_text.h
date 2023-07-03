@@ -276,7 +276,6 @@ int knd_charseq_new(struct kndMemPool *mempool, struct kndCharSeq **result);
 
 int knd_par_new(struct kndMemPool *mempool, struct kndPar **result);
 int knd_class_declar_new(struct kndMemPool *mempool, struct kndClassDeclar **result);
-int knd_proc_declar_new(struct kndMemPool *mempool, struct kndProcDeclar **result);
 int knd_sentence_new(struct kndMemPool *mempool, struct kndSentence **result);
 int knd_clause_new(struct kndMemPool *mempool, struct kndClause **result);
 int knd_statement_new(struct kndMemPool *mempool, struct kndStatement **result);
