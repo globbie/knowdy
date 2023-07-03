@@ -48,7 +48,7 @@ static gsl_err_t build_search_plan(void *obj, const char *unused_var(name), size
     struct kndTask *task = ctx->task;
     struct kndClassRef *ref = NULL;
     struct kndTextSearchReport *report, *pref = task->ctx->reports;
-    struct kndClassDeclaration *declar;
+    struct kndClassDeclar *declar;
     struct kndClassEntry *entry;
     struct kndClassRef *text_idxs;
     int err;
@@ -62,7 +62,7 @@ static gsl_err_t build_search_plan(void *obj, const char *unused_var(name), size
     if (DEBUG_TEXT_SEARCH_LEVEL_2)
         knd_log(".. building a text search plan");
 
-    for (declar = ctx->stm->class_declars; declar; declar = declar->next) {
+    FOREACH (declar, ctx->stm->declars) {
         entry = declar->entry;
 
         if (DEBUG_TEXT_SEARCH_LEVEL_TMP)

@@ -664,7 +664,7 @@ static gsl_err_t confirm_statement(void *obj, const char *unused_var(name), size
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
 
-    if (!task->ctx->class_declars && !task->ctx->proc_declars) {
+    if (!task->ctx->declars) {
         knd_log("-- empty stm");
         KND_TASK_LOG("empty statement");
         return make_gsl_err(gsl_FORMAT);
@@ -833,8 +833,8 @@ gsl_err_t knd_statement_read(struct kndStatement *stm, const char *rec, size_t *
     if (parser_err.code) {
         return parser_err;
     }
-    stm->class_declars = task->ctx->class_declars;
-    stm->proc_declars = task->ctx->proc_declars;
+    stm->declars = task->ctx->declars;
+    // stm->proc_declars = task->ctx->proc_declars;
     return make_gsl_err(gsl_OK);
 }
 

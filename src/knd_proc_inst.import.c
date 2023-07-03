@@ -216,7 +216,6 @@ int knd_import_proc_inst(struct kndProcEntry *self, const char *rec, size_t *tot
     struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
     struct kndProcInst *inst;
     struct kndProcInstEntry *entry;
-    struct kndProcDeclaration *declar;
     struct kndState *state;
     struct kndStateRef *state_ref;
     struct kndTaskContext *ctx = task->ctx;
@@ -262,6 +261,7 @@ int knd_import_proc_inst(struct kndProcEntry *self, const char *rec, size_t *tot
         inst->name_size = inst->entry->id_size;
     }
 
+#if 0
     switch (task->type) {
     case KND_INNER_COMMIT_STATE:
         for (declar = ctx->proc_declars; declar; declar = declar->next) {
@@ -281,6 +281,7 @@ int knd_import_proc_inst(struct kndProcEntry *self, const char *rec, size_t *tot
     default:
         break;
     }
+#endif
 
     err = knd_state_new(mempool, &state);
     KND_TASK_ERR("state alloc failed");

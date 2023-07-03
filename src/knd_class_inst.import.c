@@ -242,7 +242,7 @@ int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *
     struct kndState *state;
     struct kndStateRef *state_ref;
     struct kndTaskContext *ctx = task->ctx;
-    struct kndClassDeclaration *declar = NULL;
+    struct kndClassDeclar *declar = NULL;
     int err;
     gsl_err_t parser_err;
     assert(entry->class != NULL);
@@ -315,15 +315,15 @@ int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *
         return knd_OK;
 
     case KND_INNER_COMMIT_STATE:
-        FOREACH (declar, ctx->class_declars) {
+        FOREACH (declar, ctx->declars) {
             if (declar->entry == c->entry) break;
         }
         if (!declar) {
             err = knd_class_declar_new(mempool, &declar);
             KND_TASK_ERR("failed to alloc class declar");
             declar->entry = c->entry;
-            declar->next = task->ctx->class_declars;
-            task->ctx->class_declars = declar;
+            declar->next = task->ctx->declars;
+            task->ctx->declars = declar;
         }
         inst_entry->next = declar->insts;
         declar->insts = inst_entry;

@@ -22,7 +22,7 @@
 #define DEBUG_TEXT_IDX_LEVEL_3 0
 #define DEBUG_TEXT_IDX_LEVEL_TMP 1
 
-static int index_class_inst(struct kndClass *c, struct kndClassDeclaration *decl,
+static int index_class_inst(struct kndClass *c, struct kndClassDeclar *decl,
                             struct kndSentence *sent, struct kndPar *par, struct kndAttrVar *var,
                             struct kndClassInst *inst, struct kndClassIdx **result, struct kndTask *task)
 {
@@ -149,7 +149,7 @@ static int get_class_idx(struct kndClass *c, struct kndAttrVar *var, struct kndC
     return knd_OK;
 }
 
-static int update_ancestor_idx(struct kndClass *base, struct kndClassDeclaration *decl,
+static int update_ancestor_idx(struct kndClass *base, struct kndClassDeclar *decl,
                                struct kndAttrVar *var, struct kndClassInst *src,
                                struct kndClassIdx *term_idx, struct kndTask *task)
 {
@@ -188,7 +188,7 @@ static int update_ancestor_idx(struct kndClass *base, struct kndClassDeclaration
     return knd_OK;
 }
 
-static int index_class_declar(struct kndClassDeclaration *decl, struct kndSentence *sent, struct kndPar *par, 
+static int index_class_declar(struct kndClassDeclar *decl, struct kndSentence *sent, struct kndPar *par, 
                               struct kndAttrVar *var, struct kndClassInst *inst, struct kndRepo *repo, struct kndTask *task)
 {
     struct kndClassRef *ref;
@@ -252,7 +252,8 @@ static int index_class_declar(struct kndClassDeclaration *decl, struct kndSenten
     return knd_OK;
 }
 
-static int index_proc_inst(struct kndProcEntry *entry, struct kndProcDeclaration *decl,
+#if 0
+static int index_proc_inst(struct kndProcEntry *entry, struct kndProcDeclar *decl,
                            struct kndSentence *sent, struct kndPar *par, struct kndAttrVar *var,
                            struct kndClassInst *inst, struct kndTask *task)
 {
@@ -302,8 +303,11 @@ static int index_proc_inst(struct kndProcEntry *entry, struct kndProcDeclaration
     
     return knd_OK;
 }
+#endif
 
-static int index_proc_declar(struct kndProcDeclaration *decl, struct kndSentence *sent, struct kndPar *par, 
+
+#if 0
+static int index_proc_declar(struct kndProcDeclar *decl, struct kndSentence *sent, struct kndPar *par, 
                              struct kndAttrVar *var, struct kndClassInst *inst, struct kndRepo *repo, struct kndTask *task)
 {
     struct kndProcRef *ref;
@@ -315,7 +319,6 @@ static int index_proc_declar(struct kndProcDeclaration *decl, struct kndSentence
 
     /* update local inst index */
     // TODO
-#if 0
     if (idx) {
         knd_log(">> \"%.*\" (repo:%.*s) to update local attr idx with \"%.*s\"",
                 inst->name_size, inst->name, inst->entry->blueprint->repo->name_size,
@@ -335,7 +338,6 @@ static int index_proc_declar(struct kndProcDeclaration *decl, struct kndSentence
             idx->num_locs++;
         }
     }
-#endif
 
     /* global concept index */
     entry = decl->entry;
@@ -361,6 +363,7 @@ static int index_proc_declar(struct kndProcDeclaration *decl, struct kndSentence
     }
     return knd_OK;
 }
+#endif
 
 int knd_text_index(struct kndText *self, struct kndRepo *repo, struct kndTask *task)
 {
@@ -369,8 +372,7 @@ int knd_text_index(struct kndText *self, struct kndRepo *repo, struct kndTask *t
     struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
     struct kndPar *par;
     struct kndSentence *sent;
-    struct kndClassDeclaration *decl;
-    struct kndProcDeclaration *proc_decl;
+    struct kndClassDeclar *decl;
     struct kndAttrIdx *idx;
     int err;
 
@@ -383,8 +385,8 @@ int knd_text_index(struct kndText *self, struct kndRepo *repo, struct kndTask *t
         inst->entry->attr_idxs = idx;
     }
 
-    for (par = self->pars; par; par = par->next) {
-        for (sent = par->sents; sent; sent = sent->next) {
+    FOREACH (par, self->pars) {
+        FOREACH (sent, par->sents) {
             if (!sent->stm) continue;
 
             if (DEBUG_TEXT_IDX_LEVEL_3)
@@ -393,15 +395,15 @@ int knd_text_index(struct kndText *self, struct kndRepo *repo, struct kndTask *t
                         inst->name_size, inst->name,
                         var->name_size, var->name, par->numid, sent->numid, sent->seq_size, sent->seq);
             
-            for (decl = sent->stm->class_declars; decl; decl = decl->next) {
+            FOREACH (decl, sent->stm->declars) {
                 err = index_class_declar(decl, sent, par, var, inst, repo, task);
                 KND_TASK_ERR("failed to index class declar");
             }
             
-            for (proc_decl = sent->stm->proc_declars; proc_decl; proc_decl = proc_decl->next) {
-                err = index_proc_declar(proc_decl, sent, par, var, inst, repo, task);
-                KND_TASK_ERR("failed to index proc declar");
-            }
+            // FOREACH (proc_decl, sent->stm->proc_declars) {
+            //    err = index_proc_declar(proc_decl, sent, par, var, inst, repo, task);
+            //    KND_TASK_ERR("failed to index proc declar");
+            //}
         }
     }
     return knd_OK;

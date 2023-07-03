@@ -79,7 +79,7 @@ struct kndTextSearchReport
     struct kndTextSearchReport *next;
 };
 
-struct kndClassDeclaration
+struct kndClassDeclar
 {
     struct kndClassEntry *entry;
 
@@ -87,10 +87,10 @@ struct kndClassDeclaration
     struct kndClassInstEntry *inst_tail;
     size_t num_insts;
 
-    struct kndClassDeclaration *next;
+    struct kndClassDeclar *next;
 };
 
-struct kndProcDeclaration
+struct kndProcDeclar
 {
     struct kndProcEntry *entry;
 
@@ -98,7 +98,7 @@ struct kndProcDeclaration
     struct kndProcInstEntry *inst_tail;
     size_t num_insts;
 
-    struct kndProcDeclaration *next;
+    struct kndProcDeclar *next;
 };
 
 struct kndStatement
@@ -111,10 +111,10 @@ struct kndStatement
 
     struct kndDiscourseContext *discourse;
 
-    struct kndClassDeclaration *class_declars;
-    struct kndProcDeclaration  *proc_declars;
+    struct kndClassDeclar *declars;
 
-    
+    // struct kndProposition *propositions;
+
     struct kndStatement *next;
 };
 
@@ -160,7 +160,8 @@ struct kndClause
     const char *name;
     size_t name_size;
     size_t numid;
-    struct kndClass *class;
+
+    struct kndClass *type;
 
     struct kndSyNode *subj;
     struct kndSyNode *pred;
@@ -177,7 +178,7 @@ struct kndSentence
     const char *seq;
     size_t seq_size;
 
-    struct kndClause *clause;
+    struct kndClause    *clause;
     struct kndStatement *stm;
 
     struct kndSentence *prev;
@@ -191,9 +192,9 @@ struct kndPar
     struct kndSentence *last_sent;
     size_t num_sents;
 
-    struct kndClassDeclaration *class_declars;
-    struct kndProcDeclaration  *proc_declars;
-    struct kndDict *name_idx;
+    //struct kndClassDeclar *class_declars;
+    //struct kndProcDeclar  *proc_declars;
+    //struct kndDict *name_idx;
 
     struct kndPar *next;
 };
@@ -265,8 +266,8 @@ int knd_synode_spec_new(struct kndMemPool *mempool, struct kndSyNodeSpec **resul
 int knd_charseq_new(struct kndMemPool *mempool, struct kndCharSeq **result);
 
 int knd_par_new(struct kndMemPool *mempool, struct kndPar **result);
-int knd_class_declar_new(struct kndMemPool *mempool, struct kndClassDeclaration **result);
-int knd_proc_declar_new(struct kndMemPool *mempool, struct kndProcDeclaration **result);
+int knd_class_declar_new(struct kndMemPool *mempool, struct kndClassDeclar **result);
+int knd_proc_declar_new(struct kndMemPool *mempool, struct kndProcDeclar **result);
 int knd_sentence_new(struct kndMemPool *mempool, struct kndSentence **result);
 int knd_clause_new(struct kndMemPool *mempool, struct kndClause **result);
 int knd_statement_new(struct kndMemPool *mempool, struct kndStatement **result);

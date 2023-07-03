@@ -149,10 +149,8 @@ struct kndTaskContext {
     bool commit_confirmed;
 
     /* inner statement declarations */
-    struct kndClassDeclaration *class_declars;
-    size_t num_class_declars;
-    struct kndProcDeclaration *proc_declars;
-    size_t num_proc_declars;
+    struct kndClassDeclar *declars;
+    size_t num_declars;
 
     /* text search query & results */
     struct kndStatement *query;

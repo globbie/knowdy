@@ -22,16 +22,17 @@
 #define DEBUG_TEXT_EXPORT_LEVEL_3 0
 #define DEBUG_TEXT_EXPORT_LEVEL_TMP 1
 
-static int export_class_declars(struct kndClassDeclaration *decl, struct kndTask *task)
+static int export_class_declars(struct kndClassDeclar *declars, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndClassInstEntry *entry;
+    struct kndClassDeclar *decl;
     int err;
-    for (; decl; decl = decl->next) {
+    FOREACH (decl, declars) {
         OUT("{class ", strlen("{class "));
         OUT(decl->entry->name, decl->entry->name_size);
 
-        for (entry = decl->insts; entry; entry = entry->next) {
+        FOREACH (entry, decl->insts) {
             err = knd_class_inst_export_GSL(entry->inst, false, KND_CREATED, task, 0);
             KND_TASK_ERR("failed to export class inst GSL");
         }
@@ -40,7 +41,8 @@ static int export_class_declars(struct kndClassDeclaration *decl, struct kndTask
     return knd_OK;
 }
 
-static int export_proc_declars(struct kndProcDeclaration *decl, struct kndTask *task)
+#if 0
+static int export_proc_declars(struct kndProcDeclar *decl, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndProcInstEntry *entry;
@@ -57,6 +59,7 @@ static int export_proc_declars(struct kndProcDeclaration *decl, struct kndTask *
     }
     return knd_OK;
 }
+#endif
 
 static int stm_export_GSL(struct kndStatement *stm, struct kndTask *task)
 {
@@ -66,13 +69,10 @@ static int stm_export_GSL(struct kndStatement *stm, struct kndTask *task)
     OUT("{stm ", strlen("{stm "));
     OUT(stm->schema_name, stm->schema_name_size);
 
-    if (stm->class_declars) {
-        err = export_class_declars(stm->class_declars, task);                      RET_ERR();
+    if (stm->declars) {
+        err = export_class_declars(stm->declars, task);                      RET_ERR();
     }
 
-    if (stm->proc_declars) {
-        err = export_proc_declars(stm->proc_declars, task);                        RET_ERR();
-    }
     OUT("}", 1);
 
     return knd_OK;
@@ -144,7 +144,7 @@ int knd_text_export_GSL(struct kndText *self, struct kndTask *task, size_t unuse
 {
     struct kndOutput *out = task->out;
     struct kndPar *par;
-    struct kndSentence *sent;
+    // struct kndSentence *sent;
     struct kndState *state;
     struct kndCharSeq *seq = self->seq;
     struct kndText *trn;
@@ -182,18 +182,11 @@ int knd_text_export_GSL(struct kndText *self, struct kndTask *task, size_t unuse
     if (self->num_pars) {
         OUT("[p", strlen("[p"));
         FOREACH (par, self->pars) {
-            OUT("{", 1);
-            OUT("[s", strlen("[s"));
-            FOREACH (sent, par->sents) {
-                err = sent_export_GSL(sent, task);
-                KND_TASK_ERR("failed to export sent GSL");
-            }
-            OUT("]", 1);
-            OUT("}", 1);
+            err = knd_par_export_GSL(par, task);
+            KND_TASK_ERR("failed to export a text paragraph");
         }
         OUT("]", 1);
     }
-
     return knd_OK;
 }
 
@@ -202,12 +195,10 @@ int knd_par_export_GSL(struct kndPar *par, struct kndTask *task)
     struct kndOutput *out = task->out;
     struct kndSentence *sent;
     int err;
-
-    err = out->writef(out, "{%zu", par->numid);
-    RET_ERR();
+    OUTF("{%zu", par->numid);
     if (par->num_sents) {
         OUT("[s", strlen("[s"));
-        for (sent = par->sents; sent; sent = sent->next) {
+        FOREACH (sent, par->sents) {
             err = sent_export_GSL(sent, task);
             KND_TASK_ERR("failed to export sentence GSL");
         }

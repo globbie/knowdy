@@ -62,7 +62,7 @@ int knd_charseq_unmarshall(const char *elem_id, size_t elem_id_size,
     return knd_OK;
 }
 
-static int export_class_declars(struct kndClassDeclaration *decl, struct kndTask *task)
+static int export_declars(struct kndClassDeclar *decl, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndClassInstEntry *entry;
@@ -80,7 +80,8 @@ static int export_class_declars(struct kndClassDeclaration *decl, struct kndTask
     return knd_OK;
 }
 
-static int export_proc_declars(struct kndProcDeclaration *decl, struct kndTask *task)
+#if 0
+static int export_proc_declars(struct kndProcDeclar *decl, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndProcInstEntry *entry;
@@ -97,6 +98,7 @@ static int export_proc_declars(struct kndProcDeclaration *decl, struct kndTask *
     }
     return knd_OK;
 }
+#endif
 
 static int stm_export_GSP(struct kndStatement *stm, struct kndTask *task)
 {
@@ -106,13 +108,13 @@ static int stm_export_GSP(struct kndStatement *stm, struct kndTask *task)
     OUT("{stm ", strlen("{stm "));
     OUT(stm->schema_name, stm->schema_name_size);
 
-    if (stm->class_declars) {
-        err = export_class_declars(stm->class_declars, task);                      RET_ERR();
+    if (stm->declars) {
+        err = export_declars(stm->declars, task);                      RET_ERR();
     }
 
-    if (stm->proc_declars) {
-        err = export_proc_declars(stm->proc_declars, task);                        RET_ERR();
-    }
+    //if (stm->proc_declars) {
+    //    err = export_proc_declars(stm->proc_declars, task);                        RET_ERR();
+    //}
     OUT("}", 1);
 
     return knd_OK;
@@ -209,13 +211,14 @@ int knd_par_export_GSP(struct kndPar *par, struct kndTask *task)
 
     err = out->writef(out, "{%zu", par->numid);         RET_ERR();
 
-    if (par->class_declars) {
-        err = export_class_declars(par->class_declars, task);                      RET_ERR();
-    }
+    //if (par->declars) {
+    //    err = export_declars(par->declars, task);
+    //    KND_TASK_ERR("failed to export class declars");
+    //}
 
-    if (par->proc_declars) {
-        err = export_proc_declars(par->proc_declars, task);                        RET_ERR();
-    }
+    //if (par->proc_declars) {
+    //    err = export_proc_declars(par->proc_declars, task);                        RET_ERR();
+    //}
 
     err = out->writec(out, '}');                        RET_ERR();
     return knd_OK;

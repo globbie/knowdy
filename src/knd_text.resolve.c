@@ -31,49 +31,13 @@ static int resolve_class_inst(struct kndStatement *stm, struct kndClassInstEntry
     return knd_OK;
 }
 
-static int resolve_proc_inst(struct kndStatement *stm, struct kndProcInstEntry *proc_entry, struct kndTask *task)
-{
-    struct kndProcArgVar *var;
-    struct kndClassDeclaration *cd;
-    struct kndClassInstEntry *entry;
-    int err = knd_OK;
-    
-    FOREACH (var, proc_entry->inst->procvar->args) {
-        if (!var->template) continue;
-        FOREACH (cd, stm->class_declars) {
-            FOREACH (entry, cd->insts) {
-                if (var->val_size != entry->name_size) continue;
-                if (memcmp(entry->name, var->val, var->val_size)) continue;
-                var->inst = entry->inst;
-
-                err = knd_is_base(var->template->class, entry->blueprint->class);
-                KND_TASK_ERR("template \"%.*s\" mismatch with \"%.*s\"",
-                             var->template->name_size, var->template->name,
-                             entry->blueprint->name_size, entry->blueprint->name);
-
-                if (DEBUG_TEXT_RESOLVE_LEVEL_3)
-                    knd_log("++ class inst ref \"%.*s\" (%.*s) class template: \"%.*s\"",
-                            var->val_size, var->val, entry->blueprint->name_size, entry->blueprint->name,
-                            var->template->name_size, var->template->name);
-            }
-        }
-        if (!var->inst) {
-            err = knd_NO_MATCH;
-            KND_TASK_ERR("failed to resolve class inst ref \"%.*s\"", var->val_size, var->val);
-        }
-    }
-    return knd_OK;
-}
-
 int knd_statement_resolve(struct kndStatement *stm, struct kndTask *task)
 {
-    struct kndClassDeclaration *cd;
-    struct kndProcDeclaration *pd;
+    struct kndClassDeclar *cd;
     struct kndClassInstEntry *ci;
-    struct kndProcInstEntry *pi;
     int err;
 
-    FOREACH (cd, stm->class_declars) {
+    FOREACH (cd, stm->declars) {
         FOREACH (ci, cd->insts) {
             if (!ci->inst) continue;
             if (!ci->inst->class_var) continue;
@@ -82,14 +46,6 @@ int knd_statement_resolve(struct kndStatement *stm, struct kndTask *task)
         }
     }
 
-    FOREACH (pd, stm->proc_declars) {
-        FOREACH (pi, pd->insts) {
-            if (!pi->inst) continue;
-            if (!pi->inst->procvar) continue;
-            err = resolve_proc_inst(stm, pi, task);
-            KND_TASK_ERR("failed to resolve proc inst \"%.*s\"", pi->name_size, pi->name);
-        }
-    }
     return knd_OK;
 }
 

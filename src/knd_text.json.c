@@ -22,11 +22,11 @@
 #define DEBUG_TEXT_JSON_LEVEL_3 0
 #define DEBUG_TEXT_JSON_LEVEL_TMP 1
 
-static int export_class_declars(struct kndClassDeclaration *decls, struct kndTask *task)
+static int export_class_declars(struct kndClassDeclar *decls, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndClassInstEntry *entry;
-    struct kndClassDeclaration *decl;
+    struct kndClassDeclar *decl;
     int count = 0;
     int err;
 
@@ -48,11 +48,12 @@ static int export_class_declars(struct kndClassDeclaration *decls, struct kndTas
     return knd_OK;
 }
 
-static int export_proc_declars(struct kndProcDeclaration *decls, struct kndTask *task)
+#if 0
+static int export_proc_declars(struct kndProcDeclar *decls, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndProcInstEntry *entry;
-    struct kndProcDeclaration *decl;
+    struct kndProcDeclar *decl;
     int err;
 
     FOREACH (decl, decls) {
@@ -66,6 +67,7 @@ static int export_proc_declars(struct kndProcDeclaration *decls, struct kndTask 
     }
     return knd_OK;
 }
+#endif
 
 static int stm_export_JSON(struct kndStatement *stm, struct kndTask *task)
 {
@@ -77,19 +79,13 @@ static int stm_export_JSON(struct kndStatement *stm, struct kndTask *task)
         OUT(stm->schema_name, stm->schema_name_size);
     }
 
-    if (stm->class_declars) {
-        OUT("\"classes\":[", strlen("\"classes\":["));
-        err = export_class_declars(stm->class_declars, task);
+    if (stm->declars) {
+        OUT("\"declars\":[", strlen("\"declars\":["));
+        err = export_class_declars(stm->declars, task);
         KND_TASK_ERR("failed to export class declar JSON");
         OUT("]", 1);
     }
 
-    if (stm->proc_declars) {
-        OUT("\"procs\":[", strlen("\"procs\":["));
-        err = export_proc_declars(stm->proc_declars, task);
-        KND_TASK_ERR("failed to export proc declar JSON");
-        OUT("]", 1);
-    }
     OUT("}", 1);
 
     return knd_OK;

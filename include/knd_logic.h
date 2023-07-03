@@ -32,6 +32,7 @@ struct kndSituation
     char id[KND_ID_SIZE];
     size_t id_size;
     struct kndClassEntry *env;
+
     struct kndSituation  *next;
 };
 

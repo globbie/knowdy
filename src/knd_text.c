@@ -129,26 +129,26 @@ int knd_text_loc_new(struct kndMemPool *mempool, struct kndTextLoc **result)
     return knd_OK;
 }
 
-int knd_class_declar_new(struct kndMemPool *mempool, struct kndClassDeclaration **result)
+int knd_class_declar_new(struct kndMemPool *mempool, struct kndClassDeclar **result)
 {
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndClassDeclaration));
+    assert(mempool->tiny_page_size >= sizeof(struct kndClassDeclar));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
-    memset(page, 0, sizeof(struct kndClassDeclaration));
+    memset(page, 0, sizeof(struct kndClassDeclar));
     *result = page;
     return knd_OK;
 }
 
-int knd_proc_declar_new(struct kndMemPool *mempool, struct kndProcDeclaration **result)
+int knd_proc_declar_new(struct kndMemPool *mempool, struct kndProcDeclar **result)
 {
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndProcDeclaration));
+    assert(mempool->tiny_page_size >= sizeof(struct kndProcDeclar));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
-    memset(page, 0, sizeof(struct kndProcDeclaration));
+    memset(page, 0, sizeof(struct kndProcDeclar));
     *result = page;
     return knd_OK;
 }
@@ -262,10 +262,10 @@ void knd_text_str(struct kndText *self, size_t depth)
             knd_log("%*stext (lang:%.*s) [par",
                     depth * KND_OFFSET_SIZE, "",
                     self->locale_size, self->locale);
-            for (par = self->pars; par; par = par->next) {
+            FOREACH (par, self->pars) {
                 knd_log("%*s#%zu:", (depth + 1) * KND_OFFSET_SIZE, "", par->numid);
 
-                for (sent = par->sents; sent; sent = sent->next) {
+                FOREACH (sent, par->sents) {
                     knd_log("%*s#%zu: \"%.*s\"",
                             (depth + 2) * KND_OFFSET_SIZE, "",
                             sent->numid, sent->seq_size, sent->seq);

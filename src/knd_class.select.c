@@ -34,8 +34,9 @@ struct LocalContext {
 
     struct kndClass *selected_class;
     struct kndClass *selected_base;
-    struct kndClassDeclaration *class_declar;
-    struct kndProcDeclaration *proc_declar;
+
+    struct kndClassDeclar *declar;
+
     struct {
         size_t state_eq;
         size_t state_gt;
@@ -796,7 +797,7 @@ static gsl_err_t present_class_selection(void *obj, const char *unused_var(val),
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndClassDeclaration *declar;
+    struct kndClassDeclar *declar;
     struct kndClassEntry *entry = ctx->class_entry;
     struct kndClass *c;
     int err;
@@ -814,9 +815,9 @@ static gsl_err_t present_class_selection(void *obj, const char *unused_var(val),
         if (err) return make_gsl_err_external(err);
 
         declar->entry = ctx->class_entry;
-        ctx->class_declar = declar;
-        declar->next = task->ctx->class_declars;
-        task->ctx->class_declars = declar;
+        ctx->declar = declar;
+        declar->next = task->ctx->declars;
+        task->ctx->declars = declar;
         return make_gsl_err(gsl_OK);
     default:
         break;
