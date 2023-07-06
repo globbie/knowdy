@@ -42,6 +42,16 @@ typedef enum knd_proposition_type {
     KND_RELATION_PROPOSITION
 } knd_proposition_type;
 
+typedef enum knd_prop_rel_type {
+    KND_PROP_REL_DEFAULT,
+    KND_PROP_REL_TIME_PREV,
+    KND_PROP_REL_TIME_COORD,
+    KND_PROP_REL_TIME_FOLLOW,
+    KND_PROP_REL_CONDITION,
+    KND_PROP_REL_CAUSE,
+    KND_PROP_REL_CONCESSION
+} knd_prop_rel_type;
+
 struct kndCharSeq
 {
     knd_charseq_enc_type enc;
@@ -96,6 +106,15 @@ struct kndClassDeclar
     struct kndClassDeclar *next;
 };
 
+struct kndPropositionSpec
+{
+    knd_prop_rel_type type;
+
+    struct kndProposition *prop;
+
+    struct kndPropositionSpec *next;
+};
+
 struct kndProposition
 {
     knd_proposition_type type;
@@ -107,6 +126,7 @@ struct kndProposition
     struct kndPropositionSpec *specs;
     size_t num_specs;
 
+    struct kndProposition *next;
 };
 
 struct kndStatement
@@ -122,7 +142,8 @@ struct kndStatement
     struct kndClassDeclar *declars;
     size_t num_declars;
 
-    // struct kndProposition *propositions;
+    struct kndProposition *propositions;
+    size_t num_propositions;
 
     struct kndStatement *next;
 };
@@ -164,6 +185,7 @@ struct kndSyNode
     struct kndSyNode *next;
 };
 
+// finite verb clause vs semantic proposition
 struct kndClause
 {
     const char *name;
@@ -279,6 +301,8 @@ int knd_class_declar_new(struct kndMemPool *mempool, struct kndClassDeclar **res
 int knd_sentence_new(struct kndMemPool *mempool, struct kndSentence **result);
 int knd_clause_new(struct kndMemPool *mempool, struct kndClause **result);
 int knd_statement_new(struct kndMemPool *mempool, struct kndStatement **result);
+int knd_proposition_new(struct kndMemPool *mempool, struct kndProposition **result);
+
 int knd_text_loc_new(struct kndMemPool *mempool, struct kndTextLoc **result);
 int knd_text_search_report_new(struct kndMemPool *mempool, struct kndTextSearchReport **result);
 

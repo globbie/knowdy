@@ -141,6 +141,18 @@ int knd_class_declar_new(struct kndMemPool *mempool, struct kndClassDeclar **res
     return knd_OK;
 }
 
+int knd_proposition_new(struct kndMemPool *mempool, struct kndProposition **result)
+{
+    void *page;
+    int err;
+    assert(mempool->tiny_page_size >= sizeof(struct kndProposition));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
+    if (err) return err;
+    memset(page, 0, sizeof(struct kndProposition));
+    *result = page;
+    return knd_OK;
+}
+
 int knd_synode_spec_new(struct kndMemPool *mempool, struct kndSyNodeSpec **result)
 {
     void *page;
