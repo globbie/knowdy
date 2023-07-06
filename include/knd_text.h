@@ -118,6 +118,7 @@ struct kndPropositionSpec
 struct kndProposition
 {
     knd_proposition_type type;
+    size_t prop_id;
 
     struct kndProcInstEntry *inst;
 
