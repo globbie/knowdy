@@ -134,7 +134,7 @@ int knd_class_inst_read(struct kndClassInst *self, const char *rec, size_t *tota
     class_var->type = KND_INSTANCE_BLUEPRINT;
     class_var->entry = entry;
     class_var->parent = entry->class;
-    class_var->inst = self;
+    class_var->parent_inst = self;
     self->class_var = class_var;
 
     struct LocalContext ctx = {

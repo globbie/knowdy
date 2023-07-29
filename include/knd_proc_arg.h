@@ -57,7 +57,7 @@ struct kndProcArgVar
     size_t val_size;
 
     struct kndClassEntry *template;
-    struct kndClassInst *inst;
+    struct kndClassInst  *inst;
 
     struct kndProcArgVar *next;
 };

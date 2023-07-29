@@ -368,7 +368,7 @@ static int index_proc_declar(struct kndProcDeclar *decl, struct kndSentence *sen
 int knd_text_index(struct kndText *self, struct kndRepo *repo, struct kndTask *task)
 {
     struct kndAttrVar *var = self->attr_var;
-    struct kndClassInst *inst = var->class_var->inst;
+    struct kndClassInst *inst = var->class_var->parent_inst;
     struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
     struct kndPar *par;
     struct kndSentence *sent;

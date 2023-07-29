@@ -37,20 +37,10 @@ typedef enum knd_charseq_enc_type {
 } knd_charseq_enc_type;
 
 typedef enum knd_proposition_type {
-    KND_STATE_PROPOSITION,
-    KND_PROCESS_PROPOSITION,
-    KND_RELATION_PROPOSITION
+    KND_ATTR_STATE_PROPOSITION,
+    KND_RELATION_PROPOSITION,
+    KND_PROCESS_PROPOSITION
 } knd_proposition_type;
-
-typedef enum knd_prop_rel_type {
-    KND_PROP_REL_DEFAULT,
-    KND_PROP_REL_TIME_PREV,
-    KND_PROP_REL_TIME_COORD,
-    KND_PROP_REL_TIME_FOLLOW,
-    KND_PROP_REL_CONDITION,
-    KND_PROP_REL_CAUSE,
-    KND_PROP_REL_CONCESSION
-} knd_prop_rel_type;
 
 struct kndCharSeq
 {
@@ -108,7 +98,7 @@ struct kndClassDeclar
 
 struct kndPropositionSpec
 {
-    knd_prop_rel_type type;
+    struct kndClass *rel_type;
 
     struct kndProposition *prop;
 
@@ -138,6 +128,7 @@ struct kndStatement
 
     struct kndClass *stm_type;
 
+    struct kndClassInstEntry *author;
     struct kndDiscourseContext *discourse;
 
     struct kndClassDeclar *declars;

@@ -193,16 +193,6 @@ static gsl_err_t import_proc_inst(struct kndProcInstEntry *entry, const char *re
           .run = run_set_alias,
           .obj = &ctx
         },
-        { .name = "_pos",
-          .name_size = strlen("_pos"),
-          .parse = gsl_parse_size_t,
-          .obj = &entry->inst->linear_pos
-        },
-        { .name = "_len",
-          .name_size = strlen("_len"),
-          .parse = gsl_parse_size_t,
-          .obj = &entry->inst->linear_len
-        },
         { .validate = import_arg_var,
           .obj = &ctx
         }

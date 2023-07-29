@@ -282,8 +282,9 @@ int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *
     class_var->type = KND_INSTANCE_BLUEPRINT;
     class_var->entry = entry;
     class_var->parent = c;
-    class_var->inst = inst;
+    class_var->parent_inst = inst;
     inst->class_var = class_var;
+
     parser_err = import_class_inst(inst, rec, total_size, task);
     if (parser_err.code) return parser_err.code;
 

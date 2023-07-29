@@ -48,7 +48,8 @@ void knd_proc_inst_str(struct kndProcInst *self, size_t depth)
     knd_log("%*s}", depth * KND_OFFSET_SIZE, "");
 }
 
-int knd_proc_inst_export_GSL(struct kndProcInst *self, bool is_list_item, knd_state_phase phase, struct kndTask *task, size_t depth)
+int knd_proc_inst_export_GSL(struct kndProcInst *self, bool is_list_item,
+                             knd_state_phase phase, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     struct kndProcArgVar *var;
@@ -73,20 +74,10 @@ int knd_proc_inst_export_GSL(struct kndProcInst *self, bool is_list_item, knd_st
             err = out->writec(out, '}');                                      RET_ERR();
         }
     }
-    if (self->linear_pos) {
-        err = out->write(out, "{_pos ", strlen("{_pos "));             RET_ERR();
-        err = out->writef(out, "%zu", self->linear_pos);                   RET_ERR();
-        err = out->writec(out, '}');                                 RET_ERR();
-    }
-    if (self->linear_len) {
-        err = out->write(out, "{_len ", strlen("{_len "));             RET_ERR();
-        err = out->writef(out, "%zu", self->linear_len);                   RET_ERR();
-        err = out->writec(out, '}');                                 RET_ERR();
-    }
 
     if (self->procvar) {
-        for (var = self->procvar->args; var; var = var->next) {
-            knd_proc_arg_var_export_GSL(var, task, depth + 2);
+        FOREACH (var, self->procvar->args) {
+            knd_proc_arg_var_export_GSL(var, task, depth + 1);
         }
     }
 
@@ -120,16 +111,6 @@ int knd_proc_inst_export_JSON(struct kndProcInst *self, bool is_list_item, knd_s
             err = out->write(out, self->alias, self->alias_size);             RET_ERR();
             err = out->writec(out, '}');                                      RET_ERR();
         }
-    }
-    if (self->linear_pos) {
-        err = out->write(out, "{_pos ", strlen("{_pos "));             RET_ERR();
-        err = out->writef(out, "%zu", self->linear_pos);                   RET_ERR();
-        err = out->writec(out, '}');                                 RET_ERR();
-    }
-    if (self->linear_len) {
-        err = out->write(out, "{_len ", strlen("{_len "));             RET_ERR();
-        err = out->writef(out, "%zu", self->linear_len);                   RET_ERR();
-        err = out->writec(out, '}');                                 RET_ERR();
     }
 
     if (self->procvar) {

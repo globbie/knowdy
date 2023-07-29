@@ -60,9 +60,6 @@ static int match_attr(void *obj, const char *unused_var(elem_id), size_t unused_
     const char *name = ctx->name;
     size_t name_size = ctx->name_size;
 
-    if (DEBUG_CLASS_LEVEL_2)
-        knd_log("== attr \"%.*s\" (var: %p)", ref->attr->name_size, ref->attr->name, ref->attr_var);
-
     if (ref->attr->name_size != name_size) return knd_OK;
     if (memcmp(ref->attr->name, name, name_size)) return knd_OK;
 

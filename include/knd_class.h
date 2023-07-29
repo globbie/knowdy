@@ -112,7 +112,7 @@ struct kndClassVar
     size_t num_states;
 
     struct kndClass *parent;
-    struct kndClassInst *inst;
+    struct kndClassInst *parent_inst;
 
     struct kndClassVar *next;
 };

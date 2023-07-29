@@ -94,12 +94,12 @@ struct kndProcInst
     struct kndProcInstEntry *entry;
     struct kndProcEntry *blueprint;
 
-    struct kndClassInst *agent;
+    // struct kndClassInst *agent;
 
     struct kndProcVar *procvar;
 
-    size_t linear_pos;
-    size_t linear_len;
+    //size_t linear_pos;
+    //size_t linear_len;
 
     struct kndState * _Atomic states;
     size_t init_state;
@@ -283,6 +283,7 @@ static inline void knd_proc_var_declare_arg(struct kndProcVar *base, struct kndP
         base->args = base->tail = base_arg;
     base->num_args++;
 }
+
 
 static inline void knd_proc_declare_arg(struct kndProc *self, struct kndProcArg *arg)
 {
