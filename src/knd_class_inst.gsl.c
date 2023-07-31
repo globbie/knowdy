@@ -22,7 +22,7 @@ static int export_class_inst(void *obj, const char *unused_var(elem_id),
 
     struct kndOutput *out = task->out;
     struct kndClassInstEntry *inst = elem;
-    struct kndClassEntry *entry = inst->blueprint;
+    struct kndClassEntry *entry = inst->is_a;
     int err;
 
     if (indent_size) {

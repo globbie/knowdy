@@ -51,7 +51,7 @@ static int update_attr_var_indices(struct kndClassInstEntry *entry, struct kndRe
                         var->name_size, var->name, var->attr->is_a_set);
 
             /*if (var->attr->is_a_set) {
-                err = knd_index_attr_var_list(entry->blueprint, entry, var->attr, var, task);
+                err = knd_index_attr_var_list(entry->is_a, entry, var->attr, var, task);
                 KND_TASK_ERR("failed to index attr var list");
                 break;
                 }*/
@@ -63,11 +63,11 @@ static int update_attr_var_indices(struct kndClassInstEntry *entry, struct kndRe
     return knd_OK;
 }
 
-int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *blueprint,
+int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *is_a,
                                   struct kndStateRef *state_refs, struct kndTask *task)
 {
-    struct kndClass *c = blueprint->class;
-    struct kndClassEntry *class_entry = blueprint;
+    struct kndClass *c = is_a->class;
+    struct kndClassEntry *class_entry = is_a;
     struct kndStateRef *ref;
     struct kndClassInstEntry *entry;
     struct kndSharedDict *name_idx = NULL;
@@ -84,20 +84,20 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *bl
 
     if (DEBUG_INST_IDX_LEVEL_2)
         knd_log(".. repo \"%.*s\" to update inst indices of class \"%.*s\" (repo:%.*s)",
-                repo->name_size, repo->name, blueprint->name_size, blueprint->name,
-                blueprint->repo->name_size, blueprint->repo->name);
+                repo->name_size, repo->name, is_a->name_size, is_a->name,
+                is_a->repo->name_size, is_a->repo->name);
 
     /* user repo selected: activate copy-on-write */
     if (task->user_ctx) {
         class_entry = knd_shared_dict_get(repo->class_name_idx,
-                                          blueprint->name, blueprint->name_size);
-        if (blueprint->repo != repo) {
+                                          is_a->name, is_a->name_size);
+        if (is_a->repo != repo) {
             if (!class_entry) {
                 if (DEBUG_INST_IDX_LEVEL_3) {
                     knd_log("NB: copy-on-write of class entry \"%.*s\" activated in repo %.*s",
                             class_entry->name_size, c->name, repo->name_size, repo->name);
                 }
-                err = knd_class_entry_clone(blueprint, repo, &class_entry, task);
+                err = knd_class_entry_clone(is_a, repo, &class_entry, task);
                 KND_TASK_ERR("failed to clone class entry");
             }
         }
@@ -105,7 +105,7 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *bl
 
     if (!class_entry) {
         err = knd_FAIL;
-        KND_TASK_ERR("class entry not found: %.*s", blueprint->name_size, blueprint->name);
+        KND_TASK_ERR("class entry not found: %.*s", is_a->name_size, is_a->name);
     }
 
     do {
@@ -170,11 +170,11 @@ int knd_class_inst_index(struct kndClassInst *self, struct kndTask *task)
     struct kndAttr *attr;
     int err;
 
-    assert(self->entry->blueprint != NULL);
+    assert(self->entry->is_a != NULL);
 
-    err = knd_class_acquire(self->entry->blueprint, &c, task);
+    err = knd_class_acquire(self->entry->is_a, &c, task);
     KND_TASK_ERR("failed to acquire class \"%.*s\"",
-                 self->entry->blueprint->name_size, self->entry->blueprint->name);
+                 self->entry->is_a->name_size, self->entry->is_a->name);
 
     if (DEBUG_INST_IDX_LEVEL_2) {
         knd_log(".. indexing {class %.*s {inst %.*s}}",
@@ -193,7 +193,7 @@ int knd_class_inst_index(struct kndClassInst *self, struct kndTask *task)
         if (!attr->is_indexed) continue;
 
         /*if (attr->is_a_set) {
-            err = knd_index_attr_var_list(self->entry->blueprint, self->entry,
+            err = knd_index_attr_var_list(self->entry->is_a, self->entry,
                                           attr, var, task);
             KND_TASK_ERR("failed to index class inst attr var list %.*s",
                          attr->name_size, attr->name);

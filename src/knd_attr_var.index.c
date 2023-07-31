@@ -266,7 +266,7 @@ static int index_inst_ref(struct kndClassInstEntry *topic_inst,
 
         if (DEBUG_ATTR_VAR_IDX_LEVEL_3)
             knd_log(">> idx inst -> {class %.*s {inst %.*s}} -> {class %.*s}",
-                    topic_inst->blueprint->name_size, topic_inst->blueprint->name,
+                    topic_inst->is_a->name_size, topic_inst->is_a->name,
                     topic_inst->name_size, topic_inst->name,
                     spec->name_size, spec->name);
 
@@ -284,11 +284,11 @@ static int index_inst_ref(struct kndClassInstEntry *topic_inst,
             knd_log(">> idx inst --> inst {class %.*s {inst %.*s}}"
                     "\n  -- %.*s --> "
                     "\n  {class %.*s {inst %.*s}}",
-                    topic_inst->blueprint->name_size, topic_inst->blueprint->name,
+                    topic_inst->is_a->name_size, topic_inst->is_a->name,
                     topic_inst->name_size, topic_inst->name,
                     attr->name_size, attr->name,
-                    var->class_inst_entry->blueprint->name_size,
-                    var->class_inst_entry->blueprint->name,
+                    var->class_inst_entry->is_a->name_size,
+                    var->class_inst_entry->is_a->name,
                     spec_inst->name_size, spec_inst->name);
 
         err = inst_attr_hub_fetch(spec_inst, attr, &hub, task);
@@ -344,7 +344,7 @@ int knd_index_inst_attr_var(struct kndClassInstEntry *topic_inst, struct kndAttr
 
     if (DEBUG_ATTR_VAR_IDX_LEVEL_2)
         knd_log(".. {class %.*s {inst %.*s}} to index {%s %.*s}",
-                topic_inst->blueprint->name_size, topic_inst->blueprint->name,
+                topic_inst->is_a->name_size, topic_inst->is_a->name,
                 topic_inst->name_size, topic_inst->name,
                 knd_attr_names[attr->type], attr->name_size, attr->name);
 

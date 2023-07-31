@@ -32,14 +32,14 @@
 
 void knd_proc_inst_str(struct kndProcInst *self, size_t depth)
 {
-    struct kndProcArgVar *var;
+    struct kndProcArgVar *argvar;
 
     knd_log("%*s{proc-inst %.*s",
             depth * KND_OFFSET_SIZE, "", self->name_size, self->name);
 
     if (self->procvar) {
         knd_log("%*s    [arg", depth * KND_OFFSET_SIZE, "");
-        for (var = self->procvar->args; var; var = var->next) {
+        FOREACH (argvar, self->procvar->args) {
             //
         }
         knd_log("%*s    ]", depth * KND_OFFSET_SIZE, "");

@@ -354,7 +354,8 @@ int knd_proc_commit_state(struct kndProc *self,
                 self->entry->repo->name_size, self->entry->repo->name, phase);
     }
 
-    err = commit_state(self, NULL, phase, &state, task);                          RET_ERR();
+    err = commit_state(self, NULL, phase, &state, task);
+    RET_ERR();
 
     /*switch (phase) {
     case KND_CREATED:

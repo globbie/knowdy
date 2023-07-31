@@ -43,9 +43,9 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     struct kndTask *task = ctx->task;
     struct kndSharedDict *class_name_idx = repo->class_name_idx;
 
-    assert(self->entry->blueprint != NULL);
-    assert(self->entry->blueprint->class != NULL);
-    struct kndSharedDict *name_idx = self->entry->blueprint->class->inst_name_idx;
+    assert(self->entry->is_a != NULL);
+    assert(self->entry->is_a->class != NULL);
+    struct kndSharedDict *name_idx = self->entry->is_a->class->inst_name_idx;
     struct kndClass *c;
     int err;
 
@@ -69,14 +69,14 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
         }
         c = class_entry->class;
 
-        err = knd_is_base(self->entry->blueprint->class, c);
+        err = knd_is_base(self->entry->is_a->class, c);
         if (err) {
             KND_TASK_LOG("no inheritance from %.*s to %.*s",
-                         self->entry->blueprint->name_size, self->entry->blueprint->name,
+                         self->entry->is_a->name_size, self->entry->is_a->name,
                          c->name_size, c->name);
             return make_gsl_err_external(err);
         }
-        self->entry->blueprint = class_entry;
+        self->entry->is_a = class_entry;
         return make_gsl_err(gsl_OK);
     }
 
@@ -212,7 +212,7 @@ static int generate_uniq_inst_name(struct kndClassInst *inst, struct kndTask *ta
 
 static int register_by_name(struct kndClassInstEntry *entry, struct kndTask *task)
 {
-    struct kndSharedDict *name_idx = entry->blueprint->class->inst_name_idx;
+    struct kndSharedDict *name_idx = entry->is_a->class->inst_name_idx;
     struct kndSharedDictItem *item = NULL;
     struct kndMemPool *mempool = task->user_ctx->mempool;
     int err;
@@ -220,7 +220,7 @@ static int register_by_name(struct kndClassInstEntry *entry, struct kndTask *tas
     if (!name_idx) {
         err = knd_shared_dict_new(&name_idx, KND_MEDIUM_DICT_SIZE);
         KND_TASK_ERR("failed to create inst name idx");
-        entry->blueprint->class->inst_name_idx = name_idx;
+        entry->is_a->class->inst_name_idx = name_idx;
     }
 
     err = knd_shared_dict_set(name_idx, entry->name, entry->name_size, (void*)entry,
@@ -270,7 +270,7 @@ int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *
     }    
     err = knd_class_inst_entry_new(mempool, &inst_entry);
     KND_TASK_ERR("class inst  alloc failed");
-    inst_entry->blueprint = entry;
+    inst_entry->is_a = entry;
 
     err = knd_class_inst_new(mempool, &inst);
     KND_TASK_ERR("class inst alloc failed");

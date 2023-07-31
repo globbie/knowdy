@@ -689,6 +689,7 @@ int knd_unregister_class_inst(struct kndClass *self, struct kndClassInstEntry *e
     struct kndSharedSet *inst_idx = atomic_load_explicit(&self->inst_idx, memory_order_relaxed);
     struct kndClass *c;
     struct kndState *state;
+    struct kndClassRef *ref;
     int err;
 
     /* skip the root class */
@@ -716,9 +717,9 @@ int knd_unregister_class_inst(struct kndClass *self, struct kndClassInstEntry *e
                 self->num_inst_states);
     }
 
-    if (entry->blueprint != self->entry) return knd_OK;
+    if (entry->is_a != self->entry) return knd_OK;
 
-    for (struct kndClassRef *ref = self->ancestors; ref; ref = ref->next) {
+    FOREACH (ref, self->ancestors) {
         c = ref->entry->class;
         if (self->entry->repo != ref->entry->repo) continue;
 

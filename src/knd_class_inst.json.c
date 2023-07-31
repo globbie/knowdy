@@ -24,7 +24,7 @@ static int export_class_inst(void *obj, const char *unused_var(elem_id),
 
     struct kndOutput *out = task->out;
     struct kndClassInstEntry *inst = elem;
-    struct kndClassEntry *entry = inst->blueprint;
+    struct kndClassEntry *entry = inst->is_a;
     int err;
 
     if (task->batch_size) {
@@ -204,9 +204,9 @@ int knd_class_inst_export_JSON(struct kndClassInst *self, bool is_list_item,
     if (DEBUG_INST_LEVEL_2) {
         knd_log(".. JSON export class inst \"%.*s\" curr depth:%zu max depth:%zu is_list:%d",
                 self->name_size, self->name, task->depth, task->max_depth, is_list_item);
-        if (self->entry->blueprint) {
+        if (self->entry->is_a) {
             knd_log("   (class: %.*s)",
-                    self->entry->blueprint->name_size, self->entry->blueprint->name);
+                    self->entry->is_a->name_size, self->entry->is_a->name);
         }
     }
 
@@ -241,7 +241,7 @@ int knd_class_inst_export_JSON(struct kndClassInst *self, bool is_list_item,
     }
 
     OUT(",\"class\":\"", strlen(",\"class\":\""));
-    OUT(self->entry->blueprint->name, self->entry->blueprint->name_size);
+    OUT(self->entry->is_a->name, self->entry->is_a->name_size);
     OUT("\"", 1);
 
     if (self->class_var->attrs) {

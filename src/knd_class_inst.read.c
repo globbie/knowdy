@@ -48,10 +48,10 @@ int knd_class_inst_acquire(struct kndClassInstEntry *entry, struct kndClassInst 
 {
     struct kndClassInst *inst = NULL, *prev_inst;
 
-    assert(entry->blueprint != NULL);
-    assert(entry->blueprint->class != NULL);
+    assert(entry->is_a != NULL);
+    assert(entry->is_a->class != NULL);
 
-    struct kndClass *c = entry->blueprint->class;
+    struct kndClass *c = entry->is_a->class;
     // int num_readers;
     int err;
 
@@ -68,8 +68,8 @@ int knd_class_inst_acquire(struct kndClassInstEntry *entry, struct kndClassInst 
             return knd_OK;
         }
         if (!inst) {
-            // NB: passing blueprint class entry via task
-            task->payload = entry->blueprint;
+            // NB: passing is_a class entry via task
+            task->payload = entry->is_a;
             err = knd_shared_set_unmarshall_elem(c->inst_idx, entry->id, entry->id_size,
                                                  knd_class_inst_unmarshall, (void**)&inst, task);
             if (err) return err;

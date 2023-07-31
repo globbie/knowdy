@@ -46,14 +46,14 @@ int knd_class_inst_entry_unmarshall(const char *elem_id, size_t elem_id_size, co
     struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndClassInstEntry *entry = NULL;
     struct kndRepo *repo = task->repo;
-    struct kndClassEntry *blueprint = task->payload;
+    struct kndClassEntry *is_a = task->payload;
     struct kndCharSeq *seq;
     struct kndSharedDictItem *item;
     const char *c, *name = rec;
     size_t name_size;
     int err;
 
-    assert(blueprint != NULL);
+    assert(is_a != NULL);
 
     if (DEBUG_CLASS_INST_GSP_LEVEL_2)
         knd_log(">> GSP class inst entry \"%.*s\" => \"%.*s\"", elem_id_size, elem_id, rec_size, rec);
@@ -63,7 +63,7 @@ int knd_class_inst_entry_unmarshall(const char *elem_id, size_t elem_id_size, co
     entry->repo = task->repo;
     memcpy(entry->id, elem_id, elem_id_size);
     entry->id_size = elem_id_size;
-    entry->blueprint = blueprint;
+    entry->is_a = is_a;
 
     /* get name numid */
     c = name;
@@ -88,12 +88,12 @@ int knd_class_inst_entry_unmarshall(const char *elem_id, size_t elem_id_size, co
         }
     }
 
-    err = knd_shared_dict_set(blueprint->class->inst_name_idx, entry->name, entry->name_size,
+    err = knd_shared_dict_set(is_a->class->inst_name_idx, entry->name, entry->name_size,
                               (void*)entry, task->mempool, NULL, &item, false);
     KND_TASK_ERR("failed to register class inst name");
     entry->dict_item = item;
 
-    err = knd_shared_set_add(blueprint->class->inst_idx, entry->id, entry->id_size, (void*)entry);
+    err = knd_shared_set_add(is_a->class->inst_idx, entry->id, entry->id_size, (void*)entry);
     KND_TASK_ERR("failed to register class inst entry \"%.*s\"", entry->id_size, entry->id);
 
     if (DEBUG_CLASS_INST_GSP_LEVEL_3)

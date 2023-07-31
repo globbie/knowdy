@@ -1,6 +1,7 @@
 /build
 /cmake-build-debug
 /cmake-build-release
+/include/knd_version.h
 
 *.tmp
 *.bak

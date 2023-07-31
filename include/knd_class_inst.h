@@ -61,7 +61,7 @@ struct kndClassInstEntry
     struct kndCharSeq *seq;
 
     struct kndRepo *repo;
-    struct kndClassEntry *blueprint;
+    struct kndClassEntry *is_a;
 
     struct kndClassInst * _Atomic inst;
     atomic_size_t cache_cell_num;
@@ -76,6 +76,7 @@ struct kndClassInstEntry
 struct kndClassInst
 {
     knd_obj_type type;
+    struct kndClass *is_a;
 
     const char *name;
     size_t name_size;

@@ -75,7 +75,9 @@ struct kndProcInstEntry
     //char *block;
     //size_t block_size;
     //size_t offset;
+
     knd_state_phase phase;
+    struct kndProcEntry *is_a;
     struct kndProcInst *inst;
 
     struct kndRepo *repo;
@@ -92,7 +94,7 @@ struct kndProcInst
     size_t alias_size;
 
     struct kndProcInstEntry *entry;
-    struct kndProcEntry *blueprint;
+    struct kndProc *is_a;
 
     // struct kndClassInst *agent;
 
@@ -116,6 +118,7 @@ struct kndProcEntry
 
     const char *name;
     size_t name_size;
+
     struct kndProc *proc;
     struct kndRepo *repo;
 

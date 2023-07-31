@@ -36,17 +36,17 @@ static int index_class_inst(struct kndClass *c, struct kndClassDeclar *decl,
     if (DEBUG_TEXT_IDX_LEVEL_2) {
         knd_log(">> index class inst of \"%.*s\" (repo:%.*s)  => %.*s::%.*s par:%zu sent:%zu decl:%.*s",
                 c->name_size, c->name,  c->entry->repo->name_size, c->entry->repo->name,
-                inst->entry->blueprint->name_size, inst->entry->blueprint->name, inst->name_size, inst->name,
+                inst->entry->is_a->name_size, inst->entry->is_a->name, inst->name_size, inst->name,
                 par->numid, sent->numid, decl->entry->name_size, decl->entry->name);
     }
 
     FOREACH (ref, c->text_idxs) {
-        if (ref->entry == inst->entry->blueprint) break;
+        if (ref->entry == inst->entry->is_a) break;
     }
     if (!ref) {
         err = knd_class_ref_new(mempool, &ref);
         if (err) return err;
-        ref->entry = inst->entry->blueprint;
+        ref->entry = inst->entry->is_a;
         ref->attr = var->attr;
         ref->next = c->text_idxs;
         err = knd_class_idx_new(mempool, &ref->idx);
@@ -130,12 +130,12 @@ static int get_class_idx(struct kndClass *c, struct kndAttrVar *var, struct kndC
         }
         orig_idxs = atomic_load_explicit(&c->text_idxs, memory_order_relaxed);
         FOREACH (ref, orig_idxs) {
-            if (ref->entry == src->entry->blueprint) break;
+            if (ref->entry == src->entry->is_a) break;
         }
         if (!ref) {
             err = knd_class_ref_new(mempool, &ref);
             if (err) return err;
-            ref->entry = src->entry->blueprint;
+            ref->entry = src->entry->is_a;
             ref->attr = var->attr;
             ref->next = orig_idxs;
 
@@ -203,8 +203,8 @@ static int index_class_declar(struct kndClassDeclar *decl, struct kndSentence *s
 #if 0
     if (idx) {
         knd_log(">> \"%.*\" (repo:%.*s) to update local attr idx with \"%.*s\"",
-                inst->name_size, inst->name, inst->entry->blueprint->repo->name_size,
-                inst->entry->blueprint->repo->name,
+                inst->name_size, inst->name, inst->entry->is_a->repo->name_size,
+                inst->entry->is_a->repo->name,
                 decl->entry->name_size, decl->entry->name);
         err = knd_text_loc_new(mempool, &loc);
         if (err) return err;
@@ -265,18 +265,18 @@ static int index_proc_inst(struct kndProcEntry *entry, struct kndProcDeclar *dec
     if (DEBUG_TEXT_IDX_LEVEL_3) {
         knd_log(">> index proc inst of \"%.*s\" (repo:%.*s)  => %.*s::%.*s par:%zu sent:%zu decl:%.*s",
                 entry->name_size, entry->name,  entry->repo->name_size, entry->repo->name,
-                inst->entry->blueprint->name_size, inst->entry->blueprint->name, inst->name_size, inst->name,
+                inst->entry->is_a->name_size, inst->entry->is_a->name, inst->name_size, inst->name,
                 par->numid, sent->numid, decl->entry->name_size, decl->entry->name);
     }
 
     FOREACH (ref, entry->text_idxs) {
-        if (ref->entry == inst->entry->blueprint) break;
+        if (ref->entry == inst->entry->is_a) break;
     }
 
     if (!ref) {
         err = knd_class_ref_new(mempool, &ref);
         if (err) return err;
-        ref->entry = inst->entry->blueprint;
+        ref->entry = inst->entry->is_a;
         ref->attr = var->attr;
         ref->next = entry->text_idxs;
         entry->text_idxs = ref;
@@ -321,8 +321,8 @@ static int index_proc_declar(struct kndProcDeclar *decl, struct kndSentence *sen
     // TODO
     if (idx) {
         knd_log(">> \"%.*\" (repo:%.*s) to update local attr idx with \"%.*s\"",
-                inst->name_size, inst->name, inst->entry->blueprint->repo->name_size,
-                inst->entry->blueprint->repo->name,
+                inst->name_size, inst->name, inst->entry->is_a->repo->name_size,
+                inst->entry->is_a->repo->name,
                 decl->entry->name_size, decl->entry->name);
         err = knd_text_loc_new(mempool, &loc);
         if (err) return err;
@@ -391,7 +391,7 @@ int knd_text_index(struct kndText *self, struct kndRepo *repo, struct kndTask *t
 
             if (DEBUG_TEXT_IDX_LEVEL_3)
                 knd_log(">> repo \"%.*s\" to add a text idx rec: %.*s/%.*s/%.*s/P:%zu/S:%zu  \"%.*s\"",
-                        repo->name_size, repo->name, inst->entry->blueprint->name_size, inst->entry->blueprint->name,
+                        repo->name_size, repo->name, inst->entry->is_a->name_size, inst->entry->is_a->name,
                         inst->name_size, inst->name,
                         var->name_size, var->name, par->numid, sent->numid, sent->seq_size, sent->seq);
             

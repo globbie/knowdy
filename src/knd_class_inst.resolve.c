@@ -27,14 +27,14 @@
 
 int knd_class_inst_resolve(struct kndClassInst *self, struct kndTask *task)
 {
-    assert(self->entry->blueprint != NULL);
+    assert(self->entry->is_a != NULL);
     struct kndClass *c;
     int err;
     self->resolving_in_progress = true;
 
-    err = knd_class_acquire(self->entry->blueprint, &c, task);
+    err = knd_class_acquire(self->entry->is_a, &c, task);
     KND_TASK_ERR("failed to acquire class \"%.*s\"",
-                 self->entry->blueprint->name_size, self->entry->blueprint->name);
+                 self->entry->is_a->name_size, self->entry->is_a->name);
 
     if (DEBUG_INST_RESOLVE_LEVEL_3) {
         knd_log(".. resolving {class %.*s {inst %.*s}}",

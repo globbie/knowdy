@@ -102,7 +102,7 @@ static gsl_err_t import_arg_var(void *obj, const char *name, size_t name_size, c
     if (DEBUG_PROC_INST_IMPORT_LEVEL_2)
         knd_log(".. parsing arg import REC: %.*s", 128, rec);
 
-    err = knd_proc_get_arg(self->blueprint->proc, name, name_size, &ref);
+    err = knd_proc_get_arg(self->is_a, name, name_size, &ref);
     if (err) {
         KND_TASK_LOG("\"%.*s\" proc arg not approved", name_size, name);
         return *total_size = 0, make_gsl_err_external(err);
@@ -236,7 +236,8 @@ int knd_import_proc_inst(struct kndProcEntry *self, const char *rec, size_t *tot
     entry->repo = repo;
     inst->entry = entry;
     entry->inst = inst;
-    inst->blueprint = self;
+
+    inst->is_a = self->proc;
 
     parser_err = import_proc_inst(entry, rec, total_size, task);
     if (parser_err.code) return parser_err.code;
