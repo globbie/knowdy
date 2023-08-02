@@ -145,8 +145,8 @@ int knd_proposition_new(struct kndMemPool *mempool, struct kndProposition **resu
 {
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndProposition));
-    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
+    assert(mempool->small_page_size >= sizeof(struct kndProposition));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndProposition));
     *result = page;

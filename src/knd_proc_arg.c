@@ -74,9 +74,7 @@ static int export_gloss_JSON(struct kndText *tr,
     return knd_OK;
 }
 
-static int export_JSON(struct kndProcArg *self,
-                       struct kndTask *task,
-                       struct kndOutput *out)
+static int export_JSON(struct kndProcArg *self, struct kndTask *task, struct kndOutput *out)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size;
@@ -211,17 +209,15 @@ static int export_SVG(struct kndProcArg *self,
     return knd_OK;
 }
 
-
-int knd_proc_arg_export(struct kndProcArg *self,
-                        knd_format format,
-                        struct kndTask *task,
-                        struct kndOutput *out)
+int knd_proc_arg_export(struct kndProcArg *self, knd_format format,
+                        struct kndTask *task, struct kndOutput *out)
 {
     int err;
 
     switch (format) {
     case KND_FORMAT_JSON:
-        err = export_JSON(self, task, out);                                             RET_ERR();
+        err = export_JSON(self, task, out);
+        RET_ERR();
         break;
     case KND_FORMAT_GSP:
         err = export_GSP(self, out);                                              RET_ERR();

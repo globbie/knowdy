@@ -171,7 +171,8 @@ gsl_err_t knd_proc_inst_read_state(struct kndProcInst *self, const char *rec,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static gsl_err_t import_proc_inst(struct kndProcInstEntry *entry, const char *rec, size_t *total_size, struct kndTask *task)
+static gsl_err_t import_proc_inst(struct kndProcInstEntry *entry, const char *rec, size_t *total_size,
+                                  struct kndTask *task)
 {
     struct kndRepo *repo = entry->repo;
 

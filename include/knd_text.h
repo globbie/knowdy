@@ -108,7 +108,9 @@ struct kndPropositionSpec
 struct kndProposition
 {
     knd_proposition_type type;
-    size_t prop_id;
+    char id[KND_ID_SIZE];
+    size_t id_size;
+    size_t numid;
 
     struct kndProcInst *inst;
 
@@ -195,11 +197,15 @@ struct kndClause
 struct kndSentence
 {
     size_t numid;
+
     const char *lang;
     size_t lang_size;
 
     const char *seq;
     size_t seq_size;
+
+    size_t seq_start_pos;
+    size_t seq_end_pos;
 
     struct kndClause    *clause;
     struct kndStatement *stm;

@@ -22,72 +22,132 @@
 #define DEBUG_TEXT_JSON_LEVEL_3 0
 #define DEBUG_TEXT_JSON_LEVEL_TMP 1
 
+
+static int export_propositions(struct kndProposition *props, struct kndTask *task)
+{
+    struct kndOutput *out = task->out;
+    struct kndProcInst *inst;
+    struct kndProposition *prop;
+    size_t count = 0;
+    int err;
+
+    OUT("[", 1);
+    FOREACH (prop, props) {
+        inst = prop->inst;
+        assert (inst != NULL);
+
+        if (count)
+            OUT(",", 1);
+
+        OUT("{", 1);
+        OUT("\"id\":", strlen("\"id\":"));
+        OUT("\"", 1);
+        OUTF(prop->id, prop->id_size);
+        OUT("\"", 1);
+
+        OUT(",", 1);
+        OUT("\"proc\":\"", strlen("\"proc\":\""));
+        OUT(inst->is_a->name, inst->is_a->name_size);
+        OUT("\"", 1);
+
+        OUT(",", 1);
+        OUT("\"inst\":", strlen("\"inst\":"));
+        err = knd_proc_inst_export_JSON(inst, false, KND_SELECTED, task, 0);
+        KND_TASK_ERR("failed to export proc inst JSON");
+
+        OUT("}", 1);
+    }
+    OUT("]", 1);
+    return knd_OK;
+}
+
+static int export_declar_inst(struct kndClassInstEntry *entry, struct kndTask *task)
+{
+    struct kndOutput *out = task->out;
+
+    OUT("{\"id\":\"", strlen("{\"id\":\""));
+    OUT(entry->id, entry->id_size);
+    OUT("\"", 1);
+    OUT("}", 1);
+
+    return knd_OK;
+}
+
 static int export_class_declars(struct kndClassDeclar *decls, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndClassInstEntry *entry;
     struct kndClassDeclar *decl;
-    int count = 0;
+    int decl_count = 0;
+    int inst_count = 0;
     int err;
 
+    OUT("[", 1);
     FOREACH (decl, decls) {
-        if (count) {
+        if (decl_count) {
             OUT(",", 1);
         }
-        OUT("{\"name\":\"", strlen("{\"name\":\""));
+        OUT("{\"class\":\"", strlen("{\"class\":\""));
         OUT(decl->entry->name, decl->entry->name_size);
         OUT("\"", 1);
 
-        FOREACH (entry, decl->insts) {
-            err = knd_class_inst_export_JSON(entry->inst, false, KND_CREATED, task, 0);
-            KND_TASK_ERR("failed to export class inst JSON");
+        OUT(",\"num_insts\":", strlen(",\"num_insts\":"));
+        OUTF("%zu", decl->num_insts);
+
+        inst_count = 0;
+
+        if (decl->num_insts) {
+            OUT(",\"insts\":[", strlen(",\"insts\":["));        
+            FOREACH (entry, decl->insts) {
+                if (inst_count) {
+                    OUT(",", 1);
+                }
+                err = export_declar_inst(entry, task);
+                KND_TASK_ERR("failed to export class inst declar JSON");
+                inst_count++;
+            }
+            OUT("]", 1);
         }
+
         OUT("}", 1);
-        count++;
+        decl_count++;
     }
+    OUT("]", 1);
     return knd_OK;
 }
-
-#if 0
-static int export_proc_declars(struct kndProcDeclar *decls, struct kndTask *task)
-{
-    struct kndOutput *out = task->out;
-    struct kndProcInstEntry *entry;
-    struct kndProcDeclar *decl;
-    int err;
-
-    FOREACH (decl, decls) {
-        err = out->write(out, "{proc ", strlen("{proc "));                        RET_ERR();
-        err = out->write(out, decl->entry->name, decl->entry->name_size);         RET_ERR();
-
-        FOREACH (entry, decl->insts) {
-            err = knd_proc_inst_export_JSON(entry->inst, false, KND_CREATED, task, 0);    RET_ERR();
-        }
-        err = out->writec(out, '}');                                              RET_ERR();
-    }
-    return knd_OK;
-}
-#endif
 
 static int stm_export_JSON(struct kndStatement *stm, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
+    size_t count = 0;
     int err;
 
     OUT("{", 1);
     if (stm->schema_name_size) {
         OUT(stm->schema_name, stm->schema_name_size);
+        count++;
     }
 
     if (stm->declars) {
-        OUT("\"declars\":[", strlen("\"declars\":["));
+        if (count)
+            OUT(",", 1);
+        OUT("\"declars\":", strlen("\"declars\":"));
         err = export_class_declars(stm->declars, task);
         KND_TASK_ERR("failed to export class declar JSON");
-        OUT("]", 1);
+        count++;
+    }
+
+    if (stm->num_propositions) {
+        if (count)
+            OUT(",", 1);
+
+        OUT("\"propositions\":", strlen("\"propositions\":"));
+        err = export_propositions(stm->propositions, task);
+        KND_TASK_ERR("failed to export propositions JSON");
+        count++;
     }
 
     OUT("}", 1);
-
     return knd_OK;
 }
 
@@ -185,9 +245,12 @@ static int sent_export_JSON(struct kndSentence *sent, struct kndTask *task)
     struct kndOutput *out = task->out;
     int err;
     OUT("{", 1);
-    OUT("\"txt\":\"", strlen("\"txt\":\""));
-    OUT(sent->seq, sent->seq_size);
-    OUT("\"", 1);
+    OUT("\"seq_start_pos\":", strlen("\"seq_start_pos\":"));
+    OUTF("%zu", sent->seq_start_pos);
+
+    OUT(",", 1);
+    OUT("\"seq_end_pos\":", strlen("\"seq_end_pos\":"));
+    OUTF("%zu", sent->seq_end_pos);
 
     if (sent->stm) {
         OUT(",\"stm\":", strlen(",\"stm\":"));
@@ -245,6 +308,10 @@ int knd_text_export_JSON(struct kndText *self, struct kndTask *task, size_t unus
         OUT("\"pars\":[", strlen("\"pars\":["));
         FOREACH (par, self->pars) {
             OUT("{", 1);
+            OUT("\"id\":", strlen("\"id\":"));
+            OUT("\"", 1);
+            OUTF("%zu", par->numid);
+            OUT("\",", 2);
             OUT("\"sents\":[", strlen("\"sents\":["));
             FOREACH (sent, par->sents) {
                 err = sent_export_JSON(sent, task);
@@ -393,9 +460,6 @@ int knd_text_build_JSON(const char *rec, size_t rec_size, struct kndTask *task)
 
     err = knd_text_export(text, KND_FORMAT_JSON, task, 0);
     KND_TASK_ERR("failed to export text JSON");
-
-    if (DEBUG_TEXT_JSON_LEVEL_2)
-         knd_log("== JSON: %.*s", task->out->buf_size, task->out->buf);
 
     task->output = task->out->buf;
     task->output_size = task->out->buf_size;

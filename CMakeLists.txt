@@ -96,8 +96,9 @@ set(SOURCES src/knd_attr.c src/knd_attr.import.c
         src/knd_proc.c src/knd_proc.import.c  src/knd_proc.resolve.c src/knd_proc.select.c 
         src/knd_proc.gsl.c src/knd_proc.json.c
         src/knd_proc_inst.c src/knd_proc_inst.import.c
+        src/knd_proc_inst.gsl.c src/knd_proc_inst.json.c
         src/knd_proc.svg.c src/knd_proc_arg.c
-        src/knd_proc_arg.gsl.c src/knd_proc_call.c
+        src/knd_proc_arg.gsl.c src/knd_proc_arg.json.c src/knd_proc_call.c
         src/knd_repo.c src/knd_repo.gsl.c src/knd_repo.gsp.c
         src/knd_repo.commit.c src/knd_repo.open.c
         src/knd_set.c src/knd_shared_set.c src/knd_shared_set.gsp.c src/knd_set_idx.c

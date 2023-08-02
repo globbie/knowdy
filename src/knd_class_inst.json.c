@@ -244,7 +244,7 @@ int knd_class_inst_export_JSON(struct kndClassInst *self, bool is_list_item,
     OUT(self->entry->is_a->name, self->entry->is_a->name_size);
     OUT("\"", 1);
 
-    if (self->class_var->attrs) {
+    if (self->class_var && self->class_var->attrs) {
         curr_depth = task->ctx->depth;
         err = knd_attr_vars_export_JSON(self->class_var->attrs, task, false, depth + 1);
         KND_TASK_ERR("failed to export JSON of class inst attr vars");

@@ -96,12 +96,10 @@ struct kndProcInst
     struct kndProcInstEntry *entry;
     struct kndProc *is_a;
 
-    // struct kndClassInst *agent;
-
     struct kndProcVar *procvar;
 
-    //size_t linear_pos;
-    //size_t linear_len;
+    // proc_phase_t phase;
+    //proc_timeline_t timeline;
 
     struct kndState * _Atomic states;
     size_t init_state;

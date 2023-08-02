@@ -305,7 +305,6 @@ static const char *const knd_format_names[] = {
 #define KND_SEARCH_BUF_SIZE 1024 * 100 * sizeof(char)
 #define KND_IDX_BUF_SIZE 10 * 1024 * 1024 * sizeof(char)
 
-
 #define KND_LARGE_MEMPAGE_SIZE 4096 * 4
 #define KND_NUM_LARGE_MEMPAGES 1000
 
