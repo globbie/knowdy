@@ -213,7 +213,8 @@ int knd_class_inst_export_GSL(struct kndClassInst *self, bool is_list_item,
         err = out->writef(out, "%zu", self->linear_len);                   RET_ERR();
         err = out->writec(out, '}');                                 RET_ERR();
     }
-    if (self->class_var->attrs) {
+
+    if (self->class_var && self->class_var->attrs) {
         curr_depth = task->ctx->depth;
         err = knd_attr_vars_export_GSL(self->class_var->attrs,
                                        task, false, depth + 1);  RET_ERR();
