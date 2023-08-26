@@ -481,7 +481,7 @@ int knd_is_base(struct kndClass *self, struct kndClass *child)
     FOREACH (ref, child->ancestors) {
          if (ref->entry == self->entry)
              return knd_OK;
-         
+
          if (self->entry->base)
              if (self->entry->base->class->entry == ref->entry)
                  return knd_OK;
@@ -490,6 +490,20 @@ int knd_is_base(struct kndClass *self, struct kndClass *child)
         knd_log("-- no inheritance from  \"%.*s\" to \"%.*s\" :(",
                 self->entry->name_size, self->entry->name,
                 child->name_size, child->name);
+    return knd_NO_MATCH;
+}
+
+int knd_is_equal_or_subclass(struct kndClass *c, struct kndClass *base)
+{
+    struct kndClassRef *ref;
+    struct kndClassEntry *entry = base->entry;
+
+    if (c == base) return knd_OK;
+
+    FOREACH (ref, c->ancestors) {
+         if (ref->entry == entry)
+             return knd_OK;
+    }
     return knd_NO_MATCH;
 }
 
