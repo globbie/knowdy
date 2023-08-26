@@ -153,7 +153,7 @@ static int link_ancestor(struct kndClass *self, struct kndClassEntry *base_entry
     base = base_entry->class;
 
     /* check doublets */
-    for (ref = self->ancestors; ref; ref = ref->next) {
+    FOREACH (ref, self->ancestors) {
         if (ref->class == base) return knd_OK;
     }
 
@@ -211,7 +211,7 @@ static int link_baseclass(struct kndClass *self, struct kndClass *base, struct k
         } */
 
     /* copy the ancestors */
-    for (baseref = base->ancestors; baseref; baseref = baseref->next) {
+    FOREACH (baseref, base->ancestors) {
         if (baseref->entry->class && baseref->entry->class->state_top) continue;
         err = link_ancestor(self, baseref->entry, task);                          RET_ERR();
     }
@@ -242,7 +242,7 @@ static int resolve_baseclasses(struct kndClass *self, struct kndTask *task)
     if (DEBUG_CLASS_RESOLVE_LEVEL_1)
         knd_log(".. class \"%.*s\" to resolve its bases", self->name_size, self->name);
 
-    for (cvar = self->baseclass_vars; cvar; cvar = cvar->next) {
+    FOREACH (cvar, self->baseclass_vars) {
         if (cvar->entry->class == self) {
             /* TODO */
             if (DEBUG_CLASS_RESOLVE_LEVEL_2)
@@ -395,7 +395,8 @@ static int resolve_base(struct kndClass *self, struct kndTask *task)
 }
 
 int knd_resolve_class_ref(struct kndClass *self, const char *name, size_t name_size,
-                          struct kndClass *base, struct kndClass **result, struct kndTask *task)
+                          struct kndClass *base, struct kndClass **result,
+                          struct kndTask *task)
 {
     struct kndClassEntry *entry;
     struct kndClass *c;
@@ -449,7 +450,8 @@ int knd_resolve_class_ref(struct kndClass *self, const char *name, size_t name_s
                  self->entry->repo->name_size, self->entry->repo->name);
 
     if (!c->base_is_resolved) {
-        err = resolve_base(c, task);                                    RET_ERR();
+        err = resolve_base(c, task);
+        RET_ERR();
     }
 
     if (base) {
