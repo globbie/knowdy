@@ -22,7 +22,6 @@
 #define DEBUG_TEXT_JSON_LEVEL_3 0
 #define DEBUG_TEXT_JSON_LEVEL_TMP 1
 
-
 static int export_propositions(struct kndProposition *props, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
@@ -42,7 +41,7 @@ static int export_propositions(struct kndProposition *props, struct kndTask *tas
         OUT("{", 1);
         OUT("\"id\":", strlen("\"id\":"));
         OUT("\"", 1);
-        OUTF(prop->id, prop->id_size);
+        OUT(prop->id, prop->id_size);
         OUT("\"", 1);
 
         OUT(",", 1);
@@ -245,22 +244,21 @@ static int sent_export_JSON(struct kndSentence *sent, struct kndTask *task)
     struct kndOutput *out = task->out;
     int err;
     OUT("{", 1);
-    OUT("\"seq_start_pos\":", strlen("\"seq_start_pos\":"));
-    OUTF("%zu", sent->seq_start_pos);
-
-    OUT(",", 1);
-    OUT("\"seq_end_pos\":", strlen("\"seq_end_pos\":"));
-    OUTF("%zu", sent->seq_end_pos);
+    OUT("\"id\":", strlen("\"id\":"));
+    OUT("\"", 1);
+    OUTF("%zu", sent->numid);
+    OUT("\"", 1);
 
     if (sent->stm) {
         OUT(",\"stm\":", strlen(",\"stm\":"));
-        err = stm_export_JSON(sent->stm, task);           RET_ERR();
+        err = stm_export_JSON(sent->stm, task);
+        KND_TASK_ERR("failed to export statement representation in JSON");
     }
 
     if (sent->clause) {
         OUT(",\"clause\":", strlen(",\"clause\":"));
         err = synode_export_JSON(sent->clause->subj, task);
-        KND_TASK_ERR("failed to export clause synode");
+        KND_TASK_ERR("failed to export clause synode in JSON");
     }
 
     OUT("}", 1);
@@ -361,7 +359,7 @@ static int export_class_idx_JSON(struct kndClassIdx *self, struct kndTask *task)
         OUT("[loc ", strlen("[loc "));
         FOREACH (loc, self->locs) {
             OUT("{", 1);
-            err = out->writef(out, "%zu:%zu", loc->par_id, loc->sent_id);         RET_ERR();
+            OUTF("%zu:%zu", loc->par_id, loc->sent_id);
             OUT("}", 1);
         }
         OUT("]", 1);
@@ -454,7 +452,8 @@ int knd_text_build_JSON(const char *rec, size_t rec_size, struct kndTask *task)
 
     parser_err = knd_text_import(text, rec, &rec_size, task);
     if (parser_err.code) {
-        KND_TASK_LOG("text parsing failed: %d %.*s", parser_err.code, task->log->buf_size, task->log->buf);
+        KND_TASK_LOG("text parsing failed: %d %.*s", parser_err.code,
+                     task->log->buf_size, task->log->buf);
         return knd_FAIL;
     }
 

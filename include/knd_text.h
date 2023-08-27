@@ -204,8 +204,7 @@ struct kndSentence
     const char *seq;
     size_t seq_size;
 
-    size_t seq_start_pos;
-    size_t seq_end_pos;
+    struct kndSyNode *synode;
 
     struct kndClause    *clause;
     struct kndStatement *stm;
