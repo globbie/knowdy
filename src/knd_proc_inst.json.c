@@ -22,13 +22,14 @@
 #include "knd_repo.h"
 #include "knd_output.h"
 
-int knd_proc_inst_export_JSON(struct kndProcInst *self, bool is_list_item, knd_state_phase phase,
+int knd_proc_inst_export_JSON(struct kndProcInst *self, bool unused_var(is_list_item),
+                              knd_state_phase unused_var(phase),
                               struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     struct kndProcArgVar *var;
     size_t arg_count = 0;
-    int err;
+    // int err;
 
     OUT("{", 1);
     OUT("\"id\":", strlen("\"id\":"));

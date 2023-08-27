@@ -59,7 +59,7 @@ static int export_inverse_rels(struct kndClassInst *self, struct kndTask *task, 
     struct kndAttrHub *attr_hub;
     struct kndAttr *attr;
     struct kndOutput *out = task->out;
-    bool in_list = false;
+    // bool in_list = false;
     size_t curr_depth = 0;
     size_t indent_size = task->ctx->format_indent;
     int err;
@@ -140,7 +140,7 @@ static int export_inverse_rels(struct kndClassInst *self, struct kndTask *task, 
             RET_ERR();
         }
         OUT("}", 1);
-        in_list = true;
+        // in_list = true;
     }
     if (indent_size) {
         OUT("\n", 1);
