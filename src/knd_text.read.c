@@ -215,11 +215,17 @@ static gsl_err_t set_clause_class(void *obj, const char *val, size_t val_size)
 
 static gsl_err_t set_sent_seq(void *obj, const char *val, size_t val_size)    
 {
-    struct kndSentence *self = obj;
-
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    struct kndSentence *sent = ctx->sent;
+    int err;
     if (!val_size) return make_gsl_err(gsl_FORMAT);
-    self->seq_size = val_size;
-    self->seq = val;
+
+    err = knd_charseq_decode(task->repo, val, val_size, &sent->seq, task);
+    if (err) {
+        KND_TASK_LOG("failed to decode a sent charseq %.*s", val_size, val);
+        return make_gsl_err_external(err);
+    }
     return make_gsl_err(gsl_OK);
 }
 
@@ -588,17 +594,17 @@ static gsl_err_t parse_sentence(void *obj, const char *rec, size_t *total_size)
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_sent_seq,
-          .obj = sent
+          .obj = ctx
         },
         { .name = "clause",
           .name_size = strlen("clause"),
           .parse = parse_clause,
-          .obj = obj
+          .obj = ctx
         },
         { .name = "stm",
           .name_size = strlen("stm"),
           .parse = parse_statement,
-          .obj = obj
+          .obj = ctx
         }
     };
     

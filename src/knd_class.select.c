@@ -165,6 +165,7 @@ static int facetize_class(void *obj,
 
     /* facetize by base class */
     FOREACH (ref, entry->class->ancestors) {
+
         /* find immediate child */
         FOREACH (child_ref, base->children) {
 
@@ -198,25 +199,6 @@ static int create_subsets(struct kndSet *set, struct kndClass *c, struct kndTask
 
     return knd_OK;
 }
-
-#if 0
-static void free_facet(struct kndMemPool *mempool, struct kndClassFacet *parent_facet)
-{
-    struct kndClassFacet *facet, *facet_next = NULL;
-    struct kndClassRef *ref, *ref_next;
-
-    for (facet = parent_facet->children; facet; facet = facet_next) {
-        facet_next = facet->next;
-        free_facet(mempool, facet);
-    }
-
-    for (ref = parent_facet->elems; ref; ref = ref_next) {
-        ref_next = ref->next;
-        knd_mempool_free(mempool, KND_MEMPAGE_TINY, (void*)ref);
-    }
-    knd_mempool_free(mempool, KND_MEMPAGE_TINY, (void*)parent_facet);
-}
-#endif
 
 static gsl_err_t
 parse_get_class_by_numid(void *obj, const char *rec, size_t *total_size)
@@ -376,11 +358,11 @@ parse_select_by_baseclass(void *obj, const char *rec, size_t *total_size)
     if (task->batch_from) {
         task->start_from = task->batch_max * (task->batch_from - 1);
     }
-
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t present_class_state(void *obj, const char *unused_var(name), size_t unused_var(name_size))
+static gsl_err_t present_class_state(void *obj, const char *unused_var(name),
+                                     size_t unused_var(name_size))
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
@@ -400,7 +382,6 @@ static gsl_err_t present_class_state(void *obj, const char *unused_var(name), si
         knd_log("-- class state export failed");
         return make_gsl_err_external(err);
     }
-
     return make_gsl_err(gsl_OK);
 }
 
@@ -1029,62 +1010,4 @@ gsl_err_t knd_class_select(struct kndRepo *repo, const char *rec, size_t *total_
         break;
     }
     return make_gsl_err(gsl_OK);
-}
-
-int knd_class_match_query(struct kndClass *self, struct kndAttrVar *query)
-{
-    struct kndSet *attr_idx = self->attr_idx;
-    knd_logic_t logic = query->logic;
-    struct kndAttrRef *attr_ref;
-    struct kndAttrVar *attr_var;
-    struct kndAttr *attr;
-    void *result;
-    int err;
-
-    FOREACH (attr_var, query->children) {
-        attr = attr_var->attr;
-
-        err = attr_idx->get(attr_idx, attr->id, attr->id_size, &result);
-        if (err) {
-            knd_log("-- attr \"%.*s\" not present in %.*s?",
-                    self->name_size, self->name);
-            return err;
-        }
-        attr_ref = result;
-
-        if (!attr_ref->attr_var) {
-            return knd_OK;
-        }
-
-        /* _null value expected */
-        if (!attr_var->val || !attr_var->numval) {
-            return knd_NO_MATCH;
-        }
-        err = knd_attr_var_match(attr_ref->attr_var, attr_var);
-        if (err == knd_NO_MATCH) {
-            switch (logic) {
-                case KND_LOGIC_AND:
-                    return knd_NO_MATCH;
-                default:
-                    break;
-            }
-            continue;
-        }
-        /* got a match */
-        switch (logic) {
-            case KND_LOGIC_OR:
-                return knd_OK;
-            default:
-                break;
-        }
-    }
-
-    switch (logic) {
-        case KND_LOGIC_OR:
-            return knd_NO_MATCH;
-        default:
-            break;
-    }
-
-    return knd_OK;
 }

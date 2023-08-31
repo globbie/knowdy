@@ -125,7 +125,7 @@ static int sent_export_GSP(struct kndSentence *sent, struct kndTask *task)
     struct kndOutput *out = task->out;
     int err;
     err = out->writec(out, '{');                        RET_ERR();
-    err = out->write(out, sent->seq, sent->seq_size);   RET_ERR();
+    err = out->write(out, sent->seq->val, sent->seq->val_size);   RET_ERR();
 
     if (sent->stm) {
         err = stm_export_GSP(sent->stm, task);           RET_ERR();

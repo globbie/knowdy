@@ -129,6 +129,18 @@ int knd_text_loc_new(struct kndMemPool *mempool, struct kndTextLoc **result)
     return knd_OK;
 }
 
+int knd_text_repr_new(struct kndMemPool *mempool, struct kndTextRepr **result)
+{
+    void *page;
+    int err;
+    assert(mempool->tiny_page_size >= sizeof(struct kndTextRepr));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
+    if (err) return err;
+    memset(page, 0, sizeof(struct kndTextRepr));
+    *result = page;
+    return knd_OK;
+}
+
 int knd_class_declar_new(struct kndMemPool *mempool, struct kndClassDeclar **result)
 {
     void *page;
@@ -266,9 +278,11 @@ void knd_text_str(struct kndText *self, size_t depth)
                 knd_log("%*s#%zu:", (depth + 1) * KND_OFFSET_SIZE, "", par->numid);
 
                 FOREACH (sent, par->sents) {
-                    knd_log("%*s#%zu: \"%.*s\"",
-                            (depth + 2) * KND_OFFSET_SIZE, "",
-                            sent->numid, sent->seq_size, sent->seq);
+                    if (sent->seq) {
+                        knd_log("%*s#%zu: \"%.*s\"",
+                                (depth + 2) * KND_OFFSET_SIZE, "",
+                                sent->numid, sent->seq->val_size, sent->seq->val);
+                    }
                     knd_sentence_str(sent, depth + 2);
                 }
             }

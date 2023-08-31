@@ -101,6 +101,9 @@ struct kndProcInst
     // proc_phase_t phase;
     //proc_timeline_t timeline;
 
+    /* natural language expression if available */
+    struct kndTextRepr *repr;
+
     struct kndState * _Atomic states;
     size_t init_state;
     size_t num_states;

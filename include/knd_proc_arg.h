@@ -19,10 +19,10 @@
  */
 #pragma once
 
-
 #include "knd_dict.h"
 #include "knd_utils.h"
 #include "knd_config.h"
+#include "knd_text.h"
 #include "knd_output.h"
 
 struct kndClass;
@@ -58,6 +58,8 @@ struct kndProcArgVar
 
     struct kndClassEntry *template;
     struct kndClassInst  *inst;
+
+    struct kndTextRepr   *repr;
 
     struct kndProcArgVar *next;
 };

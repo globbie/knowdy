@@ -393,7 +393,8 @@ int knd_text_index(struct kndText *self, struct kndRepo *repo, struct kndTask *t
                 knd_log(">> repo \"%.*s\" to add a text idx rec: %.*s/%.*s/%.*s/P:%zu/S:%zu  \"%.*s\"",
                         repo->name_size, repo->name, inst->entry->is_a->name_size, inst->entry->is_a->name,
                         inst->name_size, inst->name,
-                        var->name_size, var->name, par->numid, sent->numid, sent->seq_size, sent->seq);
+                        var->name_size, var->name, par->numid, sent->numid,
+                        sent->seq->val_size, sent->seq->val);
             
             FOREACH (decl, sent->stm->declars) {
                 err = index_class_declar(decl, sent, par, var, inst, repo, task);

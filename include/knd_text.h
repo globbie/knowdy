@@ -179,6 +179,22 @@ struct kndSyNode
     struct kndSyNode *next;
 };
 
+struct kndTextRepr
+{
+    const char *lang;
+    size_t lang_size;
+    struct kndClass *cs;
+
+    struct kndCharSeq *seq;
+
+    struct kndSyNode *synode;
+
+    struct kndTextRepr *trs;
+    size_t num_trs;
+
+    struct kndTextRepr *next;
+};
+
 // finite verb clause vs semantic proposition
 struct kndClause
 {
@@ -201,8 +217,7 @@ struct kndSentence
     const char *lang;
     size_t lang_size;
 
-    const char *seq;
-    size_t seq_size;
+    struct kndCharSeq *seq;
 
     struct kndSyNode *synode;
 
@@ -299,6 +314,7 @@ int knd_sentence_new(struct kndMemPool *mempool, struct kndSentence **result);
 int knd_clause_new(struct kndMemPool *mempool, struct kndClause **result);
 int knd_statement_new(struct kndMemPool *mempool, struct kndStatement **result);
 int knd_proposition_new(struct kndMemPool *mempool, struct kndProposition **result);
+int knd_text_repr_new(struct kndMemPool *mempool, struct kndTextRepr **result);
 
 int knd_text_loc_new(struct kndMemPool *mempool, struct kndTextLoc **result);
 int knd_text_search_report_new(struct kndMemPool *mempool, struct kndTextSearchReport **result);
