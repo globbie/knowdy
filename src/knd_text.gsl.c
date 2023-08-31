@@ -88,9 +88,8 @@ static int synode_export_GSL(struct kndSyNode *syn, struct kndTask *task)
     OUT(syn->name, syn->name_size);
     if (syn->is_terminal) {
         OUT("{term ", strlen("{term "));
-        OUT(syn->class->name, syn->class->name_size);
-        err = out->writef(out, "{pos %zu}{len %zu}", syn->linear_pos, syn->linear_len);
-        if (err) return err;
+        OUT(syn->role->name, syn->role->name_size);
+        OUTF("{pos %zu}{len %zu}", syn->linear_pos, syn->linear_len);
         OUT("}", 1);
     }
     if (syn->topic) {

@@ -166,7 +166,8 @@ struct kndSyNode
 {
     const char *name;
     size_t name_size;
-    struct kndClass *class;
+    struct kndClass *role;
+
     struct kndSyNodeAttr *attrs;
 
     struct kndSyNode *topic;

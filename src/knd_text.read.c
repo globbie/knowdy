@@ -192,11 +192,10 @@ static gsl_err_t set_synode_class(void *obj, const char *name, size_t name_size)
     struct kndTask *task = ctx->task;
     struct kndSyNode *synode = ctx->synode;
     int err;
-
     synode->name = name;
     synode->name_size = name_size;
 
-    err = knd_get_class(ctx->task->repo, name, name_size, &synode->class, ctx->task);
+    err = knd_get_class(ctx->task->repo, name, name_size, &synode->role, ctx->task);
     if (err) {
         KND_TASK_LOG("no such class: %.*s", name_size, name);
         return make_gsl_err(gsl_NO_MATCH);

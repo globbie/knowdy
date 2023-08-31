@@ -270,6 +270,7 @@ void knd_text_str(struct kndText *self, size_t depth)
                     self->seq->val_size, self->seq->val, self->locale_size, self->locale);
             return;
         }
+
         if (self->num_pars) {
             knd_log("%*stext (lang:%.*s) [par",
                     depth * KND_OFFSET_SIZE, "",

@@ -177,7 +177,7 @@ static gsl_err_t set_synode_spec_class(void *obj, const char *name, size_t name_
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t set_synode_class(void *obj, const char *name, size_t name_size)    
+static gsl_err_t set_synode_role(void *obj, const char *name, size_t name_size)    
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
@@ -187,7 +187,7 @@ static gsl_err_t set_synode_class(void *obj, const char *name, size_t name_size)
     synode->name = name;
     synode->name_size = name_size;
 
-    err = knd_get_class(ctx->task->repo, name, name_size, &synode->class, ctx->task);
+    err = knd_get_class(ctx->task->repo, name, name_size, &synode->role, ctx->task);
     if (err) {
         KND_TASK_LOG("no such class: %.*s", name_size, name);
         return make_gsl_err(gsl_NO_MATCH);
@@ -284,7 +284,7 @@ static gsl_err_t parse_term_synode(void *obj, const char *rec, size_t *total_siz
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = set_synode_class,
+          .run = set_synode_role,
           .obj = ctx
         },
         { .name = "pos",
@@ -325,7 +325,7 @@ static gsl_err_t parse_synode(void *obj, const char *rec, size_t *total_size)
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = set_synode_class,
+          .run = set_synode_role,
           .obj = obj
         },
         { .name = "syn",
@@ -385,7 +385,7 @@ static gsl_err_t parse_subj(void *obj, const char *rec, size_t *total_size)
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = set_synode_class,
+          .run = set_synode_role,
           .obj = obj
         },
         { .name = "syn",
@@ -433,7 +433,7 @@ static gsl_err_t parse_pred(void *obj, const char *rec, size_t *total_size)
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = set_synode_class,
+          .run = set_synode_role,
           .obj = obj
         },
         { .name = "syn",
