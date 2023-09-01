@@ -27,7 +27,9 @@ static int export_propositions(struct kndProposition *props, struct kndTask *tas
     struct kndOutput *out = task->out;
     struct kndProcInst *inst;
     struct kndProposition *prop;
+    struct kndProcArgVar *var;
     size_t count = 0;
+    size_t arg_count = 0;
     int err;
 
     OUT("[", 1);
@@ -49,11 +51,33 @@ static int export_propositions(struct kndProposition *props, struct kndTask *tas
         OUT(inst->is_a->name, inst->is_a->name_size);
         OUT("\"", 1);
 
-        OUT(",", 1);
-        OUT("\"inst\":", strlen("\"inst\":"));
-        err = knd_proc_inst_export_JSON(inst, false, KND_SELECTED, task, 0);
-        KND_TASK_ERR("failed to export proc inst JSON");
+        if (inst->procvar) {
+            arg_count = 0;
+            OUT(",\"args\":{", strlen(",\"args\":{"));
+            FOREACH (var, inst->procvar->args) {
+                if (arg_count) {
+                    OUT(",", 1);
+                }
+                OUT("\"", 1);
+                OUT(var->arg->name, var->arg->name_size);
+                OUT("\"", 1);
+                OUT(":", 1);
+                err = knd_proc_arg_var_export_JSON(var, task, 0);
+                KND_TASK_ERR("failed to export proc arg var JSON");
+                arg_count++;
+            }
+            OUT("}", 1);
+        }
 
+        if (inst->repr) {
+            err = knd_synode_export_JSON(inst->repr->synode, task);
+            KND_TASK_ERR("failed to export synode JSON");
+        }
+    
+        // OUT(",\"aspects\":{}", strlen(",\"aspects\":{}"));
+        //OUT(",\"pragma\":{}", strlen(",\"pragma\":{}"));
+
+        
         OUT("}", 1);
     }
     OUT("]", 1);
@@ -195,28 +219,33 @@ static int export_translation(struct kndText *trs, struct kndTask *task)
     return knd_NO_MATCH;
 }
 
-static int synode_export_JSON(struct kndSyNode *syn, struct kndTask *task)
+int knd_synode_export_JSON(struct kndSyNode *syn, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
-    struct kndSyNodeSpec *spec;
+    // struct kndSyNodeSpec *spec;
     int err;
 
     OUT("{", 1);
-    OUT("\"name\":\"", strlen("\"name\":\""));
-    OUT(syn->name, syn->name_size);
+    OUT("\"id\":\"", strlen("\"id\":\""));
+    OUT(syn->role->name, syn->role->name_size);
+    if (syn->linear_len > 1) {
+        OUTF("::%zu+%zu", syn->linear_pos, syn->linear_len);
+    } else {
+        OUTF("::%zu", syn->linear_pos);
+    }
+    OUT("\"", 1);
+
+    OUT(",\"role\":\"", strlen(",\"role\":\""));
+    OUT(syn->role->name, syn->role->name_size);
     OUT("\"", 1);
     err = export_gloss(syn->role->tr, task);
     KND_TASK_ERR("failed to export a gloss");
-    if (syn->is_terminal) {
-        err = out->writef(out, ",\"pos\":%zu,\"len\":%zu", syn->linear_pos, syn->linear_len);
-        if (err) return err;
-        OUT("}", 1);
-        return knd_OK;
-    }
 
-    if (syn->topic) {
+    OUTF(",\"pos\":%zu,\"len\":%zu", syn->linear_pos, syn->linear_len);
+
+    /*if (syn->topic) {
         OUT(",\"topic\":", strlen(",\"topic\":"));
-        err = synode_export_JSON(syn->topic, task);
+        err = knd_synode_export_JSON(syn->topic, task);
         KND_TASK_ERR("failed to export a synode");
     }
     if (syn->spec) {
@@ -230,11 +259,13 @@ static int synode_export_JSON(struct kndSyNode *syn, struct kndTask *task)
 
         if (spec->synode) {
             OUT(",\"topic\":", strlen(",\"topic\":"));
-            err = synode_export_JSON(spec->synode, task);
+            err = knd_synode_export_JSON(spec->synode, task);
             KND_TASK_ERR("failed to export a spec synode");
         }
         OUT("}", 1);
     }
+    */
+
     OUT("}", 1);
     return knd_OK;
 }
@@ -257,7 +288,7 @@ static int sent_export_JSON(struct kndSentence *sent, struct kndTask *task)
 
     if (sent->clause) {
         OUT(",\"clause\":", strlen(",\"clause\":"));
-        err = synode_export_JSON(sent->clause->subj, task);
+        err = knd_synode_export_JSON(sent->clause->subj, task);
         KND_TASK_ERR("failed to export clause synode in JSON");
     }
 
@@ -313,7 +344,7 @@ int knd_text_export_JSON(struct kndText *self, struct kndTask *task, size_t unus
             OUT("\"sents\":[", strlen("\"sents\":["));
             FOREACH (sent, par->sents) {
                 err = sent_export_JSON(sent, task);
-                if (err) return err;
+                KND_TASK_ERR("failed to export sentence JSON");
             }
             OUT("]", 1);
             OUT("}", 1);
@@ -321,7 +352,6 @@ int knd_text_export_JSON(struct kndText *self, struct kndTask *task, size_t unus
         OUT("]", 1);
     }
     OUT("}", 1);
-
     return knd_OK;
 }
 

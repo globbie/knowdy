@@ -19,7 +19,7 @@ int knd_proc_arg_var_export_JSON(struct kndProcArgVar *self, struct kndTask *tas
 {
     struct kndOutput *out = task->out;
     struct kndClassInst *arg_inst = self->inst;
-
+    int err;
     assert (self->template != NULL);
     assert (arg_inst != NULL);
 
@@ -40,6 +40,11 @@ int knd_proc_arg_var_export_JSON(struct kndProcArgVar *self, struct kndTask *tas
     OUT("\"", 1);
     OUT(arg_inst->entry->id, arg_inst->entry->id_size);
     OUT("\"", 1);
+
+    if (self->repr) {
+        err = knd_synode_export_JSON(self->repr->synode, task);
+        KND_TASK_ERR("failed to present synode JSON");
+    }
 
     OUT("}", 1);
     return knd_OK;

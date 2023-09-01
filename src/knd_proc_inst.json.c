@@ -29,7 +29,7 @@ int knd_proc_inst_export_JSON(struct kndProcInst *self, bool unused_var(is_list_
     struct kndOutput *out = task->out;
     struct kndProcArgVar *var;
     size_t arg_count = 0;
-    // int err;
+    int err;
 
     OUT("{", 1);
     OUT("\"id\":", strlen("\"id\":"));
@@ -37,16 +37,10 @@ int knd_proc_inst_export_JSON(struct kndProcInst *self, bool unused_var(is_list_
     OUT(self->entry->id, self->entry->id_size);
     OUT("\"", 1);
 
-        /*if (task->ctx->use_alias) {
-        if (self->alias_size) {
-            err = out->write(out, "{_as ", strlen("{_as "));                  RET_ERR();
-            err = out->write(out, self->alias, self->alias_size);             RET_ERR();
-            err = out->writec(out, '}');                                      RET_ERR();
-        }
-        }*/
-
-    OUT(",\"aspects\":{}", strlen(",\"aspects\":{}"));
-    OUT(",\"pragma\":{}", strlen(",\"pragma\":{}"));
+    if (self->repr) {
+        err = knd_synode_export_JSON(self->repr->synode, task);
+        KND_TASK_ERR("failed to present synode JSON");
+    }
 
     if (self->procvar) {
         OUT(",\"args\":{", strlen(",\"args\":{"));
