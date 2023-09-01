@@ -15,7 +15,7 @@
 #include "knd_state.h"
 
 int knd_proc_arg_var_export_JSON(struct kndProcArgVar *self, struct kndTask *task,
-                                 size_t unused_var(depth))
+                                 size_t depth)
 {
     struct kndOutput *out = task->out;
     struct kndClassInst *arg_inst = self->inst;
@@ -35,12 +35,17 @@ int knd_proc_arg_var_export_JSON(struct kndProcArgVar *self, struct kndTask *tas
     OUT(arg_inst->is_a->name, arg_inst->is_a->name_size);
     OUT("\"", 1);
 
+    if (arg_inst->is_a->tr) {
+        err = knd_text_gloss_export_JSON(arg_inst->is_a->tr, task, depth + 1);
+        KND_TASK_ERR("failed to export subclass gloss JSON");
+    }
+
     OUT(",", 1);
-    OUT("\"inst\":", strlen("\"inst\":"));
+    OUT("\"inst_id\":", strlen("\"inst_id\":"));
     OUT("\"", 1);
     OUT(arg_inst->entry->id, arg_inst->entry->id_size);
     OUT("\"", 1);
-
+    
     if (self->repr) {
         err = knd_synode_export_JSON(self->repr->synode, task);
         KND_TASK_ERR("failed to present synode JSON");
