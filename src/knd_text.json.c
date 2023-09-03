@@ -74,12 +74,6 @@ static int export_propositions(struct kndProposition *props, struct kndTask *tas
             }
             OUT("}", 1);
         }
-
-        if (inst->repr) {
-            err = knd_synode_export_JSON(inst->repr->synode, task);
-            KND_TASK_ERR("failed to export synode JSON");
-        }
-    
         // OUT(",\"aspects\":{}", strlen(",\"aspects\":{}"));
         //OUT(",\"pragma\":{}", strlen(",\"pragma\":{}"));
 
