@@ -50,6 +50,11 @@ static int export_propositions(struct kndProposition *props, struct kndTask *tas
         OUT("\"proc\":\"", strlen("\"proc\":\""));
         OUT(inst->is_a->name, inst->is_a->name_size);
         OUT("\"", 1);
+        
+        if (inst->is_a->tr) {
+            err = knd_text_gloss_export_JSON(inst->is_a->tr, task, 0);
+            KND_TASK_ERR("failed to export proposition proc gloss JSON");
+        }
 
         if (inst->repr) {
             OUT(",\"synode\":", strlen(",\"synode\":"));
@@ -101,6 +106,7 @@ static int export_class_declars(struct kndClassDeclar *decls, struct kndTask *ta
     struct kndOutput *out = task->out;
     struct kndClassInstEntry *entry;
     struct kndClassDeclar *decl;
+    struct kndClass *c;
     int decl_count = 0;
     int inst_count = 0;
     int err;
@@ -110,9 +116,19 @@ static int export_class_declars(struct kndClassDeclar *decls, struct kndTask *ta
         if (decl_count) {
             OUT(",", 1);
         }
+
+        err = knd_class_acquire(decl->entry, &c, task);
+        KND_TASK_ERR("failed to acquire class \"%.*s\"",
+                     decl->entry->name_size, decl->entry->name);
+
         OUT("{\"class\":\"", strlen("{\"class\":\""));
-        OUT(decl->entry->name, decl->entry->name_size);
+        OUT(c->name, c->name_size);
         OUT("\"", 1);
+
+        if (c->tr) {
+            err = knd_text_gloss_export_JSON(c->tr, task, 0);
+            KND_TASK_ERR("failed to export class gloss JSON");
+        }
 
         OUT(",\"num_insts\":", strlen(",\"num_insts\":"));
         OUTF("%zu", decl->num_insts);
