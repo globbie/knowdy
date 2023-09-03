@@ -47,6 +47,7 @@ int knd_proc_arg_var_export_JSON(struct kndProcArgVar *self, struct kndTask *tas
     OUT("\"", 1);
     
     if (self->repr) {
+        OUT(",\"synode\":", strlen(",\"synode\":"));
         err = knd_synode_export_JSON(self->repr->synode, task);
         KND_TASK_ERR("failed to present synode JSON");
     }
