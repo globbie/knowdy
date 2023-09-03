@@ -238,6 +238,7 @@ int knd_synode_export_JSON(struct kndSyNode *syn, struct kndTask *task)
     OUT(",\"role\":\"", strlen(",\"role\":\""));
     OUT(syn->role->name, syn->role->name_size);
     OUT("\"", 1);
+
     err = export_gloss(syn->role->tr, task);
     KND_TASK_ERR("failed to export a gloss");
 
@@ -266,6 +267,23 @@ int knd_synode_export_JSON(struct kndSyNode *syn, struct kndTask *task)
     }
     */
 
+    OUT("}", 1);
+    return knd_OK;
+}
+
+int knd_synode_concise_export_JSON(struct kndSyNode *syn, struct kndTask *task)
+{
+    struct kndOutput *out = task->out;
+
+    OUT("{", 1);
+    OUT("\"id\":\"", strlen("\"id\":\""));
+    OUT(syn->role->name, syn->role->name_size);
+    if (syn->linear_len > 1) {
+        OUTF("::%zu+%zu", syn->linear_pos, syn->linear_len);
+    } else {
+        OUTF("::%zu", syn->linear_pos);
+    }
+    OUT("\"", 1);
     OUT("}", 1);
     return knd_OK;
 }

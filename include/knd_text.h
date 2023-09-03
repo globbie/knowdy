@@ -323,4 +323,6 @@ int knd_text_search_report_new(struct kndMemPool *mempool, struct kndTextSearchR
 gsl_err_t knd_parse_gloss_array(void *obj, const char *rec, size_t *total_size);
 gsl_err_t knd_parse_summary_array(void *obj, const char *rec, size_t *total_size);
 gsl_err_t knd_read_gloss_array(void *obj, const char *rec, size_t *total_size);
+
 int knd_synode_export_JSON(struct kndSyNode *syn, struct kndTask *task);
+int knd_synode_concise_export_JSON(struct kndSyNode *syn, struct kndTask *task);
