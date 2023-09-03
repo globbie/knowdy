@@ -51,6 +51,12 @@ static int export_propositions(struct kndProposition *props, struct kndTask *tas
         OUT(inst->is_a->name, inst->is_a->name_size);
         OUT("\"", 1);
 
+        if (inst->repr) {
+            OUT(",\"synode\":", strlen(",\"synode\":"));
+            err = knd_synode_concise_export_JSON(inst->repr->synode, task);
+            KND_TASK_ERR("failed to present proc inst synode JSON");
+        }
+        
         if (inst->procvar) {
             arg_count = 0;
             OUT(",\"args\":{", strlen(",\"args\":{"));
