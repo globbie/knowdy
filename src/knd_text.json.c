@@ -245,9 +245,9 @@ int knd_synode_export_JSON(struct kndSyNode *syn, struct kndTask *task)
     OUT("\"id\":\"", strlen("\"id\":\""));
     OUT(syn->role->name, syn->role->name_size);
     if (syn->linear_len > 1) {
-        OUTF("::%zu+%zu", syn->linear_pos, syn->linear_len);
+        OUTF("@%zu+%zu", syn->linear_pos, syn->linear_len);
     } else {
-        OUTF("::%zu", syn->linear_pos);
+        OUTF("@%zu", syn->linear_pos);
     }
     OUT("\"", 1);
 
@@ -258,7 +258,10 @@ int knd_synode_export_JSON(struct kndSyNode *syn, struct kndTask *task)
     err = export_gloss(syn->role->tr, task);
     KND_TASK_ERR("failed to export a gloss");
 
-    OUTF(",\"pos\":%zu,\"len\":%zu", syn->linear_pos, syn->linear_len);
+    OUTF(",\"pos\":%zu", syn->linear_pos);
+    if (syn->linear_len > 1) {
+        OUTF("\"len\":%zu",  syn->linear_len);
+    }
 
     /*if (syn->topic) {
         OUT(",\"topic\":", strlen(",\"topic\":"));
@@ -295,9 +298,9 @@ int knd_synode_concise_export_JSON(struct kndSyNode *syn, struct kndTask *task)
     OUT("\"id\":\"", strlen("\"id\":\""));
     OUT(syn->role->name, syn->role->name_size);
     if (syn->linear_len > 1) {
-        OUTF("::%zu+%zu", syn->linear_pos, syn->linear_len);
+        OUTF("@%zu+%zu", syn->linear_pos, syn->linear_len);
     } else {
-        OUTF("::%zu", syn->linear_pos);
+        OUTF("@%zu", syn->linear_pos);
     }
     OUT("\"", 1);
     OUT("}", 1);
