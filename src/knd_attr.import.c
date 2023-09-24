@@ -191,6 +191,11 @@ static gsl_err_t run_set_quant(void *obj, const char *name, size_t name_size)
         self->is_a_set = true;
     }
 
+    if (!memcmp("list", name, name_size)) {
+        self->quant_type = KND_ATTR_LIST;
+        self->is_a_set = true;
+    }
+
     return make_gsl_err(gsl_OK);
 }
 
