@@ -434,13 +434,13 @@ gsl_err_t knd_proc_arg_parse(struct kndProcArg *self,
           .parse = parse_gloss,
           .obj = &ctx
           }*/,
-        { .name = "_c",
-          .name_size = strlen("_c"),
+        { .name = "cls",
+          .name_size = strlen("cls"),
           .run = set_proc_arg_classname,
           .obj = self
         },
-        { .name = "_is",
-          .name_size = strlen("_is"),
+        { .name = "is",
+          .name_size = strlen("is"),
           .parse = parse_proc_arg_defin,
           .obj = &ctx
         },

@@ -596,7 +596,7 @@ static gsl_err_t read_attr(void *obj, const char *name, size_t name_size, const 
 
     err = knd_attr_new(mempool, &attr);
     if (err) return *total_size = 0, make_gsl_err_external(err);
-    attr->parent_class = self;
+    attr->parent = self;
 
     for (size_t i = 0; i < sizeof(knd_attr_names) / sizeof(knd_attr_names[0]); i++) {
         c = knd_attr_names[i];
@@ -679,12 +679,6 @@ int knd_class_read(struct kndClass *self, const char *rec, size_t *total_size, s
         .repo = task->repo
     };
 
-    /*struct gslTaskSpec inst_commit_spec = {
-        .is_list_item = true,
-        .parse  = parse_class_inst_item,
-        .obj = &ctx
-    };
-    */
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = check_class_name,

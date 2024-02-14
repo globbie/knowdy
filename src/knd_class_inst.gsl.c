@@ -99,7 +99,7 @@ static int export_inverse_rels(struct kndClassInst *self, struct kndTask *task, 
             RET_ERR();
         }
         OUT("{class ", strlen("{class "));
-        OUT(attr->parent_class->name, attr->parent_class->name_size);
+        OUT(attr->parent->name, attr->parent->name_size);
         OUT("}", 1);
         
         if (attr_hub->topics) {

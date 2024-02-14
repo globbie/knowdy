@@ -28,7 +28,6 @@
 #include "knd_text.h"
 #include "knd_rel.h"
 #include "knd_proc.h"
-#include "knd_proc_arg.h"
 #include "knd_set.h"
 #include "knd_utils.h"
 #include "knd_output.h"
@@ -98,60 +97,6 @@ static int register_attr(struct kndClass *self, struct kndAttr *attr, struct knd
     return knd_OK;
 }
 
-static int resolve_rel(struct kndClass *self, struct kndAttr *attr, struct kndTask *task)
-{
-    struct kndRepo *repo = self->entry->repo;
-    struct kndSharedDict *proc_name_idx = repo->proc_name_idx;
-    const char *proc_name = attr->ref_proc_name;
-    size_t proc_name_size = attr->ref_proc_name_size;
-    struct kndProcEntry *proc_entry;
-    struct kndProcArg *arg;
-    int err;
-
-    if (DEBUG_ATTR_RESOLVE_LEVEL_2) {
-        knd_log("\n>> resolving REL attr {class %.*s {%.*s %.*s}} "
-                " {self-arg %.*s} {impl-arg %.*s}}",
-                self->name_size, self->name, attr->name_size, attr->name,
-                proc_name_size, proc_name,
-                attr->arg_name_size, attr->arg_name,
-                attr->impl_arg_name_size, attr->impl_arg_name);
-    }
-
-    assert(proc_name_size != 0 && proc_name != NULL);
-
-    proc_entry = knd_shared_dict_get(proc_name_idx, proc_name, proc_name_size);
-    if (!proc_entry) {
-        err = knd_NO_MATCH;
-        KND_TASK_ERR("no such proc: \"%.*s\"", proc_name_size, proc_name);
-    }
-
-    // TODO acquire
-    attr->proc = proc_entry->proc;
-    
-    FOREACH (arg, attr->proc->args) {
-        if (arg->name_size == attr->arg_name_size) {
-            if (!memcmp(arg->name, attr->arg_name, attr->arg_name_size)) {
-                attr->arg = arg;
-            }
-        }
-        if (arg->name_size == attr->impl_arg_name_size) {
-            if (!memcmp(arg->name, attr->impl_arg_name, attr->impl_arg_name_size)) {
-                attr->impl_arg = arg;
-            }
-        }
-    }
-
-    if (!attr->arg) {
-        err = knd_NO_MATCH;
-        KND_TASK_ERR("no such arg \"%.*s\"", attr->arg_name_size, attr->arg_name);
-    }
-    if (!attr->impl_arg) {
-        err = knd_NO_MATCH;
-        KND_TASK_ERR("no such impl arg \"%.*s\"", attr->impl_arg_name_size, attr->impl_arg_name);
-    }
-    return knd_OK;
-}
-
 static int check_attr_name_conflict(struct kndClass *self, struct kndAttr *attr_candidate,
                                     struct kndTask *task)
 {
@@ -206,13 +151,65 @@ int knd_attr_hub_resolve(struct kndAttrHub *hub, struct kndTask *task)
     return knd_OK;
 }
 
+int knd_attr_resolve(struct kndAttr *attr, struct kndRepo *repo, struct kndTask *task)
+{
+    struct kndClassEntry *entry;
+    struct kndProcEntry *proc_entry;
+    struct kndSharedDict *class_name_idx = repo->class_name_idx;
+    int err;
+
+    switch (attr->type) {
+    case KND_ATTR_REL:
+        err = knd_rel_resolve(attr->impl, repo, task);
+        KND_TASK_ERR("failed to resolve rel attr %.*s", attr->name_size, attr->name);
+        break;
+    case KND_ATTR_INNER:
+        // fall through
+    case KND_ATTR_REF:
+        if (!attr->ref_classname_size) {
+            err = knd_FAIL;
+            KND_TASK_ERR("no template class specified for attr \"%.*s\"",
+                         attr->name_size, attr->name);
+        }
+        entry = knd_shared_dict_get(class_name_idx,
+                                    attr->ref_classname, attr->ref_classname_size);
+        if (!entry) {
+            err = knd_NO_MATCH;
+            KND_TASK_ERR("class not found: \"%.*s\"",
+                         attr->ref_classname_size, attr->ref_classname);
+        }
+        attr->ref_class_entry = entry;
+        break;
+    case KND_ATTR_PROC_REF:
+        if (!attr->ref_proc_name_size) {
+            knd_log("-- no proc name specified for attr \"%.*s\"", attr->name_size, attr->name);
+            return knd_FAIL;
+        }
+        proc_entry = knd_shared_dict_get(repo->proc_name_idx,
+                                         attr->ref_proc_name, attr->ref_proc_name_size);
+        if (!proc_entry) {
+            knd_log("-- no such proc: \"%.*s\" .."
+                    "couldn't resolve the \"%.*s\" attr of %.*s :(",
+                    attr->ref_proc_name_size,
+                    attr->ref_proc_name,
+                    attr->name_size, attr->name,
+                    attr->parent->name_size, attr->parent->name);
+            return knd_FAIL;
+        }
+        if (DEBUG_ATTR_RESOLVE_LEVEL_2)
+            knd_log("++ proc ref resolved: %.*s!",
+                    proc_entry->name_size, proc_entry->name);
+        break;
+    default:
+        break;
+    }
+    return knd_OK;
+}
+
 int knd_resolve_primary_attrs(struct kndClass *self, struct kndTask *task)
 {
     struct kndAttr *attr;
-    struct kndClassEntry *entry;
-    struct kndProcEntry *proc_entry;
     struct kndRepo *repo = self->entry->repo;
-    struct kndSharedDict *class_name_idx = repo->class_name_idx;
     int err;
 
     if (DEBUG_ATTR_RESOLVE_LEVEL_2)
@@ -223,51 +220,9 @@ int knd_resolve_primary_attrs(struct kndClass *self, struct kndTask *task)
         err = check_attr_name_conflict(self, attr, task);
         KND_TASK_ERR("name conflict detected");
 
-        switch (attr->type) {
-        case KND_ATTR_INNER:
-            break;
-        case KND_ATTR_REL:
-            err = resolve_rel(self, attr, task);
-            KND_TASK_ERR("failed to resolve rel attr %.*s", attr->name_size, attr->name);
-            break;
-        case KND_ATTR_REF:
-            if (!attr->ref_classname_size) {
-                err = knd_FAIL;
-                KND_TASK_ERR("no template class specified for attr \"%.*s\"",
-                             attr->name_size, attr->name);
-            }
-            entry = knd_shared_dict_get(class_name_idx,
-                                        attr->ref_classname, attr->ref_classname_size);
-            if (!entry) {
-                err = knd_NO_MATCH;
-                KND_TASK_ERR("class not found: \"%.*s\"",
-                             attr->ref_classname_size, attr->ref_classname);
-            }
-            attr->ref_class_entry = entry;
-            break;
-        case KND_ATTR_PROC_REF:
-            if (!attr->ref_proc_name_size) {
-                knd_log("-- no proc name specified for attr \"%.*s\"", attr->name_size, attr->name);
-                return knd_FAIL;
-            }
-            proc_entry = knd_shared_dict_get(repo->proc_name_idx,
-                                             attr->ref_proc_name, attr->ref_proc_name_size);
-            if (!proc_entry) {
-                knd_log("-- no such proc: \"%.*s\" .."
-                        "couldn't resolve the \"%.*s\" attr of %.*s :(",
-                        attr->ref_proc_name_size,
-                        attr->ref_proc_name,
-                        attr->name_size, attr->name,
-                        self->entry->name_size, self->entry->name);
-                return knd_FAIL;
-            }
-            if (DEBUG_ATTR_RESOLVE_LEVEL_2)
-                knd_log("++ proc ref resolved: %.*s!",
-                        proc_entry->name_size, proc_entry->name);
-            break;
-        default:
-            break;
-        }
+        err = knd_attr_resolve(attr, repo, task);
+        KND_TASK_ERR("failed to resolve attr");
+
         if (attr->is_implied)
             self->implied_attr = attr;
 

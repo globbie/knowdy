@@ -65,7 +65,7 @@ set(GSL_PARSER_LIBRARY "${CMAKE_BINARY_DIR}/libs/gsl-parser/lib/libgsl-parser_st
 
 include_directories("include")
 
-set(HEADERS include/knd_attr.h
+set(HEADERS include/knd_attr.h include/knd_rel.h
         include/knd_class.h include/knd_class_inst.h include/knd_config.h
         include/knd_cache.h include/knd_dict.h include/knd_shared_dict.h
         include/knd_err.h
@@ -83,6 +83,8 @@ set(SOURCES src/knd_attr.c src/knd_attr.import.c
         src/knd_attr.json.c src/knd_attr.gsl.c src/knd_attr.gsp.c
         src/knd_attr_var.import.c src/knd_attr_var.index.c src/knd_attr_var.resolve.c src/knd_attr_var.read.c
         src/knd_attr_var.gsl.c src/knd_attr_var.json.c src/knd_attr_var.gsp.c
+        src/knd_rel.c src/knd_rel.import.c src/knd_rel.resolve.c
+        src/knd_rel_pred.resolve.c 
         src/knd_class.c src/knd_class.gsl.c src/knd_class.gsp.c src/knd_class.read.c
         src/knd_class.import.c src/knd_class.json.c src/knd_class.resolve.c src/knd_class.index.c
         src/knd_class.select.c src/knd_class.states.c

@@ -167,6 +167,10 @@ struct kndProcVar
     struct kndProcArgVar *tail;
     size_t num_args;
 
+    struct kndProcArgVar *effects;
+    struct kndProcArgVar *effect_tail;
+    size_t num_effects;
+
     struct kndProcVar *next;
 };
 
@@ -183,6 +187,9 @@ struct kndProc
     /* immediate args */
     struct kndProcArg *args;
     size_t num_args;
+
+    struct kndProcArg *effects;
+    size_t num_effects;
 
     struct kndSet *arg_idx;
 
@@ -275,7 +282,6 @@ int knd_proc_export_SVG(struct kndProc *self,
 // TODO(k15tfu): ?? Move to knd_proc_impl.h
 //
 #include <knd_proc_arg.h>
-#include <knd_text.h>
 
 static inline void knd_proc_var_declare_arg(struct kndProcVar *base, struct kndProcArgVar *base_arg)
 {
@@ -288,6 +294,17 @@ static inline void knd_proc_var_declare_arg(struct kndProcVar *base, struct kndP
     base->num_args++;
 }
 
+static inline void knd_proc_var_declare_effect(struct kndProcVar *base, struct kndProcArgVar *base_arg)
+{
+    if (base->effect_tail) {
+        base->effect_tail->next = base_arg;
+        base->effect_tail = base_arg;
+    }
+    else
+        base->effects = base->effect_tail = base_arg;
+    base->num_effects++;
+}
+
 
 static inline void knd_proc_declare_arg(struct kndProc *self, struct kndProcArg *arg)
 {
@@ -295,6 +312,14 @@ static inline void knd_proc_declare_arg(struct kndProc *self, struct kndProcArg 
     arg->next = self->args;
     self->args = arg;
     self->num_args++;
+}
+
+static inline void knd_proc_declare_effect(struct kndProc *self, struct kndProcArg *arg)
+{
+    arg->parent = self;
+    arg->next = self->effects;
+    self->effects = arg;
+    self->num_effects++;
 }
 
 static inline void knd_proc_declare_call(struct kndProc *self, struct kndProcCall *call)

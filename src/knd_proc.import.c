@@ -52,6 +52,26 @@ static gsl_err_t parse_proc_arg_item(void *obj, const char *rec, size_t *total_s
     return make_gsl_err(gsl_OK);
 }
 
+static gsl_err_t parse_proc_effect_item(void *obj, const char *rec, size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+    struct kndProc *self = ctx->proc;
+    struct kndProcArg *arg;
+    int err;
+    gsl_err_t parser_err;
+
+    err = knd_proc_arg_new(ctx->task->user_ctx->mempool, &arg);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
+
+    parser_err = knd_proc_arg_parse(arg, rec, total_size, ctx->task);
+    if (parser_err.code) return parser_err;
+
+    // append
+    knd_proc_declare_arg(self, arg);
+
+    return make_gsl_err(gsl_OK);
+}
+
 static gsl_err_t parse_proc_call_item(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
@@ -90,7 +110,8 @@ static gsl_err_t set_result_classname(void *obj, const char *name, size_t name_s
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t validate_base_arg(void *obj, const char *name, size_t name_size, const char *rec, size_t *total_size)
+static gsl_err_t validate_base_arg(void *obj, const char *name, size_t name_size,
+                                   const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndProcVar *base = ctx->proc_var;
@@ -172,54 +193,6 @@ static gsl_err_t parse_base(void *obj, const char *rec, size_t *total_size)
     declare_base(self, proc_var);
 
     return make_gsl_err(gsl_OK);
-}
-
-
-static gsl_err_t run_set_cost(void *obj, const char *val, size_t val_size)
-{
-    struct kndProc *self = obj;
-    char buf[KND_NAME_SIZE];
-    size_t buf_size;
-    long numval;
-    int err;
-
-    if (!val_size) return make_gsl_err_external(knd_FAIL);
-    if (val_size >= KND_NAME_SIZE) return make_gsl_err_external(knd_LIMIT);
-
-    memcpy(buf, val, val_size);
-    buf_size = val_size;
-    buf[buf_size] = '\0';
-
-    err = knd_parse_num(buf, &numval);
-    if (err) return make_gsl_err_external(err);
-    
-    self->estimate.cost = numval;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_estimate(void *obj, const char *rec, size_t *total_size)
-{
-    struct LocalContext *ctx = obj;
-    struct kndProc *self = ctx->proc;
-
-    if (DEBUG_PROC_IMPORT_LEVEL_2)
-        knd_log(".. proc estimate parsing: \"%.*s\"..",
-                32, rec);
-
-    struct gslTaskSpec specs[] = {
-        {   .is_implied = true,
-            .run = run_set_cost,
-            .obj = self
-        },
-        {   .name = "time",
-            .name_size = strlen("time"),
-            .parse = gsl_parse_size_t,
-            .obj = &self->estimate.time
-        }
-    };
-
-    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
 static gsl_err_t set_proc_name(void *obj, const char *name, size_t name_size)
@@ -314,6 +287,12 @@ int knd_inner_proc_import(struct kndProc *proc, const char *rec, size_t *total_s
           .obj = &ctx
         },
         { .type = GSL_GET_ARRAY_STATE,
+          .name = "gloss",
+          .name_size = strlen("gloss"),
+          .parse = knd_parse_gloss_array,
+          .obj = task
+        },
+        { .type = GSL_GET_ARRAY_STATE,
           .name = "_gloss",
           .name_size = strlen("_gloss"),
           .parse = knd_parse_gloss_array,
@@ -364,7 +343,7 @@ gsl_err_t knd_proc_import(struct kndRepo *repo, const char *rec, size_t *total_s
     int err;
 
     if (DEBUG_PROC_IMPORT_LEVEL_2)
-        knd_log(".. import proc: \"%.*s\" (repo:%p)", 32, rec, repo);
+        knd_log(".. import {proc %.*s}", 32, rec);
 
     err = knd_proc_entry_new(mempool, &entry);
     if (err) return *total_size = 0, make_gsl_err_external(err);
@@ -393,6 +372,12 @@ gsl_err_t knd_proc_import(struct kndRepo *repo, const char *rec, size_t *total_s
         .obj = &ctx
     }; 
 
+    struct gslTaskSpec proc_effect_spec = {
+        .is_list_item = true,
+        .parse = parse_proc_effect_item,
+        .obj = &ctx
+    }; 
+
     struct gslTaskSpec proc_call_spec = {
         .is_list_item = true,
         .parse = parse_proc_call_item,
@@ -403,6 +388,12 @@ gsl_err_t knd_proc_import(struct kndRepo *repo, const char *rec, size_t *total_s
         { .is_implied = true,
           .run = set_proc_name,
           .obj = &ctx
+        },
+        { .type = GSL_GET_ARRAY_STATE,
+          .name = "gloss",
+          .name_size = strlen("gloss"),
+          .parse = knd_parse_gloss_array,
+          .obj = task
         },
         { .type = GSL_GET_ARRAY_STATE,
           .name = "_gloss",
@@ -420,17 +411,12 @@ gsl_err_t knd_proc_import(struct kndRepo *repo, const char *rec, size_t *total_s
             .name_size = strlen("arg"),
             .parse = gsl_parse_array,
             .obj = &proc_arg_spec
-        },
-        {
+        }, 
+        {   .type = GSL_GET_ARRAY_STATE,
             .name = "effect",
             .name_size = strlen("effect"),
-            .run = set_result_classname,
-            .obj = proc
-        },
-        {   .name = "estim",
-            .name_size = strlen("estim"),
-            .parse = parse_estimate,
-            .obj = &ctx
+            .parse = gsl_parse_array,
+            .obj = &proc_effect_spec
         },
         {   .type = GSL_GET_ARRAY_STATE,
             .name = "do",
@@ -443,12 +429,15 @@ gsl_err_t knd_proc_import(struct kndRepo *repo, const char *rec, size_t *total_s
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
-        knd_log("-- parser error: %d  total size:%zu",
-                parser_err.code, *total_size);
-
-        const char *c = rec + *total_size;
-        knd_log("== CONTEXT: %.*s", 32, c);
-        knd_log("==          ^^^^");
+        switch (parser_err.code) {
+        case gsl_NO_MATCH:
+            KND_TASK_LOG("unknown \"%.*s\" tag in {proc %.*s}",
+                         parser_err.val_size, parser_err.val,
+                         proc->name_size, proc->name);
+            break;
+        default:
+            break;
+        }
         return parser_err;
     }
 

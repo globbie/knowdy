@@ -93,28 +93,6 @@ static gsl_err_t set_ref_class(void *obj, const char *id, size_t id_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t set_procref_class(void *obj, const char *id, size_t id_size)
-{
-    struct LocalContext *ctx = obj;
-    struct kndAttr *self = ctx->attr;
-    // struct kndRepo *repo = ctx->repo;
-    // struct kndClassEntry *entry;
-    // struct kndTask *task = ctx->task;
-    // int err;
-    if (!id_size) return make_gsl_err(gsl_FORMAT);
-    if (id_size > KND_ID_SIZE) return make_gsl_err(gsl_FORMAT);
-
-    // TODO ref resolve
-    /*err = knd_shared_set_get(repo->class_idx, id, id_size, (void**)&entry);
-    if (err) {
-        KND_TASK_LOG("failed to link class entry \"%.*s\"", id_size, id);
-        return make_gsl_err_external(err);
-        }*/
-    self->ref_proc_name = id;
-    self->ref_proc_name_size = id_size;
-    return make_gsl_err(gsl_OK);
-}
-
 static gsl_err_t confirm_idx(void *obj, const char *unused_var(name), size_t unused_var(name_size))
 {
     struct kndAttr *self = obj;
@@ -271,11 +249,6 @@ gsl_err_t knd_attr_read(struct kndAttr *self, struct kndTask *task, const char *
         { .name = "c",
           .name_size = strlen("c"),
           .run = set_ref_class,
-          .obj = &ctx
-        },
-        { .name = "p",
-          .name_size = strlen("p"),
-          .run = set_procref_class,
           .obj = &ctx
         },
         { .name = "t",

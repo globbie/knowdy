@@ -79,7 +79,7 @@ int knd_text_resolve(struct kndAttrVar *attr_var, struct kndTask *task)
     struct kndText *text;
     int err;
 
-    if (DEBUG_TEXT_RESOLVE_LEVEL_TMP)
+    if (DEBUG_TEXT_RESOLVE_LEVEL_2)
         knd_log(".. resolving text attr var: %.*s  class:%.*s",
                 attr_var->name_size, attr_var->name,
                 attr_var->class_var->parent->name_size,

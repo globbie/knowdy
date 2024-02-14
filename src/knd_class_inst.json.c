@@ -118,7 +118,7 @@ static int export_inverse_rels(struct kndClassInst *self, struct kndTask *task, 
             OUT(" ", 1);
         }
         OUT("\"", 1);
-        OUT(attr->parent_class->name, attr->parent_class->name_size);
+        OUT(attr->parent->name, attr->parent->name_size);
         OUT("\"", 1);
 
         OUT(",", 1);

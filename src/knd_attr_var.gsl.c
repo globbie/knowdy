@@ -111,7 +111,7 @@ extern int knd_export_inherited_attr_GSL(void *obj,
                 self->name_size, self->name, attr->name_size, attr->name);
 
     /* skip over immediate attrs */
-    if (attr->parent_class == self) return knd_OK;
+    if (attr->parent == self) return knd_OK;
 
     if (attr_var && attr_var->class_var) {
         /* already exported by parent */
@@ -312,7 +312,6 @@ int knd_attr_var_export_GSL(struct kndAttrVar *var, struct kndTask *task, size_t
     struct kndOutput *out = task->out;
     struct kndAttr *attr = var->attr;
     struct kndClass *c;
-    struct kndClassInst *ci;
     size_t indent_size = task->ctx->format_indent;
     int err;
 
@@ -344,7 +343,7 @@ int knd_attr_var_export_GSL(struct kndAttrVar *var, struct kndTask *task, size_t
         OUT(var->val, var->val_size);
         break;
     case KND_ATTR_REL:
-        // fall through
+        break;
     case KND_ATTR_REF:
         assert(var->class_entry != NULL);
         OUT(var->class_entry->name, var->class_entry->name_size);
@@ -355,31 +354,6 @@ int knd_attr_var_export_GSL(struct kndAttrVar *var, struct kndTask *task, size_t
         if (c->tr) {
             err = knd_text_gloss_export_GSL(c->tr, true, task, depth + 1);
             KND_TASK_ERR("failed to export gloss GSL");
-        }
-
-        switch (var->attr->rel_type) {
-        case KND_REL_CLASS_INST:
-            if (indent_size) {
-                OUT("\n", 1);
-                err = knd_print_offset(out, (depth + 1) * indent_size);
-                KND_TASK_ERR("GSL offset output failed");
-            }
-            OUT("{inst ", strlen("{inst "));
-            OUT(var->class_inst_name, var->class_inst_name_size);
-
-            if (var->class_inst_entry) {
-                err = knd_class_inst_acquire(var->class_inst_entry, &ci, task);
-                KND_TASK_ERR("failed to acquire class inst %.*s",
-                     var->class_inst_name_size, var->class_inst_name);
-                if (ci->tr) {
-                    err = knd_text_gloss_export_GSL(ci->tr, true, task, depth + 2);
-                    KND_TASK_ERR("failed to export gloss GSL");
-                }
-            }
-            OUT("}", 1);
-            break;
-        default:
-            break;
         }
         
         break;

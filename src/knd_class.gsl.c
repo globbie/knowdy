@@ -49,28 +49,6 @@ struct LocalContext {
     struct kndText *text;
 };
 
-int knd_class_export_updates_GSL(struct kndClass *self, struct kndUpdate *unused_var(update),
-                                 struct kndOutput *out)
-{
-    int err;
-
-    err = out->writec(out, '{');                                                  RET_ERR();
-    err = out->write(out, self->name, self->name_size);                           RET_ERR();
-    err = out->write(out, "{id ", strlen("{id "));                                RET_ERR();
-    err = out->write(out, self->entry->id, self->entry->id_size);                 RET_ERR();
-    err = out->writec(out, '}');                                                  RET_ERR();
-    
-    /*    if (self->states) {
-        state = self->states;
-        if (state->update == update) {
-            err = knd_class_export_GSL(c, out);                                   RET_ERR();
-            }
-            }*/
-    
-    err = out->writec(out, '}');                                                  RET_ERR();
-    return knd_OK;
-}
-
 int knd_export_class_state_GSL(struct kndClassEntry *self, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
@@ -565,7 +543,7 @@ static int export_inverse_rels(struct kndClass *self, struct kndTask *task, size
             OUT(" ", 1);
         }
         OUT("\"", 1);
-        OUT(attr->parent_class->name, attr->parent_class->name_size);
+        OUT(attr->parent->name, attr->parent->name_size);
         OUT("\"", 1);
 
         OUT(",", 1);

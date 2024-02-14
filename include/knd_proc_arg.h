@@ -37,6 +37,12 @@ struct kndProcArg;
 struct kndProcCall;
 struct kndProcCallArg;
 
+typedef enum knd_arg_t {
+                        KND_ARG_DEFAULT,
+                        KND_ARG_CLASS_INST,  // ref to specific inst
+                        KND_ARG_CLASS        // ref to abstract class
+} knd_rel_t;
+
 struct kndProcArgRef
 {
     struct kndProcArg    *arg;
@@ -76,6 +82,8 @@ struct kndProcArgEntry
 
 struct kndProcArg 
 {
+    enum knd_arg_t arg_type;
+
     char id[KND_ID_SIZE];
     size_t id_size;
     size_t numid;

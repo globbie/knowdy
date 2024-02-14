@@ -229,11 +229,6 @@ int knd_apply_attr_var_commits(struct kndClass *unused_var(self), struct kndClas
     return knd_OK;
 }
 
-void kndAttr_init(struct kndAttr *self)
-{
-    memset(self, 0, sizeof(struct kndAttr));
-}
-
 int knd_register_attr_ref(void *obj,
                           const char *unused_var(elem_id),
                           size_t unused_var(elem_id_size),
@@ -274,119 +269,6 @@ int knd_register_attr_ref(void *obj,
     return knd_OK;
 }
 
-static int compute_attr_var(struct kndAttrVar *unused_var(parent_item),
-                            struct kndAttr *attr,
-                            struct kndProcCallArg *result_arg)
-{
-    struct kndProcCall *proc_call;
-    //struct kndProcCallArg *arg;
-    //struct kndAttrVar *attr_var;
-    //struct kndAttr *curr_attr;
-    //struct kndAttrRef *ref;
-    //struct kndClass *template_class = parent_item->attr->ref_class;
-    long numval = 0;
-    long total = 0;
-    long times = 0;
-    long quant = 0;
-    float dividend = 0;
-    float divisor = 0;
-    float result = 0;
-    //int err;
-
-    if (DEBUG_ATTR_LEVEL_2)
-        knd_log(".. computing attr \"%.*s\"..", attr->name_size, attr->name);
-
-    // TODO: proc call list
-    proc_call = attr->proc->calls;
-
-    /*for (arg = proc_call->args; arg; arg = arg->next) {
-        class_var = arg->class_var;
-
-        if (DEBUG_ATTR_LEVEL_2)
-            knd_log("== ARG: %.*s", arg->name_size, arg->name);
-        
-        for (attr_var = class_var->attrs; attr_var; attr_var = attr_var->next) {
-            curr_attr = attr_var->attr;
-
-            if (!attr_var->attr) {
-                err = knd_class_get_attr(template_class,
-                                         attr_var->name,
-                                         attr_var->name_size, &ref);
-                if (err) return err;
-                attr_var->attr = ref->attr;
-                curr_attr = ref->attr;
-            }
-
-            if (curr_attr->is_implied) {
-                err = extract_implied_attr_value(parent_item->class,
-                                                 attr_var->children, arg);
-                if (err) return err;
-            } else {
-                // knd_log("\n  NB:.. regular attr: %.*s",
-                //        curr_attr->name_size, curr_attr->name);
-                err = knd_get_arg_value(parent_item, attr_var, arg);
-                if (err) return err;
-            }
-        }
-
-        if (!strncmp("total", arg->name, arg->name_size)) {
-            total = arg->numval;
-        }
-
-        if (!strncmp("times", arg->name, arg->name_size)) {
-            times = arg->numval;
-            //knd_log("TIMES:%lu", arg->numval);
-        }
-
-        if (!strncmp("quant", arg->name, arg->name_size)) {
-            quant = arg->numval;
-            //knd_log("QUANT:%lu", arg->numval);
-        }
-
-        if (!strncmp("dividend", arg->name, arg->name_size)) {
-            dividend = (float)arg->numval;
-            //knd_log("DIVIDEND:%lu", arg->numval);
-        }
-
-        if (!strncmp("divisor", arg->name, arg->name_size)) {
-            divisor = (float)arg->numval;
-            //knd_log("DIVISOR:%lu (arg:%.*s)", arg->numval,
-            //        arg->name_size, arg->name);
-        }
-    }
-    */
-
-    /* run main proc */
-    switch (proc_call->type) {
-        /* multiplication */
-    case KND_PROC_SUM:
-        if (total)
-            numval = total;
-        break;
-    case KND_PROC_MULT:
-        numval = (times * quant);
-        break;
-    case KND_PROC_MULT_PERCENT:
-        numval = (times * quant) / 100;
-        break;
-    case KND_PROC_DIV_PERCENT:
-        if (!divisor) {
-            numval = (long)dividend;
-            break;
-        }
-        result = (dividend / divisor) * (float)100;
-
-        //knd_log("== result: %.2f", result);
-
-        numval = (long)result;
-        break;
-    default:
-        break;
-    }
-    result_arg->numval = numval;
-    return knd_OK;
-}
-
 int knd_get_arg_value(struct kndAttrVar *src, struct kndAttrVar *query,
                       struct kndProcCallArg *result_arg)
 {
@@ -416,12 +298,6 @@ int knd_get_arg_value(struct kndAttrVar *src, struct kndAttrVar *query,
         err = knd_class_get_attr(c, query->name, query->name_size, &ref);
         if (err) return err;
         attr = ref->attr;
-
-        if (attr->proc) {
-            err = compute_attr_var(src, attr, result_arg);
-            if (err) return err;
-            return knd_OK;
-        }
     }
     
     /* check implied attr */
@@ -561,6 +437,5 @@ int knd_attr_new(struct kndMemPool *mempool, struct kndAttr **result)
     if (err) return err;
     memset(page, 0,  sizeof(struct kndAttr));
     *result = page;
-    kndAttr_init(*result);
     return knd_OK;
 }

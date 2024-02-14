@@ -235,7 +235,7 @@ static int export_inverse_rels(struct kndClass *self, struct kndTask *task)
             KND_TASK_ERR("failed to resolve attr hub");
         }
         OUT("{", 1);
-        OUT(attr->parent_class->entry->id, attr->parent_class->entry->id_size);
+        OUT(attr->parent->entry->id, attr->parent->entry->id_size);
         OUT("{a ", strlen("{a "));
         OUT(attr->id, attr->id_size);
         OUT("}", 1);
