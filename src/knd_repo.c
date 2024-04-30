@@ -221,7 +221,6 @@ static gsl_err_t run_select_repo(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-
 static gsl_err_t parse_snapshot_task(void *obj, const char *unused_var(rec), size_t *total_size)
 {
     struct kndTask *task = obj;
@@ -448,6 +447,8 @@ int knd_repo_new(struct kndRepo **repo, const char *name, size_t name_size,
     self->name_size = name_size;
 
     if (path_size) {
+        if (path_size >= (KND_PATH_SIZE - 1)) return knd_LIMIT;
+
         memcpy(self->path, path, path_size);
         self->path_size = path_size;
         if (path[path_size - 1] != '/') {
@@ -462,10 +463,15 @@ int knd_repo_new(struct kndRepo **repo, const char *name, size_t name_size,
     case '~':
         break;
     default:
+        if (self->path_size + name_size >= (KND_PATH_SIZE - 1)) return knd_LIMIT;
+
         memcpy(self->path + self->path_size, name, name_size);
         self->path_size += name_size;
-        self->path[self->path_size] = '/';
-        self->path_size++;
+
+        if (path[path_size - 1] != '/') {
+            self->path[self->path_size] = '/';
+            self->path_size++;
+        }
     }
 
     self->schema_path = schema_path;
