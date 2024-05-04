@@ -273,20 +273,21 @@ static int build_journal_filename(struct kndRepoSnapshot *snapshot,
                                   struct kndTask *task)
 {
     struct kndOutput *out = task->out;
+    const char *path;
+    size_t path_size;
     int err;
 
     out->reset(out);
-    err = out->write(out, snapshot->path, snapshot->path_size);
-    KND_TASK_ERR("snapshot path construction failed");
+    OUT(snapshot->repo->path, snapshot->repo->path_size);
+    OUTF("snapshot_%zu", snapshot->numid);
+    OUTF("agent_%d/", task->id);
+    path = out->buf;
+    path_size = out->buf_size;
 
-    err = out->writef(out, "agent_%d/", task->id);
-    KND_TASK_ERR("agent path construction failed");
+    err = knd_mkpath(path, path_size, 0755, false);
+    KND_TASK_ERR("mkpath %.*s failed", path_size, path);
 
-    err = knd_mkpath((const char*)out->buf, out->buf_size, 0755, false);
-    KND_TASK_ERR("mkpath %.*s failed", out->buf_size, out->buf);
-
-    err = out->writef(out, "journal_%zu.log", snapshot->num_journals[task->id]);
-    KND_TASK_ERR("log filename construction failed");
+    OUTF("journal_%zu.log", snapshot->num_journals[task->id]);
 
     if (out->buf_size >= KND_PATH_SIZE) {
         err = knd_LIMIT;
@@ -311,8 +312,8 @@ static int build_commit_WAL(struct kndRepo *self, struct kndCommit *commit, stru
     
     commit->timestamp = time(NULL);
     if (DEBUG_REPO_COMMIT_LEVEL_TMP) {
-        knd_log(".. kndTask #%zu to build a WAL entry (snapshot #%zu path:%.*s commit #%zu)",
-                task->id, snapshot->numid, snapshot->path_size, snapshot->path, commit->numid);
+        knd_log(".. kndTask #%zu to build a WAL entry {snapshot #%zu} commit #%zu)",
+                task->id, snapshot->numid, commit->numid);
     }
     err = build_journal_filename(snapshot, filename, &filename_size, task);
     KND_TASK_ERR("failed to build journal filename");

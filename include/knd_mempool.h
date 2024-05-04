@@ -111,6 +111,7 @@ struct kndMemPool
 
 int  knd_mempool_new(struct kndMemPool **self, knd_mempool_t type, int mempool_id);
 void knd_mempool_del(struct kndMemPool *self);
+int  knd_mempool_alloc(struct kndMemPool *self);
 
 int knd_mempool_page(struct kndMemPool *self, knd_mempage_t page_type, void **result);
 // int knd_mempool_free_page(struct kndMemPool *self, knd_mempage_t page_type, void **result);

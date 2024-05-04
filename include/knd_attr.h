@@ -227,6 +227,10 @@ struct kndAttr
     bool is_implied;
     bool is_unique;
 
+    const char *format_classname;
+    size_t format_classname_size;
+    struct kndClassEntry *format_class_entry;
+
     const char *ref_classname;
     size_t ref_classname_size;
     struct kndClassEntry *ref_class_entry;

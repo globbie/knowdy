@@ -333,7 +333,7 @@ static int reset_capacity(struct kndMemPool *self)
     return knd_OK;
 }
 
-static int alloc_capacity(struct kndMemPool *self)
+int knd_mempool_alloc(struct kndMemPool *self)
 {
     int err;
 
@@ -416,7 +416,7 @@ static gsl_err_t parse_memory_settings(struct kndMemPool *self, const char *rec,
 static void mempool_init(struct kndMemPool *self)
 {
     self->parse = parse_memory_settings;
-    self->alloc = alloc_capacity;
+    self->alloc = knd_mempool_alloc;
     self->reset = reset_capacity;
     self->present = present_status;
 }

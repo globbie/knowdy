@@ -265,16 +265,16 @@ int knd_repo_restore(struct kndRepo *self, struct kndRepoSnapshot *snapshot, str
         default:
             break;
         }
-        knd_log(".. restoring the latest snapshot #%zu of repo \"%.*s\" (owner:%.*s) ",
+        knd_log(".. restoring the latest {snapshot #%zu of repo \"%.*s\" (owner:%.*s) ",
                 snapshot->numid, self->name_size, self->name, owner_name_size, owner_name);
     }
 
     // restore recent commits
     for (size_t i = 0; i < KND_MAX_TASKS; i++) {
         out->reset(out);
-        OUT(snapshot->path, snapshot->path_size);
-        err = out->writef(out, "agent_%zu/", i);
-        if (err) return err;
+        OUT(snapshot->repo->path, snapshot->repo->path_size);
+        OUTF("snapshot_%zu/", snapshot->numid);
+        OUTF("agent_%zu/", i);
 
         if (stat(out->buf, &st)) {
             if (DEBUG_REPO_LEVEL_TMP)
@@ -293,7 +293,8 @@ int knd_repo_restore(struct kndRepo *self, struct kndRepoSnapshot *snapshot, str
         KND_TASK_ERR("failed to restore journals in \"%.*s\"", path_size, path);
     }
     if (snapshot->commit_idx->num_elems == 0) {
-        knd_log("-- no commits to restore in repo \"%.*s\"", self->name_size, self->name);
+        knd_log("-- no commits to restore in repo \"%.*s\"",
+                self->name_size, self->name);
         return knd_OK;
     }
 
@@ -302,11 +303,12 @@ int knd_repo_restore(struct kndRepo *self, struct kndRepoSnapshot *snapshot, str
                 self->name_size, self->name, snapshot->commit_idx->num_elems);
 
     /* all commits are there in the idx,
-       time to apply them in timely order */
+       let's apply them in timely order */
     task->repo = self;
     err = snapshot->commit_idx->map(snapshot->commit_idx, knd_apply_commit, (void*)task);
     KND_TASK_ERR("failed to apply commits");
-    atomic_store_explicit(&snapshot->num_commits, snapshot->commit_idx->num_elems, memory_order_relaxed);
+    atomic_store_explicit(&snapshot->num_commits, snapshot->commit_idx->num_elems,
+                          memory_order_relaxed);
 
     if (DEBUG_REPO_LEVEL_TMP)
         knd_log("== repo \"%.*s\", total commits applied: %zu",
@@ -315,8 +317,8 @@ int knd_repo_restore(struct kndRepo *self, struct kndRepoSnapshot *snapshot, str
     return knd_OK;
 }
 
-
-static int fetch_str_idx(struct kndRepo *self, const char *path, size_t path_size, struct kndTask *task)
+static int fetch_str_idx(struct kndRepo *self, const char *path, size_t path_size,
+                         struct kndTask *task)
 {
     struct kndOutput *out = task->file_out;
     struct stat st;
@@ -327,12 +329,18 @@ static int fetch_str_idx(struct kndRepo *self, const char *path, size_t path_siz
     out->reset(out);
     OUT(path, path_size);
     OUT(filename, filename_size);
+
+    if (DEBUG_REPO_LEVEL_TMP) {
+        knd_log(".. open {string-idx %.*s}", out->buf_size, out->buf);
+    }
     if (stat(out->buf, &st)) {
         return knd_NO_MATCH;
     }
-    if (DEBUG_REPO_LEVEL_2)
-        knd_log(".. reading str idx \"%.*s\" [%zu]", out->buf_size, out->buf, (size_t)st.st_size);
 
+    if (DEBUG_REPO_LEVEL_TMP) {
+        knd_log(".. unmarshall {string-idx %.*s {size %zu}}",
+                out->buf_size, out->buf, (size_t)st.st_size);
+    }
     err = knd_shared_set_unmarshall_file(self->str_idx, out->buf, out->buf_size,
                                          (size_t)st.st_size, knd_charseq_unmarshall, task);
     KND_TASK_ERR("failed to unmarshall str idx file");
@@ -341,7 +349,8 @@ static int fetch_str_idx(struct kndRepo *self, const char *path, size_t path_siz
     return knd_OK;
 }
 
-static int fetch_class_storage(struct kndRepo *self, const char *path, size_t path_size, struct kndTask *task)
+static int fetch_class_storage(struct kndRepo *self, const char *path, size_t path_size,
+                               struct kndTask *task)
 {
     struct kndOutput *out = task->file_out;
     struct stat st;
@@ -355,12 +364,88 @@ static int fetch_class_storage(struct kndRepo *self, const char *path, size_t pa
     if (stat(out->buf, &st)) {
         return knd_NO_MATCH;
     }
-    if (DEBUG_REPO_LEVEL_TMP)
-        knd_log(".. reading class storage: %.*s [%zu]", out->buf_size, out->buf, (size_t)st.st_size);
-
+    if (DEBUG_REPO_LEVEL_TMP) {
+        knd_log(".. reading {class-snapshot %.*s {size %zu}}",
+                out->buf_size, out->buf, (size_t)st.st_size);
+    }
     err = knd_shared_set_unmarshall_file(self->class_idx, out->buf, out->buf_size,
                                          (size_t)st.st_size, knd_class_entry_unmarshall, task);
     KND_TASK_ERR("failed to unmarshall class storage GSP file");
+    return knd_OK;
+}
+
+static int read_repo_meta(struct kndRepo *repo, struct kndRepoSnapshot *snapshot,
+                          struct kndTask *task)
+{
+    struct kndOutput *out = task->file_out;
+    struct stat st;
+    const char *filename = "repo.gsl";
+    size_t filename_size = strlen(filename);
+
+    out->reset(out);
+    OUT(repo->path, repo->path_size);
+    OUT(filename, filename_size);
+
+    if (DEBUG_REPO_LEVEL_TMP) {
+        knd_log(".. open {repo-meta %.*s}", out->buf_size, out->buf);
+    }
+    if (stat(out->buf, &st)) {
+        return knd_OK;
+    }
+
+    // TODO file reading
+    snapshot->state = KND_SNAPSHOT_FULL;
+    
+    return knd_OK;
+}
+
+static int fetch_latest_snapshot(struct kndRepo *repo, struct kndRepoSnapshot **result,
+                                 struct kndTask *task)
+{
+    struct kndRepoSnapshot *snapshot;
+    int err;
+
+    err = knd_repo_snapshot_new(task->user_ctx->mempool, &snapshot);
+    KND_TASK_ERR("failed to alloc a repo snapshot");
+    atomic_store_explicit(&repo->snapshots, snapshot, memory_order_relaxed);
+
+    err = read_repo_meta(repo, snapshot, task);
+    KND_TASK_ERR("failed to read repo metadata");
+
+    snapshot->role = task->role;
+
+    *result = snapshot;
+    return knd_OK;
+}
+static int read_snapshot(struct kndRepoSnapshot *snapshot, struct kndTask *task)
+{
+    struct kndOutput *out = task->file_out;
+    const char *filename;
+    size_t filename_size;
+    int err;
+
+    out->reset(out);
+    OUT(snapshot->repo->path, snapshot->repo->path_size);
+    OUTF("snapshot_%zu/", snapshot->numid);
+    filename = out->buf;
+    filename_size = out->buf_size;
+
+    if (DEBUG_REPO_LEVEL_TMP) {
+        knd_log(".. reading {latest-snapshot %.*s}", filename_size, filename);
+    }
+
+    // TODO read snapshot metadata, signature
+
+    /* decode string names */
+    err = fetch_str_idx(snapshot->repo, filename, filename_size, task);
+    KND_TASK_ERR("failed to read string idx in "
+                 " {snapshot #%zu {path %.*s}}",
+                 snapshot->numid, filename_size, filename);
+
+    err = fetch_class_storage(snapshot->repo, filename, filename_size, task);
+    KND_TASK_ERR("failed to read storage leaf at %.*s",
+                 filename_size, filename);
+
     return knd_OK;
 }
 
@@ -369,10 +454,6 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
     struct kndOutput *out = task->file_out;
     struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndRepoSnapshot *snapshot;
-    char buf[KND_PATH_SIZE];
-    size_t buf_size;
-    struct stat st;
-    int latest_snapshot_id = -1;
     int err;
 
     assert(mempool != NULL);
@@ -389,7 +470,7 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
             break;
         }
         const char *agent_role_name = knd_agent_role_names[task->role];
-        knd_log(">> open \"%.*s\" Repo (owner:%.*s   open mode:%s  system path:%.*s)",
+        knd_log(">> open {repo %.*s {owner %.*s}  {open-mode %s}  {system-path %.*s}",
                 self->name_size, self->name, owner_name_size, owner_name,
                 agent_role_name, self->path_size, self->path);
 
@@ -398,26 +479,12 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
         KND_TASK_ERR("failed to present mempool");
         knd_log("** Repo Mempool\n%.*s", out->buf_size, out->buf);
     }
-    out->reset(out);
-    OUT(self->path, self->path_size);
 
-    for (size_t i = 0; i < KND_MAX_SNAPSHOTS; i++) {
-        buf_size = snprintf(buf, KND_TEMP_BUF_SIZE, "snapshot_%zu/", i);
-        OUT(buf, buf_size);
+    err = fetch_latest_snapshot(self, &snapshot, task);
+    KND_TASK_ERR("failed to fetch any repo snapshots");
 
-        if (DEBUG_REPO_LEVEL_TMP)
-            knd_log(".. try snapshot path: %.*s", out->buf_size, out->buf);
-
-        if (stat(out->buf, &st)) {
-            out->rtrim(out, buf_size);
-            break;
-        }
-        latest_snapshot_id = (int)i;
-        out->rtrim(out, buf_size);
-    }
-
-    if (latest_snapshot_id < 0) {
-        knd_log("no snapshots of \"%.*s\" found", self->name_size, self->name);
+    switch (snapshot->state) {
+    case KND_SNAPSHOT_INIT:
         switch (task->user_ctx->type) {
         case KND_USER_DEFAULT:
             err = knd_repo_read_source_files(self, task);
@@ -427,55 +494,14 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
             break;
         }
         return knd_OK;
-    }
-
-    if (DEBUG_REPO_LEVEL_2)
-        knd_log("== the latest snapshot of \"%.*s\" is #%d",
-                self->name_size, self->name, latest_snapshot_id);
-
-    err = out->writef(out, "snapshot_%d/", latest_snapshot_id);
-    KND_TASK_ERR("snapshot path construction failed");
-
-    if (out->buf_size >= KND_PATH_SIZE) return knd_LIMIT;
-
-    err = knd_repo_snapshot_new(mempool, &snapshot);
-    KND_TASK_ERR("failed to alloc a repo snapshot");
-    snapshot->numid = latest_snapshot_id;
-    memcpy(snapshot->path, out->buf, out->buf_size);
-    snapshot->path_size = out->buf_size;
-
-    atomic_store_explicit(&self->snapshots, snapshot, memory_order_relaxed);
-
-    /* decode string names */
-    err = fetch_str_idx(self, snapshot->path, snapshot->path_size, task);
-    if (err && err != knd_NO_MATCH) return err;
-
-    err = fetch_class_storage(self, snapshot->path, snapshot->path_size, task);
-    switch (err) {
-    case knd_NO_MATCH:
-        switch (task->user_ctx->type) {
-        case KND_USER_DEFAULT:
-            err = knd_repo_read_source_files(self, task);
-            KND_TASK_ERR("failed to read GSL source files");
-            break;
-        default:
-            break;
-        }
-        break;
-    case knd_OK:
-        break;
-    default:
-        return err;
-    }
-
-    switch (task->role) {
-    case KND_READER:
-        return knd_OK;
     default:
         break;
     }
-    snapshot->role = task->role;
+
+    err = read_snapshot(snapshot, task);
+    KND_TASK_ERR("failed to read the latest snapshot");
+
     err = knd_repo_restore(self, snapshot, task);
-    KND_TASK_ERR("failed to restore repo \"%.*s\"", self->name_size, self->name);
+    KND_TASK_ERR("failed to restore {repo %.*s}", self->name_size, self->name);
     return knd_OK;
 }

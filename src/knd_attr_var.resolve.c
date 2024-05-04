@@ -398,7 +398,7 @@ static int resolve_attr_ref(struct kndClass *self, struct kndAttrVar *parent_ite
 	KND_TASK_ERR("no attr \"%.*s\" in class \"%.*s\"",
                      attrname_size, attrname, entry->class->name_size, entry->class->name);
     }
-    parent_item->class_entry    = entry;
+    parent_item->class_entry = entry;
     parent_item->ref_attr = attr_ref->attr;
 
     if (val_classname_size) {

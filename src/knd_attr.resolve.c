@@ -159,6 +159,20 @@ int knd_attr_resolve(struct kndAttr *attr, struct kndRepo *repo, struct kndTask 
     int err;
 
     switch (attr->type) {
+    case KND_ATTR_DATE:
+        // fall through
+    case KND_ATTR_STR:
+        if (attr->format_classname_size) {
+            entry = knd_shared_dict_get(class_name_idx,
+                                        attr->format_classname, attr->format_classname_size);
+            if (!entry) {
+                err = knd_NO_MATCH;
+                KND_TASK_ERR("class not found: \"%.*s\"",
+                             attr->format_classname_size, attr->format_classname);
+            }
+            attr->format_class_entry = entry;
+        }
+        break;
     case KND_ATTR_REL:
         err = knd_rel_resolve(attr->impl, repo, task);
         KND_TASK_ERR("failed to resolve rel attr %.*s", attr->name_size, attr->name);

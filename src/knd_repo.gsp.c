@@ -30,7 +30,8 @@
 #define DEBUG_REPO_GSP_LEVEL_TMP 1
 
 static int marshall_idx(struct kndSharedSet *idx, const char *path, size_t path_size,
-                        const char *filename, size_t filename_size, elem_marshall_cb cb, struct kndTask *task)
+                        const char *filename, size_t filename_size,
+                        elem_marshall_cb cb, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     char buf[KND_PATH_SIZE + 1];
@@ -50,23 +51,26 @@ static int marshall_idx(struct kndSharedSet *idx, const char *path, size_t path_
     buf[buf_size] = '\0';
 
     out->reset(out);
-    err = out->write(out, "GSP", strlen("GSP"));
-    KND_TASK_ERR("repo header construction failed");
+    OUT("GSP", strlen("GSP"));
 
     err = knd_write_file((const char*)buf, out->buf, out->buf_size);
     KND_TASK_ERR("failed writing to file \"%.*s\"", buf_size, buf);
 
-    if (DEBUG_REPO_GSP_LEVEL_2)
-        knd_log(".. marshall idx \"%.*s\" (num elems:%zu)", filename_size, filename, idx->num_elems);
-
+    if (DEBUG_REPO_GSP_LEVEL_2) {
+        knd_log(".. marshall {idx %.*s} {num-elems %zu}",
+                filename_size, filename, idx->num_elems);
+    }
     err = knd_shared_set_marshall(idx, buf, buf_size, cb, &total_size, task);
     KND_TASK_ERR("failed to marshall str idx");
 
-    knd_log("{_snapshot {file %.*s {size %zu}}}", buf_size, buf, total_size);
+    if (DEBUG_REPO_GSP_LEVEL_TMP) {
+        KND_TASK_LOG("{idx-snapshot {filepath %.*s {size %zu}}}", buf_size, buf, total_size);
+    }
     return knd_OK;
 }
 
-static int export_class_insts(void *obj, const char *unused_var(elem_id), size_t unused_var(elem_id_size),
+static int export_class_insts(void *obj, const char *unused_var(elem_id),
+                              size_t unused_var(elem_id_size),
                               size_t unused_var(count), void *elem)
 {
     char buf[KND_NAME_SIZE + 1];
@@ -82,7 +86,8 @@ static int export_class_insts(void *obj, const char *unused_var(elem_id), size_t
     if (!c->inst_idx) return knd_OK;
 
     if (DEBUG_REPO_GSP_LEVEL_2) {
-        knd_log("\n== class \"%.*s\" total insts:%zu", c->name_size, c->name, c->inst_idx->num_elems);
+        knd_log("\n== class \"%.*s\" total insts:%zu",
+                c->name_size, c->name, c->inst_idx->num_elems);
         knd_log(">> path \"%.*s\"", task->filepath_size, task->filepath);
     }
     out->reset(out);
@@ -98,45 +103,43 @@ static int export_class_insts(void *obj, const char *unused_var(elem_id), size_t
     return knd_OK;
 }
 
-int knd_repo_snapshot(struct kndRepo *self, struct kndTask *task)
+int knd_repo_snapshot(struct kndRepo *repo, struct kndTask *task)
 {
-    char path[KND_PATH_SIZE + 1];
-    size_t path_size;
     struct kndOutput *out = task->out;
-    size_t latest_commit_id = atomic_load_explicit(&self->snapshots->num_commits,
+    struct kndRepoSnapshot *snapshot = atomic_load_explicit(&repo->snapshots,
+                                                            memory_order_relaxed);
+    size_t latest_commit_id = atomic_load_explicit(&repo->snapshots->num_commits,
                                                    memory_order_relaxed);
+    struct kndStorageLeaf *leaf;
+    const char *path;
+    size_t path_size;
     int err;
 
-    if (!latest_commit_id) {
-        //err = knd_NO_MATCH;
-        //KND_TASK_ERR("nothing to sync: no new commits found to snapshot #%zu", self->snapshot->numid);
-        knd_log("NB: no new commits in current snapshot");
+    if (DEBUG_REPO_GSP_LEVEL_TMP) {
+        knd_log(".. building a GSP snapshot of {repo %.*s {latest-commit %zu}}",
+                repo->name_size, repo->name, latest_commit_id);
     }
 
-    if (DEBUG_REPO_GSP_LEVEL_TMP)
-        knd_log(".. building a GSP snapshot of repo \"%.*s\" (last commit:%zu)",
-                self->name_size, self->name, latest_commit_id);
-
+    err = knd_storage_leaf_new(&leaf);
+    KND_TASK_ERR("failed to alloc a storage leaf");
+    
     out->reset(out);
-    err = out->write(out, self->path, self->path_size);
-    KND_TASK_ERR("repo path construction failed");
-
-    err = out->writef(out, "snapshot_%zu/", self->snapshots->numid);
-    KND_TASK_ERR("snapshot path construction failed");
-
-    err = out->writef(out, "agent_%d/", task->id);
-    KND_TASK_ERR("agent path construction failed");
+    OUT(repo->path, repo->path_size);
+    OUTF("snapshot_%zu/", repo->snapshots->numid);
+    OUTF("agent_%d/", task->id);
     if (out->buf_size >= KND_PATH_SIZE) {
         err = knd_LIMIT;
         KND_TASK_ERR("GSP path too long");
     }
-    memcpy(path, out->buf, out->buf_size);
+    path = out->buf;
     path_size = out->buf_size;
-    err = knd_mkpath((const char*)path, path_size, 0755, false);
+
+    err = knd_mkpath(path, path_size, 0755, false);
     KND_TASK_ERR("mkpath %.*s failed", path_size, path);
 
     /* class storage */
-    err = marshall_idx(self->class_idx, path, path_size, "classes.gsp", strlen("classes.gsp"),
+    err = marshall_idx(repo->class_idx, path, path_size,
+                       "classes.gsp", strlen("classes.gsp"),
                        knd_class_marshall, task);
     KND_TASK_ERR("failed to build the class storage");
 
@@ -145,13 +148,16 @@ int knd_repo_snapshot(struct kndRepo *self, struct kndTask *task)
     task->filepath_size = path_size;
     task->filepath[path_size] = '\0';
 
-    err = knd_shared_set_map(self->class_idx, export_class_insts, (void*)task);
+    err = knd_shared_set_map(repo->class_idx, export_class_insts, (void*)task);
     KND_TASK_ERR("failed to build the class inst storage");
 
     /* global string dict */
-    err = marshall_idx(self->str_idx, path, path_size, "strings.gsp", strlen("strings.gsp"),
+    err = marshall_idx(repo->str_idx, path, path_size,
+                       "strings.gsp", strlen("strings.gsp"),
                        knd_charseq_marshall, task);
     KND_TASK_ERR("failed to build the string idx");
+
+    snapshot->leaf = leaf;
 
     return knd_OK;
 }

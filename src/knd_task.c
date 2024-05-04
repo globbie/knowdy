@@ -26,11 +26,18 @@
 
 void knd_task_del(struct kndTask *self)
 {
-    self->log->del(self->log);
-    self->out->del(self->out);
-    self->file_out->del(self->file_out);
-    if (self->is_mempool_owner)
+    if (self->log) {
+        self->log->del(self->log);
+    }
+    if (self->out) {
+        self->out->del(self->out);
+    }
+    if (self->file_out) {
+        self->file_out->del(self->file_out);
+    }
+    if (self->is_mempool_owner) {
         knd_mempool_del(self->mempool);
+    }
     free(self);
 }
 
@@ -159,10 +166,14 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
 {
     size_t total_size = 0;
     gsl_err_t parser_err;
+
+    assert (task->shard != NULL);
+    assert (task->ctx != NULL);
+
     struct kndUser *user = task->shard->user;
     struct kndOutput *out = task->out;
     int err;
-    assert(task->ctx != NULL);
+
     task->user_ctx->repo = user->repo;
     task->user_ctx->acls = user->default_acls;
     task->user_ctx->mempool = user->mempool;
@@ -171,7 +182,7 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
     task->input_size = input_size;
     task->output = NULL;
     task->output_size = 0;
-    
+
     if (DEBUG_TASK_LEVEL_2) {
         size_t chunk_size = KND_TEXT_CHUNK_SIZE;
         if (task->input_size < chunk_size) chunk_size = task->input_size;
@@ -317,42 +328,26 @@ void knd_task_free_blocks(struct kndTask *task)
     task->num_blocks = 0;
 }
 
-int knd_task_context_new(struct kndMemPool *mempool, struct kndTaskContext **result)
+static int task_context_new(struct kndTaskContext **result)
 {
-    void *page;
-    int err;
-    assert(mempool->small_x2_page_size >= sizeof(struct kndTaskContext));
-    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL_X2, &page);
-    if (err) return err;
-    memset(page, 0, sizeof(struct kndTaskContext));
-    *result = page;
+    struct kndTaskContext *ctx;
+    ctx = calloc(1, sizeof(struct kndUserContext));
+    if (!ctx) return knd_NOMEM;
+    *result = ctx;
     return knd_OK;
 }
 
-int knd_task_new(struct kndShard *shard, struct kndMemPool *mempool, int task_id,
-                 struct kndTask **task)
+int knd_task_init(struct kndTask *task, struct kndShard *shard, struct kndMemPool *mempool)
 {
-    struct kndTask *self;
+    assert (shard != NULL);
+    assert (shard->repo != NULL);
+
     struct kndRepo *repo = shard->repo;
     int err;
 
-    self = malloc(sizeof(struct kndTask));
-    if (!self) return knd_NOMEM;
-    memset(self, 0, sizeof(struct kndTask));
-    self->shard = shard;
-    self->id = task_id;
-    self->role = shard->role;
-
-    switch (shard->role) {
-    case KND_ARBITER:
-        // config
-        self->keep_local_WAL = true;
-        break;
-    default:
-        break;
-    }
-    self->path = shard->path;
-    self->path_size = shard->path_size;
+    task->shard = shard;
+    task->path = shard->path;
+    task->path_size = shard->path_size;
 
     if (!mempool) {
         err = knd_mempool_new(&mempool, KND_ALLOC_INCR, 0);
@@ -364,50 +359,81 @@ int knd_task_new(struct kndShard *shard, struct kndMemPool *mempool, int task_id
         mempool->num_tiny_pages = shard->ctx_mem_config.num_tiny_pages;
         err = mempool->alloc(mempool); 
         if (err) goto error;
-        self->is_mempool_owner = true;
+        task->is_mempool_owner = true;
     }
-    self->mempool = mempool;
-
-    err = knd_output_new(&self->out, NULL, KND_LARGE_BUF_SIZE);
-    if (err) goto error;
-
-    err = knd_output_new(&self->log, NULL, KND_TEMP_BUF_SIZE);
-    if (err) goto error;
-
-    err = knd_output_new(&self->file_out, NULL, KND_FILE_BUF_SIZE);
-    if (err) goto error;
+    task->mempool = mempool;
 
     /* local name indices */
-    err = knd_dict_new(&self->class_name_idx, mempool, KND_SMALL_DICT_SIZE);
+    err = knd_dict_new(&task->class_name_idx, mempool, KND_SMALL_DICT_SIZE);
     if (err) goto error;
-    err = knd_dict_new(&self->class_inst_alias_idx, mempool, KND_SMALL_DICT_SIZE);
+    err = knd_dict_new(&task->class_inst_alias_idx, mempool, KND_SMALL_DICT_SIZE);
     if (err) goto error;
-
-    err = knd_dict_new(&self->attr_name_idx, mempool, KND_SMALL_DICT_SIZE);
+        
+    err = knd_dict_new(&task->attr_name_idx, mempool, KND_SMALL_DICT_SIZE);
     if (err) goto error;
-    err = knd_dict_new(&self->proc_name_idx, mempool, KND_SMALL_DICT_SIZE);
+    err = knd_dict_new(&task->proc_name_idx, mempool, KND_SMALL_DICT_SIZE);
     if (err) goto error;
-    err = knd_dict_new(&self->proc_arg_name_idx, mempool, KND_SMALL_DICT_SIZE);
+    err = knd_dict_new(&task->proc_arg_name_idx, mempool, KND_SMALL_DICT_SIZE);
     if (err) goto error;
 
     /* system repo defaults */
-    self->system_repo       = repo;
-    self->repo              = repo;
+    task->system_repo       = repo;
+    task->repo              = repo;
+
+    err = task_context_new(&task->ctx);
+    if (err) goto error;
 
     /* default user context */
-    err = knd_user_context_new(NULL, &self->default_user_ctx);
+    err = knd_user_context_new(&task->default_user_ctx);
     if (err) goto error;
-    self->user_ctx = self->default_user_ctx;
-    if (shard->user) {
-        self->user_ctx->mempool = shard->user->mempool;
-        self->user_ctx->repo = shard->user->repo;
-        self->user_ctx->acls = shard->user->default_acls;
-    }
-    *task = self;
+    task->user_ctx = task->default_user_ctx;
+    task->user_ctx->mempool = mempool;
+    task->user_ctx->repo = shard->repo;
 
+    if (shard->user) {
+        task->user_ctx->mempool = shard->user->mempool;
+        task->user_ctx->repo = shard->user->repo;
+        task->user_ctx->acls = shard->user->default_acls;
+    }
     return knd_OK;
 
  error:
-    // TODO free
+    return err;
+}
+
+int knd_task_new(knd_agent_role_type role, int task_id, struct kndTask **result)
+{
+    struct kndTask *task;
+    int err;
+
+    task = malloc(sizeof(struct kndTask));
+    if (!task) return knd_NOMEM;
+    memset(task, 0, sizeof(struct kndTask));
+    task->role = role;
+    task->id = task_id;
+
+    err = knd_output_new(&task->out, NULL, KND_LARGE_BUF_SIZE);
+    if (err) goto error;
+
+    err = knd_output_new(&task->log, NULL, KND_TEMP_BUF_SIZE);
+    if (err) goto error;
+
+    err = knd_output_new(&task->file_out, NULL, KND_FILE_BUF_SIZE);
+    if (err) goto error;
+
+    switch (task->role) {
+    case KND_ARBITER:
+        // config
+        task->keep_local_WAL = true;
+        break;
+    default:
+        break;
+    }
+
+    *result = task;
+    return knd_OK;
+
+ error:
+    knd_task_del(task);
     return err;
 }

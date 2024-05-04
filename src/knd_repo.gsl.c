@@ -642,8 +642,9 @@ int knd_repo_read_source_files(struct kndRepo *self, struct kndTask *task)
 {
     int err;
 
-    if (DEBUG_REPO_GSL_LEVEL_2)
-        knd_log(".. initial loading of schema files");
+    if (DEBUG_REPO_GSL_LEVEL_TMP)
+        knd_log(".. initial loading of schema files for {repo %.*s}",
+                self->name_size, self->name);
 
     /* read a system-wide schema */
     task->type = KND_BULK_LOAD_STATE;

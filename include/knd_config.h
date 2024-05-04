@@ -69,6 +69,49 @@ static const char *const knd_format_names[] = {
 #define ALLOC_ERR(V) if (!(V)) { return knd_NOMEM; }
 #define PARSE_ERR(V) if (err) { printf("LINEAR POS:%zu", *total_size); return err; } 
 
+#define KND_SHARD_ERR(...) \
+    if (err) { \
+        task->out->reset(task->out);\
+        int e = task->out->writef(task->out, "" __VA_ARGS__); \
+        if (e) return e; \
+        if (task->log->buf_size != 0) { \
+            e = task->out->write(task->out,      \
+                      " <= ", strlen(" <= "));  \
+            if (e) return e; \
+            e = task->out->write(task->out, task->log->buf, task->log->buf_size); \
+            if (e) return e; \
+        }\
+        task->log->reset(task->log); \
+        e = task->log->write(task->log, task->out->buf, task->out->buf_size); \
+        if (e) return e; \
+        shard->msg = task->log->buf; \
+        shard->msg_size = task->log->buf_size; \
+        return err;\
+    }
+
+#define KND_SHARD_LOG(...)                     \
+    do {                                     \
+        task->out->reset(task->out);           \
+        int e = task->out->writef(task->out,   \
+          "" __VA_ARGS__);                   \
+        if (e) break;                        \
+        if (task->log->buf_size != 0) {       \
+          e = task->out->write(task->out,      \
+                   " <= ", strlen(" <= "));  \
+          if (e) break;                      \
+          e = task->out->write(task->out,      \
+          task->log->buf, task->log->buf_size);\
+          if (e) break;                      \
+        }                                    \
+        task->log->reset(task->log);           \
+        e = task->log->write(task->log,        \
+         task->out->buf, task->out->buf_size); \
+        if (e) break;                        \
+        shard->msg = task->log->buf;         \
+        shard->msg_size = task->log->buf_size;\
+    } while (0)
+
+
 #define KND_TASK_ERR(...) \
     if (err) { \
         task->out->reset(task->out);\
@@ -179,6 +222,8 @@ static const char *const knd_format_names[] = {
 
 #define KND_SID_SIZE 128
 #define KND_TID_SIZE 128
+
+#define KND_HASH_SIZE 128
 
 #define KND_MAX_TIDS 1024
 #define KND_MAX_USERS 1024 * 1024

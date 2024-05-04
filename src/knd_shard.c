@@ -273,134 +273,144 @@ parse_schema(void *obj, const char *rec, size_t *total_size)
     return make_gsl_err(gsl_OK);
 }
 
-static int parse_config(struct kndShard *self, const char *rec, size_t *total_size)
+int knd_shard_read_config(struct kndShard *shard, const char *config, size_t config_size)
 {
     struct gslTaskSpec specs[] = {
         {
             .name = "schema",
             .name_size = strlen("schema"),
             .parse = parse_schema,
-            .obj = self
+            .obj = shard
         }
     };
+    size_t total_parsed = config_size;
     gsl_err_t parser_err;
+    struct kndTask *task = shard->task;
 
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code != gsl_OK) return gsl_err_to_knd_err_codes(parser_err);
+    parser_err = gsl_parse_task(config, &total_parsed, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code != gsl_OK) {
+        KND_SHARD_LOG("failed to read configuration file");
+        return gsl_err_to_knd_err_codes(parser_err);
+    }
     return knd_OK;
 }
 
-int knd_shard_new(struct kndShard **shard, const char *config, size_t config_size)
+static int init_shard_user(struct kndShard *shard, struct kndTask *task)
 {
-    struct kndShard *self;
-    struct kndMemPool *mempool = NULL;
-    struct kndRepo *repo;
-    struct kndTask *task = NULL;
     struct kndRepoAccess *acl;
     struct kndUser *user;
     int err;
 
-    assert (config_size != 0 && config != NULL);
+    assert (shard->repo != NULL);
 
-    self = malloc(sizeof(struct kndShard));
-    if (!self) return knd_NOMEM;
-    memset(self, 0, sizeof(struct kndShard));
-
-    err = parse_config(self, config, &config_size);
-    if (err != knd_OK) {
-        knd_log("failed to read a config file");
-        goto error;
+    if (!shard->user_class_name_size) {
+        shard->user_class_name_size = strlen("User");
+        memcpy(shard->user_class_name, "User", shard->user_class_name_size);
     }
-
-    /* DB paths */
-    err = knd_mkpath(self->path, self->path_size, 0755, false);
-    if (err != knd_OK) {
-        knd_log("-- failed to make path: \"%.*s\"", self->path_size, self->path);
-        goto error;
-    }
-
-    err = knd_mempool_new(&mempool, KND_ALLOC_INCR, 0);
-    if (err) goto error;
-    mempool->num_pages = self->mem_config.num_pages;
-    mempool->num_small_x4_pages = self->mem_config.num_small_x4_pages;
-    mempool->num_small_x2_pages = self->mem_config.num_small_x2_pages;
-    mempool->num_small_pages = self->mem_config.num_small_pages;
-    mempool->num_tiny_pages = self->mem_config.num_tiny_pages;
-    err = mempool->alloc(mempool);
-    if (err) goto error;
-    self->mempool = mempool;
-
-    err = knd_set_new(mempool, &self->repo_idx);
-    if (err) goto error;
-
-    err = knd_shared_dict_new(&self->repo_name_idx, KND_MEDIUM_DICT_SIZE);
-    if (err) goto error;
-
-    /* system repo */
-    err = knd_repo_new(&repo, "/", 1, self->path, self->path_size,
-                       self->schema_path, self->schema_path_size, mempool);
-    if (err) {
-        knd_log("failed to create a system repo: %d", err);
-        goto error;
-    }
-    self->repo = repo;
-    if (self->data_path_size) {
-        repo->data_path_size = self->data_path_size;
-        repo->data_path = self->data_path;
-    }
-
-    err = knd_task_new(self, mempool, 0, &task);
-    if (err) goto error;
-    task->ctx = calloc(1, sizeof(struct kndTaskContext));
-    if (!task->ctx) return knd_NOMEM;
-    task->role = self->role;
-    task->user_ctx->repo = repo;
-    task->user_ctx->mempool = mempool;
-    self->task = task;
-
-    err = knd_repo_access_new(mempool, &acl);
-    KND_TASK_ERR("failed to alloc repo acl");
-    acl->repo = repo;
-    acl->allow_read = true;
-    acl->allow_write = true;
-    task->user_ctx->acls = acl;
-
-    err = knd_repo_open(repo, task);
-    if (err != knd_OK) {
-        knd_log("ERR LOG:%.*s", task->output_size, task->output);
-        goto error;
-    }
-
-    if (!self->user_class_name_size) {
-        self->user_class_name_size = strlen("User");
-        memcpy(self->user_class_name, "User", self->user_class_name_size);
-    }
-    task->repo = repo;
 
     /* user manager */
-    err = knd_user_new(&user, self->user_class_name, self->user_class_name_size,
-                       self->path, self->path_size,
-                       self->user_repo_name, self->user_repo_name_size,
-                       self->user_schema_path, self->user_schema_path_size,
-                       self, task);
-    if (err) {
-        knd_log("-- failed to create a user manager: %.*s", task->output_size, task->output);
-        goto error;
+    err = knd_user_new(&user, shard->user_class_name, shard->user_class_name_size,
+                       shard->path, shard->path_size,
+                       shard->user_repo_name, shard->user_repo_name_size,
+                       shard->user_schema_path, shard->user_schema_path_size,
+                       shard, task);
+    KND_TASK_ERR("failed to create a user manager");
+
+    err = knd_repo_access_new(task->mempool, &acl);
+    KND_TASK_ERR("failed to alloc repo acl");
+    acl->repo = shard->repo;
+    acl->allow_read = true;
+    acl->allow_write = true;
+    task->user_ctx->acls = acl;    
+    shard->user = user;
+
+    task->user_ctx->mempool = shard->user->mempool;
+    task->user_ctx->repo = shard->user->repo;
+    task->user_ctx->acls = shard->user->default_acls;
+
+    return knd_OK;
+}
+
+int knd_shard_init(struct kndShard *shard)
+{
+    struct kndTask *task = shard->task;
+    struct kndMemPool *mempool;
+    struct kndRepo *repo;
+    int err;
+
+    /* DB paths */
+    err = knd_mkpath(shard->path, shard->path_size, 0755, false);
+    KND_SHARD_ERR("failed to make {path %.*s}", shard->path_size, shard->path);
+
+    err = knd_mempool_new(&mempool, KND_ALLOC_INCR, 0);
+    KND_SHARD_ERR("failed to create a mempool");
+    mempool->num_pages = shard->mem_config.num_pages;
+    mempool->num_small_x4_pages = shard->mem_config.num_small_x4_pages;
+    mempool->num_small_x2_pages = shard->mem_config.num_small_x2_pages;
+    mempool->num_small_pages = shard->mem_config.num_small_pages;
+    mempool->num_tiny_pages = shard->mem_config.num_tiny_pages;
+
+    err = knd_mempool_alloc(mempool);
+    KND_SHARD_ERR("failed to alloc a mempool");
+    shard->mempool = mempool;
+
+    err = knd_set_new(mempool, &shard->repo_idx);
+    KND_SHARD_ERR("failed to create a set idx");
+
+    err = knd_shared_dict_new(&shard->repo_name_idx, KND_MEDIUM_DICT_SIZE);
+    KND_SHARD_ERR("failed to create a dict idx");
+
+    /* system repo */
+    err = knd_repo_new(&repo, "/", 1, shard->path, shard->path_size,
+                       shard->schema_path, shard->schema_path_size, mempool);
+    KND_SHARD_ERR("failed to create a repo");
+    shard->repo = repo;
+
+    if (shard->data_path_size) {
+        repo->data_path_size = shard->data_path_size;
+        repo->data_path = shard->data_path;
     }
-    self->user = user;
+
+    err = knd_task_init(task, shard, mempool);
+    KND_SHARD_ERR("failed to init a shard task");
+
+    err = knd_repo_open(repo, task);
+    KND_SHARD_ERR("failed to open a repo");
+
+    /* depends on class User from base repo */
+    err = init_shard_user(shard, task);
+    KND_SHARD_ERR("failed to init shard user");
 
     /* clean up all temporary memblocks */
-    if (task) knd_task_free_blocks(task);
+    knd_task_free_blocks(task);
 
     srand(time(NULL));
 
-    *shard = self;
     return knd_OK;
- error:
+}
 
-    knd_shard_del(self);
-    if (task) knd_task_free_blocks(task);
- 
+int knd_shard_new(const char *guid, size_t guid_size, struct kndShard **result)
+{
+    struct kndShard *shard;
+    int err;
+
+    shard = malloc(sizeof(struct kndShard));
+    if (!shard) return knd_NOMEM;
+    memset(shard, 0, sizeof(struct kndShard));
+    shard->guid = guid;
+    shard->guid_size = guid_size;
+
+    err = knd_task_new(KND_ARBITER, 0, &shard->task);
+    if (err) {
+        knd_log("failed to alloc shard's auxiliary task");
+        goto error;
+    }
+
+    *result = shard;
+    return knd_OK;
+
+ error:
+    knd_shard_del(shard);
     return err;
 }
 
@@ -409,14 +419,14 @@ void knd_shard_del(struct kndShard *self)
     if (self->repo)
         knd_repo_del(self->repo);
 
-    if (self->task)
-        knd_task_del(self->task);
-
     if (self->mempool)
         knd_mempool_del(self->mempool);
 
     if (self->user)
         knd_user_del(self->user);
+
+    if (self->task)
+        knd_task_del(self->task);
 
     free(self);
 }

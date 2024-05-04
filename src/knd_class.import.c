@@ -65,7 +65,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     int err;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log(".. set class name: \"%.*s\" num strs:%zu", name_size, name, repo->num_strs);
+        knd_log("set {class %.*s} num strs:%zu", name_size, name, repo->num_strs);
 
     assert(repo != NULL);
 
@@ -199,19 +199,6 @@ static gsl_err_t set_class_var(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t set_state_top_option(void *obj,
-                                      const char *unused_var(name),
-                                      size_t unused_var(name_size) )
-{
-    struct kndClass *self = obj;
-
-    if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log("NB: set class state top option!");
-
-    self->state_top = true;
-    return make_gsl_err(gsl_OK);
-}
-
 static gsl_err_t parse_logic_clause(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
@@ -242,6 +229,7 @@ static gsl_err_t parse_attr(void *obj, const char *name, size_t name_size,
     struct kndAttr *attr;
     struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndText *tr = task->ctx->tr;
+    size_t num_attr_types = sizeof(knd_attr_names) / sizeof(knd_attr_names[0]);
     const char *c;
     int err;
     gsl_err_t parser_err;
@@ -255,15 +243,16 @@ static gsl_err_t parse_attr(void *obj, const char *name, size_t name_size,
     if (err) return *total_size = 0, make_gsl_err_external(err);
     attr->parent = self;
 
-    for (size_t i = 0; i < sizeof(knd_attr_names) / sizeof(knd_attr_names[0]); i++) {
+    for (size_t i = 0; i < num_attr_types; i++) {
         c = knd_attr_names[i];
+        if (name_size != strlen(c)) continue;
         if (!memcmp(c, name, name_size)) 
             attr->type = (knd_attr_type)i;
     }
 
     switch (attr->type) {
     case KND_ATTR_NONE:
-        knd_log("-- \"%.*s\" attr is not supported (imported class:%.*s)",
+        knd_log("{attr-type %.*s} is not supported for {class %.*s}",
                 name_size, name, self->name_size, self->name);
         return make_gsl_err_external(knd_NO_MATCH);
     case KND_ATTR_REL:
@@ -455,7 +444,8 @@ static gsl_err_t parse_uniq_attr_constraint(void *obj, const char *rec, size_t *
     return make_gsl_err(gsl_OK);
 }
 
-gsl_err_t knd_class_import(struct kndRepo *repo, const char *rec, size_t *total_size, struct kndTask *task)
+gsl_err_t knd_class_import(struct kndRepo *repo, const char *rec, size_t *total_size,
+                           struct kndTask *task)
 {
     struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndClass *c;
@@ -464,7 +454,7 @@ gsl_err_t knd_class_import(struct kndRepo *repo, const char *rec, size_t *total_
     gsl_err_t parser_err;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log(".. worker \"%zu\" to import class: \"%.*s\"", task->id, 128, rec);
+        knd_log(".. {worker %zu} to import {class %.*s}", task->id, 128, rec);
 
     err = knd_class_new(mempool, &c);
     if (err) {
@@ -502,23 +492,6 @@ gsl_err_t knd_class_import(struct kndRepo *repo, const char *rec, size_t *total_
           .parse = knd_parse_gloss_array,
           .obj = task
         },
-        { .type = GSL_GET_ARRAY_STATE,
-          .name = "_gloss",
-          .name_size = strlen("_gloss"),
-          .parse = knd_parse_gloss_array,
-          .obj = task
-        }/*,
-        { .type = GSL_GET_ARRAY_STATE,
-          .name = "_summary",
-          .name_size = strlen("_summary"),
-          .parse = knd_parse_summary_array,
-          .obj = task
-          }*/,
-        { .name = "_state_top",
-          .name_size = strlen("_state_top"),
-          .run = set_state_top_option,
-          .obj = c
-        },
         { .name = "uniq",
           .name_size = strlen("uniq"),
           .parse = parse_uniq_attr_constraint,
@@ -536,7 +509,17 @@ gsl_err_t knd_class_import(struct kndRepo *repo, const char *rec, size_t *total_
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
-        KND_TASK_LOG("\"%.*s\" class parsing error: %d", c->name_size, c->name, parser_err.code);
+        switch (parser_err.code) {
+        case gsl_NO_MATCH:
+            KND_TASK_LOG("unrecognized tag \"%.*s\" in {class %.*s}",
+                         parser_err.val_size, parser_err.val,
+                         c->name_size, c->name);
+            break;
+        default:
+            KND_TASK_LOG("\"%.*s\" class parsing error: %d",
+                         c->name_size, c->name, parser_err.code);
+            break;
+        }
         goto final;
     }
 

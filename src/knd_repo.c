@@ -106,8 +106,6 @@ static gsl_err_t present_repo_state(void *obj, const char *unused_var(name), siz
     // struct kndMemPool *mempool = task->mempool;
     int err;
 
-    knd_log(".. present repo state..");
-
     if (!repo) {
         knd_log("-- no repo selected");
         out->reset(out);
@@ -229,7 +227,8 @@ static gsl_err_t parse_snapshot_task(void *obj, const char *unused_var(rec), siz
     task->type = KND_SNAPSHOT_STATE;
     err = knd_repo_snapshot(task->repo, task);
     if (err) {
-        KND_TASK_LOG("failed to build a snapshot of repo %.*s", task->repo->name_size, task->repo->name);
+        KND_TASK_LOG("failed to build a snapshot of repo %.*s",
+                     task->repo->name_size, task->repo->name);
         return *total_size = 0, make_gsl_err(gsl_FAIL);
     }
     return *total_size = 0, make_gsl_err(gsl_OK);
@@ -272,8 +271,9 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
             err = knd_commit_new(task->mempool, &task->ctx->commit);
             if (err) return make_gsl_err_external(err);
 
-            task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshots->num_commits,
-                                                                    memory_order_relaxed);
+            task->ctx->commit->orig_state_id = \
+                atomic_load_explicit(&task->repo->snapshots->num_commits,
+                                     memory_order_relaxed);
         }
     }
     return knd_class_import(repo, rec, total_size, task);
@@ -300,23 +300,24 @@ gsl_err_t knd_parse_repo(void *obj, const char *rec, size_t *total_size)
           .parse = parse_class_select,
           .obj = task
         },
-        { .name = "_state",
-          .name_size = strlen("_state"),
+        { .name = "state",
+          .name_size = strlen("state"),
           .parse = parse_repo_state,
           .obj = task
         },
-        { .name = "_commit_from",
-          .name_size = strlen("_commit_from"),
+        { .name = "commit-from",
+          .name_size = strlen("commit-from"),
           .parse = gsl_parse_size_t,
           .obj = &task->state_eq
         },
-        { .name = "_snapshot",
-          .name_size = strlen("_snapshot"),
+        { .type = GSL_SET_STATE,
+          .name = "snapshot",
+          .name_size = strlen("snapshot"),
           .parse = parse_snapshot_task,
           .obj = task
         },
-        { .name = "_seq",
-          .name_size = strlen("_seq"),
+        { .name = "seq-decode",
+          .name_size = strlen("seq-decode"),
           .run = decode_seq,
           .obj = task
         },
@@ -407,6 +408,15 @@ int knd_conc_folder_new(struct kndMemPool *mempool, struct kndConcFolder **resul
     return knd_OK;
 }
 
+int knd_storage_leaf_new(struct kndStorageLeaf **result)
+{
+    struct kndStorageLeaf *leaf;
+    leaf = calloc(1, sizeof(struct kndStorageLeaf));
+    if (!leaf) return knd_NOMEM;
+    *result = leaf;
+    return knd_OK;
+}
+
 int knd_repo_snapshot_new(struct kndMemPool *mempool, struct kndRepoSnapshot **result)
 {
     struct kndRepoSnapshot *s;
@@ -434,7 +444,6 @@ int knd_repo_new(struct kndRepo **repo, const char *name, size_t name_size,
     struct kndClassEntry *entry;
     struct kndProc *proc;
     struct kndProcEntry *proc_entry;
-    struct kndRepoSnapshot *snapshot;
     int err;
 
     self = malloc(sizeof(struct kndRepo));
@@ -457,10 +466,10 @@ int knd_repo_new(struct kndRepo **repo, const char *name, size_t name_size,
         }
     }
 
-    /* special repo names */
+    /* check special repo names */
     switch (self->name[0]) {
-    case '/':
-    case '~':
+    case '/': // base repo
+    case '~': // user repo
         break;
     default:
         if (self->path_size + name_size >= (KND_PATH_SIZE - 1)) return knd_LIMIT;
@@ -468,7 +477,7 @@ int knd_repo_new(struct kndRepo **repo, const char *name, size_t name_size,
         memcpy(self->path + self->path_size, name, name_size);
         self->path_size += name_size;
 
-        if (path[path_size - 1] != '/') {
+        if (self->path[self->path_size - 1] != '/') {
             self->path[self->path_size] = '/';
             self->path_size++;
         }
@@ -541,10 +550,6 @@ int knd_repo_new(struct kndRepo **repo, const char *name, size_t name_size,
     /* proc insts */
     err = knd_shared_dict_new(&self->proc_inst_name_idx, KND_LARGE_DICT_SIZE);
     if (err) goto error;
-
-    err = knd_repo_snapshot_new(mempool, &snapshot);
-    if (err) goto error;
-    atomic_store_explicit(&self->snapshots, snapshot, memory_order_relaxed);
     
     *repo = self;
     return knd_OK;

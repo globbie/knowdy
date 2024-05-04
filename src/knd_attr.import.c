@@ -68,6 +68,19 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
+static gsl_err_t set_format(void *obj, const char *name, size_t name_size)
+{
+    struct kndAttr *self = obj;
+    if (!name_size) return make_gsl_err(gsl_FAIL);
+    if (!self->name_size) {
+        knd_log("-- attr name not specified");
+        return make_gsl_err(gsl_FAIL);
+    }
+    self->format_classname = name;
+    self->format_classname_size = name_size;
+    return make_gsl_err(gsl_OK);
+}
+
 static gsl_err_t set_ref_class(void *obj, const char *name, size_t name_size)
 {
     struct kndAttr *self = obj;
@@ -80,6 +93,7 @@ static gsl_err_t set_ref_class(void *obj, const char *name, size_t name_size)
     self->ref_classname_size = name_size;
     return make_gsl_err(gsl_OK);
 }
+
 static gsl_err_t set_proc_ref(void *obj, const char *name, size_t name_size)
 {
     struct kndAttr *self = obj;
@@ -161,7 +175,6 @@ gsl_err_t knd_parse_quant_type(void *obj, const char *rec, size_t *total_size)
         knd_log("attr name not specified");
         return make_gsl_err(gsl_FAIL);
     }
-
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_set_quant,
@@ -237,6 +250,11 @@ gsl_err_t knd_attr_import(struct kndAttr *self, struct kndTask *task,
           .name_size = strlen("gloss"),
           .parse = knd_parse_gloss_array,
           .obj = task
+        },
+        { .name = "format",
+          .name_size = strlen("format"),
+          .run = set_format,
+          .obj = self
         },
         { .name = "cls",
           .name_size = strlen("cls"),

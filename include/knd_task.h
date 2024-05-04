@@ -241,8 +241,9 @@ struct kndTask
 };
 
 // knd_task.c
-int knd_task_new(struct kndShard *shard, struct kndMemPool *mempool, int task_id, struct kndTask **task);
-int knd_task_context_new(struct kndMemPool *mempool, struct kndTaskContext **ctx);
+int knd_task_new(knd_agent_role_type role, int task_id, struct kndTask **result);
+int knd_task_init(struct kndTask *task, struct kndShard *shard, struct kndMemPool *mempool);
+
 int knd_task_block_new(struct kndMemPool *mempool, struct kndTask **result);
 int knd_task_copy_block(struct kndTask *self, const char *input, size_t input_size,
                         const char **output, size_t *output_size);

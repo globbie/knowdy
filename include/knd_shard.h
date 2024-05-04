@@ -20,6 +20,9 @@ static const char* const knd_agent_role_names[] = {
 };
 
 struct kndMemConfig {
+    size_t num_large_x4_pages;
+    size_t num_large_x2_pages;
+    size_t num_large_pages;
     size_t num_pages;
     size_t num_small_x4_pages;
     size_t num_small_x2_pages;
@@ -29,6 +32,9 @@ struct kndMemConfig {
 
 struct kndShard
 {
+    const char *guid;
+    size_t guid_size;
+
     knd_agent_role_type role;
 
     char name[KND_NAME_SIZE + 1];
@@ -56,15 +62,21 @@ struct kndShard
 
     struct kndTask *task;
     struct kndMemPool *mempool;
+    const char *msg;
+    size_t msg_size;
 
     /* system repo */
     struct kndRepo *repo;
+
+    /* subrepos */
     struct kndSet *repo_idx;
     struct kndSharedDict *repo_name_idx;
 };
 
-int knd_shard_new(struct kndShard **self, const char *config, size_t config_size);
-void knd_shard_del(struct kndShard *self);
+int knd_shard_new(const char *guid, size_t guid_size, struct kndShard **shard);
+int knd_shard_read_config(struct kndShard *shard, const char *config, size_t config_size);
+int knd_shard_init(struct kndShard *shard);
+void knd_shard_del(struct kndShard *shard);
 
 int knd_shard_run_task(struct kndShard *self, const char *input, size_t input_size,
                        char *output, size_t *output_size);

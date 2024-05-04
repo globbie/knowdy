@@ -241,10 +241,6 @@ int knd_attr_var_export_GSP(struct kndAttrVar *var, struct kndTask *task, struct
     case KND_ATTR_REF:
         OUT(var->class_entry->id, var->class_entry->id_size);
         break;
-    case KND_ATTR_PROC_REF:
-        //err = proc_item_export_GSP(var, task);
-        //KND_TASK_ERR("failed to export proc var GSP");
-        break;
     case KND_ATTR_INNER:
         err = inner_var_export_GSP(var, task);
         KND_TASK_ERR("failed to export inner var GSP");

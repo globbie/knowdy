@@ -26,6 +26,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -48,6 +49,13 @@ static struct option main_options[] =
 static void display_usage(void)
 {
     fprintf(stderr, "\nUsage: knd-shell --config=path_to_your_config\n\n");
+}
+
+void sigHandler(int sig_num) 
+{
+    printf("\n Termination signal received: %s\n", strsignal(sig_num)); 
+    fflush(stdout);
+    exit(0);
 }
 
 static int check_file_rec(struct kndTask *task, const char *rec, size_t rec_size,
@@ -86,40 +94,35 @@ static int check_file_rec(struct kndTask *task, const char *rec, size_t rec_size
     return knd_OK;
 }
 
-static int knd_interact(struct kndShard *shard)                      
+static int knd_interact(struct kndShard *shard)
 {
-    struct kndTask *writer_task, *reader_task;
-    struct kndOutput *out;
+    struct kndTask *reader_task;
+    struct kndTask *writer_task;
+    struct kndTask *task = shard->task;
     char  *buf;
     size_t buf_size;
     struct kndMemBlock *memblock = NULL;
     const char *block;
     size_t block_size;
+    const char *shard_role_name = knd_agent_role_names[shard->role];
     int err;
 
-    err = knd_task_new(shard, NULL, 1, &writer_task);
-    if (err) return err;
-    writer_task->ctx = calloc(1, sizeof(struct kndTaskContext));
-    if (!writer_task->ctx) return knd_NOMEM;
-    writer_task->role = KND_ARBITER;
+    err = knd_task_new(KND_ARBITER, 1, &writer_task);
+    KND_SHARD_ERR("failed to create a writer/arbiter task");
 
-    err = knd_task_new(shard, NULL, 1, &reader_task);
-    if (err) return err;
-    reader_task->ctx = calloc(1, sizeof(struct kndTaskContext));
-    if (!reader_task->ctx) return knd_NOMEM;
-    reader_task->role = KND_READER;
+    err = knd_task_init(writer_task, shard, NULL);
+    KND_SHARD_ERR("failed to init a writer task");
 
-    out = reader_task->out;
-    out->reset(out);
-    shard->mempool->present(shard->mempool, out);
-    knd_log("** System Mempool\n%.*s", out->buf_size, out->buf);
-    out->reset(out);
-    shard->user->mempool->present(shard->user->mempool, out);
-    knd_log("** User Space Mempool\n%.*s", out->buf_size, out->buf);
+    err = knd_task_new(KND_READER, 2, &reader_task);
+    KND_SHARD_ERR("failed to create a reader task");
 
-    const char *shard_role_name = knd_agent_role_names[shard->role];
+    err = knd_task_init(reader_task, shard, NULL);
+    KND_SHARD_ERR("failed to init a reader task");
 
-    knd_log("\n++ Knowdy shard service is up and running! (agent role:%s  Knowdy version:%s)\n",
+    /* start serving requests */
+
+    knd_log("\n++ Knowdy shard service is up and running!\n"
+            "   {shard-role %s}  {knd-version %s}\n",
             shard_role_name, KND_VERSION);
     knd_log("   (finish session by pressing Ctrl+C)\n");
 
@@ -130,43 +133,45 @@ static int knd_interact(struct kndShard *shard)
         }
         if (!buf_size) continue;
 
-        printf("[%s :%zu]\n", buf, buf_size);
+        // printf("[%s :%zu]\n", buf, buf_size);
         block = buf;
         block_size = buf_size;
 
-        if (block[0] == '[') {
-            knd_log(">> parse text  mem:%p repo:%p",
-                    reader_task->user_ctx->mempool, reader_task->user_ctx->repo);
+        /*if (block[0] == '[') {
             knd_task_reset(reader_task);
-            // memcpy(reader_task->ctx->locale, "ru", strlen("ru"));
-            // reader_task->ctx->locale_size = strlen("ru");
             err = knd_text_build_JSON(block, block_size, reader_task);
             if (err) goto next_line;
             knd_log("== JSON: %.*s", reader_task->output_size, reader_task->output);
-        }
+            }*/
+
         err = check_file_rec(reader_task, buf, buf_size, &memblock);
         if (err) goto next_line;
         if (memblock) {
             block = memblock->buf;
             block_size = memblock->buf_size;
         }
+
+        /* reader task is always the first to parse and validate the request */
         knd_task_reset(reader_task);
         err = knd_task_run(reader_task, block, block_size);
         if (err != knd_OK) {
-            knd_log("-- task run failed: %.*s", reader_task->output_size, reader_task->output);
+            knd_log("-- task run failed: %.*s",
+                    reader_task->output_size, reader_task->output);
             goto next_line;
         }
-        knd_log("=== REPLY ===\n\n%.*s", reader_task->output_size, reader_task->output);
+        knd_log("=== REPLY ===\n\n%.*s",
+                reader_task->output_size, reader_task->output);
 
         // out->reset(out);
         // reader_task->mempool->present(reader_task->mempool, out);
         // knd_log("** Task Mempool (%p)\n%.*s", reader_task->mempool, out->buf_size, out->buf);
 
-        /* update tasks require another run,
+        /* writing tasks require another run,
            possibly involving network communication */
         switch (reader_task->ctx->phase) {
         case KND_CONFIRM_COMMIT:
-            err = knd_task_copy_block(reader_task, reader_task->output, reader_task->output_size,
+            err = knd_task_copy_block(reader_task,
+                                      reader_task->output, reader_task->output_size,
                                       &block, &block_size);
             if (err != knd_OK) {
                 knd_log("-- update block allocation failed");
@@ -175,10 +180,12 @@ static int knd_interact(struct kndShard *shard)
             knd_task_reset(writer_task);
             err = knd_task_run(writer_task, block, block_size);
             if (err != knd_OK) {
-                knd_log("-- update confirm failed: %.*s", writer_task->output_size, writer_task->output);
+                knd_log("-- update confirm failed: %.*s",
+                        writer_task->output_size, writer_task->output);
                 goto next_line;
             }
-            knd_log("== Arbiter's output:\n%.*s", writer_task->output_size, writer_task->output);
+            knd_log("== Arbiter's output:\n%.*s",
+                    writer_task->output_size, writer_task->output);
             break;
         default:
             break;
@@ -191,6 +198,50 @@ static int knd_interact(struct kndShard *shard)
     return knd_OK;
 }
 
+static int knd_start(const char *config, size_t config_size)
+{
+    struct kndShard *shard;
+    struct kndOutput *out;
+    int err;
+
+    err = knd_shard_new("0", 1, &shard);
+    if (err) {
+        knd_log("ERR >> failed to create a shard");
+        return err;
+    }
+
+    err = knd_shard_read_config(shard, config, config_size);
+    if (err) {
+        knd_log("-- %.*s", shard->msg_size, shard->msg);
+        return err;
+    }
+
+    err = knd_shard_init(shard);
+    if (err) {
+        knd_log("-- %.*s", shard->msg_size, shard->msg);
+        return err;
+    }
+
+    out = shard->task->out;
+    out->reset(out);
+    shard->mempool->present(shard->mempool, out);
+    knd_log("** System Mempool\n%.*s", out->buf_size, out->buf);
+    out->reset(out);
+    shard->user->mempool->present(shard->user->mempool, out);
+    knd_log("** User Space Mempool\n%.*s", out->buf_size, out->buf);
+
+    err = knd_interact(shard);
+    if (err) goto error;
+
+    knd_shard_del(shard);
+    return knd_OK;
+
+ error:
+    knd_log("-- %.*s", shard->msg_size, shard->msg);
+    knd_shard_del(shard);
+    return err;
+}
+
 /******************* MAIN ***************************/
 
 int main(int argc, char *argv[])
@@ -199,9 +250,10 @@ int main(int argc, char *argv[])
     char *config_body = NULL;
     size_t config_body_size = 0;
     int long_option;
-    struct kndShard *shard;
     int opt;
     int err;
+
+    signal(SIGINT, sigHandler);
 
     while ((opt = getopt_long(argc, argv, 
 			      options_string, main_options, &long_option)) >= 0) {
@@ -251,10 +303,7 @@ int main(int argc, char *argv[])
     }
     if (!config_body) goto error;
 
-    err = knd_shard_new(&shard, config_body, config_body_size);
-    if (err != 0) goto error;
-
-    err = knd_interact(shard);
+    err = knd_start(config_body, config_body_size);
     if (err != 0) goto error;
 
  error:

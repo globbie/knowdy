@@ -175,7 +175,7 @@ static int build_user_ctx(struct kndUser *self, struct kndClassInst *inst,
     struct kndUserContext *ctx;
     struct kndOutput *out = task->out;
     int err;
-    err = knd_user_context_new(NULL, &ctx);
+    err = knd_user_context_new(&ctx);
     KND_TASK_ERR("failed to alloc user ctx");
     ctx->type =  KND_USER_AUTHENTICATED;
     ctx->inst = inst;
@@ -221,7 +221,7 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
 
     /* default anonymous user */
     if (name_size == 1 && name[0] == '_') {
-        err = knd_user_context_new(NULL, &ctx);
+        err = knd_user_context_new(&ctx);
         if (err) return make_gsl_err_external(err);
         ctx->repo = self->repo;
         ctx->base_repo = self->repo;
@@ -452,8 +452,9 @@ gsl_err_t knd_parse_select_user(void *obj, const char *rec, size_t *total_size)
           .run = run_present_state,
           .obj = task
         },
-        { .name = "_snapshot",
-          .name_size = strlen("_snapshot"),
+        { .type = GSL_SET_STATE,
+          .name = "snapshot",
+          .name_size = strlen("snapshot"),
           .parse = parse_snapshot_task,
           .obj = task
         },
@@ -465,7 +466,8 @@ gsl_err_t knd_parse_select_user(void *obj, const char *rec, size_t *total_size)
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     switch (parser_err.code) {
     case gsl_NO_MATCH:
-        KND_TASK_LOG("user area got an unrecognized tag \"%.*s\"", parser_err.val_size, parser_err.val);
+        KND_TASK_LOG("user area got an unrecognized tag \"%.*s\"",
+                     parser_err.val_size, parser_err.val);
         break;
     default:
         break;
@@ -506,7 +508,8 @@ gsl_err_t knd_create_user(void *obj, const char *rec, size_t *total_size)
 
 int knd_user_new(struct kndUser **user, const char *classname, size_t classname_size,
                  const char *path, size_t path_size, const char *reponame, size_t reponame_size,
-                 const char *schema_path, size_t schema_path_size, struct kndShard *shard, struct kndTask *task)
+                 const char *schema_path, size_t schema_path_size, struct kndShard *shard,
+                 struct kndTask *task)
 {
     struct kndUser *self;
     struct kndMemPool *mempool = NULL;
@@ -589,7 +592,6 @@ int knd_user_new(struct kndUser **user, const char *classname, size_t classname_
     err = knd_cache_new(&self->cache, KND_CACHE_NUM_CELLS, KND_CACHE_MAX_MEM_SIZE, free_user_ctx);
     if (err) goto error;
 
-
     *user = self;
     return knd_OK;
  error:
@@ -597,22 +599,12 @@ int knd_user_new(struct kndUser **user, const char *classname, size_t classname_
     return err;
 }
 
-int knd_user_context_new(struct kndMemPool *mempool, struct kndUserContext **result)
+int knd_user_context_new(struct kndUserContext **result)
 {
     struct kndUserContext *self;
-    void *page;
-    int err;
-    if (!mempool) {
-        self = calloc(1, sizeof(struct kndUserContext));
-        if (!self) return knd_NOMEM;
-        *result = self;
-        return knd_OK;
-    }
-    assert(mempool->tiny_page_size >= sizeof(struct kndUserContext));
-    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
-    if (err) return err;
-    memset(page, 0, sizeof(struct kndUserContext));
-    *result = page;
+    self = calloc(1, sizeof(struct kndUserContext));
+    if (!self) return knd_NOMEM;
+    *result = self;
     return knd_OK;
 }
 

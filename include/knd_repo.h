@@ -26,6 +26,12 @@ typedef enum knd_content_type {
     KND_GSL_INIT_DATA
 } knd_content_type;
 
+typedef enum knd_snapshot_state {
+    KND_SNAPSHOT_INIT,
+    KND_SNAPSHOT_LOG,
+    KND_SNAPSHOT_FULL
+} knd_snapshot_state;
+
 struct kndConcFolder
 {
     const char *name;
@@ -34,15 +40,32 @@ struct kndConcFolder
     struct kndConcFolder *next;
 };
 
-/*  steady-state DB snapshot */
+struct kndStorageLeaf
+{
+    knd_snapshot_state state;
+    size_t leaf_id;
+
+    size_t file_size;
+    char file_hash[KND_HASH_SIZE];
+    size_t file_hash_size;
+    
+    struct kndStorageLeaf *children;
+    size_t num_children;
+};
+
+/*  steady-state repo snapshot:
+ *  - consists of N leaves (marshalled sets of objects)
+ *  - reuses leaves from previous snapshots
+ */
 struct kndRepoSnapshot
 {
-    char path[KND_PATH_SIZE + 1];
-    size_t path_size;
-
+    knd_snapshot_state state;
     knd_agent_role_type role;
     size_t numid;
     time_t timestamp;
+
+    struct kndRepo *repo;
+    struct kndStorageLeaf *leaf;
 
     struct kndCommit * _Atomic commits;
     struct kndSet *commit_idx;
@@ -56,6 +79,7 @@ struct kndRepoSnapshot
     size_t max_journal_size;
 
     struct kndRepoSnapshot *prev;
+    struct kndRepoSnapshot *next;
 };
 
 struct kndRepo
@@ -147,6 +171,7 @@ int knd_repo_snapshot(struct kndRepo *self, struct kndTask *task);
 void knd_repo_del(struct kndRepo *self);
 
 int knd_repo_snapshot_new(struct kndMemPool *mempool, struct kndRepoSnapshot **result);
+int knd_storage_leaf_new(struct kndStorageLeaf **result);
 int knd_conc_folder_new(struct kndMemPool *mempool, struct kndConcFolder **result);
 int knd_repo_new(struct kndRepo **self, const char *name, size_t name_size,
                  const char *path, size_t path_size,
