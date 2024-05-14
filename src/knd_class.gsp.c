@@ -430,13 +430,11 @@ int knd_class_export_GSP(struct kndClass *self, struct kndTask *task)
         err = export_inverse_rels(self, task);
         KND_TASK_ERR("failed to export inverse rels GSP");
     }
-
     // insts
     if (self->inst_idx) {
         err = out->writef(out, "{insts %zu}", self->inst_idx->num_elems);
         KND_TASK_ERR("failed to export num insts GSP");
     }
-    
     return knd_OK;
 }
 
@@ -451,10 +449,11 @@ int knd_class_marshall(void *elem, size_t *output_size, struct kndTask *task)
     err = knd_class_export_GSP(entry->class, task);
     KND_TASK_ERR("failed to export class GSP");
 
-    if (DEBUG_CLASS_GSP_LEVEL_2)
-        knd_log("== GSP of %.*s (%.*s)  size:%zu", 
-                entry->class->name_size,  entry->class->name, entry->id_size, entry->id, out->buf_size - orig_size);
-
+    if (DEBUG_CLASS_GSP_LEVEL_3) {
+        knd_log("== GSP of {class %.*s {id %.*s}}  {size %zu}", 
+                entry->class->name_size,  entry->class->name,
+                entry->id_size, entry->id, out->buf_size - orig_size);
+    }
     *output_size = out->buf_size - orig_size;
     return knd_OK;
 }
@@ -514,7 +513,8 @@ int knd_class_entry_unmarshall(const char *elem_id, size_t elem_id_size,
 
     if (DEBUG_CLASS_GSP_LEVEL_3)
         knd_log("== class name decoded \"%.*s\" => \"%.*s\" (repo:%.*s)",
-                entry->id_size, entry->id, entry->name_size, entry->name, repo->name_size, repo->name);
+                entry->id_size, entry->id, entry->name_size, entry->name,
+                repo->name_size, repo->name);
 
     *result = entry;
     return knd_OK;

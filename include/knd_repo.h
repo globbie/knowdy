@@ -11,6 +11,7 @@ struct kndUserContext;
 struct kndQuery;
 struct kndTask;
 struct kndSharedDict;
+struct kndStorageLeaf;
 
 #include <time.h>
 #include <stdatomic.h>
@@ -40,19 +41,6 @@ struct kndConcFolder
     struct kndConcFolder *next;
 };
 
-struct kndStorageLeaf
-{
-    knd_snapshot_state state;
-    size_t leaf_id;
-
-    size_t file_size;
-    char file_hash[KND_HASH_SIZE];
-    size_t file_hash_size;
-    
-    struct kndStorageLeaf *children;
-    size_t num_children;
-};
-
 /*  steady-state repo snapshot:
  *  - consists of N leaves (marshalled sets of objects)
  *  - reuses leaves from previous snapshots
@@ -65,7 +53,6 @@ struct kndRepoSnapshot
     time_t timestamp;
 
     struct kndRepo *repo;
-    struct kndStorageLeaf *leaf;
 
     struct kndCommit * _Atomic commits;
     struct kndSet *commit_idx;
@@ -73,6 +60,13 @@ struct kndRepoSnapshot
     atomic_size_t  commit_id_count;
     size_t         max_commits;
 
+    size_t min_leaf_size;
+    size_t max_leaf_size;
+
+    struct kndStorageLeaf *class_db;
+    struct kndStorageLeaf *class_inst_db;
+    struct kndStorageLeaf *string_db;
+    
     /* array of integers => each task/writer can produce a number of WAL journals */
     size_t num_journals[KND_MAX_TASKS];
     size_t max_journals;
@@ -171,7 +165,6 @@ int knd_repo_snapshot(struct kndRepo *self, struct kndTask *task);
 void knd_repo_del(struct kndRepo *self);
 
 int knd_repo_snapshot_new(struct kndMemPool *mempool, struct kndRepoSnapshot **result);
-int knd_storage_leaf_new(struct kndStorageLeaf **result);
 int knd_conc_folder_new(struct kndMemPool *mempool, struct kndConcFolder **result);
 int knd_repo_new(struct kndRepo **self, const char *name, size_t name_size,
                  const char *path, size_t path_size,

@@ -302,7 +302,8 @@ static int alloc_page_buf(struct kndMemPool *self, char **result_pages,
     return knd_OK;
 }
 
-static void build_linked_list(char *pages, size_t num_pages, size_t page_size, struct kndMemPageHeader **page_list)
+static void build_linked_list(char *pages, size_t num_pages, size_t page_size,
+                              struct kndMemPageHeader **page_list)
 {
     for (size_t i = 0; i < num_pages; i++) {
         *page_list = (struct kndMemPageHeader*)pages;

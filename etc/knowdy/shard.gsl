@@ -17,7 +17,9 @@
             {max_small_x4_pages    20000}
             {max_small_x2_pages    31000}
             {max_small_pages       90000}
-            {max_tiny_pages        120000}}
-    }
-}
+            {max_tiny_pages        120000}} }
+      {-- storage   quota-limit-total
+                    max-leaf min-leaf
+                    snapshot threshhold  min --}
+      {-- network --}
 }

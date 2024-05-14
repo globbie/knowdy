@@ -54,6 +54,12 @@ static const char *const knd_format_names[] = {
         if (e) return e; \
     }
 
+#define OUTC(...)                                \
+    { \
+        int e = out->writec(out, __VA_ARGS__); \
+        if (e) return e; \
+    }
+
 #define OUTF(...)                               \
     { \
         int e = out->writef(out, __VA_ARGS__); \
@@ -181,6 +187,10 @@ static const char *const knd_format_names[] = {
 
 #define KND_TMP_DIR "/tmp"
 
+#define KND_GSP_FILE_HEADER_NAME "GSP"
+#define KND_GSP_FILE_EXT_NAME ".gsp"
+#define KND_GSP_FILE_TMP_EXT_NAME ".temp"
+
 /* debugging output levels */
 #define KND_DEBUG_LEVEL_1 1
 #define KND_DEBUG_LEVEL_2 1
@@ -194,7 +204,10 @@ static const char *const knd_format_names[] = {
 
 #define KND_MAX_JOURNALS 64
 #define KND_MAX_JOURNAL_SIZE 10 * 1024 * 1024
+
 #define KND_MAX_SNAPSHOTS 32
+#define KND_SNAPSHOT_LEAF_MAX_THRESHOLD 1024 * 4
+#define KND_SNAPSHOT_LEAF_MIN_THRESHOLD 1024
 
 #define KND_RESULT_BATCH_SIZE 10
 #define KND_RESULT_MAX_BATCH_SIZE 500

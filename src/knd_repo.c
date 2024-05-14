@@ -408,11 +408,12 @@ int knd_conc_folder_new(struct kndMemPool *mempool, struct kndConcFolder **resul
     return knd_OK;
 }
 
-int knd_storage_leaf_new(struct kndStorageLeaf **result)
+int knd_storage_leaf_new(struct kndStorageLeaf **result, struct kndRepoSnapshot *snapshot)
 {
     struct kndStorageLeaf *leaf;
     leaf = calloc(1, sizeof(struct kndStorageLeaf));
     if (!leaf) return knd_NOMEM;
+    leaf->snapshot = snapshot;
     *result = leaf;
     return knd_OK;
 }

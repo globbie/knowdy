@@ -153,6 +153,8 @@ static int knd_interact(struct kndShard *shard)
 
         /* reader task is always the first to parse and validate the request */
         knd_task_reset(reader_task);
+        reader_task->mode = KND_TASK_TRACE_MODE;
+
         err = knd_task_run(reader_task, block, block_size);
         if (err != knd_OK) {
             knd_log("-- task run failed: %.*s",

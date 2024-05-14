@@ -73,6 +73,12 @@ typedef enum knd_task_phase_t {
      KND_COMPLETE
 } knd_task_phase_t;
 
+typedef enum knd_task_mode_t {
+     KND_TASK_DEFAULT_MODE,
+     KND_TASK_TRACE_MODE,
+     KND_TASK_COMMIT_MODE
+} knd_task_mode_t;
+
 struct kndTaskDestination
 {
     char URI[KND_NAME_SIZE];
@@ -96,6 +102,7 @@ struct kndTaskContext {
 
     knd_task_spec_type type;
     knd_task_phase_t phase;
+
     struct timespec start_ts;
     struct timespec end_ts;
 
@@ -165,6 +172,7 @@ struct kndTask
     knd_task_spec_type type;
     int id;
     knd_state_phase phase;
+    knd_task_mode_t mode;
 
     struct kndShard *shard;
     struct kndTaskContext *ctx;

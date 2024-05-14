@@ -753,7 +753,7 @@ int knd_class_acquire(struct kndClassEntry *entry, struct kndClass **result, str
 
     // TODO read/write conflicts
     atomic_fetch_add_explicit(&entry->num_readers, 1, memory_order_relaxed);
- 
+
     do {
         prev_c = atomic_load_explicit(&entry->class, memory_order_relaxed);
         if (prev_c) {
@@ -772,9 +772,6 @@ int knd_class_acquire(struct kndClassEntry *entry, struct kndClass **result, str
             c->entry = entry;
             c->name = entry->name;
             c->name_size = entry->name_size;
-
-            // err = resolve_class(c, task);
-            //KND_TASK_ERR("failed to resolve class %.*s", c->name_size, c->name);
         }
     } while (!atomic_compare_exchange_weak(&entry->class, &prev_c, c));
 

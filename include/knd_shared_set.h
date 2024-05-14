@@ -29,12 +29,41 @@ typedef int (*map_cb_func)(void *obj, const char *elem_id, size_t elem_id_size, 
 struct kndSharedSet;
 struct kndSharedSetFooter;
 
+struct kndStorageLeaf
+{
+    size_t numid;
+    struct kndRepoSnapshot *snapshot;
+
+    char range_from_id[KND_ID_SIZE];
+    size_t range_from_id_size;
+
+    char range_to_id[KND_ID_SIZE];
+    size_t range_to_id_size;
+
+    size_t num_elems;
+
+    char filepath[KND_PATH_SIZE + 1];
+    size_t filepath_size;
+    size_t file_size;
+    char file_hash[KND_HASH_SIZE];
+    size_t file_hash_size;
+    
+    struct kndStorageLeaf *next;
+    struct kndStorageLeaf *tail;
+    size_t num_leaves;
+};
+
 struct kndSharedSetDir
 {
     size_t elem_block_sizes[KND_RADIX_BASE];
     struct kndSharedSetDir * _Atomic subdirs[KND_RADIX_BASE];
 
-    size_t num_elems;
+    char id[KND_ID_SIZE];
+    size_t id_size;
+
+    struct kndStorageLeaf *leaf;
+
+    size_t num_term_elems;
     size_t payload_block_size;
     size_t payload_footer_size;
 
@@ -56,6 +85,8 @@ struct kndSharedSetElemIdx
 {
     void * _Atomic elems[KND_RADIX_BASE];
     struct kndSharedSetElemIdx * _Atomic idxs[KND_RADIX_BASE];
+    atomic_size_t num_term_elems;
+    atomic_size_t total_elems;
 };
 
 struct kndSharedSet
@@ -82,9 +113,11 @@ int knd_shared_set_add(struct kndSharedSet *self, const char *key, size_t key_si
 int knd_shared_set_map(struct kndSharedSet *self, map_cb_func cb, void *obj);
 int knd_shared_set_intersect(struct kndSharedSet *self, struct kndSharedSet **sets, size_t num_sets);
 
-int knd_shared_set_marshall(struct kndSharedSet *self, const char *filename, size_t filename_size,
-                            elem_marshall_cb cb, size_t *total_size, struct kndTask *task);
+int knd_shared_set_marshall(struct kndSharedSet *self, struct kndStorageLeaf *leaf,
+                            elem_marshall_cb cb, struct kndTask *task);
 int knd_shared_set_unmarshall_file(struct kndSharedSet *self, const char *filename, size_t filename_size,
                                    size_t filesize, elem_unmarshall_cb cb, struct kndTask *task);
 int knd_shared_set_unmarshall_elem(struct kndSharedSet *self, const char *id, size_t id_size,
                                    elem_unmarshall_cb cb, void **elem, struct kndTask *task);
+
+int knd_storage_leaf_new(struct kndStorageLeaf **result, struct kndRepoSnapshot *snapshot);

@@ -198,7 +198,16 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
         }
     };
     parser_err = gsl_parse_task(task->input, &total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) {
+    switch (parser_err.code) {
+    case gsl_OK:
+        break;
+    case gsl_NO_MATCH:
+        if (!task->log->buf_size) {
+            KND_TASK_LOG("\"%.*s\" tag is not valid here, \"task\" expected",
+                         parser_err.val_size, parser_err.val);
+        }
+        break;
+    default:
         if (!task->log->buf_size) {
             task->http_code = HTTP_INTERNAL_SERVER_ERROR;
             KND_TASK_LOG("unclassified server error");

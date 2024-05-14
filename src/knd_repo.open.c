@@ -409,6 +409,10 @@ static int fetch_latest_snapshot(struct kndRepo *repo, struct kndRepoSnapshot **
     KND_TASK_ERR("failed to alloc a repo snapshot");
     atomic_store_explicit(&repo->snapshots, snapshot, memory_order_relaxed);
 
+    // TODO use dynamic config
+    snapshot->min_leaf_size = KND_SNAPSHOT_LEAF_MIN_THRESHOLD;
+    snapshot->max_leaf_size = KND_SNAPSHOT_LEAF_MAX_THRESHOLD;
+
     err = read_repo_meta(repo, snapshot, task);
     KND_TASK_ERR("failed to read repo metadata");
 
