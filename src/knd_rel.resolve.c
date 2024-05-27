@@ -24,7 +24,7 @@
 
 int knd_rel_resolve(struct kndRel *rel, struct kndRepo *repo, struct kndTask *task)
 {
-    struct kndSharedDict *proc_name_idx = repo->proc_name_idx;
+    struct kndSharedDict *proc_name_idx = repo->idxs.proc_name_idx;
     const char *proc_name = rel->ref_proc_name;
     size_t proc_name_size = rel->ref_proc_name_size;
     struct kndProcEntry *proc_entry;

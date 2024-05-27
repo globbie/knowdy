@@ -135,7 +135,7 @@ static gsl_err_t set_baseclass(void *obj, const char *id, size_t id_size)
     memcpy(class_var->id, id, id_size);
     class_var->id_size = id_size;
 
-    err = knd_shared_set_get(repo->class_idx, id, id_size, (void**)&entry);
+    err = knd_shared_set_get(repo->idxs.class_idx, id, id_size, (void**)&entry);
     if (err) {
         KND_TASK_LOG("class \"%.*s\" not found in repo %.*s", id_size, id, repo->name_size, repo->name);
         return make_gsl_err(gsl_FAIL);
@@ -170,7 +170,7 @@ static gsl_err_t set_class_ref(void *obj, const char *id, size_t id_size)
     if (!id_size) return make_gsl_err(gsl_FORMAT);
     if (id_size > KND_ID_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    err = knd_shared_set_get(repo->class_idx, id, id_size, (void**)&entry);
+    err = knd_shared_set_get(repo->idxs.class_idx, id, id_size, (void**)&entry);
     if (err) {
         KND_TASK_LOG("class \"%.*s\" not found in repo %.*s", id_size, id, repo->name_size, repo->name);
         return make_gsl_err(gsl_FAIL);
@@ -395,7 +395,7 @@ static gsl_err_t set_attr_hub_template(void *obj, const char *id, size_t id_size
     if (!id_size) return make_gsl_err(gsl_FORMAT);
     if (id_size > KND_ID_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    err = knd_shared_set_get(repo->class_idx, id, id_size, (void**)&entry);
+    err = knd_shared_set_get(repo->idxs.class_idx, id, id_size, (void**)&entry);
     if (err) {
         KND_TASK_LOG("class \"%.*s\" not found in repo %.*s", id_size, id, repo->name_size, repo->name);
         return make_gsl_err(gsl_FAIL);
@@ -425,7 +425,7 @@ static gsl_err_t set_rel_topic(void *obj, const char *id, size_t id_size)
     if (!id_size) return make_gsl_err(gsl_FORMAT);
     if (id_size > KND_ID_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    err = knd_shared_set_get(repo->class_idx, id, id_size, (void**)&entry);
+    err = knd_shared_set_get(repo->idxs.class_idx, id, id_size, (void**)&entry);
     if (err) {
         KND_TASK_LOG("class \"%.*s\" not found in repo %.*s", id_size, id, repo->name_size, repo->name);
         return make_gsl_err(gsl_FAIL);
@@ -743,39 +743,91 @@ int knd_class_read(struct kndClass *self, const char *rec, size_t *total_size, s
 
 int knd_class_acquire(struct kndClassEntry *entry, struct kndClass **result, struct kndTask *task)
 {
-    struct kndRepo *repo = entry->repo;
-    struct kndClass *c = NULL, *prev_c = NULL;
-    // int num_readers;
+    //struct kndRepo *repo = entry->repo;
+    //struct kndClass *c = NULL;
+    //int num_readers = 0;
+    //size_t num_attempts = 0;
     int err;
 
-    if (DEBUG_CLASS_READ_LEVEL_2)
-        knd_log(">> acquire class \"%.*s\"", entry->name_size, entry->name);
+    if (DEBUG_CLASS_READ_LEVEL_2) {
+        knd_log(">> acquire {class %.*s}", entry->name_size, entry->name);
+    }
 
-    // TODO read/write conflicts
-    atomic_fetch_add_explicit(&entry->num_readers, 1, memory_order_relaxed);
+    /* cached object */
+    if (entry->class) {
+        *result = entry->class;
+        return knd_OK;
+    }
 
-    do {
-        prev_c = atomic_load_explicit(&entry->class, memory_order_relaxed);
+    /* recently assigned? */
+
+
+    /* read from file and save to local cache */
+
+    //  num_readers = atomic_fetch_add_explicit(&entry->num_readers, 1, memory_order_release);
+
+    /* some other task is responsible for resource allocation */
+    /*if (num_readers > 0) {
+        prev_c = atomic_load_explicit(&entry->cache, memory_order_relaxed);
+        if (!prev_c) return knd_CONFLICT;
+        *result = prev_c;
+        return knd_OK;
+    }
+    */
+    /* it's my duty to allocate resources */
+
+    /*do {
+        prev_c = atomic_load_explicit(&entry->cache, memory_order_relaxed);
         if (prev_c) {
-            // TODO if (c != NULL)  - free
-            if (DEBUG_CLASS_READ_LEVEL_3)
-                knd_log("++ %.*s class is already cached (class:%p)",
-                        entry->name_size, entry->name, prev_c);
             *result = prev_c;
             return knd_OK;
         }
+
         if (!c) {
             task->payload = (void*)entry;
-            err = knd_shared_set_unmarshall_elem(repo->class_idx, entry->id, entry->id_size,
+            err = knd_shared_set_unmarshall_elem(repo->idxs.class_idx, entry->id, entry->id_size,
                                                  knd_class_unmarshall, (void**)&c, task);
             KND_TASK_ERR("failed to unmarshall class entry %.*s", entry->name_size, entry->name);
             c->entry = entry;
             c->name = entry->name;
             c->name_size = entry->name_size;
         }
-    } while (!atomic_compare_exchange_weak(&entry->class, &prev_c, c));
+    } while (!atomic_compare_exchange_weak(&entry->cache, &prev_c, c));
+    */
+    // *result = c;
 
-    *result = c;
+    return knd_OK;
+}
+
+int knd_class_release(struct kndClassEntry *entry, struct kndTask *task)
+{
+    struct kndClass *prev_c = NULL;
+    int num_readers;
+    int err;
+
+    /*    num_readers = atomic_fetch_sub_explicit(&entry->num_readers, 1, memory_order_relaxed);
+    if (num_readers < 1) {
+        return knd_CONFLICT;
+    }
+    if (num_readers > 1) return knd_OK;
+
+    if (DEBUG_CLASS_READ_LEVEL_TMP) {
+        knd_log(">> no more refs to {class %.*s}, time to free resources",
+                entry->name_size, entry->name);
+    }
+
+    do {
+        prev_c = atomic_load_explicit(&entry->cache, memory_order_relaxed);
+        if (!prev_c) {
+            if (DEBUG_CLASS_READ_LEVEL_TMP)
+                knd_log("no valid ref to {class %.*s} found to release",
+                        entry->name_size, entry->name);
+            return knd_CONFLICT;
+        }
+    } while (!atomic_compare_exchange_weak(&entry->cache, &prev_c, NULL));
+
+    knd_class_free(task->user_ctx->mempool, prev_c);
+    */
     return knd_OK;
 }
 
@@ -797,7 +849,7 @@ int knd_class_unmarshall(const char *unused_var(elem_id), size_t unused_var(elem
 
     err = knd_class_read(c, rec, &total_size, task);
     KND_TASK_ERR("failed to read GSP of %.*s", c->entry->name_size, c->entry->name);
-    
+
     *result = c;
     return knd_OK;
 }

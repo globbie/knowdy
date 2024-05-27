@@ -41,7 +41,7 @@ int knd_charseq_unmarshall(const char *elem_id, size_t elem_id_size,
 {
     struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndCharSeq *seq;
-    struct kndSharedDict *str_dict = task->repo->str_dict;
+    struct kndSharedDict *str_dict = task->repo->idxs.str_dict;
     int err;
 
     if (DEBUG_TEXT_GSP_LEVEL_2)
@@ -52,7 +52,7 @@ int knd_charseq_unmarshall(const char *elem_id, size_t elem_id_size,
     seq->val = val;
     seq->val_size = val_size;
 
-    err = knd_shared_set_add(task->repo->str_idx, elem_id, elem_id_size, (void*)seq);
+    err = knd_shared_set_add(task->repo->idxs.str_idx, elem_id, elem_id_size, (void*)seq);
     KND_TASK_ERR("failed to register charseq \"%.*s\" (err:%s)", val_size, val, knd_err_names[err]);
 
     err = knd_shared_dict_set(str_dict, val, val_size, (void*)seq, mempool, NULL, &seq->item, false);

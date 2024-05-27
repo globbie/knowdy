@@ -77,44 +77,44 @@ static const char *const knd_format_names[] = {
 
 #define KND_SHARD_ERR(...) \
     if (err) { \
-        task->out->reset(task->out);\
-        int e = task->out->writef(task->out, "" __VA_ARGS__); \
+        out->reset(out);\
+        int e = out->writef(out, "" __VA_ARGS__); \
         if (e) return e; \
-        if (task->log->buf_size != 0) { \
-            e = task->out->write(task->out,      \
+        if (log->buf_size != 0) { \
+            e = out->write(out,      \
                       " <= ", strlen(" <= "));  \
             if (e) return e; \
-            e = task->out->write(task->out, task->log->buf, task->log->buf_size); \
+            e = out->write(out, log->buf, log->buf_size); \
             if (e) return e; \
         }\
-        task->log->reset(task->log); \
-        e = task->log->write(task->log, task->out->buf, task->out->buf_size); \
+        log->reset(log); \
+        e = log->write(log, out->buf, out->buf_size); \
         if (e) return e; \
-        shard->msg = task->log->buf; \
-        shard->msg_size = task->log->buf_size; \
+        shard->msg = log->buf; \
+        shard->msg_size = log->buf_size; \
         return err;\
     }
 
 #define KND_SHARD_LOG(...)                     \
     do {                                     \
-        task->out->reset(task->out);           \
-        int e = task->out->writef(task->out,   \
+        out->reset(out);           \
+        int e = out->writef(out,   \
           "" __VA_ARGS__);                   \
         if (e) break;                        \
-        if (task->log->buf_size != 0) {       \
-          e = task->out->write(task->out,      \
+        if (log->buf_size != 0) {       \
+          e = out->write(out,      \
                    " <= ", strlen(" <= "));  \
           if (e) break;                      \
-          e = task->out->write(task->out,      \
-          task->log->buf, task->log->buf_size);\
+          e = out->write(out,      \
+          log->buf, log->buf_size);\
           if (e) break;                      \
         }                                    \
-        task->log->reset(task->log);           \
-        e = task->log->write(task->log,        \
-         task->out->buf, task->out->buf_size); \
+        log->reset(log);           \
+        e = log->write(log,        \
+         out->buf, out->buf_size); \
         if (e) break;                        \
-        shard->msg = task->log->buf;         \
-        shard->msg_size = task->log->buf_size;\
+        shard->msg = log->buf;         \
+        shard->msg_size = log->buf_size;\
     } while (0)
 
 
@@ -206,7 +206,7 @@ static const char *const knd_format_names[] = {
 #define KND_MAX_JOURNAL_SIZE 10 * 1024 * 1024
 
 #define KND_MAX_SNAPSHOTS 32
-#define KND_SNAPSHOT_LEAF_MAX_THRESHOLD 1024 * 4
+#define KND_SNAPSHOT_LEAF_MAX_THRESHOLD 1024 * 2
 #define KND_SNAPSHOT_LEAF_MIN_THRESHOLD 1024
 
 #define KND_RESULT_BATCH_SIZE 10
@@ -309,6 +309,8 @@ static const char *const knd_format_names[] = {
 #define KND_MEDIUM_DICT_SIZE 1000
 #define KND_SMALL_DICT_SIZE 100
 #define KND_TINY_DICT_SIZE 10
+
+#define KND_NUM_MEMPOOLS 3
 
 #define KND_CACHE_NUM_CELLS 64
 #define KND_CACHE_MAX_MEM_SIZE 1024 * 1024 * 10

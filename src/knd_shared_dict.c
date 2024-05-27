@@ -73,7 +73,8 @@ int knd_shared_dict_set(struct kndSharedDict *self, const char *key, size_t key_
     struct kndSharedDictItem *new_item;
     size_t h = knd_shared_dict_hash(key, key_size) % self->size;
 
-    struct kndSharedDictItem *orig_head = atomic_load_explicit(&self->hash_array[h], memory_order_acquire);
+    struct kndSharedDictItem *orig_head = atomic_load_explicit(&self->hash_array[h],
+                                                               memory_order_acquire);
     struct kndSharedDictItem *item = orig_head;
     struct kndState *state;
     int err;
@@ -156,6 +157,23 @@ int knd_shared_dict_remove(struct kndSharedDict *self, const char *key, size_t k
     }
     if (!item) return knd_FAIL;
     item->phase = KND_SHARED_DICT_REMOVED;
+    return knd_OK;
+}
+
+int knd_shared_dict_map(struct kndSharedDict *idx, map_cb_func cb, void *obj)
+{
+    struct kndSharedDictItem *item = NULL;
+    size_t count = 0;
+    int err;
+
+    for (size_t i = 0; i < idx->size; i++) {
+        item = atomic_load_explicit(&idx->hash_array[i], memory_order_acquire);
+        for (; item; item = item->next) {
+            count++;
+            err = cb(obj, item->key, item->key_size, count, item->data);
+            if (err) return err;
+        }
+    }
     return knd_OK;
 }
 

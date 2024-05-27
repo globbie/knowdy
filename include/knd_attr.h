@@ -344,7 +344,8 @@ int knd_index_attr_var_list(struct kndClassEntry *topic, struct kndAttr *attr,
 int knd_index_inst_attr_var_list(struct kndClassInstEntry *topic_inst, struct kndAttr *attr,
                                  struct kndAttrVar *var, struct kndTask *task);
 
-int knd_index_inner_attr_var(struct kndClass *self, struct kndAttrVar *var, struct kndTask *task);
+int knd_attr_var_inner_idx(struct kndClassEntry *topic, struct kndAttr *attr,
+                           struct kndAttrVar *var, struct kndTask *task);
 
 gsl_err_t knd_attr_idx(void *obj, const char *name, size_t name_size);
 gsl_err_t knd_attr_implied(void *obj, const char *name, size_t name_size);

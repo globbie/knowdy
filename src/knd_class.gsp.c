@@ -450,9 +450,12 @@ int knd_class_marshall(void *elem, size_t *output_size, struct kndTask *task)
     KND_TASK_ERR("failed to export class GSP");
 
     if (DEBUG_CLASS_GSP_LEVEL_3) {
-        knd_log("== GSP of {class %.*s {id %.*s}}  {size %zu}", 
-                entry->class->name_size,  entry->class->name,
-                entry->id_size, entry->id, out->buf_size - orig_size);
+        size_t numid = 0;
+        knd_calc_num_id(entry->id, entry->id_size, &numid);
+
+        knd_log("== {class %.*s {id %.*s {numid %zu}}} {GSP {size %zu}}", 
+                entry->class->name_size,  entry->class->name, 
+                entry->id_size, entry->id, numid, out->buf_size - orig_size);
     }
     *output_size = out->buf_size - orig_size;
     return knd_OK;
@@ -503,12 +506,12 @@ int knd_class_entry_unmarshall(const char *elem_id, size_t elem_id_size,
     entry->name_size = seq->val_size;
     entry->seq = seq;
 
-    err = knd_shared_dict_set(repo->class_name_idx, entry->name, entry->name_size,
+    err = knd_shared_dict_set(repo->idxs.class_name_idx, entry->name, entry->name_size,
                               (void*)entry, task->mempool, NULL, &item, false);
     KND_TASK_ERR("failed to register class name");
     entry->dict_item = item;
 
-    err = knd_shared_set_add(repo->class_idx, entry->id, entry->id_size, (void*)entry);
+    err = knd_shared_set_add(repo->idxs.class_idx, entry->id, entry->id_size, (void*)entry);
     KND_TASK_ERR("failed to register class entry \"%.*s\"", entry->id_size, entry->id);
 
     if (DEBUG_CLASS_GSP_LEVEL_3)

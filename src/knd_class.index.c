@@ -66,7 +66,6 @@ static int index_attr(void *obj, const char *unused_var(elem_id), size_t unused_
         //KND_TASK_ERR("failed to index attr %.*s", attr->name_size, attr->name);
         return knd_OK;
     }
-    if (!attr->is_indexed) return knd_OK;
 
     /* NB: only directly owned attr vars are indexed */
     if (var->class_var->parent != self) return knd_OK;
@@ -242,7 +241,7 @@ int knd_class_update_indices(struct kndRepo *repo, struct kndClassEntry *self,
                              struct kndState *unused_var(state),
                              struct kndTask *unused_var(task))
 {
-    struct kndSharedSet *idx = repo->class_idx;
+    struct kndSharedSet *idx = repo->idxs.class_idx;
     //struct kndStateRef *ref;
     //int err;
 
@@ -283,10 +282,11 @@ int knd_class_index(struct kndClass *self, struct kndTask *task)
         .task = task,
         .class = self
     };
+
     err = knd_set_map(self->attr_idx, index_attr, (void*)&ctx);
     KND_TASK_ERR("failed to index attrs of class %.*s", self->name_size, self->name);
 
-    if (DEBUG_CLASS_INDEX_LEVEL_2)
+    if (DEBUG_CLASS_INDEX_LEVEL_3)
         knd_log("++ {class %.*s {id %.*s}} indexed!",
                 self->entry->name_size, self->entry->name,
                 self->entry->id_size, self->entry->id);

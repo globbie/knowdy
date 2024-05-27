@@ -237,7 +237,7 @@ int knd_register_attr_ref(void *obj,
 {
     struct kndClass *self = obj;
     struct kndSet *attr_idx  = self->attr_idx;
-    struct kndSharedDict *attr_name_idx = self->entry->repo->attr_name_idx;
+    struct kndSharedDict *attr_name_idx = self->entry->repo->idxs.attr_name_idx;
     struct kndAttrRef *src_ref = elem;
     struct kndAttr    *attr    = src_ref->attr;
     struct kndAttrRef *ref, *prev_attr_ref;

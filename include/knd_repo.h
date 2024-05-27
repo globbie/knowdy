@@ -12,6 +12,7 @@ struct kndQuery;
 struct kndTask;
 struct kndSharedDict;
 struct kndStorageLeaf;
+struct kndRepoCache;
 
 #include <time.h>
 #include <stdatomic.h>
@@ -37,6 +38,7 @@ struct kndConcFolder
 {
     const char *name;
     size_t name_size;
+
     struct kndConcFolder *parent;
     struct kndConcFolder *next;
 };
@@ -76,6 +78,47 @@ struct kndRepoSnapshot
     struct kndRepoSnapshot *next;
 };
 
+struct kndRepoIndices
+{
+    struct kndSharedDict *class_name_idx;
+    struct kndSharedSet *class_idx;
+    atomic_size_t num_classes;
+    atomic_size_t class_id_count;
+
+    struct kndSharedDict *attr_name_idx;
+    struct kndSet  *attr_idx;
+    atomic_size_t   attr_id_count;
+    atomic_size_t   num_attrs;
+
+    struct kndSharedDict *proc_name_idx;
+    struct kndSet  *proc_idx;
+    struct kndSharedDict *proc_inst_name_idx;
+
+    atomic_size_t num_procs;
+    atomic_size_t proc_id_count;
+
+    struct kndSharedDict *proc_arg_name_idx;
+    struct kndSet  *proc_arg_idx;
+    atomic_size_t   proc_arg_id_count;
+    atomic_size_t   num_proc_args;
+
+    struct kndSharedSet  *str_idx;
+    struct kndSharedDict *str_dict;
+    atomic_size_t num_strs;
+};
+    
+struct kndRepoCache
+{
+    size_t version;
+    size_t curr_mempool_id;
+
+    struct kndDict *class_name_idx;
+    struct kndSet  *class_idx;
+
+    struct kndDict *proc_name_idx;
+    struct kndSet  *proc_idx;
+};
+
 struct kndRepo
 {
     char id[KND_ID_SIZE];
@@ -100,47 +143,20 @@ struct kndRepo
     char **source_files;
     size_t num_source_files;
 
-    const char *locale;
-    size_t locale_size;
-
     bool restore_mode;
     size_t intersect_matrix_size;
 
-    struct kndClass     *root_class;
-
-    struct kndClassEntry *head_class_entry;
-    struct kndClassEntry *tail_class_entry;
-
-    struct kndSharedDict *class_name_idx;
-    struct kndSharedSet *class_idx;
-    atomic_size_t num_classes;
-    atomic_size_t class_id_count;
-
-    struct kndSharedDict *attr_name_idx;
-    struct kndSet  *attr_idx;
-    atomic_size_t   attr_id_count;
-    atomic_size_t   num_attrs;
-
-    struct kndProc *root_proc;
-    struct kndSharedDict *proc_name_idx;
-    struct kndSet  *proc_idx;
-    struct kndSharedDict *proc_inst_name_idx;
-
-    atomic_size_t num_procs;
-    atomic_size_t proc_id_count;
-
-    struct kndSharedDict *proc_arg_name_idx;
-    struct kndSet  *proc_arg_idx;
-    atomic_size_t   proc_arg_id_count;
-    atomic_size_t   num_proc_args;
-
-    struct kndSharedSet  *str_idx;
-    struct kndSharedDict *str_dict;
-    atomic_size_t num_strs;
+    struct kndClass *root_class;
+    struct kndProc  *root_proc;
+    struct kndRepoIndices idxs;
 
     struct kndRepoSnapshot * _Atomic snapshots;
 
+    /* read only caches */
+    struct kndRepoCache * _Atomic cache;
+ 
     struct kndMemPool *mempool;
+    
     struct kndMemBlock *blocks;
     size_t num_blocks;
     size_t total_block_size;
@@ -161,11 +177,14 @@ int knd_apply_commit(void *obj, const char *unused_var(elem_id), size_t unused_v
 int knd_repo_open(struct kndRepo *self, struct kndTask *task);
 int knd_repo_restore(struct kndRepo *self, struct kndRepoSnapshot *snapshot, struct kndTask *task);
 int knd_repo_snapshot(struct kndRepo *self, struct kndTask *task);
+int knd_repo_rebuild_cache(struct kndRepo *repo, struct kndTask *task);
 
 void knd_repo_del(struct kndRepo *self);
 
 int knd_repo_snapshot_new(struct kndMemPool *mempool, struct kndRepoSnapshot **result);
 int knd_conc_folder_new(struct kndMemPool *mempool, struct kndConcFolder **result);
+int knd_repo_cache_new(struct kndMemPool *mempool, struct kndRepoCache **result);
+
 int knd_repo_new(struct kndRepo **self, const char *name, size_t name_size,
                  const char *path, size_t path_size,
                  const char *schema_path, size_t schema_path_size, struct kndMemPool *mempool);

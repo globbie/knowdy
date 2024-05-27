@@ -469,7 +469,7 @@ int knd_proc_arg_resolve(struct kndProcArg *self, struct kndRepo *repo, struct k
     if (self->classname_size) {
         if (DEBUG_PROC_ARG_LEVEL_2)
             knd_log(".. resolving arg class template: %.*s..", self->classname_size, self->classname);
-        entry = knd_shared_dict_get(repo->class_name_idx, self->classname, self->classname_size);
+        entry = knd_shared_dict_get(repo->idxs.class_name_idx, self->classname, self->classname_size);
         if (!entry) {
             err = knd_NO_MATCH;
             KND_TASK_ERR("no such class: %.*s", self->classname_size, self->classname);
@@ -478,7 +478,8 @@ int knd_proc_arg_resolve(struct kndProcArg *self, struct kndRepo *repo, struct k
     }
 
     if (self->proc_call) {
-        proc_entry = knd_shared_dict_get(repo->proc_name_idx, self->proc_call->name, self->proc_call->name_size);
+        proc_entry = knd_shared_dict_get(repo->idxs.proc_name_idx,
+                                         self->proc_call->name, self->proc_call->name_size);
         if (!proc_entry) {
             knd_log("-- no such proc: %.*s",
                     self->proc_call->name_size, self->proc_call->name);
@@ -508,7 +509,7 @@ int knd_resolve_proc_arg_var(struct kndProc *proc, struct kndProcArgVar *var, st
         c = ref->var->template->class;
 
     if (var->val_size) {
-        entry = knd_shared_dict_get(repo->class_name_idx, var->val, var->val_size);
+        entry = knd_shared_dict_get(repo->idxs.class_name_idx, var->val, var->val_size);
         if (!entry) {
             err = knd_NO_MATCH;
             KND_TASK_ERR("no such class: %.*s", var->val_size, var->val);

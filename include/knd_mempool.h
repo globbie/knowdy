@@ -52,7 +52,7 @@ struct kndMemPageHeader
 struct kndMemPool
 {
     knd_mempool_t type;
-    int id;
+    size_t numid;
 
     size_t capacity;
 
@@ -109,7 +109,7 @@ struct kndMemPool
     gsl_err_t (*parse)(struct kndMemPool *self, const char *rec, size_t *total_size);
 };
 
-int  knd_mempool_new(struct kndMemPool **self, knd_mempool_t type, int mempool_id);
+int  knd_mempool_new(struct kndMemPool **self, knd_mempool_t type, size_t mempool_id);
 void knd_mempool_del(struct kndMemPool *self);
 int  knd_mempool_alloc(struct kndMemPool *self);
 

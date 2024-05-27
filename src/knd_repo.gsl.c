@@ -195,9 +195,10 @@ static gsl_err_t run_read_include(void *obj, const char *name, size_t name_size)
     struct kndMemPool *mempool = task->mempool;
     int err;
 
-    if (DEBUG_REPO_GSL_LEVEL_2)
-        knd_log(".. include file name: \"%.*s\" [%zu]", (int)name_size, name, name_size);
     if (!name_size) return make_gsl_err(gsl_FORMAT);
+
+    if (DEBUG_REPO_GSL_LEVEL_2)
+        knd_log(".. include {file %.*s}", name_size, name);
 
     err = knd_conc_folder_new(mempool, &folder);
     if (err) {
@@ -393,69 +394,39 @@ static int read_GSL_file(struct kndRepo *repo, struct kndConcFolder *parent_fold
     return knd_OK;
 }
 
-static int index_classes(struct kndRepo *self, struct kndTask *task)
+static int resolve_class(void *obj, const char *unused_var(elem_id),
+                         size_t unused_var(elem_id_size),
+                         size_t unused_var(count), void *elem)
 {
-    struct kndClass *c;
-    struct kndClassEntry *entry;
-    struct kndSharedDictItem *item;
-    struct kndSharedDict *name_idx = self->class_name_idx;
-    struct kndSharedSet *class_idx = self->class_idx;
+    struct kndTask *task = obj;
+    struct kndClassEntry *entry = elem;
     int err;
 
-    if (DEBUG_REPO_GSL_LEVEL_2)
-        knd_log(".. indexing classes in \"%.*s\"..", self->name_size, self->name);
+    if (entry->class->is_resolved) return knd_OK;
 
-    // TODO iterate func
-    for (size_t i = 0; i < name_idx->size; i++) {
-        item = atomic_load_explicit(&name_idx->hash_array[i], memory_order_relaxed);
-        for (; item; item = item->next) {
-            entry = item->data;
-            c = atomic_load_explicit(&entry->class, memory_order_relaxed);
-            if (!c) {
-                knd_log("-- unresolved class entry: %.*s", entry->name_size, entry->name);
-                return knd_FAIL;
-            }
-            err = knd_class_index(c, task);
-            if (err) {
-                knd_log("failed to index the \"%.*s\" class", c->entry->name_size, c->entry->name);
-                return err;
-            }
-            err = knd_shared_set_add(class_idx, entry->id, entry->id_size, (void*)entry);
-            if (err) return err;
-        }
-    }
+    err = knd_class_resolve(entry->class, task);
+    KND_TASK_ERR("failed to resolve {class %.*s}", entry->name_size, entry->name);
+
     return knd_OK;
 }
 
-static int resolve_classes(struct kndRepo *self, struct kndTask *task)
+static int index_class(void *obj, const char *unused_var(elem_id),
+                       size_t unused_var(elem_id_size),
+                       size_t unused_var(count), void *elem)
 {
-    struct kndClass *c;
-    struct kndClassEntry *entry;
-    struct kndSharedDictItem *item;
-    struct kndSharedDict *name_idx = self->class_name_idx;
+    struct kndTask *task = obj;
+    struct kndClassEntry *entry = elem;
+    struct kndSharedSet *class_idx = task->repo->idxs.class_idx;
     int err;
 
-    if (DEBUG_REPO_GSL_LEVEL_2)
-        knd_log(".. resolving classes in \"%.*s\"..", self->name_size, self->name);
+    if (entry->class->is_indexed) return knd_OK;
 
-    // TODO: iterate func in kndSharedDict
-    for (size_t i = 0; i < name_idx->size; i++) {
-        item = atomic_load_explicit(&name_idx->hash_array[i], memory_order_relaxed);
-        for (; item; item = item->next) {
-            entry = item->data;
-            if (!entry->class) {
-                knd_log("-- unresolved class entry: %.*s", entry->name_size, entry->name);
-                return knd_FAIL;
-            }
-            c = entry->class;
-            if (c->is_resolved) continue;
+    err = knd_class_index(entry->class, task);
+    KND_TASK_ERR("failed to index {class %.*s}", entry->name_size, entry->name);
 
-            err = knd_class_resolve(c, task);
-            KND_TASK_ERR("failed to resolve {class %.*s}", c->entry->name_size, c->entry->name);
-            if (DEBUG_REPO_GSL_LEVEL_2)
-                c->str(c, 1);
-        }
-    }
+    err = knd_shared_set_add(class_idx, entry->id, entry->id_size, (void*)entry);
+    KND_TASK_ERR("failed to register {class %.*s} in class idx",
+                 entry->name_size, entry->name);
     return knd_OK;
 }
 
@@ -463,8 +434,8 @@ static int resolve_procs(struct kndRepo *self, struct kndTask *task)
 {
     struct kndProcEntry *entry;
     struct kndSharedDictItem *item;
-    struct kndSharedDict *proc_name_idx = self->proc_name_idx;
-    struct kndSet *proc_idx = self->proc_idx;
+    struct kndSharedDict *proc_name_idx = self->idxs.proc_name_idx;
+    struct kndSet *proc_idx = self->idxs.proc_idx;
     int err;
 
     if (DEBUG_REPO_GSL_LEVEL_2)
@@ -486,7 +457,7 @@ static int resolve_procs(struct kndRepo *self, struct kndTask *task)
                         entry->proc->name_size, entry->proc->name);
                 return err;
             }
-            entry->numid = atomic_fetch_add_explicit(&self->proc_id_count, 1, \
+            entry->numid = atomic_fetch_add_explicit(&self->idxs.proc_id_count, 1, \
                                                      memory_order_relaxed);
             entry->numid++;
             knd_uid_create(entry->numid, entry->id, &entry->id_size);
@@ -547,7 +518,7 @@ static int resolve_class_insts(struct kndRepo *self, struct kndTask *task)
     struct kndClass *c;
     struct kndClassEntry *entry;
     struct kndSharedDictItem *item;
-    struct kndSharedDict *name_idx = self->class_name_idx;
+    struct kndSharedDict *name_idx = self->idxs.class_name_idx;
     int err;
 
     if (DEBUG_REPO_GSL_LEVEL_2)
@@ -607,7 +578,7 @@ static int index_repo_class_insts(struct kndRepo *self, struct kndTask *task)
     struct kndClass *c;
     struct kndClassEntry *entry;
     struct kndSharedDictItem *item, *items;
-    struct kndSharedDict *name_idx = self->class_name_idx;
+    struct kndSharedDict *name_idx = self->idxs.class_name_idx;
     int err;
 
     if (DEBUG_REPO_GSL_LEVEL_2)
@@ -632,7 +603,6 @@ static int index_repo_class_insts(struct kndRepo *self, struct kndTask *task)
             err = index_class_insts(c, task);
             KND_TASK_ERR("failed to iterate insts of class %.*s",
                          entry->name_size, entry->name);
-
         }
     }
     return knd_OK;
@@ -651,14 +621,14 @@ int knd_repo_read_source_files(struct kndRepo *self, struct kndTask *task)
     err = read_GSL_file(self, NULL, "index", strlen("index"), KND_GSL_SCHEMA, task);
     KND_TASK_ERR("schema import failed");
 
-    err = resolve_classes(self, task);
-    KND_TASK_ERR("class resolving failed");
+    err = knd_shared_dict_map(self->idxs.class_name_idx, resolve_class, (void*)task);
+    KND_TASK_ERR("failed to resolve all entries in class name idx");
 
-    err = resolve_procs(self, task);
-    KND_TASK_ERR("proc resolving failed");
+    //err = resolve_procs(self, task);
+    //KND_TASK_ERR("proc resolving failed");
 
-    err = index_classes(self, task);
-    KND_TASK_ERR("class indexing failed");
+    err = knd_shared_dict_map(self->idxs.class_name_idx, index_class, (void*)task);
+    KND_TASK_ERR("failed to index all entries in class name idx");
 
     if (self->data_path_size) {
         if (DEBUG_REPO_GSL_LEVEL_3)

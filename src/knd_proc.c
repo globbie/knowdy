@@ -124,7 +124,7 @@ int knd_proc_get_arg(struct kndProc *self, const char *name, size_t name_size, s
 
     assert(self->entry != NULL);
 
-    struct kndSharedDict *arg_name_idx = self->entry->repo->proc_arg_name_idx;
+    struct kndSharedDict *arg_name_idx = self->entry->repo->idxs.proc_arg_name_idx;
     struct kndSet *arg_idx = self->arg_idx;
     int err;
 
@@ -137,7 +137,7 @@ int knd_proc_get_arg(struct kndProc *self, const char *name, size_t name_size, s
     ref = knd_shared_dict_get(arg_name_idx, name, name_size);
     if (!ref) {
         if (self->entry->repo->base) {
-            arg_name_idx = self->entry->repo->base->proc_arg_name_idx;
+            arg_name_idx = self->entry->repo->base->idxs.proc_arg_name_idx;
             ref = knd_shared_dict_get(arg_name_idx, name, name_size);
         }
         if (!ref) {
@@ -217,7 +217,7 @@ int knd_get_proc(struct kndRepo *repo, const char *name, size_t name_size,
         knd_log(".. \"%.*s\" repo to get proc: \"%.*s\"..",
                 repo->name_size, repo->name, name_size, name);
 
-    entry = knd_shared_dict_get(repo->proc_name_idx, name, name_size);
+    entry = knd_shared_dict_get(repo->idxs.proc_name_idx, name, name_size);
     if (!entry) {
         if (repo->base) {
             err = knd_get_proc(repo->base, name, name_size, result, task);
@@ -248,11 +248,12 @@ int knd_get_proc_entry(struct kndRepo *repo, const char *name, size_t name_size,
                        struct kndProcEntry **result, struct kndTask *task)
 {
     struct kndProcEntry *entry;
-    struct kndSharedDict *proc_name_idx = repo->proc_name_idx;
+    struct kndSharedDict *proc_name_idx = repo->idxs.proc_name_idx;
     int err;
 
     if (DEBUG_PROC_LEVEL_2)
-        knd_log(".. \"%.*s\" repo to get proc entry: \"%.*s\"", repo->name_size, repo->name, name_size, name);
+        knd_log(".. {repo %.*s} to get {proc-entry %.*s}",
+                repo->name_size, repo->name, name_size, name);
 
     entry = knd_shared_dict_get(proc_name_idx, name, name_size);
     if (!entry) {
@@ -293,8 +294,8 @@ static int commit_state(struct kndProc *self,
                                    memory_order_relaxed);
        state->next = head;
     } while (!atomic_compare_exchange_weak(&self->states, &head, state));
- 
-    // TODO inform your ancestors 
+
+    // TODO inform your ancestors
 
     *result = state;
     return knd_OK;
@@ -303,20 +304,18 @@ static int commit_state(struct kndProc *self,
 int knd_proc_entry_clone(struct kndProcEntry *self, struct kndRepo *repo, struct kndProcEntry **result, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
-    if (task->user_ctx)
-        mempool = task->shard->user->mempool;
+    //if (task->user_ctx)
+    //    mempool = task->shard->user->mempool;
     struct kndProcEntry *entry;
-    struct kndSharedDict *name_idx = repo->proc_name_idx;
+    struct kndSharedDict *name_idx = repo->idxs.proc_name_idx;
     struct kndSharedDictItem *item = NULL;
-    //struct kndProcRef *ref, *tail_ref, *r;
-    // struct kndSet *proc_idx = repo->proc_idx;
     int err;
 
-    if (DEBUG_PROC_LEVEL_2)
+    if (DEBUG_PROC_LEVEL_2) {
         knd_log(".. cloning proc entry %.*s (%.*s) to repo \"%.*s\"",
                 self->name_size, self->name, self->repo->name_size, self->repo->name,
                 repo->name_size, repo->name);
-
+    }
     err = knd_proc_entry_new(mempool, &entry);
     KND_TASK_ERR("failed to alloc a proc entry");
 

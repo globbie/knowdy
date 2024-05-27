@@ -467,7 +467,7 @@ static gsl_err_t set_attr_var_value(void *obj, const char *val, size_t val_size)
     case KND_ATTR_REL:
         // fall through
     case KND_ATTR_REF:
-        err = knd_shared_set_get(repo->class_idx, val, val_size, (void**)&entry);
+        err = knd_shared_set_get(repo->idxs.class_idx, val, val_size, (void**)&entry);
         if (err) {
             KND_TASK_LOG("class \"%.*s\" not found in repo %.*s",
                          val_size, val, repo->name_size, repo->name);

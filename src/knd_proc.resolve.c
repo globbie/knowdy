@@ -96,7 +96,7 @@ int knd_resolve_proc_ref(struct kndClass *self, const char *name, size_t name_si
     if (DEBUG_PROC_RESOLVE_LEVEL_2)
         knd_log(".. resolving proc ref:  %.*s", name_size, name);
 
-    entry = knd_shared_dict_get(repo->proc_name_idx, name, name_size);
+    entry = knd_shared_dict_get(repo->idxs.proc_name_idx, name, name_size);
     if (!entry) {
         /*if (repo->base) {
             err = knd_get_proc(repo->base, name, name_size, result, task);

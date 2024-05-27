@@ -209,7 +209,8 @@ static gsl_err_t parse_proc_import(void *obj, const char *rec, size_t *total_siz
         err = knd_commit_new(task->mempool, &task->ctx->commit);
         if (err) return make_gsl_err_external(err);
 
-        task->ctx->commit->orig_state_id = atomic_load_explicit(&repo->snapshots->num_commits, memory_order_relaxed);
+        task->ctx->commit->orig_state_id = \
+            atomic_load_explicit(&repo->snapshots->num_commits, memory_order_relaxed);
     }
     return knd_proc_import(task->repo, rec, total_size, task);
 }
@@ -239,20 +240,6 @@ static gsl_err_t parse_update(void *obj, const char *rec, size_t *total_size)
     };
     self->type = KND_LIQUID_STATE;
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-}
-
-static gsl_err_t parse_snapshot_task(void *obj, const char *unused_var(rec), size_t *total_size)
-{
-    struct kndTask *task = obj;
-    int err;
-
-    task->type = KND_SNAPSHOT_STATE;
-    err = knd_repo_snapshot(task->repo, task);
-    if (err) {
-        KND_TASK_LOG("failed to build a snapshot of sys repo");
-        return *total_size = 0, make_gsl_err(gsl_FAIL);
-    }
-    return *total_size = 0, make_gsl_err(gsl_OK);
 }
 
 gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
@@ -313,11 +300,6 @@ gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
         { .name = "update",
           .name_size = strlen("update"),
           .parse = parse_update,
-          .obj = task
-        },
-        { .name = "_snapshot",
-          .name_size = strlen("_snapshot"),
-          .parse = parse_snapshot_task,
           .obj = task
         }
     };

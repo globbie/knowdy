@@ -61,9 +61,12 @@ struct kndUser
     const char *schema_path;
     size_t schema_path_size;
 
-    struct kndMemPool *mempool;
-    struct kndCache *cache;
+    struct kndMemPool *mempool_read;
+    struct kndMemPool *mempool_read_temp;
 
+    struct kndMemPool *mempool_write;
+    struct kndMemPool *mempool_write_temp;
+    
     size_t max_users;
     size_t num_users;
 

@@ -46,7 +46,7 @@ static int register_attr(struct kndClass *self, struct kndAttr *attr, struct knd
 {
     struct kndRepo *repo =       self->entry->repo;
     struct kndMemPool *mempool = task->mempool;
-    struct kndSet *attr_idx    = repo->attr_idx;
+    struct kndSet *attr_idx    = repo->idxs.attr_idx;
     struct kndAttrRef *attr_ref, *next_attr_ref;
     const char *name = attr->name;
     size_t name_size = attr->name_size;
@@ -62,7 +62,7 @@ static int register_attr(struct kndClass *self, struct kndAttr *attr, struct knd
     attr_ref->class_entry = self->entry;
 
     /* generate unique attr id */
-    attr->numid = atomic_fetch_add_explicit(&repo->attr_id_count, 1, memory_order_relaxed);
+    attr->numid = atomic_fetch_add_explicit(&repo->idxs.attr_id_count, 1, memory_order_relaxed);
     attr->numid++;
     knd_uid_create(attr->numid, attr->id, &attr->id_size);
 
@@ -70,10 +70,10 @@ static int register_attr(struct kndClass *self, struct kndAttr *attr, struct knd
     case KND_RESTORE_STATE:
         // fall through
     case KND_BULK_LOAD_STATE:
-        next_attr_ref = knd_shared_dict_get(repo->attr_name_idx, name, name_size);
+        next_attr_ref = knd_shared_dict_get(repo->idxs.attr_name_idx, name, name_size);
         attr_ref->next = next_attr_ref;
 
-        err = knd_shared_dict_set(repo->attr_name_idx, attr->name, attr->name_size,
+        err = knd_shared_dict_set(repo->idxs.attr_name_idx, attr->name, attr->name_size,
                                   (void*)attr_ref, mempool, NULL, NULL, true);
         KND_TASK_ERR("failed to globally register attr name \"%.*s\"", name_size, name);
 
@@ -105,7 +105,7 @@ static int check_attr_name_conflict(struct kndClass *self, struct kndAttr *attr_
     void *obj;
     struct kndRepo *repo = self->entry->repo;
     struct kndSet *attr_idx = self->attr_idx;
-    struct kndSharedDict *attr_name_idx = repo->attr_name_idx;
+    struct kndSharedDict *attr_name_idx = repo->idxs.attr_name_idx;
     int err;
 
     if (DEBUG_ATTR_RESOLVE_LEVEL_2)
@@ -155,7 +155,7 @@ int knd_attr_resolve(struct kndAttr *attr, struct kndRepo *repo, struct kndTask 
 {
     struct kndClassEntry *entry;
     struct kndProcEntry *proc_entry;
-    struct kndSharedDict *class_name_idx = repo->class_name_idx;
+    struct kndSharedDict *class_name_idx = repo->idxs.class_name_idx;
     int err;
 
     switch (attr->type) {
@@ -199,7 +199,7 @@ int knd_attr_resolve(struct kndAttr *attr, struct kndRepo *repo, struct kndTask 
             knd_log("-- no proc name specified for attr \"%.*s\"", attr->name_size, attr->name);
             return knd_FAIL;
         }
-        proc_entry = knd_shared_dict_get(repo->proc_name_idx,
+        proc_entry = knd_shared_dict_get(repo->idxs.proc_name_idx,
                                          attr->ref_proc_name, attr->ref_proc_name_size);
         if (!proc_entry) {
             knd_log("-- no such proc: \"%.*s\" .."

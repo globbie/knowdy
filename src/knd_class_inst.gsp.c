@@ -80,7 +80,7 @@ int knd_class_inst_entry_unmarshall(const char *elem_id, size_t elem_id_size, co
     entry->name_size = name_size;
     /* check charseq decoding */
     if (name_size <= KND_ID_SIZE) {
-        err = knd_shared_set_get(repo->str_idx, name, name_size, (void**)&seq);
+        err = knd_shared_set_get(repo->idxs.str_idx, name, name_size, (void**)&seq);
         if (!err) {
             entry->name = seq->val;
             entry->name_size = seq->val_size;

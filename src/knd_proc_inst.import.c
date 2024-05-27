@@ -36,7 +36,7 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     struct kndProcInst *self = ctx->inst;
     struct kndProcInstEntry *entry;
     struct kndRepo *repo = ctx->repo;
-    struct kndSharedDict *name_idx = repo->proc_inst_name_idx;
+    struct kndSharedDict *name_idx = repo->idxs.proc_inst_name_idx;
     struct kndOutput *log = ctx->task->log;
     struct kndTask *task = ctx->task;
     int err;

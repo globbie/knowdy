@@ -98,26 +98,21 @@ static int knd_interact(struct kndShard *shard)
 {
     struct kndTask *reader_task;
     struct kndTask *writer_task;
-    struct kndTask *task = shard->task;
     char  *buf;
     size_t buf_size;
     struct kndMemBlock *memblock = NULL;
     const char *block;
     size_t block_size;
     const char *shard_role_name = knd_agent_role_names[shard->role];
+    struct kndOutput *out = shard->out;
+    struct kndOutput *log = shard->log;
     int err;
 
-    err = knd_task_new(KND_ARBITER, 1, &writer_task);
+    err = knd_task_new(&writer_task, KND_AGENT_ARBITER, 1, shard);
     KND_SHARD_ERR("failed to create a writer/arbiter task");
 
-    err = knd_task_init(writer_task, shard, NULL);
-    KND_SHARD_ERR("failed to init a writer task");
-
-    err = knd_task_new(KND_READER, 2, &reader_task);
+    err = knd_task_new(&reader_task, KND_AGENT_READER, 2, shard);
     KND_SHARD_ERR("failed to create a reader task");
-
-    err = knd_task_init(reader_task, shard, NULL);
-    KND_SHARD_ERR("failed to init a reader task");
 
     /* start serving requests */
 
@@ -179,6 +174,7 @@ static int knd_interact(struct kndShard *shard)
                 knd_log("-- update block allocation failed");
                 goto next_line;
             }
+
             knd_task_reset(writer_task);
             err = knd_task_run(writer_task, block, block_size);
             if (err != knd_OK) {
@@ -192,6 +188,8 @@ static int knd_interact(struct kndShard *shard)
         default:
             break;
         }
+
+
         /* readline allocates a new buffer every time */
     next_line:
         // free(buf);
@@ -200,37 +198,36 @@ static int knd_interact(struct kndShard *shard)
     return knd_OK;
 }
 
+static int present_mempools(struct kndShard *shard)
+{
+    struct kndOutput *out;
+    struct kndMemPool *mempool;
+
+    out = shard->task->out;
+    out->reset(out);
+    mempool = shard->mempool_write;
+    mempool->present(mempool, out);
+    knd_log("** System Mempool\n%.*s", out->buf_size, out->buf);
+
+    out->reset(out);
+    mempool = shard->user->mempool_write;
+    mempool->present(mempool, out);
+    knd_log("** User Space Mempool\n%.*s", out->buf_size, out->buf);
+    return knd_OK;
+}
+
 static int knd_start(const char *config, size_t config_size)
 {
     struct kndShard *shard;
-    struct kndOutput *out;
     int err;
 
-    err = knd_shard_new("0", 1, &shard);
+    err = knd_shard_new(&shard, config, config_size);
     if (err) {
         knd_log("ERR >> failed to create a shard");
         return err;
     }
 
-    err = knd_shard_read_config(shard, config, config_size);
-    if (err) {
-        knd_log("-- %.*s", shard->msg_size, shard->msg);
-        return err;
-    }
-
-    err = knd_shard_init(shard);
-    if (err) {
-        knd_log("-- %.*s", shard->msg_size, shard->msg);
-        return err;
-    }
-
-    out = shard->task->out;
-    out->reset(out);
-    shard->mempool->present(shard->mempool, out);
-    knd_log("** System Mempool\n%.*s", out->buf_size, out->buf);
-    out->reset(out);
-    shard->user->mempool->present(shard->user->mempool, out);
-    knd_log("** User Space Mempool\n%.*s", out->buf_size, out->buf);
+    present_mempools(shard);
 
     err = knd_interact(shard);
     if (err) goto error;

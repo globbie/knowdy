@@ -63,10 +63,7 @@ void* knd_dict_get(struct kndDict *self,
     return NULL;
 }
 
-int knd_dict_set(struct kndDict *self,
-                 const char *key,
-                 size_t key_size,
-                 void *data)
+int knd_dict_set(struct kndDict *self, const char *key, size_t key_size, void *data)
 {
     struct kndDictItem *new_item;
     size_t h = knd_dict_hash(key, key_size) % self->size;
@@ -84,7 +81,7 @@ int knd_dict_set(struct kndDict *self,
     if (item) {
         if (item->phase == KND_DICT_VALID)
             return knd_CONFLICT;
-    } 
+    }
 
     /* add new item */
     if (dict_item_new(self->mempool, &new_item) != knd_OK) return knd_NOMEM;
@@ -123,6 +120,22 @@ int knd_dict_remove(struct kndDict *self,
     return knd_OK;
 }
 
+int knd_dict_map(struct kndDict *idx, map_cb_func cb, void *obj)
+{
+    size_t count = 0;
+    int err;
+
+    /*    for (size_t i = 0; i < idx->size; i++) {
+        item = atomic_load_explicit(&proc_name_idx->hash_array[i], memory_order_relaxed);
+        for (; item; item = item->next) {
+            entry = item->data;
+    
+    err = cb(obj, buf, buf_size, *count, elem);
+    if (err) return err;
+    */
+    return knd_OK;
+}
+
 void knd_dict_del(struct kndDict *self)
 {
     //struct kndDictItem *item;
@@ -136,9 +149,7 @@ void knd_dict_reset(struct kndDict *self)
     memset(self->hash_array, 0, sizeof(struct kndDictItem*) * self->size);
 }
 
-int knd_dict_new(struct kndDict **dict,
-                 struct kndMemPool *mempool,
-                 size_t init_size)
+int knd_dict_new(struct kndDict **dict, struct kndMemPool *mempool, size_t init_size)
 {
     struct kndDict *self = malloc(sizeof(struct kndDict));
     if (!self) return knd_NOMEM;

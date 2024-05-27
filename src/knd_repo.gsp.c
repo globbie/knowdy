@@ -29,6 +29,17 @@
 #define DEBUG_REPO_GSP_LEVEL_3 0
 #define DEBUG_REPO_GSP_LEVEL_TMP 1
 
+/*static int present_class_entry(void *obj, const char *unused_var(elem_id),
+                               size_t unused_var(elem_id_size),
+                               size_t unused_var(count), void *elem)
+{
+    struct kndTask *task = obj;
+    struct kndClassEntry *entry = elem;
+    knd_log("{class %.*s {id %.*s}}",
+            entry->name_size, entry->name, entry->id_size, entry->id);
+    return knd_OK;
+    }*/
+
 static int build_leaf_filename(struct kndStorageLeaf *leaf,
                                const char *path, size_t path_size,
                                const char *pref, size_t pref_size,
@@ -96,13 +107,12 @@ static int init_leaf(struct kndRepoSnapshot *snapshot,
         memcpy(leaf->range_from_id, range_from_id, range_from_id_size);
         leaf->range_from_id_size = range_from_id_size;
     }
-
     err = build_leaf_filename(leaf, path, path_size, pref, pref_size, task);
     KND_TASK_ERR("failed to build a leaf filename");
 
     out->reset(out);
     OUT(header, header_size);
-    
+
     switch (task->mode) {
     case KND_TASK_TRACE_MODE:
         if (range_from_id_size) {
@@ -138,9 +148,18 @@ static int finalize_leaf(struct kndStorageLeaf *leaf,
     OUT(path, path_size);
     OUT(pref, pref_size);
     OUT("_", 1);
-    OUT(leaf->range_from_id, leaf->range_from_id_size);
+
+    /* root dir special name */
+    if (*leaf->range_from_id == '/') {
+    } else {
+        OUT(leaf->range_from_id, leaf->range_from_id_size);
+    }
     OUT("_to_", strlen("_to_"));
-    OUT(leaf->range_to_id, leaf->range_to_id_size);
+
+    if (*leaf->range_to_id == '/') {
+    } else {
+        OUT(leaf->range_to_id, leaf->range_to_id_size);
+    }
     OUT(KND_GSP_FILE_EXT_NAME, strlen(KND_GSP_FILE_EXT_NAME));
 
     if (out->buf_size >= KND_PATH_SIZE) {
@@ -166,7 +185,6 @@ static int finalize_leaf(struct kndStorageLeaf *leaf,
     memcpy(leaf->filepath, out->buf, out->buf_size);
     leaf->filepath[out->buf_size] = '\0';
     leaf->filepath_size = out->buf_size;
-
     return knd_OK;
 }
 
@@ -194,13 +212,6 @@ static int marshall_idx(struct kndSharedSet *idx, const char *path, size_t path_
         err = knd_shared_set_marshall(idx, leaf, cb, task);
         KND_TASK_ERR("failed to marshall str idx");
 
-        if (DEBUG_REPO_GSP_LEVEL_TMP) {
-            knd_log("++ {leaf {from %.*s} {to %.*s} {size %zu}}",
-                    leaf->range_from_id_size, leaf->range_from_id,
-                    leaf->range_to_id_size, leaf->range_to_id,
-                    leaf->file_size);
-        }
-
         err = finalize_leaf(leaf, path, path_size, pref, pref_size, task);
         KND_TASK_ERR("failed to finalize a snapshot leaf");
 
@@ -210,6 +221,14 @@ static int marshall_idx(struct kndSharedSet *idx, const char *path, size_t path_
         range_from_id = leaf->range_to_id;
         range_from_id_size = leaf->range_to_id_size;
         total_elems += leaf->num_elems;
+
+        if (DEBUG_REPO_GSP_LEVEL_TMP) {
+            knd_log("++ {leaf {from %.*s} {to %.*s} {num-elems %zu {size %zu}} {total-elems %zu}",
+                    leaf->range_from_id_size, leaf->range_from_id,
+                    leaf->range_to_id_size, leaf->range_to_id,
+                    leaf->num_elems,
+                    leaf->file_size, total_elems);
+        }
 
         /* more leafs needed?
            TODO: when the task is performed by N workers,
@@ -309,8 +328,11 @@ int knd_repo_snapshot(struct kndRepo *repo, struct kndTask *task)
     err = knd_mkpath((const char*)path, path_size, 0755, false);
     KND_TASK_ERR("mkpath %.*s failed", path_size, path);
 
+    //err = knd_shared_set_map(repo->class_idx, present_class_entry, (void*)task);
+    //KND_TASK_ERR("failed to present class entries");
+
     /* class storage */
-    err = marshall_idx(repo->class_idx, path, path_size,
+    err = marshall_idx(repo->idxs.class_idx, path, path_size,
                        "class", strlen("class"),
                        knd_class_marshall, snapshot, &leaf, task);
     KND_TASK_ERR("failed to build the class storage");
@@ -321,18 +343,22 @@ int knd_repo_snapshot(struct kndRepo *repo, struct kndTask *task)
     task->filepath_size = path_size;
     task->filepath[path_size] = '\0';
 
-    err = knd_shared_set_map(repo->class_idx, export_class_insts, (void*)task);
+    err = knd_shared_set_map(repo->idxs.class_idx, export_class_insts, (void*)task);
     KND_TASK_ERR("failed to build the class inst storage");
 
     /* global string dict storage */
     err = knd_storage_leaf_new(&leaf, snapshot);
     KND_TASK_ERR("failed to alloc a storage leaf");
 
-    err = marshall_idx(repo->str_idx, path, path_size,
+    /*err = marshall_idx(repo->str_idx, path, path_size,
                        "strings.gsp", strlen("strings.gsp"),
                        knd_charseq_marshall, snapshot, &leaf, task);
     KND_TASK_ERR("failed to build the string idx");
     snapshot->string_db = leaf;
+    */
 
+    err = knd_repo_rebuild_cache(repo, task);
+    KND_TASK_ERR("failed to rebuild cache for {repo %.*s}", repo->name_size, repo->name);
+    
     return knd_OK;
 }

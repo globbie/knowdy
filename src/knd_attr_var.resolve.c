@@ -345,7 +345,7 @@ static int resolve_attr_ref(struct kndClass *self, struct kndAttrVar *parent_ite
                             struct kndTask *task)
 {
     struct kndRepo *repo = self->entry->repo;
-    struct kndSharedDict *class_name_idx = repo->class_name_idx;
+    struct kndSharedDict *class_name_idx = repo->idxs.class_name_idx;
     const char *classname = NULL;
     size_t classname_size = 0;
     const char *attrname = NULL;

@@ -8,15 +8,17 @@ struct kndUser;
 struct kndSharedDict;
 
 typedef enum knd_agent_role_type {
-    KND_READER,
-    KND_WRITER,
-    KND_ARBITER
+    KND_AGENT_READER,
+    KND_AGENT_WRITER,
+    KND_AGENT_ARBITER,
+    KND_AGENT_AUX
 } knd_agent_role_type;
 
 static const char* const knd_agent_role_names[] = {
-    [KND_READER] = "READER",
-    [KND_WRITER] = "WRITER",
-    [KND_ARBITER] = "ARBITER"
+    [KND_AGENT_READER] = "READER",
+    [KND_AGENT_WRITER] = "WRITER",
+    [KND_AGENT_ARBITER] = "ARBITER",
+    [KND_AGENT_AUX] = "AUX"
 };
 
 struct kndMemConfig {
@@ -32,9 +34,6 @@ struct kndMemConfig {
 
 struct kndShard
 {
-    const char *guid;
-    size_t guid_size;
-
     knd_agent_role_type role;
 
     char name[KND_NAME_SIZE + 1];
@@ -58,10 +57,20 @@ struct kndShard
     struct kndUser *user;
 
     struct kndMemConfig mem_config;
-    struct kndMemConfig ctx_mem_config;
+    struct kndMemConfig mem_user_config;
+    struct kndMemConfig mem_ctx_config;
 
+    /* aux task */
     struct kndTask *task;
-    struct kndMemPool *mempool;
+    struct kndOutput *out;
+    struct kndOutput *log;
+
+    struct kndMemPool *mempool_read;
+    struct kndMemPool *mempool_read_temp;
+
+    struct kndMemPool *mempool_write;
+    struct kndMemPool *mempool_write_temp;
+
     const char *msg;
     size_t msg_size;
 
@@ -73,20 +82,12 @@ struct kndShard
     struct kndSharedDict *repo_name_idx;
 };
 
-int knd_shard_new(const char *guid, size_t guid_size, struct kndShard **shard);
-int knd_shard_read_config(struct kndShard *shard, const char *config, size_t config_size);
-int knd_shard_init(struct kndShard *shard);
+int knd_shard_new(struct kndShard **shard, const char *config, size_t config_size);
 void knd_shard_del(struct kndShard *shard);
 
 int knd_shard_run_task(struct kndShard *self, const char *input, size_t input_size,
                        char *output, size_t *output_size);
-
 int knd_shard_report_task(struct kndShard *self,
                           const char *task_id, size_t task_id_size);
 int knd_shard_cancel_task(struct kndShard *self,
                           const char *task_id, size_t task_id_size);
-
-// knd_shard.config.c
-int knd_shard_parse_config(struct kndShard *self,
-                           const char *rec, size_t *total_size,
-                           struct kndMemPool *mempool);

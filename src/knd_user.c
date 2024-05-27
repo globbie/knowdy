@@ -19,7 +19,6 @@
 #include "knd_set.h"
 #include "knd_shared_set.h"
 #include "knd_mempool.h"
-#include "knd_cache.h"
 #include "knd_state.h"
 #include "knd_commit.h"
 #include "knd_output.h"
@@ -35,15 +34,6 @@ void knd_user_del(struct kndUser *self)
     if (self->repo)
         knd_repo_del(self->repo);
     free(self);
-}
-
-static void free_user_ctx(void *obj)
-{
-    struct kndUserContext *ctx = obj;
-
-    atomic_store_explicit(&ctx->inst->entry->cache_cell_num, 0, memory_order_relaxed);
-
-    knd_log(".. freeing user ctx \"%.*s\"", ctx->inst->name_size, ctx->inst->name);
 }
 
 static gsl_err_t parse_proc_import(void *obj, const char *rec, size_t *total_size)
@@ -180,7 +170,7 @@ static int build_user_ctx(struct kndUser *self, struct kndClassInst *inst,
     ctx->type =  KND_USER_AUTHENTICATED;
     ctx->inst = inst;
     ctx->base_repo = self->repo;
-    ctx->mempool = self->mempool;
+    ctx->mempool = self->mempool_write;
 
     out->reset(out);
     OUT("users/", strlen("users/"));
@@ -211,7 +201,6 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
     struct kndUser *self = task->shard->user;
     struct kndUserContext *ctx;
     struct kndClassInst *inst;
-    size_t cell_num = 0;
     int err;
 
     if (task->user_ctx) return make_gsl_err(gsl_OK);
@@ -226,7 +215,7 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
         ctx->repo = self->repo;
         ctx->base_repo = self->repo;
         ctx->acls = self->default_acls;
-        ctx->mempool = self->mempool;
+        ctx->mempool = self->mempool_write;
 
         task->user_ctx = ctx;
         return make_gsl_err(gsl_OK);
@@ -238,53 +227,9 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
         return make_gsl_err_external(err);
     }
 
-    do {
-        cell_num = atomic_load_explicit(&inst->entry->cache_cell_num, memory_order_relaxed);
-        if (DEBUG_USER_LEVEL_3)
-            knd_log("== user inst %.*s (cache cell:%zu)", name_size, name, cell_num);
-        if (!cell_num) {
-            err = build_user_ctx(self, inst, &ctx, task);
-            if (err) {
-                knd_log("failed to build user ctx");
-                return make_gsl_err_external(err);
-            }
-            err = knd_cache_set(self->cache, (void*)ctx, &cell_num);
-            if (err) {
-                knd_log("failed to set a cache cell: %d", err);
-                if (err == knd_CONFLICT) {
-                    // free resources
-                    free_user_ctx(ctx);
-                    ctx = NULL;
-                    // make another attempt to read / create ctx
-                    continue;
-                }
-                return make_gsl_err_external(err);
-            }
-            // 0 cell num denotes NULL so add 1 to store the cache cell idx
-            cell_num++;
-            atomic_store_explicit(&inst->entry->cache_cell_num, cell_num, memory_order_relaxed);
-            ctx->cache_cell_num = cell_num;
-        }
-
-        // make sure we mark the cache cell as engaged by another reader
-        err = knd_cache_get(self->cache, cell_num - 1, (void**)&ctx);
-        if (err) {
-            knd_log("failed to mark cell num %zu as read mode", cell_num - 1);
-            return make_gsl_err_external(err);
-        }
-
-        // stale cache cell?
-        if (ctx->inst != inst) {
-            knd_log("cell num %zu contains ref to some other ctx, retrying..", cell_num - 1);
-            continue;
-        }
-        task->user_ctx = ctx;
-        break;
-    } while (1);
-
     if (DEBUG_USER_LEVEL_TMP)
-        knd_log("== user %.*s (cache cell:%zu) snapshot #%zu role:%d", inst->name_size, inst->name,
-                cell_num, ctx->repo->snapshots->numid, ctx->repo->snapshots->role);
+        knd_log("== user %.*s snapshot #%zu role:%d", inst->name_size, inst->name,
+                ctx->repo->snapshots->numid, ctx->repo->snapshots->role);
 
     return make_gsl_err(gsl_OK);
 }
@@ -491,8 +436,8 @@ gsl_err_t knd_create_user(void *obj, const char *rec, size_t *total_size)
     if (!task->ctx->commit) {
         err = knd_commit_new(task->mempool, &task->ctx->commit);
         if (err) return make_gsl_err_external(err);
-
-        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshots->num_commits, memory_order_relaxed);
+        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshots->num_commits,
+                                                                memory_order_relaxed);
     }
     err = knd_import_class_inst(self->class->entry, rec, total_size, task);
     if (err) {
@@ -506,16 +451,42 @@ gsl_err_t knd_create_user(void *obj, const char *rec, size_t *total_size)
     return make_gsl_err(gsl_OK);
 }
 
+static int init_mempool(struct kndShard *shard, knd_mempool_t memtype, size_t numid,
+                        struct kndMemPool **result, struct kndTask *task)
+{
+    struct kndMemPool *mempool;
+    struct kndOutput *out = shard->out;
+    struct kndOutput *log = shard->log;
+    int err;
+
+    err = knd_mempool_new(&mempool, memtype, numid);
+    KND_SHARD_ERR("failed to create a regular mempool");
+
+    mempool->num_pages = shard->mem_user_config.num_pages;
+    mempool->num_small_x4_pages = shard->mem_user_config.num_small_x4_pages;
+    mempool->num_small_x2_pages = shard->mem_user_config.num_small_x2_pages;
+    mempool->num_small_pages = shard->mem_user_config.num_small_pages;
+    mempool->num_tiny_pages = shard->mem_user_config.num_tiny_pages;
+
+    err = knd_mempool_alloc(mempool);
+    KND_SHARD_ERR("failed to alloc a regular mempool");
+
+    *result = mempool;
+    return knd_OK;
+}
+
 int knd_user_new(struct kndUser **user, const char *classname, size_t classname_size,
                  const char *path, size_t path_size, const char *reponame, size_t reponame_size,
                  const char *schema_path, size_t schema_path_size, struct kndShard *shard,
                  struct kndTask *task)
 {
     struct kndUser *self;
-    struct kndMemPool *mempool = NULL;
     struct kndRepo *repo = task->repo;
     struct kndRepoAccess *acl;
     struct kndSharedDictItem *dict_item = NULL;
+    struct kndMemPool *mempool;
+    struct kndOutput *out = shard->out;
+    struct kndOutput *log = shard->log;
     int err;
 
     self = malloc(sizeof(struct kndUser));
@@ -548,23 +519,24 @@ int knd_user_new(struct kndUser **user, const char *classname, size_t classname_
         goto error;
     }
 
-    err = knd_mempool_new(&mempool, KND_ALLOC_SHARED, 0);
-    if (err) goto error;
-    mempool->num_pages = shard->mem_config.num_pages;
-    mempool->num_small_x4_pages = shard->mem_config.num_small_x4_pages;
-    mempool->num_small_x2_pages = shard->mem_config.num_small_x2_pages;
-    mempool->num_small_pages = shard->mem_config.num_small_pages;
-    mempool->num_tiny_pages = shard->mem_config.num_tiny_pages;
-    err = mempool->alloc(mempool);
-    if (err) goto error;
-    self->mempool = mempool;
+    err = init_mempool(shard, KND_ALLOC_INCR, 1, &self->mempool_read, task);
+    KND_SHARD_ERR("failed to init a read mempool");
+    err = init_mempool(shard, KND_ALLOC_INCR, 2, &self->mempool_read_temp, task);
+    KND_SHARD_ERR("failed to init a temp read mempool");
 
-    /* read-only base repo for all users */
+    err = init_mempool(shard, KND_ALLOC_SHARED, 3, &self->mempool_write, task);
+    KND_SHARD_ERR("failed to init a shared mempool");
+    err = init_mempool(shard, KND_ALLOC_SHARED, 4, &self->mempool_write_temp, task);
+    KND_SHARD_ERR("failed to init a shared mempool");
+
+    /* base repo for all users */
+    mempool = self->mempool_write;
     self->reponame = reponame;
     self->reponame_size = reponame_size;
     err = knd_repo_new(&self->repo, reponame, reponame_size,
                        path, path_size, schema_path, schema_path_size, mempool);
     if (err) goto error;
+
     err = knd_shared_dict_set(shard->repo_name_idx, reponame, reponame_size,
                               (void*)self->repo, mempool, NULL, &dict_item, true);
     KND_TASK_ERR("failed to register repo name \"%.*s\"", reponame_size, reponame);
@@ -579,7 +551,7 @@ int knd_user_new(struct kndUser **user, const char *classname, size_t classname_
 
     task->repo = self->repo;
     task->user_ctx->repo = self->repo;
-    task->user_ctx->mempool = mempool;
+    task->user_ctx->mempool = self->mempool_write;
     task->user_ctx->acls = self->default_acls;
     task->mempool = mempool;
 
@@ -587,9 +559,6 @@ int knd_user_new(struct kndUser **user, const char *classname, size_t classname_
     if (err) goto error;
 
     err = knd_set_new(mempool, &self->user_idx);
-    if (err) goto error;
-
-    err = knd_cache_new(&self->cache, KND_CACHE_NUM_CELLS, KND_CACHE_MAX_MEM_SIZE, free_user_ctx);
     if (err) goto error;
 
     *user = self;

@@ -283,9 +283,7 @@ validate_select_by_baseclass_attr(void *obj, const char *name, size_t name_size,
     return *total_size = 0, make_gsl_err_external(knd_FAIL);
 #endif
 
-    err = knd_attr_select_clause(attr_ref->attr,
-                                 ctx->selected_base,
-                                 ctx->repo,
+    err = knd_attr_select_clause(attr_ref->attr, ctx->selected_base, ctx->repo,
                                  ctx->task, rec, total_size);
     if (err) return make_gsl_err_external(err);
 
@@ -583,8 +581,7 @@ present_class_desc(void *obj, const char *unused_var(name), size_t unused_var(na
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t
-parse_select_class_desc(void *obj, const char *rec, size_t *total_size)
+static gsl_err_t parse_select_class_desc(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
 
@@ -677,12 +674,12 @@ static gsl_err_t parse_import_class_inst(void *obj, const char *rec, size_t *tot
 
     snapshot = atomic_load_explicit(&repo->snapshots, memory_order_relaxed);
     switch (snapshot->role) {
-    case KND_READER:
+    case KND_AGENT_READER:
         if (DEBUG_CLASS_SELECT_LEVEL_2)
             knd_log(">> {snapshot %zu {role %d}}  {task-role %d}",
                     snapshot->numid, snapshot->role, task->role);
 
-        snapshot->role = KND_WRITER;
+        snapshot->role = KND_AGENT_WRITER;
         err = knd_repo_restore(repo, snapshot, task);
         if (err) {
             KND_TASK_LOG("failed to restore snapshot commits");
@@ -875,17 +872,19 @@ static gsl_err_t present_class_selection(void *obj, const char *unused_var(val),
         if (err) return make_gsl_err_external(err);
         return make_gsl_err(gsl_OK);
     }
-    
+
     /* present a single class */
     if (entry) {
-        c = atomic_load_explicit(&entry->class, memory_order_relaxed);
+        c = entry->class;
+
+        /*c = atomic_load_explicit(&entry->cache, memory_order_relaxed);
         if (!c) {
             err = knd_class_acquire(entry, &c, task);
             if (err) {
                 KND_TASK_LOG("failed to acquire class \"%.*s\"", entry->name_size, entry->name);
                 return make_gsl_err_external(err);
             }
-        }
+            }*/
         err = knd_class_export(c, task->ctx->format, task);
         if (err) {
             KND_TASK_LOG("class export failed");

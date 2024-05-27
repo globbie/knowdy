@@ -115,8 +115,7 @@ parse_schema(void *obj, const char *rec, size_t *total_size)
             .buf = self->data_path,
             .buf_size = &self->data_path_size,
             .max_buf_size = KND_NAME_SIZE
-        },
-        
+        },        
         {  .name = "memory",
             .name_size = strlen("memory"),
             .parse = parse_memory_settings,

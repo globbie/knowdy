@@ -422,14 +422,14 @@ static void mempool_init(struct kndMemPool *self)
     self->present = present_status;
 }
 
-int knd_mempool_new(struct kndMemPool **obj, knd_mempool_t type, int mempool_id)
+int knd_mempool_new(struct kndMemPool **obj, knd_mempool_t type, size_t mempool_id)
 {
     struct kndMemPool *self;
     self = malloc(sizeof(struct kndMemPool));
     if (!self) return knd_NOMEM;
     memset(self, 0, sizeof(struct kndMemPool));
     self->type = type;
-    self->id = mempool_id;
+    self->numid = mempool_id;
     mempool_init(self);
     *obj = self;
     return knd_OK;

@@ -41,7 +41,7 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     struct kndClassInstEntry *entry;
     struct kndRepo *repo = ctx->task->repo;
     struct kndTask *task = ctx->task;
-    struct kndSharedDict *class_name_idx = repo->class_name_idx;
+    struct kndSharedDict *class_name_idx = repo->idxs.class_name_idx;
 
     assert(self->entry->is_a != NULL);
     assert(self->entry->is_a->class != NULL);

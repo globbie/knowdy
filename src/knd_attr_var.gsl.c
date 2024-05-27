@@ -318,7 +318,7 @@ int knd_attr_var_export_GSL(struct kndAttrVar *var, struct kndTask *task, size_t
     assert(attr != NULL);
 
     if (task->ctx->depth >= task->ctx->max_depth) {
-        if (DEBUG_ATTR_VAR_GSL_LEVEL_TMP)
+        if (DEBUG_ATTR_VAR_GSL_LEVEL_3)
             knd_log("NB: max depth reached: %zu", task->ctx->depth);
         return knd_OK;
     }

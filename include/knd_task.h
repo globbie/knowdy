@@ -41,6 +41,7 @@ struct kndQuery;
 struct kndClassInst;
 struct kndConcFolder;
 struct kndText;
+struct kndRepoCache;
 
 typedef int (*task_cb_func)(void *obj, const char *msg, size_t msg_size, void *ctx);
 
@@ -56,6 +57,7 @@ typedef enum knd_task_spec_type {
     KND_SNAPSHOT_STATE,
     KND_DELTA_STATE,
     KND_BULK_LOAD_STATE,
+    KND_CACHE_UPDATE_STATE,
     KND_RESTORE_STATE,
     KND_STOP_STATE
 } knd_task_spec_type;
@@ -217,6 +219,8 @@ struct kndTask
 
     struct kndRepo *system_repo;
     struct kndRepo *repo;
+    struct kndRepoCache *cache;
+    struct kndRepoCache *cache_swap;
 
     void *payload;
 
@@ -233,7 +237,7 @@ struct kndTask
     struct kndOutput  *file_out;
 
     struct kndMemPool *mempool;
-    bool is_mempool_owner;
+    struct kndMemPool *cache_mempool;
     bool keep_local_WAL;
 
     struct kndMemBlock *blocks;
@@ -248,9 +252,8 @@ struct kndTask
     struct kndDict *proc_arg_name_idx;
 };
 
-// knd_task.c
-int knd_task_new(knd_agent_role_type role, int task_id, struct kndTask **result);
-int knd_task_init(struct kndTask *task, struct kndShard *shard, struct kndMemPool *mempool);
+int knd_task_new(struct kndTask **result,
+                 knd_agent_role_type role, int task_id, struct kndShard *shard);
 
 int knd_task_block_new(struct kndMemPool *mempool, struct kndTask **result);
 int knd_task_copy_block(struct kndTask *self, const char *input, size_t input_size,
@@ -262,6 +265,8 @@ void knd_task_free_blocks(struct kndTask *self);
 
 void knd_task_del(struct kndTask *self);
 void knd_task_reset(struct kndTask *self);
+void knd_task_update(struct kndTask *self);
+
 int knd_task_err_export(struct kndTask *self);
 int knd_task_run(struct kndTask *self, const char *input, size_t input_size);
 

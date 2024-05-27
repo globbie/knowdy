@@ -129,8 +129,12 @@ struct kndClassEntry
 
     struct kndRepo *repo;
     struct kndClassEntry *base;
-    struct kndClass * _Atomic class;
-    atomic_int num_readers;
+
+    struct kndClass *class;
+    size_t num_requests;
+
+    //struct kndClass * _Atomic cache;
+    //atomic_int num_readers;
 
     struct kndSharedDictItem *dict_item;
 
@@ -255,6 +259,7 @@ int knd_class_set_export_GSL(struct kndSet *set, struct kndTask *task);
 // knd_class.gsp.c
 int knd_class_acquire(struct kndClassEntry *self, struct kndClass **result, struct kndTask *task);
 int knd_class_release(struct kndClassEntry *self, struct kndTask *task);
+
 int knd_class_marshall(void *elem, size_t *output_size, struct kndTask *task);
 int knd_class_entry_unmarshall(const char *elem_id, size_t elem_id_size,
                                const char *val, size_t val_size, void **result, struct kndTask *task);
@@ -305,6 +310,7 @@ int knd_class_facet_new(struct kndMemPool *mempool, struct kndClassFacet **resul
 int knd_class_entry_new(struct kndMemPool *mempool, struct kndClassEntry **result);
 int knd_inner_class_new(struct kndMemPool *mempool, struct kndClass **self);
 int knd_class_new(struct kndMemPool *mempool, struct kndClass **result);
+void knd_class_free(struct kndMemPool *mempool, struct kndClass *self);
 
 // knd_class.select.c
 extern gsl_err_t knd_class_select(struct kndRepo *repo,

@@ -35,9 +35,6 @@ void knd_task_del(struct kndTask *self)
     if (self->file_out) {
         self->file_out->del(self->file_out);
     }
-    if (self->is_mempool_owner) {
-        knd_mempool_del(self->mempool);
-    }
     free(self);
 }
 
@@ -56,7 +53,6 @@ void knd_task_reset(struct kndTask *self)
     self->depth = 0;
     self->max_depth = 1;
 
-    self->http_code = HTTP_OK;
     if (self->ctx)
         memset(self->ctx, 0, sizeof(*self->ctx));
 
@@ -176,7 +172,7 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
 
     task->user_ctx->repo = user->repo;
     task->user_ctx->acls = user->default_acls;
-    task->user_ctx->mempool = user->mempool;
+    task->user_ctx->mempool = user->mempool_write;
 
     task->input = input;
     task->input_size = input_size;
@@ -209,19 +205,16 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
         break;
     default:
         if (!task->log->buf_size) {
-            task->http_code = HTTP_INTERNAL_SERVER_ERROR;
             KND_TASK_LOG("unclassified server error");
             return gsl_err_to_knd_err_codes(parser_err);
         }
-
         out->reset(out);
         err = out->write_escaped(out, task->log->buf, task->log->buf_size);
         if (err) {
             KND_TASK_LOG("server output error");
             return gsl_err_to_knd_err_codes(parser_err);
         }
-        knd_log("-- task err code:%d http code:%d", parser_err.code, task->ctx->http_code);
-
+        knd_log("-- task err code:%d", parser_err.code);
         task->output = out->buf;
         task->output_size = out->buf_size;
         return gsl_err_to_knd_err_codes(parser_err);
@@ -231,9 +224,9 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
     task->output_size = out->buf_size;
 
     switch (task->role) {
-    case KND_ARBITER:
+    case KND_AGENT_ARBITER:
         // fall through
-    case KND_WRITER:
+    case KND_AGENT_WRITER:
         if (task->file_out->buf_size) {
             task->output = task->file_out->buf;
             task->output_size = task->file_out->buf_size;
@@ -346,33 +339,59 @@ static int task_context_new(struct kndTaskContext **result)
     return knd_OK;
 }
 
-int knd_task_init(struct kndTask *task, struct kndShard *shard, struct kndMemPool *mempool)
+static int init_mempool(struct kndShard *shard, knd_mempool_t memtype, size_t numid,
+                        struct kndMemPool **result, struct kndTask *task)
+{
+    struct kndMemPool *mempool;
+    struct kndOutput *out = shard->out;
+    struct kndOutput *log = shard->log;
+    int err;
+
+    err = knd_mempool_new(&mempool, memtype, numid);
+    KND_SHARD_ERR("failed to create a regular mempool");
+
+    mempool->num_pages = shard->mem_ctx_config.num_pages;
+    mempool->num_small_x4_pages = shard->mem_ctx_config.num_small_x4_pages;
+    mempool->num_small_x2_pages = shard->mem_ctx_config.num_small_x2_pages;
+    mempool->num_small_pages = shard->mem_ctx_config.num_small_pages;
+    mempool->num_tiny_pages = shard->mem_ctx_config.num_tiny_pages;
+
+    err = knd_mempool_alloc(mempool);
+    KND_SHARD_ERR("failed to alloc a regular mempool");
+
+    *result = mempool;
+    return knd_OK;
+}
+
+static int init_task(struct kndTask *task, struct kndShard *shard)
 {
     assert (shard != NULL);
     assert (shard->repo != NULL);
 
     struct kndRepo *repo = shard->repo;
+    struct kndMemPool *mempool;
+    struct kndOutput *out = shard->out;
+    struct kndOutput *log = shard->log;
     int err;
 
     task->shard = shard;
     task->path = shard->path;
     task->path_size = shard->path_size;
 
-    if (!mempool) {
-        err = knd_mempool_new(&mempool, KND_ALLOC_INCR, 0);
-        if (err) goto error;
-        mempool->num_pages = shard->ctx_mem_config.num_pages;
-        mempool->num_small_x4_pages = shard->ctx_mem_config.num_small_x4_pages;
-        mempool->num_small_x2_pages = shard->ctx_mem_config.num_small_x2_pages;
-        mempool->num_small_pages = shard->ctx_mem_config.num_small_pages;
-        mempool->num_tiny_pages = shard->ctx_mem_config.num_tiny_pages;
-        err = mempool->alloc(mempool); 
-        if (err) goto error;
-        task->is_mempool_owner = true;
-    }
-    task->mempool = mempool;
+    err = init_mempool(shard, KND_ALLOC_INCR, 1, &task->mempool, task);
+    KND_SHARD_ERR("failed to init a task mempool");
+    err = init_mempool(shard, KND_ALLOC_INCR, 2, &task->cache_mempool, task);
+    KND_SHARD_ERR("failed to init a task mempool");
 
+    /* current cache */
+    mempool = task->cache_mempool;
+    err = knd_repo_cache_new(mempool, &task->cache);
+    if (err) goto error;
+    err = knd_dict_new(&task->cache->class_name_idx, mempool, KND_SMALL_DICT_SIZE);
+    if (err) goto error;
+    
     /* local name indices */
+    mempool = task->mempool;
     err = knd_dict_new(&task->class_name_idx, mempool, KND_SMALL_DICT_SIZE);
     if (err) goto error;
     err = knd_dict_new(&task->class_inst_alias_idx, mempool, KND_SMALL_DICT_SIZE);
@@ -395,22 +414,19 @@ int knd_task_init(struct kndTask *task, struct kndShard *shard, struct kndMemPoo
     /* default user context */
     err = knd_user_context_new(&task->default_user_ctx);
     if (err) goto error;
-    task->user_ctx = task->default_user_ctx;
-    task->user_ctx->mempool = mempool;
-    task->user_ctx->repo = shard->repo;
 
-    if (shard->user) {
-        task->user_ctx->mempool = shard->user->mempool;
-        task->user_ctx->repo = shard->user->repo;
-        task->user_ctx->acls = shard->user->default_acls;
-    }
+    task->user_ctx = task->default_user_ctx;
+    task->user_ctx->mempool = shard->user->mempool_write;
+    task->user_ctx->repo = shard->user->repo;
+    task->user_ctx->acls = shard->user->default_acls;
     return knd_OK;
 
  error:
     return err;
 }
 
-int knd_task_new(knd_agent_role_type role, int task_id, struct kndTask **result)
+int knd_task_new(struct kndTask **result,
+                 knd_agent_role_type role, int task_id, struct kndShard *shard)
 {
     struct kndTask *task;
     int err;
@@ -430,15 +446,9 @@ int knd_task_new(knd_agent_role_type role, int task_id, struct kndTask **result)
     err = knd_output_new(&task->file_out, NULL, KND_FILE_BUF_SIZE);
     if (err) goto error;
 
-    switch (task->role) {
-    case KND_ARBITER:
-        // config
-        task->keep_local_WAL = true;
-        break;
-    default:
-        break;
-    }
-
+    err = init_task(task, shard);
+    if (err) goto error;
+    
     *result = task;
     return knd_OK;
 

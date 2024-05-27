@@ -59,7 +59,7 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     self->name_size = name_size;
 
     if (name_size <= KND_ID_SIZE) {
-        err = knd_shared_set_get(repo->str_idx, name, name_size, (void**)&seq);
+        err = knd_shared_set_get(repo->idxs.str_idx, name, name_size, (void**)&seq);
         if (err) {
             KND_TASK_LOG("failed to decode attr name code \"%.*s\"", name_size, name);
             return make_gsl_err_external(err);
@@ -82,7 +82,7 @@ static gsl_err_t set_ref_class(void *obj, const char *id, size_t id_size)
     if (!id_size) return make_gsl_err(gsl_FORMAT);
     if (id_size > KND_ID_SIZE) return make_gsl_err(gsl_FORMAT);
 
-    err = knd_shared_set_get(repo->class_idx, id, id_size, (void**)&entry);
+    err = knd_shared_set_get(repo->idxs.class_idx, id, id_size, (void**)&entry);
     if (err) {
         KND_TASK_LOG("failed to link class entry \"%.*s\"", id_size, id);
         return make_gsl_err_external(err);

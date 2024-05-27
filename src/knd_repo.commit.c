@@ -196,7 +196,7 @@ static int update_indices(struct kndRepo *self, struct kndCommit *commit, struct
     struct kndSharedDictItem *item = NULL;
     struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
     struct kndRepo *repo = self;
-    struct kndSharedDict *name_idx = repo->class_name_idx;
+    struct kndSharedDict *name_idx = repo->idxs.class_name_idx;
     int err;
 
     if (DEBUG_REPO_COMMIT_LEVEL_2)
@@ -205,7 +205,7 @@ static int update_indices(struct kndRepo *self, struct kndCommit *commit, struct
 
     if (task->user_ctx) {
         repo = task->user_ctx->repo;
-        name_idx = repo->class_name_idx;
+        name_idx = repo->idxs.class_name_idx;
     }
 
     FOREACH (ref, commit->class_state_refs) {
@@ -247,13 +247,14 @@ static int update_indices(struct kndRepo *self, struct kndCommit *commit, struct
         }
     }
 
-    name_idx = self->proc_name_idx;
+    name_idx = self->idxs.proc_name_idx;
     for (ref = commit->proc_state_refs; ref; ref = ref->next) {
         proc_entry = ref->obj;
         switch (ref->state->phase) {
         case KND_REMOVED:
             proc_entry->phase = KND_REMOVED;
-            err = knd_shared_dict_remove(name_idx, proc_entry->name, proc_entry->name_size);       RET_ERR();
+            err = knd_shared_dict_remove(name_idx, proc_entry->name, proc_entry->name_size);
+            RET_ERR();
             continue;
         case KND_UPDATED:
             proc_entry->phase = KND_UPDATED;
@@ -262,7 +263,8 @@ static int update_indices(struct kndRepo *self, struct kndCommit *commit, struct
             break;
         }
         err = knd_shared_dict_set(name_idx, proc_entry->name,  proc_entry->name_size,
-                                  (void*)proc_entry, task->mempool, commit, &item, false);        RET_ERR();
+                                  (void*)proc_entry, task->mempool, commit, &item, false);
+        RET_ERR();
         proc_entry->dict_item = item;
     }
     return knd_OK;
@@ -382,7 +384,7 @@ int knd_confirm_commit(struct kndRepo *self, struct kndTask *task)
     KND_TASK_ERR("failed to dedup commit #%zu", commit->numid);
 
     switch (task->role) {
-    case KND_ARBITER:
+    case KND_AGENT_ARBITER:
         err = update_indices(self, commit, task);
         KND_TASK_ERR("index update failed");
 

@@ -315,6 +315,7 @@ int knd_class_resolve(struct kndClass *self, struct kndTask *task)
     struct kndRepo *repo = entry->repo;
     struct kndAttrRef *attr_ref, *ref;
     int err;
+
     assert(!self->is_resolved);
 
     if (self->resolving_in_progress) {
@@ -323,13 +324,14 @@ int knd_class_resolve(struct kndClass *self, struct kndTask *task)
     }
     self->resolving_in_progress = true;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
-        knd_log(".. resolving class \"%.*s\"", entry->name_size, entry->name);
+    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
+        knd_log(">> resolving {class %.*s}", entry->name_size, entry->name);
 
     /* primary attrs */
     if (self->num_attrs) {
         err = knd_resolve_primary_attrs(self, task);
-        KND_TASK_ERR("failed to resolve primary attrs of %.*s", entry->name_size, entry->name);
+        KND_TASK_ERR("failed to resolve primary attrs of {class %.*s}",
+                     entry->name_size, entry->name);
     }
 
     /* a child of the root class */
@@ -354,16 +356,20 @@ int knd_class_resolve(struct kndClass *self, struct kndTask *task)
     /* uniq attr constraints */
     FOREACH (ref, self->uniq) {
         err = knd_class_get_attr(self, ref->name, ref->name_size, &attr_ref);
-        KND_TASK_ERR("no uniq attr \"%.*s\" in class \"%.*s\"",
+        KND_TASK_ERR("no uniq {attr %.*s} in {class %.*s}",
                      ref->name_size, ref->name, self->name_size, self->name);
         ref->attr = attr_ref->attr;
     }
     self->is_resolved = true;
 
+    if (DEBUG_CLASS_RESOLVE_LEVEL_3) {
+        knd_log("++ {class %.*s} resolved!", entry->name_size, entry->name);
+    }
+
     /* this class is good to go: 
-       it can now receive a unique class id */
+       assign a unique class id */
     // TODO: check Writer Role
-    entry->numid = atomic_fetch_add_explicit(&repo->class_id_count, 1, memory_order_relaxed);
+    entry->numid = atomic_fetch_add_explicit(&repo->idxs.class_id_count, 1, memory_order_relaxed);
     entry->numid++;
     knd_uid_create(entry->numid, entry->id, &entry->id_size);
 
@@ -400,7 +406,7 @@ int knd_resolve_class_ref(struct kndClass *self, const char *name, size_t name_s
 {
     struct kndClassEntry *entry;
     struct kndClass *c;
-    struct kndSharedDict *class_name_idx = self->entry->repo->class_name_idx;
+    struct kndSharedDict *class_name_idx = self->entry->repo->idxs.class_name_idx;
     int err;
 
     assert (name_size != 0 && name != NULL);

@@ -341,11 +341,11 @@ static int fetch_str_idx(struct kndRepo *self, const char *path, size_t path_siz
         knd_log(".. unmarshall {string-idx %.*s {size %zu}}",
                 out->buf_size, out->buf, (size_t)st.st_size);
     }
-    err = knd_shared_set_unmarshall_file(self->str_idx, out->buf, out->buf_size,
+    err = knd_shared_set_unmarshall_file(self->idxs.str_idx, out->buf, out->buf_size,
                                          (size_t)st.st_size, knd_charseq_unmarshall, task);
     KND_TASK_ERR("failed to unmarshall str idx file");
 
-    atomic_store_explicit(&self->num_strs, self->str_idx->num_elems, memory_order_relaxed);
+    atomic_store_explicit(&self->idxs.num_strs, self->idxs.str_idx->num_elems, memory_order_relaxed);
     return knd_OK;
 }
 
@@ -357,7 +357,6 @@ static int fetch_class_storage(struct kndRepo *self, const char *path, size_t pa
     const char *filename = "classes.gsp";
     size_t filename_size = strlen(filename);
     int err;
-
     out->reset(out);
     OUT(path, path_size);
     OUT(filename, filename_size);
@@ -368,7 +367,7 @@ static int fetch_class_storage(struct kndRepo *self, const char *path, size_t pa
         knd_log(".. reading {class-snapshot %.*s {size %zu}}",
                 out->buf_size, out->buf, (size_t)st.st_size);
     }
-    err = knd_shared_set_unmarshall_file(self->class_idx, out->buf, out->buf_size,
+    err = knd_shared_set_unmarshall_file(self->idxs.class_idx, out->buf, out->buf_size,
                                          (size_t)st.st_size, knd_class_entry_unmarshall, task);
     KND_TASK_ERR("failed to unmarshall class storage GSP file");
     return knd_OK;
@@ -394,8 +393,7 @@ static int read_repo_meta(struct kndRepo *repo, struct kndRepoSnapshot *snapshot
     }
 
     // TODO file reading
-    snapshot->state = KND_SNAPSHOT_FULL;
-    
+    snapshot->state = KND_SNAPSHOT_FULL;    
     return knd_OK;
 }
 
@@ -421,6 +419,7 @@ static int fetch_latest_snapshot(struct kndRepo *repo, struct kndRepoSnapshot **
     *result = snapshot;
     return knd_OK;
 }
+
 static int read_snapshot(struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct kndOutput *out = task->file_out;

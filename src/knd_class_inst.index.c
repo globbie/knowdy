@@ -89,7 +89,7 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *is
 
     /* user repo selected: activate copy-on-write */
     if (task->user_ctx) {
-        class_entry = knd_shared_dict_get(repo->class_name_idx,
+        class_entry = knd_shared_dict_get(repo->idxs.class_name_idx,
                                           is_a->name, is_a->name_size);
         if (is_a->repo != repo) {
             if (!class_entry) {
