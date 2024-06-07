@@ -7,7 +7,6 @@
 #include "knd_text.h"
 #include "knd_task.h"
 #include "knd_repo.h"
-#include "knd_shard.h"
 #include "knd_user.h"
 #include "knd_class.h"
 #include "knd_class_inst.h"

@@ -68,7 +68,7 @@ int knd_dedup_commit(struct kndCommit *commit, struct kndTask *unused_var(task))
     struct kndClassEntry *entry;
     struct kndStateRef *ref;
 
-    for (ref = commit->class_state_refs; ref; ref = ref->next) {
+    FOREACH (ref, commit->class_state_refs) {
         if (ref->state->phase == KND_REMOVED) {
             continue;
         }

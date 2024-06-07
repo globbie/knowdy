@@ -7,7 +7,6 @@
 #include "knd_mempool.h"
 #include "knd_attr.h"
 #include "knd_repo.h"
-#include "knd_shard.h"
 
 #include "knd_text.h"
 #include "knd_num.h"
@@ -89,7 +88,7 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *is
 
     /* user repo selected: activate copy-on-write */
     if (task->user_ctx) {
-        class_entry = knd_shared_dict_get(repo->idxs.class_name_idx,
+        class_entry = knd_shared_dict_get(task->idxs->class_name_idx,
                                           is_a->name, is_a->name_size);
         if (is_a->repo != repo) {
             if (!class_entry) {
@@ -114,7 +113,7 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *is
             // TODO free new_name_idx if (new_name_idx != NULL) 
             break;
         }
-        err = knd_shared_dict_new(&new_name_idx, KND_MEDIUM_DICT_SIZE);
+        err = knd_shared_dict_new(&new_name_idx, mempool, KND_MEDIUM_DICT_SIZE);
         KND_TASK_ERR("failed to create inst name idx");
 
     } while (!atomic_compare_exchange_weak(&c->inst_name_idx, &name_idx, new_name_idx));
@@ -125,7 +124,7 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *is
             // TODO free new_idx if (new_idx != NULL) 
             break;
         }
-        err = knd_shared_set_new(NULL, &new_idx);
+        err = knd_shared_set_new(&new_idx, mempool);
         KND_TASK_ERR("failed to create inst idx");
 
     } while (!atomic_compare_exchange_weak(&c->inst_idx, &idx, new_idx));
@@ -140,7 +139,7 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *is
         case KND_CREATED:
             if (entry->name_size) {
                 err = knd_shared_dict_set(name_idx, entry->name, entry->name_size, (void*)entry,
-                                          mempool, commit, &item, false);
+                                          commit, &item, false);
                 KND_TASK_ERR("name idx failed to register class inst %.*s, err:%d",
                              entry->name_size, entry->name, err);
                 

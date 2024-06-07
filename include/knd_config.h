@@ -75,7 +75,7 @@ static const char *const knd_format_names[] = {
 #define ALLOC_ERR(V) if (!(V)) { return knd_NOMEM; }
 #define PARSE_ERR(V) if (err) { printf("LINEAR POS:%zu", *total_size); return err; } 
 
-#define KND_SHARD_ERR(...) \
+#define KND_STEWARD_ERR(...) \
     if (err) { \
         out->reset(out);\
         int e = out->writef(out, "" __VA_ARGS__); \
@@ -90,12 +90,12 @@ static const char *const knd_format_names[] = {
         log->reset(log); \
         e = log->write(log, out->buf, out->buf_size); \
         if (e) return e; \
-        shard->msg = log->buf; \
-        shard->msg_size = log->buf_size; \
+        steward->msg = log->buf; \
+        steward->msg_size = log->buf_size; \
         return err;\
     }
 
-#define KND_SHARD_LOG(...)                     \
+#define KND_STEWARD_LOG(...)                     \
     do {                                     \
         out->reset(out);           \
         int e = out->writef(out,   \
@@ -113,8 +113,8 @@ static const char *const knd_format_names[] = {
         e = log->write(log,        \
          out->buf, out->buf_size); \
         if (e) break;                        \
-        shard->msg = log->buf;         \
-        shard->msg_size = log->buf_size;\
+        steward->msg = log->buf;         \
+        steward->msg_size = log->buf_size;\
     } while (0)
 
 
@@ -186,10 +186,12 @@ static const char *const knd_format_names[] = {
 #define KND_IDLE_TIMEOUT 10 /* in seconds */
 
 #define KND_TMP_DIR "/tmp"
+#define KND_USERSPACE_DIR_NAME "users/"
 
 #define KND_GSP_FILE_HEADER_NAME "GSP"
 #define KND_GSP_FILE_EXT_NAME ".gsp"
 #define KND_GSP_FILE_TMP_EXT_NAME ".temp"
+#define KND_PACKAGE_INDEX_NAME "index"
 
 /* debugging output levels */
 #define KND_DEBUG_LEVEL_1 1
@@ -208,6 +210,7 @@ static const char *const knd_format_names[] = {
 #define KND_MAX_SNAPSHOTS 32
 #define KND_SNAPSHOT_LEAF_MAX_THRESHOLD 1024 * 2
 #define KND_SNAPSHOT_LEAF_MIN_THRESHOLD 1024
+#define KND_SNAPSHOT_MEM_THRESHOLD_RATIO 0.85
 
 #define KND_RESULT_BATCH_SIZE 10
 #define KND_RESULT_MAX_BATCH_SIZE 500
@@ -264,7 +267,6 @@ static const char *const knd_format_names[] = {
 #define KND_LOC_SEPAR "/"
 #define KND_FACET_SEPAR "#"
 #define KND_TEXT_CHUNK_SEPAR " "
-
 
 #define KND_GROW_FACTOR 2
 

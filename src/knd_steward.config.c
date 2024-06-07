@@ -1,4 +1,4 @@
-#include "knd_shard.h"
+#include "knd_steward.h"
 
 #include "knd_err.h"
 #include "knd_mempool.h"
@@ -31,7 +31,7 @@ run_check_schema(void *unused_var(obj), const char *val, size_t val_size)
 static gsl_err_t
 parse_base_repo(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndShard *self = obj;
+    struct kndSteward *self = obj;
 
     struct gslTaskSpec specs[] = {
         {   .is_implied = true,
@@ -52,7 +52,7 @@ parse_base_repo(void *obj, const char *rec, size_t *total_size)
 static gsl_err_t
 parse_user_settings(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndShard *self = obj;
+    struct kndSteward *self = obj;
 
     struct gslTaskSpec specs[] = {
         {   .is_implied = true,
@@ -72,7 +72,7 @@ parse_user_settings(void *obj, const char *rec, size_t *total_size)
 static gsl_err_t
 parse_schema_path(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndShard *self = obj;
+    struct kndSteward *self = obj;
 
     struct gslTaskSpec specs[] = {
         {   .is_implied = true,
@@ -92,7 +92,7 @@ parse_schema_path(void *obj, const char *rec, size_t *total_size)
 static gsl_err_t
 parse_schema(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndShard *self = obj;
+    struct kndSteward *self = obj;
 
     struct gslTaskSpec specs[] = {
         {   .is_implied = true,
@@ -157,7 +157,7 @@ parse_schema(void *obj, const char *rec, size_t *total_size)
     return make_gsl_err(gsl_OK);
 }
 
-int knd_shard_parse_config(struct kndShard *self,
+int knd_steward_parse_config(struct kndSteward *self,
                            const char *rec, size_t *total_size,
                            struct kndMemPool *mempool)
 {

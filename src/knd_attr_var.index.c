@@ -64,54 +64,6 @@ static int attr_hub_fetch(struct kndClass *owner, struct kndAttr *attr,
     return knd_OK;
 }
 
-static int inst_attr_hub_fetch(struct kndClassInst *owner, struct kndAttr *attr,
-                               struct kndAttrHub **result, struct kndTask *task)
-{
-    struct kndMemPool *mempool = task->user_ctx->mempool;
-    struct kndAttrHub *hub = NULL;
-    int err;
-
-    FOREACH (hub, owner->attr_hubs) {
-        if (hub->attr == attr) {
-            break;
-        }
-    }
-    if (!hub) {
-        err = knd_attr_hub_new(mempool, &hub);
-        KND_TASK_ERR("failed to alloc attr hub");
-        hub->attr = attr;
-        hub->next = owner->attr_hubs;
-        owner->attr_hubs = hub;
-    }
-    *result = hub;
-    return knd_OK;
-}
-
-#if 0
-static int attr_hub_fetch_child(struct kndAttrHub *parent, struct kndAttr *attr,
-                                struct kndAttrHub **result, struct kndTask *task)
-{
-    struct kndMemPool *mempool = task->user_ctx->mempool;
-    struct kndAttrHub *hub = NULL;
-    int err;
-
-    FOREACH (hub, parent->children) {
-        if (hub->attr == attr) {
-            break;
-        }
-    }
-    if (!hub) {
-        err = knd_attr_hub_new(mempool, &hub);
-        KND_TASK_ERR("failed to alloc attr hub");
-        hub->attr = attr;
-        hub->next = parent->children;
-        parent->children = hub;
-    }
-    *result = hub;
-    return knd_OK;
-}
-#endif
-
 static int attr_hub_add_classref(struct kndAttrHub *hub, struct kndClassEntry *topic,
                                  struct kndTask *task)
 {
@@ -122,7 +74,7 @@ static int attr_hub_add_classref(struct kndAttrHub *hub, struct kndClassEntry *t
 
     set = hub->topics;
     if (!set) {
-        err = knd_set_new(mempool, &set);
+        err = knd_set_new(&set, task->mempool);
         KND_TASK_ERR("failed to alloc topic set for attr hub");
         hub->topics = set;
     }
@@ -136,28 +88,6 @@ static int attr_hub_add_classref(struct kndAttrHub *hub, struct kndClassEntry *t
         err = knd_set_add(set, topic->id, topic->id_size, (void*)ref);
         KND_TASK_ERR("failed to register class ref");
     }
-    return knd_OK;
-}
-
-static int inst_attr_hub_add_inst(struct kndAttrHub *hub, struct kndClassInstEntry *topic,
-                                  struct kndTask *task)
-{
-    struct kndMemPool *mempool = task->user_ctx->mempool;   
-    struct kndSet *set;
-    struct kndClassInstEntry *entry;
-    int err;
-
-    set = hub->topics;
-    if (!set) {
-        err = knd_set_new(mempool, &set);
-        KND_TASK_ERR("failed to alloc topic set for attr hub");
-        hub->topics = set;
-    }
-    err = knd_set_get(set, topic->id, topic->id_size, (void**)&entry);
-    if (!err) return knd_OK;
-    
-    err = knd_set_add(set, topic->id, topic->id_size, (void*)topic);
-    KND_TASK_ERR("failed to register class inst");
     return knd_OK;
 }
 
@@ -256,7 +186,8 @@ int knd_index_attr_var(struct kndClassEntry *topic, struct kndAttr *attr,
         // fall through
     case KND_ATTR_NUM:
         if (!attr->is_indexed) break;
-        if (DEBUG_ATTR_VAR_IDX_LEVEL_TMP) {
+
+        if (DEBUG_ATTR_VAR_IDX_LEVEL_3) {
             knd_log(".. {class %.*s} to index numeric attr {%s %.*s {%.*s %.*s}}",
                     topic->name_size, topic->name,
                     knd_attr_names[attr->type], attr->name_size, attr->name,

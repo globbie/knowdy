@@ -44,9 +44,7 @@ knd_dict_hash(const char *key, size_t key_size)
     return h;
 }
 
-void* knd_dict_get(struct kndDict *self,
-                   const char *key,
-                   size_t key_size)
+void* knd_dict_get(struct kndDict *self, const char *key, size_t key_size)
 {
     size_t h = knd_dict_hash(key, key_size) % self->size;
     struct kndDictItem *item = self->hash_array[h];
@@ -97,9 +95,7 @@ int knd_dict_set(struct kndDict *self, const char *key, size_t key_size, void *d
     return knd_OK;
 }
 
-int knd_dict_remove(struct kndDict *self,
-                    const char *key,
-                    size_t key_size)
+int knd_dict_remove(struct kndDict *self, const char *key, size_t key_size)
 {
     size_t h = knd_dict_hash(key, key_size) % self->size;
     struct kndDictItem *head = self->hash_array[h];
@@ -122,17 +118,18 @@ int knd_dict_remove(struct kndDict *self,
 
 int knd_dict_map(struct kndDict *idx, map_cb_func cb, void *obj)
 {
+    struct kndDictItem *item;
     size_t count = 0;
     int err;
 
-    /*    for (size_t i = 0; i < idx->size; i++) {
-        item = atomic_load_explicit(&proc_name_idx->hash_array[i], memory_order_relaxed);
+    for (size_t i = 0; i < idx->size; i++) {
+        item = idx->hash_array[i];
         for (; item; item = item->next) {
-            entry = item->data;
-    
-    err = cb(obj, buf, buf_size, *count, elem);
-    if (err) return err;
-    */
+            count++;
+            err = cb(obj, item->key, item->key_size, count, item->data);
+            if (err) return err;
+        }
+    }
     return knd_OK;
 }
 
@@ -151,16 +148,21 @@ void knd_dict_reset(struct kndDict *self)
 
 int knd_dict_new(struct kndDict **dict, struct kndMemPool *mempool, size_t init_size)
 {
-    struct kndDict *self = malloc(sizeof(struct kndDict));
-    if (!self) return knd_NOMEM;
-    self->mempool = mempool;
+    void *page;
+    struct kndDict *self;
+    int err;
+
+    assert(mempool->small_page_size >= sizeof(struct kndDict));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
+    if (err) return err;
+    memset(page, 0, sizeof(struct kndDict));
+    self = page;
 
     self->hash_array = calloc(init_size, sizeof(struct kndDictItem*));
     if (!self->hash_array) return knd_NOMEM;
     self->size = init_size;
-    self->num_items = 0;
-    self->num_keys = 0;
 
+    self->mempool = mempool;
     *dict = self;
     return knd_OK;
 }

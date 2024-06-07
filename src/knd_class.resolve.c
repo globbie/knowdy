@@ -324,7 +324,7 @@ int knd_class_resolve(struct kndClass *self, struct kndTask *task)
     }
     self->resolving_in_progress = true;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP)
+    if (DEBUG_CLASS_RESOLVE_LEVEL_3)
         knd_log(">> resolving {class %.*s}", entry->name_size, entry->name);
 
     /* primary attrs */
@@ -369,7 +369,7 @@ int knd_class_resolve(struct kndClass *self, struct kndTask *task)
     /* this class is good to go: 
        assign a unique class id */
     // TODO: check Writer Role
-    entry->numid = atomic_fetch_add_explicit(&repo->idxs.class_id_count, 1, memory_order_relaxed);
+    entry->numid = atomic_fetch_add_explicit(&task->idxs->class_id_count, 1, memory_order_relaxed);
     entry->numid++;
     knd_uid_create(entry->numid, entry->id, &entry->id_size);
 
@@ -406,7 +406,7 @@ int knd_resolve_class_ref(struct kndClass *self, const char *name, size_t name_s
 {
     struct kndClassEntry *entry;
     struct kndClass *c;
-    struct kndSharedDict *class_name_idx = self->entry->repo->idxs.class_name_idx;
+    struct kndSharedDict *class_name_idx = task->idxs->class_name_idx;
     int err;
 
     assert (name_size != 0 && name != NULL);

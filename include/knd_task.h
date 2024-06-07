@@ -25,7 +25,8 @@
 
 #include "knd_config.h"
 #include "knd_state.h"
-#include "knd_shard.h"
+#include "knd_steward.h"
+#include "knd_repo.h"
 #include "knd_dict.h"
 #include "knd_http_codes.h"
 
@@ -176,7 +177,7 @@ struct kndTask
     knd_state_phase phase;
     knd_task_mode_t mode;
 
-    struct kndShard *shard;
+    struct kndSteward *steward;
     struct kndTaskContext *ctx;
 
     const char *input;
@@ -219,8 +220,11 @@ struct kndTask
 
     struct kndRepo *system_repo;
     struct kndRepo *repo;
+    struct kndRepoSnapshot *snapshot;
+
     struct kndRepoCache *cache;
-    struct kndRepoCache *cache_swap;
+    struct kndRepoCache *local_cache;
+    struct kndRepoIndices *idxs;
 
     void *payload;
 
@@ -238,12 +242,17 @@ struct kndTask
 
     struct kndMemPool *mempool;
     struct kndMemPool *cache_mempool;
+    // struct kndMemPool *cache_mempool_temp;
+
     bool keep_local_WAL;
 
     struct kndMemBlock *blocks;
     size_t num_blocks;
     size_t total_block_size;
 
+    struct kndDict *repo_name_idx;
+
+    struct kndSet  *class_idx;
     struct kndDict *class_name_idx;
     struct kndDict *class_inst_alias_idx;
 
@@ -253,7 +262,10 @@ struct kndTask
 };
 
 int knd_task_new(struct kndTask **result,
-                 knd_agent_role_type role, int task_id, struct kndShard *shard);
+                 knd_agent_role_type role, int task_id, struct kndSteward *steward);
+int knd_task_init(struct kndTask *task, struct kndSteward *steward);
+void knd_task_del(struct kndTask *self);
+void knd_task_reset(struct kndTask *self);
 
 int knd_task_block_new(struct kndMemPool *mempool, struct kndTask **result);
 int knd_task_copy_block(struct kndTask *self, const char *input, size_t input_size,
@@ -262,10 +274,6 @@ int knd_task_copy_block(struct kndTask *self, const char *input, size_t input_si
 int knd_task_read_file_block(struct kndTask *self, const char *filename, size_t filename_size,
                              struct kndMemBlock **result);
 void knd_task_free_blocks(struct kndTask *self);
-
-void knd_task_del(struct kndTask *self);
-void knd_task_reset(struct kndTask *self);
-void knd_task_update(struct kndTask *self);
 
 int knd_task_err_export(struct kndTask *self);
 int knd_task_run(struct kndTask *self, const char *input, size_t input_size);

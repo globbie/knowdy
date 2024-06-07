@@ -7,7 +7,6 @@
 #include "knd_text.h"
 #include "knd_task.h"
 #include "knd_repo.h"
-#include "knd_shard.h"
 #include "knd_user.h"
 #include "knd_utils.h"
 #include "knd_mempool.h"
@@ -28,7 +27,8 @@ struct LocalContext {
     struct kndStatement *stm;
 };
 
-static gsl_err_t present_pars(void *obj, const char *unused_var(name), size_t unused_var(name_size))
+static gsl_err_t present_pars(void *obj, const char *unused_var(name),
+                              size_t unused_var(name_size))
 {
     struct LocalContext *ctx = obj;
     //struct kndTask *task = ctx->task;
@@ -61,9 +61,7 @@ static gsl_err_t get_par_by_numid(void *obj, const char *val, size_t val_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_text_par(void *obj,
-                                const char *rec,
-                                size_t *total_size)
+static gsl_err_t parse_text_par(void *obj, const char *rec, size_t *total_size)
 {
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -76,15 +74,14 @@ static gsl_err_t parse_text_par(void *obj,
           .obj = obj
         }
     };
-
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-gsl_err_t knd_text_select(struct kndText *self, const char *rec, size_t *total_size, struct kndTask *task)
+gsl_err_t knd_text_select(struct kndText *self, const char *rec, size_t *total_size,
+                          struct kndTask *task)
 {
     if (DEBUG_TEXT_SELECT_LEVEL_TMP) {
-        knd_log("\n.. parsing text select rec: \"%.*s\"",
-                32, rec);
+        knd_log("\n.. parsing text select rec: \"%.*s\"", 32, rec);
     }
 
     struct LocalContext ctx = {

@@ -23,7 +23,6 @@
 #include "knd_text.h"
 #include "knd_dict.h"
 #include "knd_repo.h"
-#include "knd_shard.h"
 #include "knd_user.h"
 #include "knd_output.h"
 
@@ -113,7 +112,7 @@ static gsl_err_t remove_proc(void *obj, const char *name, size_t name_size)
         err = knd_commit_new(task->mempool, &task->ctx->commit);
         if (err) return make_gsl_err_external(err);
 
-        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshots->num_commits,
+        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->snapshot->num_commits,
                                                                 memory_order_relaxed);
     }
 
@@ -154,7 +153,7 @@ static gsl_err_t parse_proc_inst_import(void *obj, const char *rec, size_t *tota
         if (!commit) {
             err = knd_commit_new(mempool, &commit);
             if (err) return make_gsl_err_external(err);
-            commit->orig_state_id = atomic_load_explicit(&task->repo->snapshots->num_commits, memory_order_relaxed);
+            commit->orig_state_id = atomic_load_explicit(&task->snapshot->num_commits, memory_order_relaxed);
             task->ctx->commit = commit;
         }
         break;

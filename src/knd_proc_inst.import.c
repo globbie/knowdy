@@ -10,7 +10,6 @@
 #include "knd_repo.h"
 
 #include "knd_user.h"
-#include "knd_shard.h"
 #include "knd_state.h"
 #include "knd_commit.h"
 #include "knd_output.h"
@@ -35,8 +34,7 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     struct LocalContext *ctx = obj;
     struct kndProcInst *self = ctx->inst;
     struct kndProcInstEntry *entry;
-    struct kndRepo *repo = ctx->repo;
-    struct kndSharedDict *name_idx = repo->idxs.proc_inst_name_idx;
+    struct kndSharedDict *name_idx = ctx->task->idxs->proc_inst_name_idx;
     struct kndOutput *log = ctx->task->log;
     struct kndTask *task = ctx->task;
     int err;
@@ -102,7 +100,7 @@ static gsl_err_t import_arg_var(void *obj, const char *name, size_t name_size, c
     if (DEBUG_PROC_INST_IMPORT_LEVEL_2)
         knd_log(".. parsing arg import REC: %.*s", 128, rec);
 
-    err = knd_proc_get_arg(self->is_a, name, name_size, &ref);
+    err = knd_proc_get_arg(self->is_a, name, name_size, &ref, task);
     if (err) {
         KND_TASK_LOG("\"%.*s\" proc arg not approved", name_size, name);
         return *total_size = 0, make_gsl_err_external(err);
@@ -309,7 +307,7 @@ int knd_import_proc_inst(struct kndProcEntry *self, const char *rec, size_t *tot
     if (!ctx->commit) {
         err = knd_commit_new(task->mempool, &ctx->commit);
         KND_TASK_ERR("commit alloc failed");
-        ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshots->num_commits, memory_order_relaxed);
+        ctx->commit->orig_state_id = atomic_load_explicit(&task->snapshot->num_commits, memory_order_relaxed);
     }
     state->commit = ctx->commit;
     return knd_OK;

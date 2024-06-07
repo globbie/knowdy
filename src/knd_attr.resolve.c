@@ -44,25 +44,24 @@
 
 static int register_attr(struct kndClass *self, struct kndAttr *attr, struct kndTask *task)
 {
-    struct kndRepo *repo =       self->entry->repo;
     struct kndMemPool *mempool = task->mempool;
-    struct kndSet *attr_idx    = repo->idxs.attr_idx;
+    struct kndSet *attr_idx    = task->idxs->attr_idx;
     struct kndAttrRef *attr_ref, *next_attr_ref;
     const char *name = attr->name;
     size_t name_size = attr->name_size;
     int err;
 
-    if (DEBUG_ATTR_RESOLVE_LEVEL_2)
+    if (DEBUG_ATTR_RESOLVE_LEVEL_2) {
         knd_log(".. register attr: %.*s (host class: %.*s) task type:%d",
                 name_size, name, self->name_size, self->name, task->type);
-
+    }
     err = knd_attr_ref_new(mempool, &attr_ref);
     KND_TASK_ERR("failed to alloc kndAttrRef")
     attr_ref->attr = attr;
     attr_ref->class_entry = self->entry;
 
     /* generate unique attr id */
-    attr->numid = atomic_fetch_add_explicit(&repo->idxs.attr_id_count, 1, memory_order_relaxed);
+    attr->numid = atomic_fetch_add_explicit(&task->idxs->attr_id_count, 1, memory_order_relaxed);
     attr->numid++;
     knd_uid_create(attr->numid, attr->id, &attr->id_size);
 
@@ -70,11 +69,11 @@ static int register_attr(struct kndClass *self, struct kndAttr *attr, struct knd
     case KND_RESTORE_STATE:
         // fall through
     case KND_BULK_LOAD_STATE:
-        next_attr_ref = knd_shared_dict_get(repo->idxs.attr_name_idx, name, name_size);
+        next_attr_ref = knd_shared_dict_get(task->idxs->attr_name_idx, name, name_size);
         attr_ref->next = next_attr_ref;
 
-        err = knd_shared_dict_set(repo->idxs.attr_name_idx, attr->name, attr->name_size,
-                                  (void*)attr_ref, mempool, NULL, NULL, true);
+        err = knd_shared_dict_set(task->idxs->attr_name_idx, attr->name, attr->name_size,
+                                  (void*)attr_ref, NULL, NULL, true);
         KND_TASK_ERR("failed to globally register attr name \"%.*s\"", name_size, name);
 
         err = attr_idx->add(attr_idx, attr->id, attr->id_size, (void*)attr_ref);
@@ -103,9 +102,8 @@ static int check_attr_name_conflict(struct kndClass *self, struct kndAttr *attr_
     struct kndAttrRef *attr_ref;
     struct kndAttr *attr;
     void *obj;
-    struct kndRepo *repo = self->entry->repo;
     struct kndSet *attr_idx = self->attr_idx;
-    struct kndSharedDict *attr_name_idx = repo->idxs.attr_name_idx;
+    struct kndSharedDict *attr_name_idx = task->idxs->attr_name_idx;
     int err;
 
     if (DEBUG_ATTR_RESOLVE_LEVEL_2)
@@ -151,11 +149,11 @@ int knd_attr_hub_resolve(struct kndAttrHub *hub, struct kndTask *task)
     return knd_OK;
 }
 
-int knd_attr_resolve(struct kndAttr *attr, struct kndRepo *repo, struct kndTask *task)
+int knd_attr_resolve(struct kndAttr *attr, struct kndTask *task)
 {
     struct kndClassEntry *entry;
     struct kndProcEntry *proc_entry;
-    struct kndSharedDict *class_name_idx = repo->idxs.class_name_idx;
+    struct kndSharedDict *class_name_idx = task->idxs->class_name_idx;
     int err;
 
     switch (attr->type) {
@@ -174,7 +172,7 @@ int knd_attr_resolve(struct kndAttr *attr, struct kndRepo *repo, struct kndTask 
         }
         break;
     case KND_ATTR_REL:
-        err = knd_rel_resolve(attr->impl, repo, task);
+        err = knd_rel_resolve(attr->impl, task);
         KND_TASK_ERR("failed to resolve rel attr %.*s", attr->name_size, attr->name);
         break;
     case KND_ATTR_INNER:
@@ -199,7 +197,7 @@ int knd_attr_resolve(struct kndAttr *attr, struct kndRepo *repo, struct kndTask 
             knd_log("-- no proc name specified for attr \"%.*s\"", attr->name_size, attr->name);
             return knd_FAIL;
         }
-        proc_entry = knd_shared_dict_get(repo->idxs.proc_name_idx,
+        proc_entry = knd_shared_dict_get(task->idxs->proc_name_idx,
                                          attr->ref_proc_name, attr->ref_proc_name_size);
         if (!proc_entry) {
             knd_log("-- no such proc: \"%.*s\" .."
@@ -223,7 +221,6 @@ int knd_attr_resolve(struct kndAttr *attr, struct kndRepo *repo, struct kndTask 
 int knd_resolve_primary_attrs(struct kndClass *self, struct kndTask *task)
 {
     struct kndAttr *attr;
-    struct kndRepo *repo = self->entry->repo;
     int err;
 
     if (DEBUG_ATTR_RESOLVE_LEVEL_2)
@@ -234,7 +231,7 @@ int knd_resolve_primary_attrs(struct kndClass *self, struct kndTask *task)
         err = check_attr_name_conflict(self, attr, task);
         KND_TASK_ERR("name conflict detected");
 
-        err = knd_attr_resolve(attr, repo, task);
+        err = knd_attr_resolve(attr, task);
         KND_TASK_ERR("failed to resolve attr");
 
         if (attr->is_implied)

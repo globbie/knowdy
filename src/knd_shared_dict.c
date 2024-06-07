@@ -19,8 +19,9 @@
 #include "knd_config.h"
 #include "knd_utils.h"
 
-static int dict_item_new(struct kndMemPool *mempool, struct kndSharedDictItem **result)
+static int dict_item_new(struct kndSharedDict *self, struct kndSharedDictItem **result)
 {
+    struct kndMemPool *mempool = self->mempool;
     void *page;
     int err;
     assert(mempool->tiny_page_size >= sizeof(struct kndSharedDictItem));
@@ -66,7 +67,7 @@ void* knd_shared_dict_get(struct kndSharedDict *self, const char *key, size_t ke
 }
 
 int knd_shared_dict_set(struct kndSharedDict *self, const char *key, size_t key_size,
-                        void *data, struct kndMemPool *mempool, struct kndCommit *commit,
+                        void *data, struct kndCommit *commit,
                         struct kndSharedDictItem **result, bool allow_overwrite)
 {
     struct kndSharedDictItem *head;
@@ -99,13 +100,13 @@ int knd_shared_dict_set(struct kndSharedDict *self, const char *key, size_t key_
     }
 
     /* add new item */
-    if (dict_item_new(mempool, &new_item) != knd_OK) return knd_NOMEM;
+    if (dict_item_new(self, &new_item) != knd_OK) return knd_NOMEM;
     memset(new_item, 0, sizeof(struct kndSharedDictItem));
 
     new_item->phase = KND_SHARED_DICT_VALID;
     if (commit) {
         new_item->phase = KND_SHARED_DICT_PENDING;
-        err = knd_state_new(mempool, &state);
+        err = knd_state_new(self->mempool, &state);
         if (err) return err;
         state->commit = commit;
         state->data = data;
@@ -185,15 +186,23 @@ void knd_shared_dict_del(struct kndSharedDict *self)
     free(self);
 }
 
-int knd_shared_dict_new(struct kndSharedDict **dict, size_t init_size)
+int knd_shared_dict_new(struct kndSharedDict **dict, struct kndMemPool *mempool, size_t init_size)
 {
-    struct kndSharedDict *self = malloc(sizeof(struct kndSharedDict));
-    if (!self) return knd_NOMEM;
+    void *page;
+    struct kndSharedDict *self;
+    int err;
+
+    assert(mempool->small_page_size >= sizeof(struct kndSharedDict));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
+    if (err) return err;
+    memset(page, 0, sizeof(struct kndSharedDict));
+    self = page;
 
     self->hash_array = calloc(init_size, sizeof(struct kndSharedDictItem*));
     if (!self->hash_array) return knd_NOMEM;
+
     self->size = init_size;
-    self->num_items = 0;
+    self->mempool = mempool;
 
     *dict = self;
 

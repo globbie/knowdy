@@ -6,6 +6,7 @@ struct kndRepo;
 struct kndClassInst;
 struct kndMemPool;
 struct kndSet;
+struct kndSteward;
 
 typedef enum knd_user_type {
     KND_USER_DEFAULT,
@@ -36,7 +37,9 @@ struct kndUserContext
     struct kndClassInst *inst;
     struct kndRepo *repo;
     struct kndRepo *base_repo;
+
     struct kndMemPool *mempool;
+    struct kndMemPool *cache_mempool;
 
     struct kndRepoAccess *acls;
 
@@ -77,7 +80,7 @@ struct kndUser
 int knd_user_new(struct kndUser **self, const char *classname, size_t classname_size,
                  const char *path, size_t path_size, const char *reponame, size_t reponame_size,
                  const char *schema_path, size_t schema_path_size,
-                 struct kndShard *shard, struct kndTask *task);
+                 struct kndSteward *steward, struct kndTask *task);
 void knd_user_del(struct kndUser *self);
 
 gsl_err_t knd_create_user(void *obj, const char *rec, size_t *total_size);

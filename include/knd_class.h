@@ -207,6 +207,10 @@ struct kndClass
 
     bool indexing_in_progress;
     bool is_indexed;
+
+    bool reading_in_progress;
+    bool is_read;
+    
     bool state_top;
 
     /***********  public methods ***********/

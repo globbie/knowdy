@@ -17,7 +17,6 @@
 #include "knd_config.h"
 #include "knd_mempool.h"
 #include "knd_repo.h"
-#include "knd_shard.h"
 #include "knd_state.h"
 #include "knd_class.h"
 #include "knd_class_inst.h"
@@ -72,8 +71,8 @@ static int update_class_name_idx(struct kndRepo *repo, struct kndClass *c,
     c->name_size = name_size;
 
     /* register as a unique class name */
-    err = knd_shared_dict_set(repo->idxs.class_name_idx, name, name_size, (void*)entry,
-                              task->user_ctx->mempool, NULL, NULL, false);
+    err = knd_shared_dict_set(task->idxs->class_name_idx, name, name_size, (void*)entry,
+                             NULL, NULL, false);
     KND_TASK_ERR("failed to register a class name");
 
     if (DEBUG_CLASS_IMPORT_LEVEL_3)
@@ -96,8 +95,8 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     struct kndClassEntry *entry;
     int err;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_TMP) {
-        knd_log("set {class %.*s} {num-strs %zu}", name_size, name, repo->idxs.num_strs);
+    if (DEBUG_CLASS_IMPORT_LEVEL_2) {
+        knd_log("set {class %.*s} {num-strs %zu}", name_size, name, task->idxs->num_strs);
     }
     assert(repo != NULL);
 
@@ -106,7 +105,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     case KND_BULK_LOAD_STATE:
         knd_build_conc_abbr(name, name_size, c->abbr, &c->abbr_size);
 
-        entry = knd_shared_dict_get(repo->idxs.class_name_idx, name, name_size);
+        entry = knd_shared_dict_get(task->idxs->class_name_idx, name, name_size);
         if (entry) {
             KND_TASK_LOG("{class %.*s} already exists", name_size, name);
             err = KND_CONFLICT;
@@ -531,7 +530,7 @@ gsl_err_t knd_class_import(struct kndRepo *repo, const char *rec, size_t *total_
         task->ctx->tr = NULL;
     }
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_TMP) {
+    if (DEBUG_CLASS_IMPORT_LEVEL_3) {
         knd_log("++  {class %.*s} import completed!", c->name_size, c->name);
     }
 

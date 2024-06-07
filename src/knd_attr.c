@@ -229,46 +229,6 @@ int knd_apply_attr_var_commits(struct kndClass *unused_var(self), struct kndClas
     return knd_OK;
 }
 
-int knd_register_attr_ref(void *obj,
-                          const char *unused_var(elem_id),
-                          size_t unused_var(elem_id_size),
-                          size_t unused_var(count),
-                          void *elem)
-{
-    struct kndClass *self = obj;
-    struct kndSet *attr_idx  = self->attr_idx;
-    struct kndSharedDict *attr_name_idx = self->entry->repo->idxs.attr_name_idx;
-    struct kndAttrRef *src_ref = elem;
-    struct kndAttr    *attr    = src_ref->attr;
-    struct kndAttrRef *ref, *prev_attr_ref;
-    struct kndMemPool *mempool = attr_idx->mempool;
-    int err;
-
-    if (DEBUG_ATTR_LEVEL_2) 
-        knd_log(".. copying %.*s attr..", attr->name_size, attr->name);
-
-    err = knd_attr_ref_new(mempool, &ref);                                        RET_ERR();
-    ref->attr = attr;
-    ref->attr_var = src_ref->attr_var;
-    ref->class_entry = self->entry;
-
-    err = attr_idx->add(attr_idx,
-                        attr->id, attr->id_size,
-                        (void*)ref);                                              RET_ERR();
-
-    prev_attr_ref = knd_shared_dict_get(attr_name_idx,
-                                        attr->name, attr->name_size);
-
-    ref->next = prev_attr_ref;
-    err = knd_shared_dict_set(attr_name_idx,
-                              attr->name, attr->name_size,
-                              (void*)ref,
-                              mempool,
-                              NULL, NULL, true);                                  RET_ERR();
-
-    return knd_OK;
-}
-
 int knd_get_arg_value(struct kndAttrVar *src, struct kndAttrVar *query,
                       struct kndProcCallArg *result_arg)
 {
@@ -319,8 +279,8 @@ int knd_get_arg_value(struct kndAttrVar *src, struct kndAttrVar *query,
                 //        src->class->name_size, src->class->name);
 
                 assert (src->class_entry->class != NULL);
-                return knd_get_class_attr_value(src->class_entry->class,
-                                                query->children, result_arg);
+                //return knd_get_class_attr_value(src->class_entry->class,
+                //                                query->children, result_arg);
                 break;
             default:
                 break;

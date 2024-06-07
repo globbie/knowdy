@@ -321,7 +321,7 @@ extern gsl_err_t knd_select_attr_var(struct kndClass *class, const char *name, s
                                      struct kndTask *task);
 
 // knd_attr.resolve.c
-int knd_attr_resolve(struct kndAttr *attr, struct kndRepo *repo, struct kndTask *task);
+int knd_attr_resolve(struct kndAttr *attr, struct kndTask *task);
 int knd_resolve_primary_attrs(struct kndClass *self, struct kndTask *task);
 
 int knd_attr_hub_resolve(struct kndAttrHub *hub, struct kndTask *task);

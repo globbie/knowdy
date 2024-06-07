@@ -21,6 +21,52 @@ void knd_mempool_del(struct kndMemPool *self)
     free(self);
 }
 
+void knd_mempool_report(struct kndMemPool *self, struct kndMemPoolReport *report)
+{
+    size_t pages_used = self->pages_used;
+    size_t num_pages = self->num_pages;
+    size_t tiny_pages_used = self->tiny_pages_used;
+    size_t num_tiny_pages = self->num_tiny_pages;
+    size_t small_pages_used = self->small_pages_used;
+    size_t num_small_pages = self->num_small_pages;
+    size_t small_x2_pages_used = self->small_x2_pages_used;
+    size_t num_small_x2_pages = self->num_small_x2_pages;
+    size_t small_x4_pages_used = self->small_x4_pages_used;
+    size_t num_small_x4_pages = self->num_small_x4_pages;
+
+    switch (self->type) {
+    case KND_ALLOC_SHARED:
+        pages_used =\
+            atomic_load_explicit(&self->shared_pages_used, memory_order_relaxed);
+        tiny_pages_used =\
+            atomic_load_explicit(&self->shared_tiny_pages_used, memory_order_relaxed);
+        small_pages_used =\
+            atomic_load_explicit(&self->shared_small_pages_used, memory_order_relaxed);
+        small_x2_pages_used =\
+            atomic_load_explicit(&self->shared_small_x2_pages_used, memory_order_relaxed);
+        small_x4_pages_used =\
+            atomic_load_explicit(&self->shared_small_x4_pages_used, memory_order_relaxed);
+        break;
+    default:
+        break;
+    }
+    report->total_mem_usage = (pages_used * KND_BASE_MEMPAGE_SIZE) +
+        (tiny_pages_used * KND_TINY_MEMPAGE_SIZE) +
+        (small_pages_used * KND_SMALL_MEMPAGE_SIZE) +
+        (small_x2_pages_used * KND_SMALL_X2_MEMPAGE_SIZE) +
+        (small_x4_pages_used * KND_SMALL_X4_MEMPAGE_SIZE);
+
+    report->max_mem_usage = (num_pages * KND_BASE_MEMPAGE_SIZE) +
+        (num_tiny_pages * KND_TINY_MEMPAGE_SIZE) +
+        (num_small_pages * KND_SMALL_MEMPAGE_SIZE) +
+        (num_small_x2_pages * KND_SMALL_X2_MEMPAGE_SIZE) +
+        (num_small_x4_pages * KND_SMALL_X4_MEMPAGE_SIZE);
+
+    if (report->total_mem_usage > (self->capacity * KND_OUTPUT_THRESHOLD_RATIO)) {
+        report->mem_threshold_alert = true;
+    }
+}
+
 static int present_status(struct kndMemPool *self, struct kndOutput *out)
 {
     size_t total_mem_usage = 0;
@@ -35,7 +81,6 @@ static int present_status(struct kndMemPool *self, struct kndOutput *out)
     size_t num_small_x2_pages = self->num_small_x2_pages;
     size_t small_x4_pages_used = self->small_x4_pages_used;
     size_t num_small_x4_pages = self->num_small_x4_pages;
-    int err;
 
     switch (self->type) {
     case KND_ALLOC_SHARED:
@@ -59,25 +104,25 @@ static int present_status(struct kndMemPool *self, struct kndOutput *out)
         (num_small_x2_pages * KND_SMALL_X2_MEMPAGE_SIZE) +
         (num_small_x4_pages * KND_SMALL_X4_MEMPAGE_SIZE);
 
-    err = out->writef(out, "{base-pages     %zu of %zu {used %.2f%%}}\n",
-                      pages_used, num_pages,
-                      (double)pages_used / num_pages * 100);                      RET_ERR();
-    err = out->writef(out, "{small-x4-pages %zu of %zu {used %.2f%%}}\n",
-                      small_x4_pages_used, num_small_x4_pages,
-                      (double)small_x4_pages_used / num_small_x4_pages * 100);    RET_ERR();
-    err = out->writef(out, "{small-x2-pages %zu of %zu {used %.2f%%}}\n",
-                      small_x2_pages_used, num_small_x2_pages,
-                      (double)small_x2_pages_used / num_small_x2_pages * 100);    RET_ERR();
-    err = out->writef(out, "{small-pages    %zu of %zu {used %.2f%%}}\n",
-                      small_pages_used, num_small_pages,
-                      (double)small_pages_used / num_small_pages * 100);          RET_ERR();
-    err = out->writef(out, "{tiny-pages     %zu of %zu {used %.2f%%}}\n",
-                      tiny_pages_used, num_tiny_pages,
-                      (double)tiny_pages_used / num_tiny_pages * 100);            RET_ERR();
-    err = out->writef(out, "{total %.2fM of max %.2fM}\n",
-                      (double)total_mem_usage / (1024 * 1024),
-                      (double)max_mem_usage / (1024 * 1024));            RET_ERR();
-    
+    OUTF("{base-pages     %zu of %zu {used %.2f%%}}\n",
+         pages_used, num_pages,
+         (double)pages_used / num_pages * 100);
+    OUTF("{small-x4-pages %zu of %zu {used %.2f%%}}\n",
+         small_x4_pages_used, num_small_x4_pages,
+         (double)small_x4_pages_used / num_small_x4_pages * 100);
+    OUTF("{small-x2-pages %zu of %zu {used %.2f%%}}\n",
+         small_x2_pages_used, num_small_x2_pages,
+         (double)small_x2_pages_used / num_small_x2_pages * 100);
+    OUTF("{small-pages    %zu of %zu {used %.2f%%}}\n",
+         small_pages_used, num_small_pages,
+         (double)small_pages_used / num_small_pages * 100);
+    OUTF("{tiny-pages     %zu of %zu {used %.2f%%}}\n",
+         tiny_pages_used, num_tiny_pages,
+         (double)tiny_pages_used / num_tiny_pages * 100);
+    OUTF("{total %.2fM of max %.2fM}\n",
+         (double)total_mem_usage / (1024 * 1024),
+         (double)max_mem_usage / (1024 * 1024));
+
     return knd_OK;
 }
 
@@ -373,7 +418,7 @@ int knd_mempool_alloc(struct kndMemPool *self)
         atomic_store_explicit(&self->shared_small_page_list, self->small_page_list, memory_order_relaxed);
         atomic_store_explicit(&self->shared_small_x2_page_list, self->small_x2_page_list, memory_order_relaxed);
         atomic_store_explicit(&self->shared_small_x4_page_list, self->small_x4_page_list, memory_order_relaxed);
-    }
+    }    
     return knd_OK;
 }
 
@@ -420,6 +465,27 @@ static void mempool_init(struct kndMemPool *self)
     self->alloc = knd_mempool_alloc;
     self->reset = reset_capacity;
     self->present = present_status;
+}
+
+int knd_mempool_create(struct kndMemPool **result, struct kndMemConfig *config, size_t numid)
+{
+    struct kndMemPool *mempool;
+    int err;
+
+    err = knd_mempool_new(&mempool, config->memtype, numid);
+    if (err) return err;
+
+    mempool->num_pages = config->num_pages;
+    mempool->num_small_x4_pages = config->num_small_x4_pages;
+    mempool->num_small_x2_pages = config->num_small_x2_pages;
+    mempool->num_small_pages = config->num_small_pages;
+    mempool->num_tiny_pages = config->num_tiny_pages;
+
+    err = knd_mempool_alloc(mempool);
+    if (err) return err;
+
+    *result = mempool;
+    return knd_OK;
 }
 
 int knd_mempool_new(struct kndMemPool **obj, knd_mempool_t type, size_t mempool_id)

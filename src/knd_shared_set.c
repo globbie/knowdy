@@ -80,7 +80,7 @@ static int traverse(struct kndSharedSet *self, struct kndSharedSetElemIdx *base_
         }
         if (!gotcha) continue;
 
-        err = knd_shared_set_elem_idx_new(self->mempool, &sub_idx);
+        err = knd_shared_set_elem_idx_new(self, &sub_idx);
         if (err) {
             knd_log("-- set elem idx mempool limit reached :(");
             return err;
@@ -145,7 +145,7 @@ static int save_elem(struct kndSharedSet *self, struct kndSharedSetElemIdx *pare
                 idx = orig_idx;
                 break;
             }
-            err = knd_shared_set_elem_idx_new(self->mempool, &idx);
+            err = knd_shared_set_elem_idx_new(self, &idx);
             if (err) {
                 knd_log("-- set elem idx mempool limit reached");
                 return err;
@@ -274,41 +274,29 @@ int knd_shared_set_map(struct kndSharedSet *self, map_cb_func cb, void *obj)
     return knd_OK;
 }
 
-int knd_shared_set_new(struct kndMemPool *mempool, struct kndSharedSet **result)
+int knd_shared_set_new(struct kndSharedSet **result, struct kndMemPool *mempool)
 {
     struct kndSharedSet *set;
     struct kndSharedSetElemIdx *idx;
     int err;
-    if (!mempool) {
-        set = calloc(1, sizeof(struct kndSharedSet));
-        if (!set) return knd_NOMEM;
-        err = knd_shared_set_elem_idx_new(mempool, &idx);
-        if (err) return err;
-        set->idx = idx;
-        *result = set;
-        return knd_OK;
-    }
     assert(mempool->small_page_size >= sizeof(struct kndSharedSet));
     err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, (void**)&set);
     if (err) return err;
     memset(set, 0, sizeof(struct kndSharedSet));
-
-    err = knd_shared_set_elem_idx_new(mempool, &idx);
-    if (err) return err;
     set->mempool = mempool;
+
+    err = knd_shared_set_elem_idx_new(set, &idx);
+    if (err) return err;
     set->idx = idx;
     *result = set;
     return knd_OK;
 }
 
-int knd_shared_set_elem_idx_new(struct kndMemPool *mempool, struct kndSharedSetElemIdx **result)
+int knd_shared_set_elem_idx_new(struct kndSharedSet *self, struct kndSharedSetElemIdx **result)
 {
+    struct kndMemPool *mempool = self->mempool;
     void *page;
     int err;
-    if (!mempool) {
-        *result = calloc(1, sizeof(struct kndSharedSetElemIdx));
-        return *result ? 0 : knd_NOMEM;
-    }
     assert(mempool->page_size >= sizeof(struct kndSharedSetElemIdx));
     err = knd_mempool_page(mempool, KND_MEMPAGE_BASE, &page);
     if (err) return err;
@@ -317,14 +305,11 @@ int knd_shared_set_elem_idx_new(struct kndMemPool *mempool, struct kndSharedSetE
     return knd_OK;
 }
 
-int knd_shared_set_dir_new(struct kndMemPool *mempool, struct kndSharedSetDir **result)
+int knd_shared_set_dir_new(struct kndSharedSet *self, struct kndSharedSetDir **result)
 {
+    struct kndMemPool *mempool = self->mempool;
     void *page;
     int err;
-    if (!mempool) {
-        *result = calloc(1, sizeof(struct kndSharedSetDir));
-        return *result ? 0 : knd_NOMEM;
-    }
     assert(mempool->small_page_size >= sizeof(struct kndSharedSetDir));
     err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
     if (err) return err;

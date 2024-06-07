@@ -58,24 +58,6 @@ static gsl_err_t set_proc_ref(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t set_rel_inst_class(void *obj, const char *name, size_t name_size)
-{
-    struct kndRel *self = obj;
-    if (!name_size) return make_gsl_err(gsl_FAIL);
-    self->ref_classname = name;
-    self->ref_classname_size = name_size;
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t set_rel_subclass(void *obj, const char *name, size_t name_size)
-{
-    struct kndRel *self = obj;
-    if (!name_size) return make_gsl_err(gsl_FAIL);
-    self->ref_classname = name;
-    self->ref_classname_size = name_size;
-    return make_gsl_err(gsl_OK);
-}
-
 static gsl_err_t set_subj_arg(void *obj, const char *name, size_t name_size)
 {
     struct kndRel *self = obj;

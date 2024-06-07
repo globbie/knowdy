@@ -53,7 +53,6 @@ static int resolve_implied_attr_var(struct kndClass *self, struct kndAttr *attr,
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size = 0;
-    struct kndRepo *repo = self->entry->repo;
     const char *classname;
     size_t classname_size = 0;
     int err;
@@ -124,7 +123,7 @@ static int resolve_implied_attr_var(struct kndClass *self, struct kndAttr *attr,
            // empty val, no resolving needed
            break;
         }
-        err = knd_rel_pred_resolve(var, repo, task);
+        err = knd_rel_pred_resolve(var, task);
         if (err) return err;
         break;
     case KND_ATTR_STR:
@@ -146,7 +145,6 @@ static int resolve_inner_var(struct kndClass *self, struct kndAttrVar *var, stru
     struct kndAttr *attr = var->attr;
     struct kndAttrRef *attr_ref;
     struct kndProc *proc;
-    struct kndRepo *repo = self->entry->repo;
     int err;
 
     if (var->is_list_item)
@@ -231,7 +229,7 @@ static int resolve_inner_var(struct kndClass *self, struct kndAttrVar *var, stru
             if (err) return err;
             break;
         case KND_ATTR_REL:
-            err = knd_rel_pred_resolve(item, repo, task);
+            err = knd_rel_pred_resolve(item, task);
             if (err) return err;
             break;
         case KND_ATTR_TEXT:
@@ -241,7 +239,7 @@ static int resolve_inner_var(struct kndClass *self, struct kndAttrVar *var, stru
             break;
         case KND_ATTR_PROC_REF:
             proc = attr->proc;
-            err = knd_resolve_proc_ref(self, item->val, item->val_size, proc, &item->proc_entry, task);
+            err = knd_resolve_proc_ref(item->val, item->val_size, proc, &item->proc_entry, task);
             if (err) return err;
             break;
         default:
@@ -257,7 +255,6 @@ static int resolve_attr_var_list(struct kndClass *self, struct kndAttrVar *var, 
     struct kndAttrVar *item;
     struct kndClassEntry *entry;
     struct kndClass *c, *local_class;
-    struct kndRepo *repo = self->entry->repo;
     int err;
 
     assert(var->list != NULL);
@@ -331,7 +328,7 @@ static int resolve_attr_var_list(struct kndClass *self, struct kndAttrVar *var, 
             if (err) return err;
             break;
         case KND_ATTR_REL:
-            err = knd_rel_pred_resolve(item, repo, task);
+            err = knd_rel_pred_resolve(item, task);
             if (err) return err;
             break;
         default:
@@ -341,11 +338,9 @@ static int resolve_attr_var_list(struct kndClass *self, struct kndAttrVar *var, 
     return knd_OK;
 }
 
-static int resolve_attr_ref(struct kndClass *self, struct kndAttrVar *parent_item,
-                            struct kndTask *task)
+static int resolve_attr_ref(struct kndAttrVar *parent_item, struct kndTask *task)
 {
-    struct kndRepo *repo = self->entry->repo;
-    struct kndSharedDict *class_name_idx = repo->idxs.class_name_idx;
+    struct kndSharedDict *class_name_idx = task->idxs->class_name_idx;
     const char *classname = NULL;
     size_t classname_size = 0;
     const char *attrname = NULL;
@@ -443,13 +438,11 @@ int knd_resolve_attr_vars(struct kndClass *self, struct kndClassVar *cvar, struc
     struct kndAttrRef *attr_ref;
     struct kndAttr *attr;
     struct kndProc *proc;
-    struct kndRepo *repo = self->entry->repo;
     int err;
 
     if (DEBUG_ATTR_VAR_RESOLVE_LEVEL_2) {
-        knd_log("\n>> resolving attr vars of {class %.*s} {base %.*s} {repo %.*s}",
-                self->entry->name_size, self->entry->name, cvar->entry->name_size, cvar->entry->name,
-                repo->name_size, repo->name);
+        knd_log("\n>> resolving attr vars of {class %.*s} {base %.*s}",
+                self->entry->name_size, self->entry->name, cvar->entry->name_size, cvar->entry->name);
     }
 
     FOREACH (var, cvar->attrs) {
@@ -484,7 +477,7 @@ int knd_resolve_attr_vars(struct kndClass *self, struct kndClassVar *cvar, struc
             if (err) return err;
             break;
         case KND_ATTR_REL:
-            err = knd_rel_pred_resolve(var, repo, task);
+            err = knd_rel_pred_resolve(var, task);
             if (err) return err;
             break;
         case KND_ATTR_TEXT:
@@ -499,12 +492,12 @@ int knd_resolve_attr_vars(struct kndClass *self, struct kndClassVar *cvar, struc
             KND_TASK_ERR("failed to parse num value");
             break;
         case KND_ATTR_ATTR_REF:
-            err = resolve_attr_ref(self, var, task);
+            err = resolve_attr_ref(var, task);
             if (err) return err;
             break;
         case KND_ATTR_PROC_REF:
             proc = attr->proc;
-            err = knd_resolve_proc_ref(self, var->val, var->val_size, proc, &var->proc_entry, task);
+            err = knd_resolve_proc_ref(var->val, var->val_size, proc, &var->proc_entry, task);
             if (err) return err;
             break;
         default:

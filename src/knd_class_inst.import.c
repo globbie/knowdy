@@ -7,7 +7,6 @@
 #include "knd_mempool.h"
 #include "knd_attr.h"
 #include "knd_repo.h"
-#include "knd_shard.h"
 
 #include "knd_text.h"
 #include "knd_num.h"
@@ -39,9 +38,8 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     struct kndClassInst *self = ctx->class_inst;
     struct kndClassEntry *class_entry;
     struct kndClassInstEntry *entry;
-    struct kndRepo *repo = ctx->task->repo;
     struct kndTask *task = ctx->task;
-    struct kndSharedDict *class_name_idx = repo->idxs.class_name_idx;
+    struct kndSharedDict *class_name_idx = task->idxs->class_name_idx;
 
     assert(self->entry->is_a != NULL);
     assert(self->entry->is_a->class != NULL);
@@ -218,13 +216,13 @@ static int register_by_name(struct kndClassInstEntry *entry, struct kndTask *tas
     int err;
 
     if (!name_idx) {
-        err = knd_shared_dict_new(&name_idx, KND_MEDIUM_DICT_SIZE);
+        err = knd_shared_dict_new(&name_idx, mempool, KND_MEDIUM_DICT_SIZE);
         KND_TASK_ERR("failed to create inst name idx");
         entry->is_a->class->inst_name_idx = name_idx;
     }
 
     err = knd_shared_dict_set(name_idx, entry->name, entry->name_size, (void*)entry,
-                              mempool, NULL, &item, false);
+                              NULL, &item, false);
     KND_TASK_ERR("name idx failed to register class inst %.*s, err:%d",
                  entry->name_size, entry->name, err);
 

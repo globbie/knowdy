@@ -146,16 +146,18 @@ static gsl_err_t read_nested_attr_var_list(void *obj, const char *id, size_t id_
 
     err = knd_set_get(ctx->class->attr_idx, id, id_size, (void**)&ref);
     if (err) {
-        KND_TASK_LOG("class \"%.*s\" has no list attr: %.*s",
+        KND_TASK_LOG("{class %.*s} has no list attr: %.*s",
                      ctx->class->name_size, ctx->class->name, id_size, id);
         return *total_size = 0, make_gsl_err_external(err);
     }
+
     assert(ref->attr != NULL);
     attr = ref->attr;
 
-    if (DEBUG_ATTR_VAR_READ_LEVEL_2)
-        knd_log(">> list attr decoded: %.*s  (type:%d)", attr->name_size, attr->name, attr->type);
-
+    if (DEBUG_ATTR_VAR_READ_LEVEL_2) {
+        knd_log(">> list attr decoded: %.*s  (type:%d)",
+                attr->name_size, attr->name, attr->type);
+    }
     err = knd_attr_var_new(mempool, &attr_var);
     if (err) return make_gsl_err(err);
     attr_var->attr = attr;
@@ -182,13 +184,14 @@ static gsl_err_t read_nested_attr_var_list(void *obj, const char *id, size_t id_
 
         err = knd_class_acquire(attr->ref_class_entry, &attr->ref_class, task);
         if (err) {
-            KND_TASK_LOG("failed to acquire class \"%.*s\"",
+            KND_TASK_LOG("failed to acquire {class %.*s}",
                          attr->ref_class_entry->name_size, attr->ref_class_entry->name);
             return *total_size = 0, make_gsl_err_external(err);
         }
-        if (DEBUG_ATTR_VAR_READ_LEVEL_2)
-            knd_log(">> list inner class: \"%.*s\"",
+        if (DEBUG_ATTR_VAR_READ_LEVEL_2) {
+            knd_log(">> list inner {class %.*s}",
                     attr->ref_class_entry->name_size, attr->ref_class_entry->name);
+        }
         break;
     default:
         break;
@@ -467,7 +470,7 @@ static gsl_err_t set_attr_var_value(void *obj, const char *val, size_t val_size)
     case KND_ATTR_REL:
         // fall through
     case KND_ATTR_REF:
-        err = knd_shared_set_get(repo->idxs.class_idx, val, val_size, (void**)&entry);
+        err = knd_shared_set_get(task->idxs->class_idx, val, val_size, (void**)&entry);
         if (err) {
             KND_TASK_LOG("class \"%.*s\" not found in repo %.*s",
                          val_size, val, repo->name_size, repo->name);

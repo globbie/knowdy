@@ -112,13 +112,12 @@ static gsl_err_t run_set_attr_var(void *obj,
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndRepo *repo = ctx->repo;
     struct kndAttr *attr;
     struct kndAttrRef *attr_ref;
     struct kndAttrVar *attr_var;
     struct kndOutput *log = task->log;
     struct kndMemPool *mempool = task->mempool;
-    struct kndSet *attr_idx = repo->idxs.attr_idx;
+    struct kndSet *attr_idx = task->idxs->attr_idx;
     struct kndState *state;
     struct kndStateRef *state_ref;
     struct kndStateVal *state_val;

@@ -41,7 +41,7 @@ int knd_charseq_unmarshall(const char *elem_id, size_t elem_id_size,
 {
     struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndCharSeq *seq;
-    struct kndSharedDict *str_dict = task->repo->idxs.str_dict;
+    struct kndSharedDict *str_dict = task->idxs->str_dict;
     int err;
 
     if (DEBUG_TEXT_GSP_LEVEL_2)
@@ -52,26 +52,29 @@ int knd_charseq_unmarshall(const char *elem_id, size_t elem_id_size,
     seq->val = val;
     seq->val_size = val_size;
 
-    err = knd_shared_set_add(task->repo->idxs.str_idx, elem_id, elem_id_size, (void*)seq);
+    err = knd_shared_set_add(task->idxs->str_idx, elem_id, elem_id_size, (void*)seq);
     KND_TASK_ERR("failed to register charseq \"%.*s\" (err:%s)", val_size, val, knd_err_names[err]);
 
-    err = knd_shared_dict_set(str_dict, val, val_size, (void*)seq, mempool, NULL, &seq->item, false);
-    KND_TASK_ERR("failed to register charseq \"%.*s\" in str dict (err:%s)", val_size, val, knd_err_names[err]);
+    err = knd_shared_dict_set(str_dict, val, val_size, (void*)seq, NULL, &seq->item, false);
+    KND_TASK_ERR("failed to register charseq \"%.*s\" in str dict (err:%s)",
+                 val_size, val, knd_err_names[err]);
     
     *result = seq;
     return knd_OK;
 }
 
-static int export_declars(struct kndClassDeclar *decl, struct kndTask *task)
+static int export_declars(struct kndClassDeclar *decls, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndClassInstEntry *entry;
+    struct kndClassDeclar *decl;
     int err;
-    for (; decl; decl = decl->next) {
+
+    FOREACH (decl, decls) {
         OUT("{class ", strlen("{class "));
         OUT(decl->entry->name, decl->entry->name_size);
 
-        for (entry = decl->insts; entry; entry = entry->next) {
+        FOREACH (entry, decl->insts) {
             err = knd_class_inst_export_GSL(entry->inst, false, KND_CREATED, task, 0);
             KND_TASK_ERR("failed to export class inst GSL");
         }

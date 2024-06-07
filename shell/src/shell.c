@@ -8,7 +8,7 @@
  *   as part of this distribution.
  *
  *   Project homepage:
- *   <http://www.knowdy.net>
+ *   <http://www.knowdy.org>
  *
  *   Initial author and maintainer:
  *         Dmitri Dmitriev aka M0nsteR <dmitri@globbie.net>
@@ -32,7 +32,7 @@
 #include <readline/history.h>
 
 #include "knd_config.h"
-#include "knd_shard.h"
+#include "knd_steward.h"
 #include "knd_user.h"
 #include "knd_text.h"
 #include "knd_utils.h"
@@ -94,7 +94,7 @@ static int check_file_rec(struct kndTask *task, const char *rec, size_t rec_size
     return knd_OK;
 }
 
-static int knd_interact(struct kndShard *shard)
+static int knd_interact(struct kndSteward *steward)
 {
     struct kndTask *reader_task;
     struct kndTask *writer_task;
@@ -103,22 +103,23 @@ static int knd_interact(struct kndShard *shard)
     struct kndMemBlock *memblock = NULL;
     const char *block;
     size_t block_size;
-    const char *shard_role_name = knd_agent_role_names[shard->role];
-    struct kndOutput *out = shard->out;
-    struct kndOutput *log = shard->log;
+    const char *steward_role_name = knd_agent_role_names[steward->role];
+    struct kndOutput *out = steward->out;
+    struct kndOutput *log = steward->log;
+    struct kndResourceReport report;
     int err;
 
-    err = knd_task_new(&writer_task, KND_AGENT_ARBITER, 1, shard);
-    KND_SHARD_ERR("failed to create a writer/arbiter task");
+    err = knd_task_new(&writer_task, KND_AGENT_ARBITER, 1, steward);
+    KND_STEWARD_ERR("failed to create a writer/arbiter task");
 
-    err = knd_task_new(&reader_task, KND_AGENT_READER, 2, shard);
-    KND_SHARD_ERR("failed to create a reader task");
+    err = knd_task_new(&reader_task, KND_AGENT_READER, 2, steward);
+    KND_STEWARD_ERR("failed to create a reader task");
 
     /* start serving requests */
 
-    knd_log("\n++ Knowdy shard service is up and running!\n"
-            "   {shard-role %s}  {knd-version %s}\n",
-            shard_role_name, KND_VERSION);
+    knd_log("\n++ Knowdy steward service is up and running!\n"
+            "   {steward-role %s}  {knd-version %s}\n",
+            steward_role_name, KND_VERSION);
     knd_log("   (finish session by pressing Ctrl+C)\n");
 
     while ((buf = readline(">> ")) != NULL) {
@@ -184,12 +185,31 @@ static int knd_interact(struct kndShard *shard)
             }
             knd_log("== Arbiter's output:\n%.*s",
                     writer_task->output_size, writer_task->output);
+
+            /* check system resource utilization */
+            knd_steward_monitor(steward, &report);
+            if (report.mem_threshold_alert) {
+                knd_log("!! mem utilization threshold reached");
+
+                /* build an on-disk snapshot up to the latest commit number */
+                err = knd_steward_snapshot(steward);
+                KND_STEWARD_ERR("failed to build an on-disk snapshot");
+
+                /* suspend all writing tasks */
+
+                err = knd_steward_cleanup(steward);
+                KND_STEWARD_ERR("steward cleanup failed");
+
+                /* re-initialize all writing tasks */
+
+                
+            }
             break;
         default:
             break;
         }
 
-
+        
         /* readline allocates a new buffer every time */
     next_line:
         // free(buf);
@@ -198,19 +218,19 @@ static int knd_interact(struct kndShard *shard)
     return knd_OK;
 }
 
-static int present_mempools(struct kndShard *shard)
+static int present_mempools(struct kndSteward *steward)
 {
     struct kndOutput *out;
     struct kndMemPool *mempool;
 
-    out = shard->task->out;
+    out = steward->task->out;
     out->reset(out);
-    mempool = shard->mempool_write;
+    mempool = steward->mempool_write;
     mempool->present(mempool, out);
     knd_log("** System Mempool\n%.*s", out->buf_size, out->buf);
 
     out->reset(out);
-    mempool = shard->user->mempool_write;
+    mempool = steward->user->mempool_write;
     mempool->present(mempool, out);
     knd_log("** User Space Mempool\n%.*s", out->buf_size, out->buf);
     return knd_OK;
@@ -218,26 +238,38 @@ static int present_mempools(struct kndShard *shard)
 
 static int knd_start(const char *config, size_t config_size)
 {
-    struct kndShard *shard;
+    struct kndSteward *steward;
+    struct kndResourceReport report;
     int err;
 
-    err = knd_shard_new(&shard, config, config_size);
+    err = knd_steward_new(&steward, config, config_size);
     if (err) {
-        knd_log("ERR >> failed to create a shard");
+        knd_log("ERR >> failed to create a steward");
         return err;
     }
 
-    present_mempools(shard);
+    present_mempools(steward);
 
-    err = knd_interact(shard);
+    knd_steward_monitor(steward, &report);
+    if (report.mem_threshold_alert) {
+        knd_log("!! mem utilization threshold reached");
+
+        err = knd_steward_snapshot(steward);
+        if (err) goto error;
+
+        err = knd_steward_cleanup(steward);
+        if (err) goto error;
+    }
+
+    err = knd_interact(steward);
     if (err) goto error;
 
-    knd_shard_del(shard);
+    knd_steward_del(steward);
     return knd_OK;
 
  error:
-    knd_log("-- %.*s", shard->msg_size, shard->msg);
-    knd_shard_del(shard);
+    knd_log("-- %.*s", steward->msg_size, steward->msg);
+    knd_steward_del(steward);
     return err;
 }
 

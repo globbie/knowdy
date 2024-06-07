@@ -116,7 +116,7 @@ static int index_ancestor(struct kndClass *self, struct kndClassEntry *base_entr
 
     desc_idx = base->descendants;
     if (!desc_idx) {
-        err = knd_set_new(mempool, &desc_idx);
+        err = knd_set_new(&desc_idx, mempool);
         KND_TASK_ERR("failed to alloc a set");
         desc_idx->type = KND_SET_CLASS;
         desc_idx->base = base->entry;
@@ -208,7 +208,7 @@ static int index_baseclass(struct kndClass *self, struct kndClass *base, struct 
         /* register a descendant */
         desc_idx = base->descendants;
         if (!desc_idx) {
-            err = knd_set_new(mempool, &desc_idx);
+            err = knd_set_new(&desc_idx, mempool);
             KND_TASK_ERR("failed to alloc a desc idx set");
             desc_idx->type = KND_SET_CLASS;
             desc_idx->base = base->entry;
@@ -239,13 +239,14 @@ static int index_baseclasses(struct kndClass *self, struct kndTask *task)
 
 int knd_class_update_indices(struct kndRepo *repo, struct kndClassEntry *self,
                              struct kndState *unused_var(state),
-                             struct kndTask *unused_var(task))
+                             struct kndTask *task)
 {
-    struct kndSharedSet *idx = repo->idxs.class_idx;
+    struct kndSharedSet *idx = task->idxs->class_idx;
     //struct kndStateRef *ref;
     //int err;
 
-    knd_log(".. update class %.*s indices: idx:%p", self->name_size, self->name, idx);
+    knd_log(".. update {repo %.*s {class %.*s}} indices: idx:%p",
+            repo->name_size, repo->name, self->name_size, self->name, idx);
     
     return knd_OK;
 }

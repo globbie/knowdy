@@ -11,7 +11,6 @@
 #include "knd_proc.h"
 #include "knd_proc_arg.h"
 #include "knd_attr.h"
-#include "knd_shard.h"
 #include "knd_user.h"
 #include "knd_utils.h"
 #include "knd_mempool.h"

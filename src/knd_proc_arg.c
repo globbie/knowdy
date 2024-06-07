@@ -458,7 +458,7 @@ gsl_err_t knd_proc_arg_parse(struct kndProcArg *self,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-int knd_proc_arg_resolve(struct kndProcArg *self, struct kndRepo *repo, struct kndTask *task)
+int knd_proc_arg_resolve(struct kndProcArg *self, struct kndTask *task)
 {
     struct kndClassEntry *entry;
     struct kndProcEntry *proc_entry;
@@ -469,7 +469,7 @@ int knd_proc_arg_resolve(struct kndProcArg *self, struct kndRepo *repo, struct k
     if (self->classname_size) {
         if (DEBUG_PROC_ARG_LEVEL_2)
             knd_log(".. resolving arg class template: %.*s..", self->classname_size, self->classname);
-        entry = knd_shared_dict_get(repo->idxs.class_name_idx, self->classname, self->classname_size);
+        entry = knd_shared_dict_get(task->idxs->class_name_idx, self->classname, self->classname_size);
         if (!entry) {
             err = knd_NO_MATCH;
             KND_TASK_ERR("no such class: %.*s", self->classname_size, self->classname);
@@ -478,7 +478,7 @@ int knd_proc_arg_resolve(struct kndProcArg *self, struct kndRepo *repo, struct k
     }
 
     if (self->proc_call) {
-        proc_entry = knd_shared_dict_get(repo->idxs.proc_name_idx,
+        proc_entry = knd_shared_dict_get(task->idxs->proc_name_idx,
                                          self->proc_call->name, self->proc_call->name_size);
         if (!proc_entry) {
             knd_log("-- no such proc: %.*s",
@@ -494,7 +494,6 @@ int knd_resolve_proc_arg_var(struct kndProc *proc, struct kndProcArgVar *var, st
 {
     struct kndProcArgRef *ref;
     struct kndClassEntry *entry;
-    struct kndRepo *repo = proc->entry->repo;
     struct kndClass *c = NULL;
     int err;
 
@@ -502,14 +501,14 @@ int knd_resolve_proc_arg_var(struct kndProc *proc, struct kndProcArgVar *var, st
         knd_log("\n.. resolving proc arg var \"%.*s\"  of \"%.*s\"",
                 var->name_size, var->name, proc->name_size, proc->name);
 
-    err = knd_proc_get_arg(proc, var->name, var->name_size, &ref);
+    err = knd_proc_get_arg(proc, var->name, var->name_size, &ref, task);
     KND_TASK_ERR("\"%.*s\" proc arg not approved", var->name_size, var->name);
 
     if (ref->var && ref->var->template)
         c = ref->var->template->class;
 
     if (var->val_size) {
-        entry = knd_shared_dict_get(repo->idxs.class_name_idx, var->val, var->val_size);
+        entry = knd_shared_dict_get(task->idxs->class_name_idx, var->val, var->val_size);
         if (!entry) {
             err = knd_NO_MATCH;
             KND_TASK_ERR("no such class: %.*s", var->val_size, var->val);

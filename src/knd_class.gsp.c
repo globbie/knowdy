@@ -65,7 +65,7 @@ int knd_class_inst_idx_fetch(struct kndClass *self, struct kndSharedDict **resul
     out->reset(out);
     OUT(task->path, task->path_size);
     OUT(task->repo->path, task->repo->path_size);
-    err = out->writef(out, "snapshot_%zu/", task->repo->snapshots->numid);
+    err = out->writef(out, "snapshot_%zu/", task->snapshot->numid);
     KND_TASK_ERR("snapshot path construction failed");
 
     OUT("inst_", strlen("inst_"));
@@ -89,7 +89,7 @@ int knd_class_inst_idx_fetch(struct kndClass *self, struct kndSharedDict **resul
             *result = name_idx;
             break;
         }
-        err = knd_shared_dict_new(&new_name_idx, KND_MEDIUM_DICT_SIZE);
+        err = knd_shared_dict_new(&new_name_idx, task->mempool, KND_MEDIUM_DICT_SIZE);
         KND_TASK_ERR("failed to create inst name idx");
         *result = new_name_idx;
     } while (!atomic_compare_exchange_weak(&self->inst_name_idx, &name_idx, new_name_idx));
@@ -100,7 +100,7 @@ int knd_class_inst_idx_fetch(struct kndClass *self, struct kndSharedDict **resul
             // TODO free new_idx if (new_idx != NULL) 
             break;
         }
-        err = knd_shared_set_new(NULL, &new_idx);
+        err = knd_shared_set_new(&new_idx, task->mempool);
         KND_TASK_ERR("failed to create inst idx");
 
     } while (!atomic_compare_exchange_weak(&self->inst_idx, &idx, new_idx));
@@ -506,12 +506,12 @@ int knd_class_entry_unmarshall(const char *elem_id, size_t elem_id_size,
     entry->name_size = seq->val_size;
     entry->seq = seq;
 
-    err = knd_shared_dict_set(repo->idxs.class_name_idx, entry->name, entry->name_size,
-                              (void*)entry, task->mempool, NULL, &item, false);
+    err = knd_shared_dict_set(task->idxs->class_name_idx, entry->name, entry->name_size,
+                              (void*)entry, NULL, &item, false);
     KND_TASK_ERR("failed to register class name");
     entry->dict_item = item;
 
-    err = knd_shared_set_add(repo->idxs.class_idx, entry->id, entry->id_size, (void*)entry);
+    err = knd_shared_set_add(task->idxs->class_idx, entry->id, entry->id_size, (void*)entry);
     KND_TASK_ERR("failed to register class entry \"%.*s\"", entry->id_size, entry->id);
 
     if (DEBUG_CLASS_GSP_LEVEL_3)

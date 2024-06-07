@@ -124,7 +124,6 @@ static gsl_err_t set_baseclass(void *obj, const char *id, size_t id_size)
     struct kndTask *task = ctx->task;
     struct kndClassVar *class_var = ctx->class_var;
     struct kndRepo *repo = ctx->task->repo;
-    struct kndClassEntry *entry;
     struct kndClass *base;
     int err;
 
@@ -135,27 +134,25 @@ static gsl_err_t set_baseclass(void *obj, const char *id, size_t id_size)
     memcpy(class_var->id, id, id_size);
     class_var->id_size = id_size;
 
-    err = knd_shared_set_get(repo->idxs.class_idx, id, id_size, (void**)&entry);
+    err = knd_get_class_by_id(repo, id, id_size, &base, task);
     if (err) {
-        KND_TASK_LOG("class \"%.*s\" not found in repo %.*s", id_size, id, repo->name_size, repo->name);
+        KND_TASK_LOG("{class %.*s} not found in {repo %.*s}",
+                     id_size, id, repo->name_size, repo->name);
         return make_gsl_err(gsl_FAIL);
     }
-    class_var->entry = entry;
+    class_var->entry = base->entry;
 
-    if (DEBUG_CLASS_READ_LEVEL_2)
-        knd_log("== conc baseclass: %.*s (id:%.*s)", entry->name_size, entry->name, id_size, id);
-
-    err = knd_class_acquire(entry, &base, task);
-    if (err) {
-        KND_TASK_LOG("failed to acquire base class %.*s", entry->name_size, entry->name);
-        return make_gsl_err_external(err);
+    if (DEBUG_CLASS_READ_LEVEL_2) {
+        knd_log("== conc base {class %.*s {id %.*s}}",
+                base->name_size, base->name, id_size, id);
     }
+
     err = knd_set_map(base->attr_idx, inherit_base_attr, (void*)ctx);
     if (err) {
-        KND_TASK_LOG("failed to inherit base attrs from %.*s (err:%s)",
-                     entry->name_size, entry->name, knd_err_names[err]);
+        KND_TASK_LOG("failed to inherit base attrs from {class %.*s} {err %s}",
+                     base->name_size, base->name, knd_err_names[err]);
         return make_gsl_err_external(err);
-    }    
+    }   
     return make_gsl_err(gsl_OK);
 }
 
@@ -170,9 +167,10 @@ static gsl_err_t set_class_ref(void *obj, const char *id, size_t id_size)
     if (!id_size) return make_gsl_err(gsl_FORMAT);
     if (id_size > KND_ID_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    err = knd_shared_set_get(repo->idxs.class_idx, id, id_size, (void**)&entry);
+    err = knd_shared_set_get(task->idxs->class_idx, id, id_size, (void**)&entry);
     if (err) {
-        KND_TASK_LOG("class \"%.*s\" not found in repo %.*s", id_size, id, repo->name_size, repo->name);
+        KND_TASK_LOG("{class %.*s} not found in {repo %.*s}",
+                     id_size, id, repo->name_size, repo->name);
         return make_gsl_err(gsl_FAIL);
     }
     ref->entry = entry;
@@ -395,14 +393,14 @@ static gsl_err_t set_attr_hub_template(void *obj, const char *id, size_t id_size
     if (!id_size) return make_gsl_err(gsl_FORMAT);
     if (id_size > KND_ID_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    err = knd_shared_set_get(repo->idxs.class_idx, id, id_size, (void**)&entry);
+    err = knd_shared_set_get(task->idxs->class_idx, id, id_size, (void**)&entry);
     if (err) {
         KND_TASK_LOG("class \"%.*s\" not found in repo %.*s", id_size, id, repo->name_size, repo->name);
         return make_gsl_err(gsl_FAIL);
     }
     hub->topic_template = entry;
 
-    err = knd_set_new(mempool, &set);
+    err = knd_set_new(&set, mempool);
     if (err) {
         KND_TASK_LOG("failed to alloc topic set for attr hub");
         return make_gsl_err(gsl_FAIL);
@@ -425,7 +423,7 @@ static gsl_err_t set_rel_topic(void *obj, const char *id, size_t id_size)
     if (!id_size) return make_gsl_err(gsl_FORMAT);
     if (id_size > KND_ID_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    err = knd_shared_set_get(repo->idxs.class_idx, id, id_size, (void**)&entry);
+    err = knd_shared_set_get(task->idxs->class_idx, id, id_size, (void**)&entry);
     if (err) {
         KND_TASK_LOG("class \"%.*s\" not found in repo %.*s", id_size, id, repo->name_size, repo->name);
         return make_gsl_err(gsl_FAIL);
@@ -664,12 +662,12 @@ int knd_class_read(struct kndClass *self, const char *rec, size_t *total_size, s
     if (DEBUG_CLASS_READ_LEVEL_2)
         knd_log(".. reading class GSP: \"%.*s\"", 128, rec);
 
-    if (self->resolving_in_progress) {
+    if (self->reading_in_progress) {
         knd_log("vicious circle detected while reading class \"%.*s\"",
                 self->name_size, self->name);
         return knd_FAIL;
     }
-    self->resolving_in_progress = true;
+    self->reading_in_progress = true;
 
     task->type = KND_UNFREEZE_STATE;
 
@@ -735,99 +733,56 @@ int knd_class_read(struct kndClass *self, const char *rec, size_t *total_size, s
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return parser_err.code;
 
-    self->resolving_in_progress = false;
-    self->is_resolved = true;
+    self->reading_in_progress = false;
+    self->is_read = true;
 
     return knd_OK;
 }
 
 int knd_class_acquire(struct kndClassEntry *entry, struct kndClass **result, struct kndTask *task)
 {
-    //struct kndRepo *repo = entry->repo;
-    //struct kndClass *c = NULL;
-    //int num_readers = 0;
-    //size_t num_attempts = 0;
+    struct kndRepoCache *cache = task->cache;
+    struct kndClass *c = NULL;
     int err;
+
+    assert (cache != NULL);
 
     if (DEBUG_CLASS_READ_LEVEL_2) {
         knd_log(">> acquire {class %.*s}", entry->name_size, entry->name);
     }
 
-    /* cached object */
+    /* globally cached object */
     if (entry->class) {
         *result = entry->class;
         return knd_OK;
     }
 
-    /* recently assigned? */
-
-
-    /* read from file and save to local cache */
-
-    //  num_readers = atomic_fetch_add_explicit(&entry->num_readers, 1, memory_order_release);
-
-    /* some other task is responsible for resource allocation */
-    /*if (num_readers > 0) {
-        prev_c = atomic_load_explicit(&entry->cache, memory_order_relaxed);
-        if (!prev_c) return knd_CONFLICT;
-        *result = prev_c;
+    /* check local task cache */
+    err = knd_set_get(cache->class_idx, entry->id, entry->id_size, (void**)&c);
+    if (!err) {
+        *result = c;
         return knd_OK;
     }
-    */
+
+    /* check main idx */
+
+    
     /* it's my duty to allocate resources */
 
-    /*do {
-        prev_c = atomic_load_explicit(&entry->cache, memory_order_relaxed);
-        if (prev_c) {
-            *result = prev_c;
-            return knd_OK;
-        }
+    task->payload = (void*)entry;
+    err = knd_shared_set_unmarshall_elem(task->idxs->class_idx, entry->id, entry->id_size,
+                                         knd_class_unmarshall, (void**)&c, task);
+    KND_TASK_ERR("failed to unmarshall class entry %.*s", entry->name_size, entry->name);
+    c->entry = entry;
+    c->name = entry->name;
+    c->name_size = entry->name_size;
 
-        if (!c) {
-            task->payload = (void*)entry;
-            err = knd_shared_set_unmarshall_elem(repo->idxs.class_idx, entry->id, entry->id_size,
-                                                 knd_class_unmarshall, (void**)&c, task);
-            KND_TASK_ERR("failed to unmarshall class entry %.*s", entry->name_size, entry->name);
-            c->entry = entry;
-            c->name = entry->name;
-            c->name_size = entry->name_size;
-        }
-    } while (!atomic_compare_exchange_weak(&entry->cache, &prev_c, c));
-    */
-    // *result = c;
+    /* update local task cache */
+    err = knd_set_add(cache->class_idx, entry->id, entry->id_size, (void*)entry);
+    KND_TASK_ERR("failed to update local task cache with class entry %.*s",
+                 entry->name_size, entry->name);
 
-    return knd_OK;
-}
-
-int knd_class_release(struct kndClassEntry *entry, struct kndTask *task)
-{
-    struct kndClass *prev_c = NULL;
-    int num_readers;
-    int err;
-
-    /*    num_readers = atomic_fetch_sub_explicit(&entry->num_readers, 1, memory_order_relaxed);
-    if (num_readers < 1) {
-        return knd_CONFLICT;
-    }
-    if (num_readers > 1) return knd_OK;
-
-    if (DEBUG_CLASS_READ_LEVEL_TMP) {
-        knd_log(">> no more refs to {class %.*s}, time to free resources",
-                entry->name_size, entry->name);
-    }
-
-    do {
-        prev_c = atomic_load_explicit(&entry->cache, memory_order_relaxed);
-        if (!prev_c) {
-            if (DEBUG_CLASS_READ_LEVEL_TMP)
-                knd_log("no valid ref to {class %.*s} found to release",
-                        entry->name_size, entry->name);
-            return knd_CONFLICT;
-        }
-    } while (!atomic_compare_exchange_weak(&entry->cache, &prev_c, NULL));
-
-    knd_class_free(task->user_ctx->mempool, prev_c);
-    */
+    *result = c;
     return knd_OK;
 }
 

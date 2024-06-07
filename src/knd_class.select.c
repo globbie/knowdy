@@ -5,7 +5,6 @@
 #include "knd_text.h"
 #include "knd_repo.h"
 #include "knd_user.h"
-#include "knd_shard.h"
 #include "knd_set.h"
 #include "knd_shared_set.h"
 #include "knd_output.h"
@@ -635,7 +634,7 @@ static gsl_err_t parse_import_class_inst(void *obj, const char *rec, size_t *tot
     struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndClassEntry *entry = ctx->class_entry;
     struct kndRepo *repo = ctx->repo;
-    struct kndRepoSnapshot *snapshot = atomic_load_explicit(&repo->snapshots, memory_order_relaxed);
+    struct kndRepoSnapshot *snapshot = task->snapshot;
     knd_task_spec_type orig_task_type = task->type;
     //struct kndRepoAccess *acl;
     struct kndClass *c;
@@ -672,7 +671,7 @@ static gsl_err_t parse_import_class_inst(void *obj, const char *rec, size_t *tot
         ctx->class_entry = entry;
     }
 
-    snapshot = atomic_load_explicit(&repo->snapshots, memory_order_relaxed);
+    snapshot = atomic_load_explicit(&repo->snapshot, memory_order_relaxed);
     switch (snapshot->role) {
     case KND_AGENT_READER:
         if (DEBUG_CLASS_SELECT_LEVEL_2)
@@ -842,10 +841,9 @@ static gsl_err_t present_class_selection(void *obj, const char *unused_var(val),
 
         /* intersection result set */
         struct kndSet *set;
-        err = knd_set_new(task->mempool, &set);
+        err = knd_set_new(&set, task->mempool);
         if (err) return make_gsl_err_external(err);
         set->type = KND_SET_CLASS;
-        set->mempool = task->mempool;
         set->base = ctx->selected_base->entry;
 
         err = knd_set_intersect(set, task->sets, task->num_sets);

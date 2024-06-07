@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <time.h>
 
-#include "knd_shard.h"
+#include "knd_steward.h"
 #include "knd_user.h"
 #include "knd_task.h"
 #include "knd_shared_dict.h"
@@ -17,38 +17,38 @@
 
 #include <gsl-parser.h>
 
-#define DEBUG_SHARD_LEVEL_1 0
-#define DEBUG_SHARD_LEVEL_TMP 1
+#define DEBUG_STEWARD_LEVEL_1 0
+#define DEBUG_STEWARD_LEVEL_TMP 1
 
-static gsl_err_t parse_mem_config(void *obj, const char *rec, size_t *total_size)
+static gsl_err_t parse_mem_main_config(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndShard *self = obj;
+    struct kndSteward *self = obj;
 
     struct gslTaskSpec specs[] = {
         {   .name = "max-base-pages",
             .name_size = strlen("max-base-pages"),
             .parse = gsl_parse_size_t,
-            .obj = &self->mem_config.num_pages
+            .obj = &self->mem_main_config.num_pages
         },
         {   .name = "max-small_x4-pages",
             .name_size = strlen("max-small_x4-pages"),
             .parse = gsl_parse_size_t,
-            .obj = &self->mem_config.num_small_x4_pages
+            .obj = &self->mem_main_config.num_small_x4_pages
         },
         {   .name = "max-small_x2-pages",
             .name_size = strlen("max-small_x2-pages"),
             .parse = gsl_parse_size_t,
-            .obj = &self->mem_config.num_small_x2_pages
+            .obj = &self->mem_main_config.num_small_x2_pages
         },
         {   .name = "max-small-pages",
             .name_size = strlen("max-small-pages"),
             .parse = gsl_parse_size_t,
-            .obj = &self->mem_config.num_small_pages
+            .obj = &self->mem_main_config.num_small_pages
         },
         {   .name = "max-tiny-pages",
             .name_size = strlen("max-tiny-pages"),
             .parse = gsl_parse_size_t,
-            .obj = &self->mem_config.num_tiny_pages
+            .obj = &self->mem_main_config.num_tiny_pages
         }
     };
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
@@ -56,7 +56,7 @@ static gsl_err_t parse_mem_config(void *obj, const char *rec, size_t *total_size
 
 static gsl_err_t parse_mem_ctx_config(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndShard *self = obj;
+    struct kndSteward *self = obj;
 
     struct gslTaskSpec specs[] = {
         {   .name = "max-base-pages",
@@ -88,9 +88,43 @@ static gsl_err_t parse_mem_ctx_config(void *obj, const char *rec, size_t *total_
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
+static gsl_err_t parse_mem_cache_config(void *obj, const char *rec, size_t *total_size)
+{
+    struct kndSteward *self = obj;
+
+    struct gslTaskSpec specs[] = {
+        {   .name = "max-base-pages",
+            .name_size = strlen("max-base-pages"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->mem_cache_config.num_pages
+        },
+        {   .name = "max-small_x4-pages",
+            .name_size = strlen("max-small_x4-pages"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->mem_cache_config.num_small_x4_pages
+        },
+        {   .name = "max-small_x2-pages",
+            .name_size = strlen("max-small_x2-pages"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->mem_cache_config.num_small_x2_pages
+        },
+        {   .name = "max-small-pages",
+            .name_size = strlen("max-small-pages"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->mem_cache_config.num_small_pages
+        },
+        {   .name = "max-tiny-pages",
+            .name_size = strlen("max-tiny-pages"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->mem_cache_config.num_tiny_pages
+        }
+    };
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
 static gsl_err_t parse_mem_user_config(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndShard *self = obj;
+    struct kndSteward *self = obj;
 
     struct gslTaskSpec specs[] = {
         {   .name = "max-base-pages",
@@ -122,14 +156,19 @@ static gsl_err_t parse_mem_user_config(void *obj, const char *rec, size_t *total
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static gsl_err_t knd_parse_mem_config(void *obj, const char *rec, size_t *total_size)
+static gsl_err_t knd_parse_mem_main_config(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndShard *self = obj;
+    struct kndSteward *self = obj;
 
     struct gslTaskSpec specs[] = {
        {   .name = "main",
            .name_size = strlen("main"),
-           .parse = parse_mem_config,
+           .parse = parse_mem_main_config,
+           .obj = self
+       },
+       {   .name = "cache",
+           .name_size = strlen("cache"),
+           .parse = parse_mem_cache_config,
            .obj = self
        },
        {   .name = "user",
@@ -148,7 +187,7 @@ static gsl_err_t knd_parse_mem_config(void *obj, const char *rec, size_t *total_
 
 static gsl_err_t get_agent_role(void *obj, const char *name, size_t name_size)
 {
-    struct kndShard *self = obj;
+    struct kndSteward *self = obj;
 
     if (name_size == strlen("Arbiter") && !memcmp(name, "Arbiter", name_size)) {
         self->role = KND_AGENT_ARBITER;
@@ -158,7 +197,7 @@ static gsl_err_t get_agent_role(void *obj, const char *name, size_t name_size)
 
 static gsl_err_t parse_agent(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndShard *self = obj;
+    struct kndSteward *self = obj;
 
     struct gslTaskSpec specs[] = {
         {   .is_implied = true,
@@ -193,7 +232,7 @@ static gsl_err_t reject_unrec_tag(void *unused_var(obj), const char *name, size_
 
 static gsl_err_t parse_base_repo(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndShard *self = obj;
+    struct kndSteward *self = obj;
 
     struct gslTaskSpec specs[] = {
         {   .is_implied = true,
@@ -213,7 +252,7 @@ static gsl_err_t parse_base_repo(void *obj, const char *rec, size_t *total_size)
 
 static gsl_err_t parse_user_settings(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndShard *self = obj;
+    struct kndSteward *self = obj;
 
     struct gslTaskSpec specs[] = {
         {   .is_implied = true,
@@ -232,7 +271,7 @@ static gsl_err_t parse_user_settings(void *obj, const char *rec, size_t *total_s
 
 static gsl_err_t parse_schema_path(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndShard *self = obj;
+    struct kndSteward *self = obj;
 
     struct gslTaskSpec specs[] = {
         {   .is_implied = true,
@@ -251,7 +290,7 @@ static gsl_err_t parse_schema_path(void *obj, const char *rec, size_t *total_siz
 
 static gsl_err_t parse_schema(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndShard *self = obj;
+    struct kndSteward *self = obj;
 
     struct gslTaskSpec specs[] = {
         {   .is_implied = true,
@@ -277,7 +316,7 @@ static gsl_err_t parse_schema(void *obj, const char *rec, size_t *total_size)
         },
         {  .name = "memory",
             .name_size = strlen("memory"),
-            .parse = knd_parse_mem_config,
+            .parse = knd_parse_mem_main_config,
             .obj = self,
         },
         {   .name = "agent",
@@ -320,143 +359,115 @@ static gsl_err_t parse_schema(void *obj, const char *rec, size_t *total_size)
     return make_gsl_err(gsl_OK);
 }
 
-static int shard_read_config(struct kndShard *shard, const char *config, size_t config_size)
+static int steward_read_config(struct kndSteward *steward, const char *config, size_t config_size)
 {
     struct gslTaskSpec specs[] = {
         {
             .name = "schema",
             .name_size = strlen("schema"),
             .parse = parse_schema,
-            .obj = shard
+            .obj = steward
         }
     };
     size_t total_parsed = config_size;
     gsl_err_t parser_err;
-    struct kndOutput *out = shard->out;
-    struct kndOutput *log = shard->log;
+    struct kndOutput *out = steward->out;
+    struct kndOutput *log = steward->log;
 
     parser_err = gsl_parse_task(config, &total_parsed, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code != gsl_OK) {
-        KND_SHARD_LOG("failed to read configuration file");
+        KND_STEWARD_LOG("failed to read configuration file");
         return gsl_err_to_knd_err_codes(parser_err);
     }
     return knd_OK;
 }
 
-static int init_user_space(struct kndShard *shard, struct kndTask *task)
+static int init_user_space(struct kndSteward *steward, struct kndTask *task)
 {
     struct kndRepoAccess *acl;
     struct kndUser *user;
     int err;
 
-    assert (shard->repo != NULL);
+    assert (steward->repo != NULL);
 
-    if (!shard->user_class_name_size) {
-        shard->user_class_name_size = strlen("User");
-        memcpy(shard->user_class_name, "User", shard->user_class_name_size);
+    if (!steward->user_class_name_size) {
+        steward->user_class_name_size = strlen("User");
+        memcpy(steward->user_class_name, "User", steward->user_class_name_size);
     }
 
     /* user manager */
-    err = knd_user_new(&user, shard->user_class_name, shard->user_class_name_size,
-                       shard->path, shard->path_size,
-                       shard->user_repo_name, shard->user_repo_name_size,
-                       shard->user_schema_path, shard->user_schema_path_size,
-                       shard, task);
+    err = knd_user_new(&user, steward->user_class_name, steward->user_class_name_size,
+                       steward->path, steward->path_size,
+                       steward->user_repo_name, steward->user_repo_name_size,
+                       steward->user_schema_path, steward->user_schema_path_size,
+                       steward, task);
     KND_TASK_ERR("failed to create a user manager");
 
     err = knd_repo_access_new(task->mempool, &acl);
     KND_TASK_ERR("failed to alloc repo acl");
 
-    acl->repo = shard->repo;
+    acl->repo = steward->repo;
     acl->allow_read = true;
     acl->allow_write = true;
     task->user_ctx->acls = acl;    
-    shard->user = user;
+    steward->user = user;
 
-    task->user_ctx->mempool = shard->user->mempool_write;
-    task->user_ctx->repo = shard->user->repo;
-    task->user_ctx->acls = shard->user->default_acls;
+    task->user_ctx->mempool = steward->user->mempool_write;
+    task->user_ctx->repo = steward->user->repo;
+    task->user_ctx->acls = steward->user->default_acls;
 
     return knd_OK;
 }
 
-static int init_mempool(struct kndShard *shard, knd_mempool_t memtype, size_t numid,
-                        struct kndMemPool **result)
+static int steward_init(struct kndSteward *steward)
 {
-    struct kndMemPool *mempool;
-    struct kndOutput *out = shard->out;
-    struct kndOutput *log = shard->log;
-    int err;
-
-    err = knd_mempool_new(&mempool, memtype, numid);
-    if (err) return err;
-    KND_SHARD_ERR("failed to create a regular mempool");
-
-    mempool->num_pages = shard->mem_config.num_pages;
-    mempool->num_small_x4_pages = shard->mem_config.num_small_x4_pages;
-    mempool->num_small_x2_pages = shard->mem_config.num_small_x2_pages;
-    mempool->num_small_pages = shard->mem_config.num_small_pages;
-    mempool->num_tiny_pages = shard->mem_config.num_tiny_pages;
-
-    err = knd_mempool_alloc(mempool);
-    KND_SHARD_ERR("failed to alloc a regular mempool");
-
-    *result = mempool;
-    return knd_OK;
-}
-
-static int shard_init(struct kndShard *shard)
-{
-    struct kndTask *task = shard->task;
+    struct kndTask *task;
     struct kndRepo *repo;
-    struct kndOutput *out = shard->out;
-    struct kndOutput *log = shard->log;
+    struct kndOutput *out = steward->out;
+    struct kndOutput *log = steward->log;
     int err;
 
-    err = knd_mkpath(shard->path, shard->path_size, 0755, false);
-    KND_SHARD_ERR("failed to make {shard-path %.*s}", shard->path_size, shard->path);
+    err = knd_mkpath(steward->path, steward->path_size, 0755, false);
+    KND_STEWARD_ERR("failed to make {steward-path %.*s}", steward->path_size, steward->path);
 
-    /* mempools */
-    err = init_mempool(shard, KND_ALLOC_INCR, 1, &shard->mempool_read);
-    KND_SHARD_ERR("failed to init a read mempool");
+    /* separate mempools for reading and writing */
+    steward->mem_cache_config.memtype = KND_ALLOC_INCR;
+    err = knd_mempool_create(&steward->mempool_read, &steward->mem_cache_config, 1);
+    KND_STEWARD_ERR("failed to init a cache read-only mempool");
 
-    err = init_mempool(shard, KND_ALLOC_INCR, 2, &shard->mempool_read_temp);
-    KND_SHARD_ERR("failed to init a temp read mempool");
+    steward->mem_main_config.memtype = KND_ALLOC_SHARED;
+    err = knd_mempool_create(&steward->mempool_write, &steward->mem_main_config, 1);
+    KND_STEWARD_ERR("failed to init a write mempool");
 
-    err = init_mempool(shard, KND_ALLOC_SHARED, 3, &shard->mempool_write);
-    KND_SHARD_ERR("failed to init a shared mempool");
+    /* repos */
+    err = knd_set_new(&steward->repo_idx, steward->mempool_write);
+    KND_STEWARD_ERR("failed to create a set idx");
 
-    err = init_mempool(shard, KND_ALLOC_SHARED, 4, &shard->mempool_write_temp);
-    KND_SHARD_ERR("failed to init a shared mempool");
+    err = knd_shared_dict_new(&steward->repo_name_idx, steward->mempool_write, KND_MEDIUM_DICT_SIZE);
+    KND_STEWARD_ERR("failed to create a dict idx");
 
-    /* indices */
-    err = knd_set_new(shard->mempool_write, &shard->repo_idx);
-    KND_SHARD_ERR("failed to create a set idx");
+    err = knd_repo_new(&repo, "/", 1, steward->path, steward->path_size,
+                       steward->schema_path, steward->schema_path_size,
+                       steward->mempool_write);
+    KND_STEWARD_ERR("failed to create a repo");
+    steward->repo = repo;
 
-    err = knd_shared_dict_new(&shard->repo_name_idx, KND_MEDIUM_DICT_SIZE);
-    KND_SHARD_ERR("failed to create a dict idx");
-
-    err = knd_repo_new(&repo, "/", 1, shard->path, shard->path_size,
-                       shard->schema_path, shard->schema_path_size,
-                       shard->mempool_write);
-    KND_SHARD_ERR("failed to create a repo");
-    shard->repo = repo;
-
-    if (shard->data_path_size) {
-        repo->data_path_size = shard->data_path_size;
-        repo->data_path = shard->data_path;
+    if (steward->data_path_size) {
+        repo->data_path_size = steward->data_path_size;
+        repo->data_path = steward->data_path;
     }
 
-    err = knd_task_new(&shard->task, KND_AGENT_AUX, 0, shard);
-    KND_SHARD_ERR("failed to init a shard task");
-    shard->task = task;
+    /* auxiliary service task */
+    err = knd_task_new(&task, KND_AGENT_AUX, 0, steward);
+    KND_STEWARD_ERR("failed to init a steward task");
+    steward->task = task;
 
     err = knd_repo_open(repo, task);
-    KND_SHARD_ERR("failed to open a repo");
+    KND_STEWARD_ERR("failed to open a repo");
 
     /* depends on {class User} from the system repo */
-    err = init_user_space(shard, task);
-    KND_SHARD_ERR("failed to init user space");
+    err = init_user_space(steward, task);
+    KND_STEWARD_ERR("failed to init user space");
 
     /* clean up all temporary memblocks */
     knd_task_free_blocks(task);
@@ -465,49 +476,44 @@ static int shard_init(struct kndShard *shard)
     return knd_OK;
 }
 
-int knd_shard_new(struct kndShard **result, const char *config, size_t config_size)
+int knd_steward_new(struct kndSteward **result, const char *config, size_t config_size)
 {
-    struct kndShard *shard;
-    struct kndOutput *out, *log;
+    struct kndSteward *steward;
     int err;
 
-    shard = malloc(sizeof(struct kndShard));
-    if (!shard) return knd_NOMEM;
-    memset(shard, 0, sizeof(struct kndShard));
+    steward = malloc(sizeof(struct kndSteward));
+    if (!steward) return knd_NOMEM;
+    memset(steward, 0, sizeof(struct kndSteward));
 
-    err = knd_output_new(&shard->out, NULL, KND_TEMP_BUF_SIZE);
+    err = knd_output_new(&steward->out, NULL, KND_TEMP_BUF_SIZE);
     if (err) return knd_NOMEM;
-    err = knd_output_new(&shard->log, NULL, KND_TEMP_BUF_SIZE);
+    err = knd_output_new(&steward->log, NULL, KND_TEMP_BUF_SIZE);
     if (err) return knd_NOMEM;
 
-    err = shard_read_config(shard, config, config_size);
+    err = steward_read_config(steward, config, config_size);
     if (err) goto error;
 
-    err = shard_init(shard);
+    err = steward_init(steward);
     if (err) goto error;
 
-    *result = shard;
+    *result = steward;
     return knd_OK;
 
  error:
-    knd_log("%.*s", out->buf_size, out->buf);
-    knd_shard_del(shard);
+    knd_log("%.*s", steward->msg_size, steward->msg);
+    knd_steward_del(steward);
     return err;
 }
 
-void knd_shard_del(struct kndShard *self)
+void knd_steward_del(struct kndSteward *self)
 {
     if (self->repo)
         knd_repo_del(self->repo);
 
     if (self->mempool_read)
         knd_mempool_del(self->mempool_read);
-    if (self->mempool_read_temp)
-        knd_mempool_del(self->mempool_read_temp);
     if (self->mempool_write)
         knd_mempool_del(self->mempool_write);
-    if (self->mempool_write_temp)
-        knd_mempool_del(self->mempool_write_temp);
 
     if (self->user)
         knd_user_del(self->user);
@@ -518,3 +524,68 @@ void knd_shard_del(struct kndShard *self)
     free(self);
 }
 
+void knd_steward_monitor(struct kndSteward *steward, struct kndResourceReport *report)
+{
+    struct kndMemPool *mempool = steward->mempool_write;
+    struct kndMemPoolReport memrep = { 0 };
+
+    knd_mempool_report(mempool, &memrep);
+
+    report->mem_usage = memrep.total_mem_usage;
+    report->mem_threshold_alert = memrep.mem_threshold_alert;
+}
+
+int knd_steward_snapshot(struct kndSteward *steward)
+{
+    struct kndOutput *out = steward->out;
+    struct kndOutput *log = steward->log;
+    struct kndRepo *repo;
+    struct kndRepoSnapshot *snapshot;
+    size_t num_commits;
+    int err;
+
+    err = knd_mempool_create(&steward->mempool_read_temp, &steward->mem_cache_config, 1);
+    KND_STEWARD_ERR("failed to init a cache read-only mempool");
+    steward->task->cache_mempool = steward->mempool_read_temp;
+
+    err = knd_mempool_create(&steward->mempool_write_temp, &steward->mem_main_config, 1);
+    KND_STEWARD_ERR("failed to init a write mempool");
+    steward->task->mempool = steward->mempool_write_temp;
+
+    repo = steward->repo;
+    snapshot = atomic_load_explicit(&repo->snapshot, memory_order_relaxed);
+    num_commits = atomic_load_explicit(&snapshot->num_commits, memory_order_relaxed);
+    if (num_commits) {
+        knd_log(".. building on-disk snapshot of sys repo..");
+
+        err = knd_repo_snapshot(repo, num_commits, steward->task);
+        KND_STEWARD_ERR("failed to build a sys repo snapshot");        
+    }
+
+    err = knd_repo_cache_update(repo, steward->task);
+    KND_STEWARD_ERR("failed to update a repo cache");
+
+    //err = knd_repo_snapshot(steward->user->repo, steward->task);
+    //KND_STEWARD_ERR("failed to build a user repo snapshot");
+
+    return knd_OK;
+}
+
+int knd_steward_cleanup(struct kndSteward *steward)
+{
+    struct kndOutput *out = steward->out;
+    struct kndOutput *log = steward->log;
+    struct kndRepo *repo = steward->repo;
+    int err;
+
+    knd_log("cleaning up..");
+
+    // TODO iterate all repos
+
+    err = knd_repo_cleanup(repo, steward->task);
+    KND_STEWARD_ERR("failed to cleanup a repo");
+
+    // free prev mempools
+
+    return knd_OK;
+}

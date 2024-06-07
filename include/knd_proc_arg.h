@@ -118,7 +118,7 @@ int knd_proc_arg_var_export_GSL(struct kndProcArgVar *self, struct kndTask *task
 int knd_proc_arg_var_export_JSON(struct kndProcArgVar *self, struct kndTask *task, size_t depth);
 int knd_proc_arg_export(struct kndProcArg *self, knd_format format, struct kndTask *task, struct kndOutput *out);
 
-int knd_proc_arg_resolve(struct kndProcArg *self, struct kndRepo *repo, struct kndTask *task);
+int knd_proc_arg_resolve(struct kndProcArg *self, struct kndTask *task);
 int knd_resolve_proc_arg_var(struct kndProc *self, struct kndProcArgVar *var, struct kndTask *task);
 
 int knd_proc_arg_compute(struct kndProcArg *self, struct kndTask *task);

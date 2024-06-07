@@ -53,7 +53,7 @@ int knd_export_class_state_GSL(struct kndClassEntry *self, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndState *state;
-    time_t timestamp;
+    time_t timestamp = { 0 };
     int err;
 
     err = out->write(out, "{state ", strlen("{state "));                          RET_ERR();
@@ -65,7 +65,7 @@ int knd_export_class_state_GSL(struct kndClassEntry *self, struct kndTask *task)
     } else {
         err = out->writec(out, '0');                                              RET_ERR();
         // TODO
-        timestamp = self->repo->snapshots->timestamp;
+        // timestamp = self->repo->snapshot->timestamp;
     }
     
     err = out->write(out, "{time ", strlen("{time "));                            RET_ERR();

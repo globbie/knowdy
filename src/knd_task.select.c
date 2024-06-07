@@ -3,10 +3,8 @@
 #include "knd_class.h"
 #include "knd_proc.h"
 #include "knd_repo.h"
-#include "knd_shard.h"
 #include "knd_user.h"
 #include "knd_commit.h"
-#include "knd_cache.h"
 #include "knd_utils.h"
 
 #include <gsl-parser.h>
@@ -176,7 +174,7 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
         err = knd_commit_new(task->user_ctx->mempool, &task->ctx->commit);
         if (err) return make_gsl_err_external(err);
 
-        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->repo->snapshots->num_commits,
+        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->snapshot->num_commits,
                                                                 memory_order_relaxed);
     }
 
@@ -198,7 +196,6 @@ static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_si
 static gsl_err_t parse_proc_import(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
-    struct kndRepo *repo = task->repo;
     int err;
 
     if (DEBUG_TASK_LEVEL_2)
@@ -209,8 +206,8 @@ static gsl_err_t parse_proc_import(void *obj, const char *rec, size_t *total_siz
         err = knd_commit_new(task->mempool, &task->ctx->commit);
         if (err) return make_gsl_err_external(err);
 
-        task->ctx->commit->orig_state_id = \
-            atomic_load_explicit(&repo->snapshots->num_commits, memory_order_relaxed);
+        task->ctx->commit->orig_state_id =\
+            atomic_load_explicit(&task->snapshot->num_commits, memory_order_relaxed);
     }
     return knd_proc_import(task->repo, rec, total_size, task);
 }
@@ -303,6 +300,7 @@ gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
           .obj = task
         }
     };
+
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     switch (parser_err.code) {
     case gsl_OK:
@@ -323,7 +321,10 @@ gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
             knd_log("commit confirm err:%d code:%d", err, parser_err.code);
             return parser_err;
         }
+
         // TODO
+        // check resource usage threshold, raise alert flag if needed
+        
         // knd_log(".. building report for commit %zu", task->ctx->commit->numid);
         break;
     default:

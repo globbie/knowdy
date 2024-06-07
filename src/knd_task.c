@@ -4,7 +4,7 @@
 #include <time.h>
 
 #include "knd_task.h"
-#include "knd_shard.h"
+#include "knd_steward.h"
 #include "knd_repo.h"
 #include "knd_state.h"
 #include "knd_user.h"
@@ -163,10 +163,10 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
     size_t total_size = 0;
     gsl_err_t parser_err;
 
-    assert (task->shard != NULL);
+    assert (task->steward != NULL);
     assert (task->ctx != NULL);
 
-    struct kndUser *user = task->shard->user;
+    struct kndUser *user = task->steward->user;
     struct kndOutput *out = task->out;
     int err;
 
@@ -339,64 +339,39 @@ static int task_context_new(struct kndTaskContext **result)
     return knd_OK;
 }
 
-static int init_mempool(struct kndShard *shard, knd_mempool_t memtype, size_t numid,
-                        struct kndMemPool **result, struct kndTask *task)
+int knd_task_init(struct kndTask *task, struct kndSteward *steward)
 {
+    assert (steward != NULL);
+    assert (steward->repo != NULL);
+
+    struct kndRepo *repo = steward->repo;
     struct kndMemPool *mempool;
-    struct kndOutput *out = shard->out;
-    struct kndOutput *log = shard->log;
+    struct kndOutput *out = steward->out;
+    struct kndOutput *log = steward->log;
     int err;
 
-    err = knd_mempool_new(&mempool, memtype, numid);
-    KND_SHARD_ERR("failed to create a regular mempool");
+    task->steward = steward;
+    task->path = steward->path;
+    task->path_size = steward->path_size;
 
-    mempool->num_pages = shard->mem_ctx_config.num_pages;
-    mempool->num_small_x4_pages = shard->mem_ctx_config.num_small_x4_pages;
-    mempool->num_small_x2_pages = shard->mem_ctx_config.num_small_x2_pages;
-    mempool->num_small_pages = shard->mem_ctx_config.num_small_pages;
-    mempool->num_tiny_pages = shard->mem_ctx_config.num_tiny_pages;
-
-    err = knd_mempool_alloc(mempool);
-    KND_SHARD_ERR("failed to alloc a regular mempool");
-
-    *result = mempool;
-    return knd_OK;
-}
-
-static int init_task(struct kndTask *task, struct kndShard *shard)
-{
-    assert (shard != NULL);
-    assert (shard->repo != NULL);
-
-    struct kndRepo *repo = shard->repo;
-    struct kndMemPool *mempool;
-    struct kndOutput *out = shard->out;
-    struct kndOutput *log = shard->log;
-    int err;
-
-    task->shard = shard;
-    task->path = shard->path;
-    task->path_size = shard->path_size;
-
-    err = init_mempool(shard, KND_ALLOC_INCR, 1, &task->mempool, task);
-    KND_SHARD_ERR("failed to init a task mempool");
-    err = init_mempool(shard, KND_ALLOC_INCR, 2, &task->cache_mempool, task);
-    KND_SHARD_ERR("failed to init a task mempool");
+    err = knd_mempool_create(&task->mempool, &steward->mem_main_config, 1);
+    KND_STEWARD_ERR("failed to init a mempool for writing");
+    err = knd_mempool_create(&task->cache_mempool, &steward->mem_cache_config, 2);
+    KND_STEWARD_ERR("failed to init a cache read-only mempool");
 
     /* current cache */
-    mempool = task->cache_mempool;
-    err = knd_repo_cache_new(mempool, &task->cache);
-    if (err) goto error;
-    err = knd_dict_new(&task->cache->class_name_idx, mempool, KND_SMALL_DICT_SIZE);
-    if (err) goto error;
+    //mempool = task->cache_mempool;
+    //err = knd_dict_new(&task->cache->class_name_idx, mempool, KND_SMALL_DICT_SIZE);
+    //if (err) goto error;
     
     /* local name indices */
     mempool = task->mempool;
+
     err = knd_dict_new(&task->class_name_idx, mempool, KND_SMALL_DICT_SIZE);
     if (err) goto error;
     err = knd_dict_new(&task->class_inst_alias_idx, mempool, KND_SMALL_DICT_SIZE);
     if (err) goto error;
-        
+
     err = knd_dict_new(&task->attr_name_idx, mempool, KND_SMALL_DICT_SIZE);
     if (err) goto error;
     err = knd_dict_new(&task->proc_name_idx, mempool, KND_SMALL_DICT_SIZE);
@@ -414,11 +389,15 @@ static int init_task(struct kndTask *task, struct kndShard *shard)
     /* default user context */
     err = knd_user_context_new(&task->default_user_ctx);
     if (err) goto error;
-
     task->user_ctx = task->default_user_ctx;
-    task->user_ctx->mempool = shard->user->mempool_write;
-    task->user_ctx->repo = shard->user->repo;
-    task->user_ctx->acls = shard->user->default_acls;
+    task->user_ctx->mempool = steward->mempool_write;
+    task->user_ctx->repo = steward->repo;
+
+    if (steward->user) {
+        task->user_ctx->mempool = steward->user->mempool_write;
+        task->user_ctx->repo = steward->user->repo;
+        task->user_ctx->acls = steward->user->default_acls;
+    }
     return knd_OK;
 
  error:
@@ -426,7 +405,7 @@ static int init_task(struct kndTask *task, struct kndShard *shard)
 }
 
 int knd_task_new(struct kndTask **result,
-                 knd_agent_role_type role, int task_id, struct kndShard *shard)
+                 knd_agent_role_type role, int task_id, struct kndSteward *steward)
 {
     struct kndTask *task;
     int err;
@@ -446,7 +425,7 @@ int knd_task_new(struct kndTask **result,
     err = knd_output_new(&task->file_out, NULL, KND_FILE_BUF_SIZE);
     if (err) goto error;
 
-    err = init_task(task, shard);
+    err = knd_task_init(task, steward);
     if (err) goto error;
     
     *result = task;

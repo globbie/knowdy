@@ -12,7 +12,6 @@
 #include "knd_user.h"
 #include "knd_query.h"
 #include "knd_task.h"
-#include "knd_shard.h"
 #include "knd_dict.h"
 #include "knd_shared_dict.h"
 #include "knd_class.h"
@@ -99,8 +98,7 @@ static int export_commit_GSL(struct kndRepo *self, struct kndCommit *commit, str
 }
 
 static int check_class_conflicts(struct kndRepo *unused_var(self),
-                                 struct kndCommit *new_commit,
-                                 struct kndTask *task)
+                                 struct kndCommit *new_commit, struct kndTask *task)
 {
     struct kndStateRef *ref;
     struct kndClassEntry *entry;
@@ -161,7 +159,7 @@ static int check_commit_conflicts(struct kndRepo *self, struct kndCommit *commit
         knd_log(".. new commit #%zu (%p) to check any commit conflicts since state #%zu",
                 commit->numid, commit, commit->orig_state_id);
 
-    snapshot = atomic_load_explicit(&self->snapshots, memory_order_relaxed);
+    snapshot = task->snapshot;
     do {
         head_commit = atomic_load_explicit(&snapshot->commits, memory_order_relaxed);
         if (head_commit) {
@@ -173,7 +171,6 @@ static int check_commit_conflicts(struct kndRepo *self, struct kndCommit *commit
         } else {
             knd_log("no head commit found?");
         }
-
         err = check_class_conflicts(self, commit, task);
         KND_TASK_ERR("class level conflicts detected");
 
@@ -194,18 +191,17 @@ static int update_indices(struct kndRepo *self, struct kndCommit *commit, struct
     struct kndClassEntry *entry;
     struct kndProcEntry *proc_entry;
     struct kndSharedDictItem *item = NULL;
-    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
     struct kndRepo *repo = self;
-    struct kndSharedDict *name_idx = repo->idxs.class_name_idx;
+    struct kndSharedDict *name_idx = task->idxs->class_name_idx;
     int err;
 
     if (DEBUG_REPO_COMMIT_LEVEL_2)
-        knd_log(".. commit #%zu to update the indices of %.*s [shard role:%d]",
+        knd_log(".. commit #%zu to update the indices of %.*s [task role:%d]",
                 commit->numid, self->name_size, self->name, task->role);
 
     if (task->user_ctx) {
         repo = task->user_ctx->repo;
-        name_idx = repo->idxs.class_name_idx;
+        name_idx = task->idxs->class_name_idx;
     }
 
     FOREACH (ref, commit->class_state_refs) {
@@ -222,7 +218,7 @@ static int update_indices(struct kndRepo *self, struct kndCommit *commit, struct
 
             /* register new class */
             err = knd_shared_dict_set(name_idx, entry->name,  entry->name_size,
-                                      (void*)entry, mempool, commit, &item, false);
+                                      (void*)entry, commit, &item, false);
             KND_TASK_ERR("failed to register class %.*s", entry->name_size, entry->name);
             entry->dict_item = item;
             continue;
@@ -247,8 +243,9 @@ static int update_indices(struct kndRepo *self, struct kndCommit *commit, struct
         }
     }
 
-    name_idx = self->idxs.proc_name_idx;
-    for (ref = commit->proc_state_refs; ref; ref = ref->next) {
+    name_idx = task->idxs->proc_name_idx;
+
+    FOREACH (ref, commit->proc_state_refs) {
         proc_entry = ref->obj;
         switch (ref->state->phase) {
         case KND_REMOVED:
@@ -263,7 +260,7 @@ static int update_indices(struct kndRepo *self, struct kndCommit *commit, struct
             break;
         }
         err = knd_shared_dict_set(name_idx, proc_entry->name,  proc_entry->name_size,
-                                  (void*)proc_entry, task->mempool, commit, &item, false);
+                                  (void*)proc_entry, commit, &item, false);
         RET_ERR();
         proc_entry->dict_item = item;
     }
@@ -305,7 +302,7 @@ static int build_commit_WAL(struct kndRepo *self, struct kndCommit *commit, stru
 {
     struct kndOutput *out = task->out;
     struct kndOutput *file_out = task->file_out;
-    struct kndRepoSnapshot *snapshot = atomic_load_explicit(&self->snapshots, memory_order_relaxed);
+    struct kndRepoSnapshot *snapshot = task->snapshot;
     char filename[KND_PATH_SIZE + 1];
     size_t filename_size = 0;
     size_t planned_journal_size = 0;
@@ -373,7 +370,8 @@ int knd_confirm_commit(struct kndRepo *self, struct kndTask *task)
     assert(commit != NULL);
 
     if (DEBUG_REPO_COMMIT_LEVEL_TMP)
-        knd_log(">> \"%.*s\" repo to confirm commit #%zu", self->name_size, self->name, commit->numid);
+        knd_log(">> \"%.*s\" repo to confirm commit #%zu",
+                self->name_size, self->name, commit->numid);
 
     commit->repo = self;
 
@@ -412,7 +410,7 @@ int knd_apply_commit(void *obj, const char *unused_var(elem_id), size_t unused_v
     struct kndCommit *commit = elem;
     struct kndCommit *head_commit;
     struct kndRepo *repo = task->repo;
-    struct kndRepoSnapshot *snapshot = atomic_load_explicit(&repo->snapshots, memory_order_relaxed);
+    struct kndRepoSnapshot *snapshot = task->snapshot;
     gsl_err_t parser_err;
     size_t total_size = commit->rec_size;
     int err;
@@ -449,9 +447,16 @@ int knd_apply_commit(void *obj, const char *unused_var(elem_id), size_t unused_v
         head_commit = atomic_load_explicit(&snapshot->commits, memory_order_acquire);
         commit->prev = head_commit;
     } while (!atomic_compare_exchange_weak(&snapshot->commits, &head_commit, commit));
+
     /* restore repo ref */
     task->repo = repo;
     return knd_OK;
 }
 
+int knd_repo_transfer_commits(struct kndRepo *repo, struct kndTask *task)
+{
+    knd_log(".. transfer commits in {repo %.*s} task: %p",
+            repo->name_size, repo->name, task);
 
+    return knd_OK;
+}

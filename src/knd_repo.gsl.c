@@ -12,7 +12,6 @@
 #include "knd_user.h"
 #include "knd_query.h"
 #include "knd_task.h"
-#include "knd_shard.h"
 #include "knd_dict.h"
 #include "knd_shared_dict.h"
 #include "knd_class.h"
@@ -45,7 +44,7 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
             err = knd_commit_new(task->mempool, &commit);
             if (err) return make_gsl_err_external(err);
 
-            commit->orig_state_id = atomic_load_explicit(&task->repo->snapshots->num_commits,
+            commit->orig_state_id = atomic_load_explicit(&task->snapshot->num_commits,
                                                          memory_order_relaxed);
             task->ctx->commit = commit;
         }
@@ -77,7 +76,7 @@ static gsl_err_t parse_proc_import(void *obj, const char *rec, size_t *total_siz
             err = knd_commit_new(task->mempool, &task->ctx->commit);
             if (err) return make_gsl_err_external(err);
 
-            task->ctx->commit->orig_state_id = atomic_load_explicit(&repo->snapshots->num_commits,
+            task->ctx->commit->orig_state_id = atomic_load_explicit(&task->snapshot->num_commits,
                                                                     memory_order_relaxed);
         }
     }
@@ -416,7 +415,7 @@ static int index_class(void *obj, const char *unused_var(elem_id),
 {
     struct kndTask *task = obj;
     struct kndClassEntry *entry = elem;
-    struct kndSharedSet *class_idx = task->repo->idxs.class_idx;
+    struct kndSharedSet *class_idx = task->idxs->class_idx;
     int err;
 
     if (entry->class->is_indexed) return knd_OK;
@@ -427,65 +426,6 @@ static int index_class(void *obj, const char *unused_var(elem_id),
     err = knd_shared_set_add(class_idx, entry->id, entry->id_size, (void*)entry);
     KND_TASK_ERR("failed to register {class %.*s} in class idx",
                  entry->name_size, entry->name);
-    return knd_OK;
-}
-
-static int resolve_procs(struct kndRepo *self, struct kndTask *task)
-{
-    struct kndProcEntry *entry;
-    struct kndSharedDictItem *item;
-    struct kndSharedDict *proc_name_idx = self->idxs.proc_name_idx;
-    struct kndSet *proc_idx = self->idxs.proc_idx;
-    int err;
-
-    if (DEBUG_REPO_GSL_LEVEL_2)
-        knd_log(".. resolving procs of repo \"%.*s\"..",
-                self->name_size, self->name);
-
-    for (size_t i = 0; i < proc_name_idx->size; i++) {
-        item = atomic_load_explicit(&proc_name_idx->hash_array[i], memory_order_relaxed);
-        for (; item; item = item->next) {
-            entry = item->data;
-
-            if (entry->proc->is_resolved) {
-                continue;
-            }
-
-            err = knd_proc_resolve(entry->proc, task);
-            if (err) {
-                knd_log("-- couldn't resolve the \"%.*s\" proc",
-                        entry->proc->name_size, entry->proc->name);
-                return err;
-            }
-            entry->numid = atomic_fetch_add_explicit(&self->idxs.proc_id_count, 1, \
-                                                     memory_order_relaxed);
-            entry->numid++;
-            knd_uid_create(entry->numid, entry->id, &entry->id_size);
-            
-            err = proc_idx->add(proc_idx,
-                                entry->id, entry->id_size, (void*)entry);
-            if (err) return err;
-            if (DEBUG_REPO_GSL_LEVEL_2) {
-                knd_proc_str(entry->proc, 1);
-            }
-        }
-    }
-    /*for (size_t i = 0; i < proc_name_idx->size; i++) {
-        item = atomic_load_explicit(&proc_name_idx->hash_array[i],
-                                    memory_order_relaxed);
-        for (; item; item = item->next) {
-            entry = item->data;
-            if (!entry->proc->is_computed) {
-                err = knd_proc_compute(entry->proc, task);
-                if (err) {
-                    knd_log("-- couldn't compute the \"%.*s\" proc",
-                            entry->proc->name_size, entry->proc->name);
-                    return err;
-                }
-            }
-        }
-        }*/
-
     return knd_OK;
 }
 
@@ -518,7 +458,7 @@ static int resolve_class_insts(struct kndRepo *self, struct kndTask *task)
     struct kndClass *c;
     struct kndClassEntry *entry;
     struct kndSharedDictItem *item;
-    struct kndSharedDict *name_idx = self->idxs.class_name_idx;
+    struct kndSharedDict *name_idx = task->idxs->class_name_idx;
     int err;
 
     if (DEBUG_REPO_GSL_LEVEL_2)
@@ -578,7 +518,7 @@ static int index_repo_class_insts(struct kndRepo *self, struct kndTask *task)
     struct kndClass *c;
     struct kndClassEntry *entry;
     struct kndSharedDictItem *item, *items;
-    struct kndSharedDict *name_idx = self->idxs.class_name_idx;
+    struct kndSharedDict *name_idx = task->idxs->class_name_idx;
     int err;
 
     if (DEBUG_REPO_GSL_LEVEL_2)
@@ -618,23 +558,29 @@ int knd_repo_read_source_files(struct kndRepo *self, struct kndTask *task)
 
     /* read a system-wide schema */
     task->type = KND_BULK_LOAD_STATE;
-    err = read_GSL_file(self, NULL, "index", strlen("index"), KND_GSL_SCHEMA, task);
+    err = read_GSL_file(self, NULL,
+                        KND_PACKAGE_INDEX_NAME, strlen(KND_PACKAGE_INDEX_NAME),
+                        KND_GSL_SCHEMA, task);
     KND_TASK_ERR("schema import failed");
 
-    err = knd_shared_dict_map(self->idxs.class_name_idx, resolve_class, (void*)task);
+    /* resolve all cross references */
+    err = knd_shared_dict_map(task->idxs->class_name_idx, resolve_class, (void*)task);
     KND_TASK_ERR("failed to resolve all entries in class name idx");
 
     //err = resolve_procs(self, task);
     //KND_TASK_ERR("proc resolving failed");
 
-    err = knd_shared_dict_map(self->idxs.class_name_idx, index_class, (void*)task);
+    /* build indices */
+    err = knd_shared_dict_map(task->idxs->class_name_idx, index_class, (void*)task);
     KND_TASK_ERR("failed to index all entries in class name idx");
 
     if (self->data_path_size) {
         if (DEBUG_REPO_GSL_LEVEL_3)
             knd_log(".. initial loading of data files");
         task->type = KND_BULK_LOAD_STATE;
-        err = read_GSL_file(self, NULL, "index", strlen("index"), KND_GSL_INIT_DATA, task);
+        err = read_GSL_file(self, NULL,
+                            KND_PACKAGE_INDEX_NAME, strlen(KND_PACKAGE_INDEX_NAME),
+                            KND_GSL_INIT_DATA, task);
         KND_TASK_ERR("init data import failed");
 
         err = resolve_class_insts(self, task);

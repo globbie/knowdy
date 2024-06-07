@@ -85,18 +85,17 @@ static int inherit_args(struct kndProc *self, struct kndProc *base, struct kndRe
     return knd_OK;
 }
 
-int knd_resolve_proc_ref(struct kndClass *self, const char *name, size_t name_size,
+int knd_resolve_proc_ref(const char *name, size_t name_size,
                          struct kndProc *unused_var(base),
                          struct kndProcEntry **result, struct kndTask *task)
 {
-    struct kndRepo *repo = self->entry->repo;
     struct kndProcEntry *entry;
     int err;
 
     if (DEBUG_PROC_RESOLVE_LEVEL_2)
         knd_log(".. resolving proc ref:  %.*s", name_size, name);
 
-    entry = knd_shared_dict_get(repo->idxs.proc_name_idx, name, name_size);
+    entry = knd_shared_dict_get(task->idxs->proc_name_idx, name, name_size);
     if (!entry) {
         /*if (repo->base) {
             err = knd_get_proc(repo->base, name, name_size, result, task);
@@ -243,11 +242,12 @@ int knd_proc_resolve(struct kndProc *self, struct kndTask *task)
     self->resolving_in_progress = true;
 
     if (!self->arg_idx) {
-        err = knd_set_new(task->mempool, &self->arg_idx);                         RET_ERR();
+        err = knd_set_new(&self->arg_idx, task->mempool);
+        RET_ERR();
     }
 
-    for (arg = self->args; arg; arg = arg->next) {
-        err = knd_proc_arg_resolve(arg, repo, task);
+    FOREACH (arg, self->args) {
+        err = knd_proc_arg_resolve(arg, task);
         KND_TASK_ERR("failed to resolve a proc arg");
 
         err = knd_repo_index_proc_arg(repo, self, arg, task);

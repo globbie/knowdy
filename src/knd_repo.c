@@ -12,7 +12,6 @@
 #include "knd_user.h"
 #include "knd_query.h"
 #include "knd_task.h"
-#include "knd_shard.h"
 #include "knd_dict.h"
 #include "knd_shared_dict.h"
 #include "knd_class.h"
@@ -46,11 +45,6 @@ static void free_blocks(struct kndRepo *repo)
 
 void knd_repo_del(struct kndRepo *self)
 {
-    knd_shared_dict_del(self->idxs.class_name_idx);
-    knd_shared_dict_del(self->idxs.attr_name_idx);
-    knd_shared_dict_del(self->idxs.proc_name_idx);
-    knd_shared_dict_del(self->idxs.proc_arg_name_idx);
-
     if (self->num_source_files) {
         for (size_t i = 0; i < self->num_source_files; i++)
             free(self->source_files[i]);
@@ -67,7 +61,7 @@ static int present_latest_state_JSON(struct kndRepo *self, struct kndOutput *out
 {
     char idbuf[KND_ID_SIZE];
     size_t idbuf_size;
-    struct kndRepoSnapshot *snapshot = atomic_load_explicit(&self->snapshots, memory_order_relaxed);
+    struct kndRepoSnapshot *snapshot = atomic_load_explicit(&self->snapshot, memory_order_relaxed);
     size_t latest_commit_id = atomic_load_explicit(&snapshot->num_commits, memory_order_relaxed);
     struct kndCommit *commit;
     int err;
@@ -116,7 +110,6 @@ static gsl_err_t present_repo_state(void *obj, const char *unused_var(name), siz
         return make_gsl_err(gsl_OK);
     }
 
-    
     task->type = KND_SELECT_STATE;
 
     /* restore:    if (!repo->commits) goto show_curr_state;
@@ -183,49 +176,70 @@ static gsl_err_t parse_repo_state(void *obj, const char *rec, size_t *total_size
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
+static int find_repo(struct kndRepo **result, const char *name, size_t name_size,
+                     struct kndTask *task)
+{
+    struct kndRepo *repo;
+    repo = knd_dict_get(task->repo_name_idx, name, name_size);
+    if (!repo) return knd_NO_MATCH;
+    *result = repo;
+    return knd_OK;
+}
+
 static gsl_err_t run_select_repo(void *obj, const char *name, size_t name_size)
 {
     struct kndTask *task = obj;
-    struct kndRepo *repo = task->repo;
+    struct kndRepoSnapshot *snapshot;
+    int err;
 
+    /* default system repo */
+    struct kndRepo *repo = NULL;
     if (!name_size) return make_gsl_err(gsl_FAIL);
 
-    switch (*name) {
-    case '/':
-        task->user_ctx->repo = repo;
-        // select system repo
-        if (DEBUG_REPO_LEVEL_3)
-            knd_log("== system repo selected: %.*s", repo->name_size, repo->name);
-        return make_gsl_err(gsl_OK);
-    case '~':
-        repo = task->user_ctx->repo;
-        if (DEBUG_REPO_LEVEL_2)
-            knd_log("== user base repo selected: %.*s",
-                    repo->name_size, repo->name);
-        task->repo = repo;
-        return make_gsl_err(gsl_OK);
-    default:
-        task->repo = task->user_ctx->repo;
-        break;
+    /* special names */
+    if (name_size == 1) {
+        switch (*name) {
+        case '/':
+            repo = task->system_repo;
+            break;
+        case '~':
+            repo = task->user_ctx->repo;
+            break;
+        default:
+            err = find_repo(&repo, name, name_size, task);
+            if (err) {
+                return make_gsl_err(gsl_NO_MATCH);
+            }
+            break;
+        }
+    }
+    if (!repo) {
+        err = find_repo(&repo, name, name_size, task);
+        if (err) {
+            return make_gsl_err(gsl_NO_MATCH);
+        }
     }
 
-    /*repo = knd_shared_dict_get(task->shard->repo_name_idx, name, name_size);
-    if (!repo) {
-        KND_TASK_LOG("no such repo: %.*s", name_size, name);
-        return make_gsl_err(gsl_FAIL);
-    }
     task->repo = repo;
-    */
+    task->user_ctx->repo = repo;
+
+    snapshot = atomic_load_explicit(&repo->snapshot, memory_order_relaxed);
+
+    task->snapshot = snapshot;
+    task->cache = &repo->snapshot->cache;
+    task->idxs = &repo->snapshot->idxs;
+
     return make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t parse_snapshot_task(void *obj, const char *unused_var(rec), size_t *total_size)
 {
     struct kndTask *task = obj;
+    size_t last_commit_id = 0;
     int err;
 
     task->type = KND_SNAPSHOT_STATE;
-    err = knd_repo_snapshot(task->repo, task);
+    err = knd_repo_snapshot(task->repo, last_commit_id, task);
     if (err) {
         KND_TASK_LOG("failed to build a snapshot of {repo %.*s}",
                      task->repo->name_size, task->repo->name);
@@ -271,9 +285,8 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
             err = knd_commit_new(task->mempool, &task->ctx->commit);
             if (err) return make_gsl_err_external(err);
 
-            task->ctx->commit->orig_state_id = \
-                atomic_load_explicit(&task->repo->snapshots->num_commits,
-                                     memory_order_relaxed);
+            task->ctx->commit->orig_state_id =\
+                atomic_load_explicit(&task->snapshot->num_commits, memory_order_relaxed);
         }
     }
     return knd_class_import(repo, rec, total_size, task);
@@ -333,13 +346,13 @@ int knd_repo_index_proc_arg(struct kndRepo *repo, struct kndProc *proc,
                             struct kndProcArg *arg, struct kndTask *task)
 {
     struct kndMemPool *mempool   = task->mempool;
-    struct kndSet *arg_idx       = repo->idxs.proc_arg_idx;
-    struct kndSharedDict *arg_name_idx = repo->idxs.proc_arg_name_idx;
+    struct kndSet *arg_idx       = task->idxs->proc_arg_idx;
+    struct kndSharedDict *arg_name_idx = task->idxs->proc_arg_name_idx;
     struct kndProcArgRef *ref, *arg_ref, *next_arg_ref;
     int err;
 
     /* generate unique attr id */
-    arg->numid = atomic_fetch_add_explicit(&repo->idxs.proc_arg_id_count, 1,
+    arg->numid = atomic_fetch_add_explicit(&task->idxs->proc_arg_id_count, 1,
                                            memory_order_relaxed);
     arg->numid++;
     knd_uid_create(arg->numid, arg->id, &arg->id_size);
@@ -356,17 +369,19 @@ int knd_repo_index_proc_arg(struct kndRepo *repo, struct kndProc *proc,
         // fall through
     case KND_BULK_LOAD_STATE:
 
-        err = knd_proc_get_arg(proc, arg->name, arg->name_size, &ref);
+        err = knd_proc_get_arg(proc, arg->name, arg->name_size, &ref, task);
 
         next_arg_ref = knd_shared_dict_get(arg_name_idx, arg->name, arg->name_size);
         arg_ref->next = next_arg_ref;
 
         err = knd_shared_dict_set(arg_name_idx, arg->name, arg->name_size,
-                                  (void*)arg_ref, mempool, NULL, &arg->item, true);
-        KND_TASK_ERR("failed to globally register arg name \"%.*s\"", arg->name_size, arg->name);
+                                  (void*)arg_ref, NULL, &arg->item, true);
+        KND_TASK_ERR("failed to globally register arg name \"%.*s\"",
+                     arg->name_size, arg->name);
 
         err = arg_idx->add(arg_idx, arg->id, arg->id_size, (void*)arg_ref);
-        KND_TASK_ERR("failed to globally register numid of arg \"%.*s\"", arg->name_size, arg->name);
+        KND_TASK_ERR("failed to globally register numid of arg \"%.*s\"",
+                     arg->name_size, arg->name);
 
         return knd_OK;
     default:
@@ -407,18 +422,6 @@ int knd_conc_folder_new(struct kndMemPool *mempool, struct kndConcFolder **resul
     return knd_OK;
 }
 
-int knd_repo_cache_new(struct kndMemPool *mempool, struct kndRepoCache **result)
-{
-    void *page;
-    int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndRepoCache));
-    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
-    if (err) return err;
-    memset(page, 0, sizeof(struct kndRepoCache));
-    *result = page;
-    return knd_OK;
-}
-
 int knd_storage_leaf_new(struct kndStorageLeaf **result, struct kndRepoSnapshot *snapshot)
 {
     struct kndStorageLeaf *leaf;
@@ -429,22 +432,73 @@ int knd_storage_leaf_new(struct kndStorageLeaf **result, struct kndRepoSnapshot 
     return knd_OK;
 }
 
-int knd_repo_snapshot_new(struct kndMemPool *mempool, struct kndRepoSnapshot **result)
+int knd_repo_snapshot_new(struct kndRepoSnapshot **result,
+                          struct kndMemPool *cache_mempool, struct kndMemPool *mempool)
 {
     struct kndRepoSnapshot *s;
+    void *page;
     int err;
 
-    s = malloc(sizeof(struct kndRepoSnapshot));
-    if (!s) return knd_NOMEM;
-    memset(s, 0, sizeof(struct kndRepoSnapshot));
+    assert(mempool->page_size >= sizeof(struct kndRepoSnapshot));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_BASE, &page);
+    if (err) return err;
+    memset(page, 0, sizeof(struct kndRepoSnapshot));
+    s = page;
 
-    err = knd_set_new(mempool, &s->commit_idx);
+    err = knd_set_new(&s->commit_idx, mempool);
     if (err) return err;
     s->max_journals = KND_MAX_JOURNALS;
     s->max_journal_size = KND_MAX_JOURNAL_SIZE;
 
+    /* cache */
+    err = knd_set_new(&s->cache.class_idx, cache_mempool);
+    if (err) return err;
+    err = knd_dict_new(&s->cache.class_name_idx, cache_mempool, KND_MEDIUM_DICT_SIZE);
+    if (err) return err;
+
+    /* indices for writing */
+    err = knd_shared_set_new(&s->idxs.str_idx, mempool);
+    if (err) return err;
+
+    err = knd_shared_dict_new(&s->idxs.str_dict, mempool, KND_MEDIUM_DICT_SIZE);
+    if (err) return err;
+    err = knd_shared_set_new(&s->idxs.class_idx, mempool);
+    if (err) return err;
+    err = knd_shared_dict_new(&s->idxs.class_name_idx, mempool, KND_MEDIUM_DICT_SIZE);
+    if (err) return err;
+    err = knd_set_new(&s->idxs.attr_idx, mempool);
+    if (err) return err;
+    err = knd_shared_dict_new(&s->idxs.attr_name_idx, mempool, KND_MEDIUM_DICT_SIZE);
+    if (err) return err;
+    
     *result = s;
     return knd_OK;
+}
+
+int knd_repo_cleanup(struct kndRepo *repo, struct kndTask *task)
+{
+    struct kndRepoSnapshot *snapshot;
+    int err;
+
+    /* it is safe to transfer all interim commits to new memory */
+    err = knd_repo_transfer_commits(repo, task);
+    KND_TASK_ERR("failed to transfer sys repo commits");
+
+    /* time to switch snapshots */
+    snapshot = atomic_load_explicit(&repo->snapshot, memory_order_relaxed);    
+    atomic_store_explicit(&repo->snapshot, repo->snapshot_temp, memory_order_relaxed);
+    repo->snapshot_temp = NULL;
+
+    /* release prev resources */
+    knd_repo_snapshot_free(snapshot);
+
+    return knd_OK;
+}
+
+void knd_repo_snapshot_free(struct kndRepoSnapshot *snapshot)
+{
+    
+    free(snapshot);
 }
 
 int knd_repo_new(struct kndRepo **repo, const char *name, size_t name_size,
@@ -458,11 +512,10 @@ int knd_repo_new(struct kndRepo **repo, const char *name, size_t name_size,
     struct kndProcEntry *proc_entry;
     int err;
 
-    self = malloc(sizeof(struct kndRepo));
-    if (!self) return knd_NOMEM;
-    memset(self, 0, sizeof(struct kndRepo));
-
     if (name_size >= (KND_NAME_SIZE - 1)) return knd_LIMIT;
+
+    self = calloc(1, sizeof(struct kndRepo));
+    if (!self) return knd_NOMEM;
 
     memcpy(self->name, name, name_size);
     self->name_size = name_size;
@@ -514,23 +567,6 @@ int knd_repo_new(struct kndRepo **repo, const char *name, size_t name_size,
     c->entry->repo = self;
     self->root_class = c;
 
-    err = knd_shared_set_new(NULL, &self->idxs.str_idx);
-    if (err) goto error;
-    err = knd_shared_dict_new(&self->idxs.str_dict, KND_MEDIUM_DICT_SIZE);
-    if (err) goto error;
-
-    err = knd_shared_set_new(NULL, &self->idxs.class_idx);
-    if (err) goto error;
-
-    /* global name indices */
-    err = knd_shared_dict_new(&self->idxs.class_name_idx, KND_MEDIUM_DICT_SIZE);
-    if (err) goto error;
-
-    /* attrs */
-    err = knd_set_new(mempool, &self->idxs.attr_idx);
-    if (err) goto error;
-    err = knd_shared_dict_new(&self->idxs.attr_name_idx, KND_MEDIUM_DICT_SIZE);
-    if (err) goto error;
 
     /*** PROC ***/
     err = knd_proc_entry_new(mempool, &proc_entry);
@@ -548,22 +584,22 @@ int knd_repo_new(struct kndRepo **repo, const char *name, size_t name_size,
     proc->entry->repo = self;
     self->root_proc = proc;
 
-    err = knd_set_new(mempool, &self->idxs.proc_idx);
+    /*
+    err = knd_set_new(mempool, &task->idxs->proc_idx);
     if (err) goto error;
 
-    err = knd_shared_dict_new(&self->idxs.proc_name_idx, KND_LARGE_DICT_SIZE);
+    err = knd_shared_dict_new(&task->idxs->proc_name_idx, KND_LARGE_DICT_SIZE);
     if (err) goto error;
 
-    /* proc args */
-    err = knd_set_new(mempool, &self->idxs.proc_arg_idx);
+    err = knd_set_new(mempool, &task->idxs->proc_arg_idx);
     if (err) goto error;
-    err = knd_shared_dict_new(&self->idxs.proc_arg_name_idx, KND_MEDIUM_DICT_SIZE);
+    err = knd_shared_dict_new(&task->idxs->proc_arg_name_idx, KND_MEDIUM_DICT_SIZE);
     if (err) goto error;
 
-    /* proc insts */
-    err = knd_shared_dict_new(&self->idxs.proc_inst_name_idx, KND_LARGE_DICT_SIZE);
+    err = knd_shared_dict_new(&task->idxs->proc_inst_name_idx, KND_LARGE_DICT_SIZE);
     if (err) goto error;
-    
+    */
+ 
     *repo = self;
     return knd_OK;
  error:

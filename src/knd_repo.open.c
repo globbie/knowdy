@@ -11,7 +11,6 @@
 #include "knd_user.h"
 #include "knd_query.h"
 #include "knd_task.h"
-#include "knd_shard.h"
 #include "knd_dict.h"
 #include "knd_shared_dict.h"
 #include "knd_class.h"
@@ -93,9 +92,8 @@ static gsl_err_t parse_commit(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndRepo *repo = ctx->repo;
     struct kndUserContext *user_ctx = task->user_ctx;
-    struct kndSet *idx = repo->snapshots->commit_idx;
+    struct kndSet *idx = task->snapshot->commit_idx;
     struct kndMemPool *mempool = task->mempool;
     size_t ts = 0;
     int err;
@@ -317,8 +315,7 @@ int knd_repo_restore(struct kndRepo *self, struct kndRepoSnapshot *snapshot, str
     return knd_OK;
 }
 
-static int fetch_str_idx(struct kndRepo *self, const char *path, size_t path_size,
-                         struct kndTask *task)
+static int fetch_str_idx(const char *path, size_t path_size, struct kndTask *task)
 {
     struct kndOutput *out = task->file_out;
     struct stat st;
@@ -341,16 +338,16 @@ static int fetch_str_idx(struct kndRepo *self, const char *path, size_t path_siz
         knd_log(".. unmarshall {string-idx %.*s {size %zu}}",
                 out->buf_size, out->buf, (size_t)st.st_size);
     }
-    err = knd_shared_set_unmarshall_file(self->idxs.str_idx, out->buf, out->buf_size,
+    err = knd_shared_set_unmarshall_file(task->idxs->str_idx, out->buf, out->buf_size,
                                          (size_t)st.st_size, knd_charseq_unmarshall, task);
     KND_TASK_ERR("failed to unmarshall str idx file");
 
-    atomic_store_explicit(&self->idxs.num_strs, self->idxs.str_idx->num_elems, memory_order_relaxed);
+    atomic_store_explicit(&task->idxs->num_strs, task->idxs->str_idx->num_elems,
+                          memory_order_relaxed);
     return knd_OK;
 }
 
-static int fetch_class_storage(struct kndRepo *self, const char *path, size_t path_size,
-                               struct kndTask *task)
+static int fetch_class_storage(const char *path, size_t path_size, struct kndTask *task)
 {
     struct kndOutput *out = task->file_out;
     struct stat st;
@@ -363,11 +360,12 @@ static int fetch_class_storage(struct kndRepo *self, const char *path, size_t pa
     if (stat(out->buf, &st)) {
         return knd_NO_MATCH;
     }
+
     if (DEBUG_REPO_LEVEL_TMP) {
         knd_log(".. reading {class-snapshot %.*s {size %zu}}",
                 out->buf_size, out->buf, (size_t)st.st_size);
     }
-    err = knd_shared_set_unmarshall_file(self->idxs.class_idx, out->buf, out->buf_size,
+    err = knd_shared_set_unmarshall_file(task->idxs->class_idx, out->buf, out->buf_size,
                                          (size_t)st.st_size, knd_class_entry_unmarshall, task);
     KND_TASK_ERR("failed to unmarshall class storage GSP file");
     return knd_OK;
@@ -388,7 +386,9 @@ static int read_repo_meta(struct kndRepo *repo, struct kndRepoSnapshot *snapshot
     if (DEBUG_REPO_LEVEL_TMP) {
         knd_log(".. open {repo-meta %.*s}", out->buf_size, out->buf);
     }
+
     if (stat(out->buf, &st)) {
+        knd_log("-- no repo meta found, assume new empty repo");
         return knd_OK;
     }
 
@@ -403,9 +403,9 @@ static int fetch_latest_snapshot(struct kndRepo *repo, struct kndRepoSnapshot **
     struct kndRepoSnapshot *snapshot;
     int err;
 
-    err = knd_repo_snapshot_new(task->user_ctx->mempool, &snapshot);
+    err = knd_repo_snapshot_new(&snapshot, task->cache_mempool, task->mempool);
     KND_TASK_ERR("failed to alloc a repo snapshot");
-    atomic_store_explicit(&repo->snapshots, snapshot, memory_order_relaxed);
+    atomic_store_explicit(&repo->snapshot, snapshot, memory_order_relaxed);
 
     // TODO use dynamic config
     snapshot->min_leaf_size = KND_SNAPSHOT_LEAF_MIN_THRESHOLD;
@@ -440,14 +440,13 @@ static int read_snapshot(struct kndRepoSnapshot *snapshot, struct kndTask *task)
     // TODO read snapshot metadata, signature
 
     /* decode string names */
-    err = fetch_str_idx(snapshot->repo, filename, filename_size, task);
+    err = fetch_str_idx(filename, filename_size, task);
     KND_TASK_ERR("failed to read string idx in "
                  " {snapshot #%zu {path %.*s}}",
                  snapshot->numid, filename_size, filename);
 
-    err = fetch_class_storage(snapshot->repo, filename, filename_size, task);
-    KND_TASK_ERR("failed to read storage leaf at %.*s",
-                 filename_size, filename);
+    err = fetch_class_storage(filename, filename_size, task);
+    KND_TASK_ERR("failed to read storage leaf at %.*s", filename_size, filename);
 
     return knd_OK;
 }
@@ -485,6 +484,10 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
 
     err = fetch_latest_snapshot(self, &snapshot, task);
     KND_TASK_ERR("failed to fetch any repo snapshots");
+
+    task->snapshot = snapshot;
+    task->cache = &snapshot->cache;
+    task->idxs = &snapshot->idxs;
 
     switch (snapshot->state) {
     case KND_SNAPSHOT_INIT:

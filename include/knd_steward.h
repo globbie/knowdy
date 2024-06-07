@@ -2,8 +2,8 @@
 
 #include <knd_err.h>
 #include <knd_config.h>
+#include <knd_mempool.h>
 
-struct kndMemPool;
 struct kndUser;
 struct kndSharedDict;
 
@@ -21,18 +21,13 @@ static const char* const knd_agent_role_names[] = {
     [KND_AGENT_AUX] = "AUX"
 };
 
-struct kndMemConfig {
-    size_t num_large_x4_pages;
-    size_t num_large_x2_pages;
-    size_t num_large_pages;
-    size_t num_pages;
-    size_t num_small_x4_pages;
-    size_t num_small_x2_pages;
-    size_t num_small_pages;
-    size_t num_tiny_pages;
+struct kndResourceReport {
+    size_t mem_usage;
+    size_t disk_usage;
+    bool mem_threshold_alert;
 };
 
-struct kndShard
+struct kndSteward
 {
     knd_agent_role_type role;
 
@@ -54,9 +49,11 @@ struct kndShard
     size_t user_repo_name_size;
     char user_schema_path[KND_PATH_SIZE];
     size_t user_schema_path_size;
+
     struct kndUser *user;
 
-    struct kndMemConfig mem_config;
+    struct kndMemConfig mem_main_config;
+    struct kndMemConfig mem_cache_config;
     struct kndMemConfig mem_user_config;
     struct kndMemConfig mem_ctx_config;
 
@@ -82,12 +79,16 @@ struct kndShard
     struct kndSharedDict *repo_name_idx;
 };
 
-int knd_shard_new(struct kndShard **shard, const char *config, size_t config_size);
-void knd_shard_del(struct kndShard *shard);
+int  knd_steward_new(struct kndSteward **steward, const char *config, size_t config_size);
+int  knd_steward_cleanup(struct kndSteward *steward);
+void knd_steward_monitor(struct kndSteward *steward, struct kndResourceReport *report);
+void knd_steward_del(struct kndSteward *steward);
 
-int knd_shard_run_task(struct kndShard *self, const char *input, size_t input_size,
+int knd_steward_run_task(struct kndSteward *self, const char *input, size_t input_size,
                        char *output, size_t *output_size);
-int knd_shard_report_task(struct kndShard *self,
+int knd_steward_report_task(struct kndSteward *self,
                           const char *task_id, size_t task_id_size);
-int knd_shard_cancel_task(struct kndShard *self,
+int knd_steward_cancel_task(struct kndSteward *self,
                           const char *task_id, size_t task_id_size);
+int knd_steward_snapshot(struct kndSteward *steward);
+

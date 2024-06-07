@@ -6,7 +6,6 @@
 #include <stdatomic.h>
 
 #include "knd_repo.h"
-#include "knd_shard.h"
 #include "knd_attr.h"
 #include "knd_set.h"
 #include "knd_shared_set.h"
@@ -259,7 +258,7 @@ static int export_class_insts(void *obj, const char *unused_var(elem_id),
     struct kndClass *c;
     struct kndOutput *out = task->out;
     struct kndStorageLeaf *leaf;
-    struct kndRepoSnapshot *snapshot = atomic_load_explicit(&task->repo->snapshots, memory_order_relaxed);
+    struct kndRepoSnapshot *snapshot = atomic_load_explicit(&task->repo->snapshot, memory_order_relaxed);
     int err;
 
     err = knd_class_acquire(entry, &c, task);
@@ -294,7 +293,7 @@ static int build_snapshot_path(struct kndRepo *repo,
 
     out->reset(out);
     OUT(repo->path, repo->path_size);
-    OUTF("snapshot_%zu/", repo->snapshots->numid);
+    OUTF("snapshot_%zu/", repo->snapshot->numid);
     OUTF("agent_%d/", task->id);
     if (out->buf_size >= KND_PATH_SIZE) {
         err = knd_LIMIT;
@@ -306,34 +305,32 @@ static int build_snapshot_path(struct kndRepo *repo,
     return knd_OK;
 }
 
-int knd_repo_snapshot(struct kndRepo *repo, struct kndTask *task)
+int knd_repo_snapshot(struct kndRepo *repo, size_t last_commit_id, struct kndTask *task)
 {
-    struct kndRepoSnapshot *snapshot = atomic_load_explicit(&repo->snapshots,
-                                                            memory_order_relaxed);
-    size_t latest_commit_id = atomic_load_explicit(&repo->snapshots->num_commits,
-                                                   memory_order_relaxed);
+    struct kndRepoSnapshot *snapshot;
     struct kndStorageLeaf *leaf;
     char path[KND_PATH_SIZE + 1];
     size_t path_size;
     int err;
 
     if (DEBUG_REPO_GSP_LEVEL_TMP) {
-        knd_log(".. building a GSP snapshot of {repo %.*s {latest-commit %zu}}",
-                repo->name_size, repo->name, latest_commit_id);
+        knd_log(".. building a GSP snapshot of {repo %.*s {last-commit %zu}}",
+                repo->name_size, repo->name, last_commit_id);
     }
 
+    err = knd_repo_snapshot_new(&snapshot, task->cache_mempool, task->mempool);
+    KND_TASK_ERR("failed to alloc a repo snapshot");
+    snapshot->min_leaf_size = KND_SNAPSHOT_LEAF_MIN_THRESHOLD;
+    snapshot->max_leaf_size = KND_SNAPSHOT_LEAF_MAX_THRESHOLD;
+  
     err = build_snapshot_path(repo, path, &path_size, task);
     KND_TASK_ERR("failed to build a file path");
 
     err = knd_mkpath((const char*)path, path_size, 0755, false);
     KND_TASK_ERR("mkpath %.*s failed", path_size, path);
 
-    //err = knd_shared_set_map(repo->class_idx, present_class_entry, (void*)task);
-    //KND_TASK_ERR("failed to present class entries");
-
     /* class storage */
-    err = marshall_idx(repo->idxs.class_idx, path, path_size,
-                       "class", strlen("class"),
+    err = marshall_idx(task->idxs->class_idx, path, path_size, "class", strlen("class"),
                        knd_class_marshall, snapshot, &leaf, task);
     KND_TASK_ERR("failed to build the class storage");
     snapshot->class_db = leaf;
@@ -343,7 +340,7 @@ int knd_repo_snapshot(struct kndRepo *repo, struct kndTask *task)
     task->filepath_size = path_size;
     task->filepath[path_size] = '\0';
 
-    err = knd_shared_set_map(repo->idxs.class_idx, export_class_insts, (void*)task);
+    err = knd_shared_set_map(task->idxs->class_idx, export_class_insts, (void*)task);
     KND_TASK_ERR("failed to build the class inst storage");
 
     /* global string dict storage */
@@ -357,8 +354,6 @@ int knd_repo_snapshot(struct kndRepo *repo, struct kndTask *task)
     snapshot->string_db = leaf;
     */
 
-    err = knd_repo_rebuild_cache(repo, task);
-    KND_TASK_ERR("failed to rebuild cache for {repo %.*s}", repo->name_size, repo->name);
-    
+    repo->snapshot_temp = snapshot;
     return knd_OK;
 }

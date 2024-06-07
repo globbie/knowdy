@@ -9,7 +9,6 @@
 #include "knd_repo.h"
 #include "knd_class.h"
 #include "knd_proc.h"
-#include "knd_shard.h"
 #include "knd_shared_set.h"
 #include "knd_user.h"
 #include "knd_utils.h"

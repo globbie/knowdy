@@ -23,9 +23,9 @@
 #define DEBUG_REL_PRED_RESOLVE_LEVEL_3 0
 #define DEBUG_REL_PRED_RESOLVE_LEVEL_TMP 1
 
-int knd_rel_pred_resolve(struct kndAttrVar *var, struct kndRepo *repo, struct kndTask *task)
+int knd_rel_pred_resolve(struct kndAttrVar *var, struct kndTask *task)
 {
-    struct kndSharedDict *class_name_idx = repo->idxs.class_name_idx;
+    struct kndSharedDict *class_name_idx = task->idxs->class_name_idx;
     struct kndAttr *attr = var->attr;
     struct kndRel *rel = attr->impl;
     struct kndClassEntry *entry;

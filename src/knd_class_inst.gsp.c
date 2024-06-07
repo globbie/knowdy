@@ -80,7 +80,7 @@ int knd_class_inst_entry_unmarshall(const char *elem_id, size_t elem_id_size, co
     entry->name_size = name_size;
     /* check charseq decoding */
     if (name_size <= KND_ID_SIZE) {
-        err = knd_shared_set_get(repo->idxs.str_idx, name, name_size, (void**)&seq);
+        err = knd_shared_set_get(task->idxs->str_idx, name, name_size, (void**)&seq);
         if (!err) {
             entry->name = seq->val;
             entry->name_size = seq->val_size;
@@ -89,7 +89,7 @@ int knd_class_inst_entry_unmarshall(const char *elem_id, size_t elem_id_size, co
     }
 
     err = knd_shared_dict_set(is_a->class->inst_name_idx, entry->name, entry->name_size,
-                              (void*)entry, task->mempool, NULL, &item, false);
+                              (void*)entry, NULL, &item, false);
     KND_TASK_ERR("failed to register class inst name");
     entry->dict_item = item;
 

@@ -10,7 +10,6 @@
 #include "knd_class.h"
 #include "knd_attr.h"
 #include "knd_proc.h"
-#include "knd_shard.h"
 #include "knd_user.h"
 #include "knd_utils.h"
 #include "knd_mempool.h"
@@ -312,7 +311,6 @@ static int index_proc_declar(struct kndProcDeclar *decl, struct kndSentence *sen
 {
     struct kndProcRef *ref;
     //struct kndAttrIdx *idx = inst->entry->attr_idxs;
-    //struct kndMemPool *mempool = task->user_ctx ? task->shard->user->mempool : task->mempool;
     //struct kndTextLoc *loc;
     struct kndProcEntry *entry;
     int err;

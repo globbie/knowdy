@@ -23,7 +23,6 @@
 #include "knd_text.h"
 #include "knd_dict.h"
 #include "knd_repo.h"
-#include "knd_shard.h"
 #include "knd_user.h"
 #include "knd_output.h"
 
@@ -117,14 +116,15 @@ int knd_proc_export(struct kndProc *self, knd_format format, struct kndTask *tas
     return knd_OK;
 }
 
-int knd_proc_get_arg(struct kndProc *self, const char *name, size_t name_size, struct kndProcArgRef **result)
+int knd_proc_get_arg(struct kndProc *self, const char *name, size_t name_size,
+                     struct kndProcArgRef **result, struct kndTask *task)
 {
     struct kndProcArgRef *ref;
     struct kndProcArg *arg = NULL;
 
     assert(self->entry != NULL);
 
-    struct kndSharedDict *arg_name_idx = self->entry->repo->idxs.proc_arg_name_idx;
+    struct kndSharedDict *arg_name_idx = task->idxs->proc_arg_name_idx;
     struct kndSet *arg_idx = self->arg_idx;
     int err;
 
@@ -137,8 +137,9 @@ int knd_proc_get_arg(struct kndProc *self, const char *name, size_t name_size, s
     ref = knd_shared_dict_get(arg_name_idx, name, name_size);
     if (!ref) {
         if (self->entry->repo->base) {
-            arg_name_idx = self->entry->repo->base->idxs.proc_arg_name_idx;
-            ref = knd_shared_dict_get(arg_name_idx, name, name_size);
+            // TODO
+            //arg_name_idx = self->entry->repo->base->idxs.proc_arg_name_idx;
+            //ref = knd_shared_dict_get(arg_name_idx, name, name_size);
         }
         if (!ref) {
             if (DEBUG_PROC_LEVEL_2)
@@ -217,7 +218,7 @@ int knd_get_proc(struct kndRepo *repo, const char *name, size_t name_size,
         knd_log(".. \"%.*s\" repo to get proc: \"%.*s\"..",
                 repo->name_size, repo->name, name_size, name);
 
-    entry = knd_shared_dict_get(repo->idxs.proc_name_idx, name, name_size);
+    entry = knd_shared_dict_get(task->idxs->proc_name_idx, name, name_size);
     if (!entry) {
         if (repo->base) {
             err = knd_get_proc(repo->base, name, name_size, result, task);
@@ -248,7 +249,7 @@ int knd_get_proc_entry(struct kndRepo *repo, const char *name, size_t name_size,
                        struct kndProcEntry **result, struct kndTask *task)
 {
     struct kndProcEntry *entry;
-    struct kndSharedDict *proc_name_idx = repo->idxs.proc_name_idx;
+    struct kndSharedDict *proc_name_idx = task->idxs->proc_name_idx;
     int err;
 
     if (DEBUG_PROC_LEVEL_2)
@@ -301,13 +302,12 @@ static int commit_state(struct kndProc *self,
     return knd_OK;
 }
 
-int knd_proc_entry_clone(struct kndProcEntry *self, struct kndRepo *repo, struct kndProcEntry **result, struct kndTask *task)
+int knd_proc_entry_clone(struct kndProcEntry *self, struct kndRepo *repo,
+                         struct kndProcEntry **result, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
-    //if (task->user_ctx)
-    //    mempool = task->shard->user->mempool;
     struct kndProcEntry *entry;
-    struct kndSharedDict *name_idx = repo->idxs.proc_name_idx;
+    struct kndSharedDict *name_idx = task->idxs->proc_name_idx;
     struct kndSharedDictItem *item = NULL;
     int err;
 
@@ -329,7 +329,7 @@ int knd_proc_entry_clone(struct kndProcEntry *self, struct kndRepo *repo, struct
     entry->descendants = self->descendants;
 
     err = knd_shared_dict_set(name_idx, entry->name,  entry->name_size,
-                              (void*)entry, mempool, task->ctx->commit, &item, false);
+                              (void*)entry, task->ctx->commit, &item, false);
     KND_TASK_ERR("failed to register proc \"%.*s\"", entry->name_size, entry->name);
     entry->dict_item = item;
 

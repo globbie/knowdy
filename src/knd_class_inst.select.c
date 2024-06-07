@@ -141,9 +141,8 @@ static gsl_err_t present_state(void *obj, const char *unused_var(name), size_t u
 
     if (task->state_lt && task->state_lt < task->state_gt) goto JSON_state;
 
-    err = knd_set_new(mempool, &set);
+    err = knd_set_new(&set, mempool);
     if (err) return make_gsl_err_external(err);
-    set->mempool = mempool;
 
     err = knd_class_get_inst_updates(ctx->class, task->state_gt, task->state_lt, task->state_eq, set);
     if (err) return make_gsl_err_external(err);

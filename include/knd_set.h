@@ -103,15 +103,12 @@ struct kndSet
                void *obj);
 };
 
-int knd_set_new(struct kndMemPool *mempool, struct kndSet **result);
-int knd_set_dir_new(struct kndMemPool *mempool, struct kndSetDir **result);
-int knd_set_dir_entry_new(struct kndMemPool *mempool, struct kndSetDirEntry **result);
-int knd_set_init(struct kndSet *self);
+int knd_set_new(struct kndSet **result, struct kndMemPool *mempool);
+int knd_set_dir_new(struct kndSetDir **result, struct kndMemPool *mempool);
+int knd_set_dir_entry_new(struct kndSetDirEntry **result, struct kndMemPool *mempool);
+int knd_set_elem_idx_new(struct kndSetElemIdx **result, struct kndMemPool *mempool);
 
-int knd_set_elem_idx_new(struct kndMemPool *mempool,
-                         struct kndSetElemIdx **result);
-int knd_set_elem_idx_mem(struct kndMemPool *mempool,
-                         struct kndSetElemIdx **result);
+int knd_set_init(struct kndSet *self);
 
 int knd_set_intersect(struct kndSet *self, struct kndSet **sets, size_t num_sets);
 

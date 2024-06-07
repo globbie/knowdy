@@ -104,9 +104,9 @@ struct kndSharedSet
     bool allow_overwrite;
 };
 
-int knd_shared_set_new(struct kndMemPool *mempool, struct kndSharedSet **result);
-int knd_shared_set_elem_idx_new(struct kndMemPool *mempool, struct kndSharedSetElemIdx **result);
-int knd_shared_set_dir_new(struct kndMemPool *mempool, struct kndSharedSetDir **result);
+int knd_shared_set_new(struct kndSharedSet **result, struct kndMemPool *mempool);
+int knd_shared_set_elem_idx_new(struct kndSharedSet *self, struct kndSharedSetElemIdx **result);
+int knd_shared_set_dir_new(struct kndSharedSet *self, struct kndSharedSetDir **result);
 
 int knd_shared_set_get(struct kndSharedSet *self, const char *key, size_t key_size, void **elem);
 int knd_shared_set_add(struct kndSharedSet *self, const char *key, size_t key_size, void *elem);

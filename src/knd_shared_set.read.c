@@ -329,7 +329,7 @@ static int read_subdirs(struct kndSharedSet *self, struct kndSharedSetDir *dir,
             idbuf[idbuf_size] = *c;
             elem_id_val = obj_id_base[*c];
 
-            err = knd_shared_set_dir_new(self->mempool, &subdir);
+            err = knd_shared_set_dir_new(self, &subdir);
             KND_TASK_ERR("failed to alloc a set subdir");
             subdir->total_size = numval;
             subdir->global_offset = offset + block_offset;
@@ -351,7 +351,7 @@ static int read_subdirs(struct kndSharedSet *self, struct kndSharedSetDir *dir,
         if (numval == 0) continue;
         idbuf[idbuf_size] = obj_id_seq[i];
 
-        err = knd_shared_set_dir_new(self->mempool, &subdir);
+        err = knd_shared_set_dir_new(self, &subdir);
         KND_TASK_ERR("failed to alloc a set subdir");
         subdir->total_size = numval;
         subdir->global_offset = offset + block_offset;
@@ -445,7 +445,7 @@ int knd_shared_set_unmarshall_file(struct kndSharedSet *self,
     memcpy(self->path, filename, filename_size);
     self->path_size = filename_size;
 
-    err = knd_shared_set_dir_new(self->mempool, &dir);
+    err = knd_shared_set_dir_new(self, &dir);
     if (err) {
         KND_TASK_LOG("failed to alloc a set dir");
         goto final;

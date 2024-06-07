@@ -13,6 +13,12 @@
             {max-small_x2-pages    31000}
             {max-small-pages       90000}
             {max-tiny-pages        120000}}
+         {cache
+            {max-base-pages        5000}
+            {max-small_x4-pages    20000}
+            {max-small_x2-pages    31000}
+            {max-small-pages       90000}
+            {max-tiny-pages        120000}}
          {user
             {max-base-pages        5000}
             {max-small_x4-pages    20000}
