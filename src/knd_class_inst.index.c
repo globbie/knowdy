@@ -65,8 +65,8 @@ static int update_attr_var_indices(struct kndClassInstEntry *entry, struct kndRe
 int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *is_a,
                                   struct kndStateRef *state_refs, struct kndTask *task)
 {
-    struct kndClass *c = is_a->class;
     struct kndClassEntry *class_entry = is_a;
+    struct kndClass *c;
     struct kndStateRef *ref;
     struct kndClassInstEntry *entry;
     struct kndSharedDict *name_idx = NULL;
@@ -74,22 +74,23 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *is
     struct kndSharedSet *idx = NULL;
     struct kndSharedSet *new_idx = NULL;
     struct kndCommit *commit = state_refs->state->commit;
-    struct kndSharedDictItem *item = NULL;
     struct kndMemPool *mempool = task->user_ctx->mempool;
     int err;
 
     assert(commit != NULL);
-    assert(c != NULL);
 
-    if (DEBUG_INST_IDX_LEVEL_2)
-        knd_log(".. repo \"%.*s\" to update inst indices of class \"%.*s\" (repo:%.*s)",
-                repo->name_size, repo->name, is_a->name_size, is_a->name,
-                is_a->repo->name_size, is_a->repo->name);
+    err = knd_class_acquire(is_a, &c, task);
+    KND_TASK_ERR("failed to acquire class %.*s", is_a->name_size, is_a->name);
+   
+    if (DEBUG_INST_IDX_LEVEL_2) {
+        knd_log(".. {repo %.*s} to update inst indices of {repo %.*s {class %.*s}}",
+                repo->name_size, repo->name,
+                is_a->repo->name_size, is_a->repo->name, is_a->name_size, is_a->name);
+    }
 
     /* user repo selected: activate copy-on-write */
     if (task->user_ctx) {
-        class_entry = knd_shared_dict_get(task->idxs->class_name_idx,
-                                          is_a->name, is_a->name_size);
+        class_entry = knd_shared_dict_get(task->idxs->class_name_idx, is_a->name, is_a->name_size);
         if (is_a->repo != repo) {
             if (!class_entry) {
                 if (DEBUG_INST_IDX_LEVEL_3) {
@@ -139,11 +140,9 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *is
         case KND_CREATED:
             if (entry->name_size) {
                 err = knd_shared_dict_set(name_idx, entry->name, entry->name_size, (void*)entry,
-                                          commit, &item, false);
+                                          commit, false);
                 KND_TASK_ERR("name idx failed to register class inst %.*s, err:%d",
-                             entry->name_size, entry->name, err);
-                
-                item->phase = KND_SHARED_DICT_VALID;
+                             entry->name_size, entry->name, err);                
             }
             err = knd_shared_set_add(idx, entry->id, entry->id_size, (void*)entry);
             KND_TASK_ERR("class inst idx failed to register \"%.*s\"",

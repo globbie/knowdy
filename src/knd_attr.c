@@ -107,16 +107,15 @@ void knd_attr_var_str(struct kndAttrVar *var, size_t depth)
     if (var->is_list_item) {
         switch (attr->type) {
         case KND_ATTR_INNER:
-            knd_log("%*s* inner \"%.*s\" (class:%p):", depth * KND_OFFSET_SIZE, "",
-                    attr->ref_class_entry->name_size, attr->ref_class_entry->name,
-                    attr->ref_class_entry->class);
+            knd_log("%*s* {inner-class %.*s}", depth * KND_OFFSET_SIZE, "",
+                    attr->ref_class_entry->name_size, attr->ref_class_entry->name);
             break;
         case KND_ATTR_REF:
-            knd_log("%*s* ref \"%.*s\":", depth * KND_OFFSET_SIZE, "",
+            knd_log("%*s* {class-ref %.*s}", depth * KND_OFFSET_SIZE, "",
                     attr->ref_class_entry->name_size, attr->ref_class_entry->name);
             break;
         default:
-            knd_log("%*s* %s: \"%.*s\"", depth * KND_OFFSET_SIZE, "",
+            knd_log("%*s* {%s %.*s}", depth * KND_OFFSET_SIZE, "",
                     type_name, var->name_size, var->name);
             break;
         }
@@ -189,53 +188,14 @@ int knd_attr_export(struct kndAttr *self, knd_format format, struct kndTask *tas
     return knd_NO_MATCH;
 }
 
-int knd_apply_attr_var_commits(struct kndClass *unused_var(self), struct kndClassCommit *class_commit, struct kndTask *task)
-{
-    struct kndState *state; //, *s, *next_state = NULL;
-    //struct kndAttrVar *attr_var;
-    struct kndMemPool *mempool = task->mempool;
-    int err;
-
-    if (DEBUG_ATTR_LEVEL_TMP)
-        knd_log(".. applying attr var commits..");
-
-    err = knd_state_new(mempool, &state);
-    if (err) return err;
-
-    state->commit = class_commit->commit;
-    
-    //for (s = self->attr_var_inbox; s; s = next_state) {
-        //attr_var = s->val;
-
-        /*knd_log("== attr var %.*s => %.*s",
-                attr_var->name_size, attr_var->name,
-                s->val_size, s->val); */
-
-        //attr_var->val = s->val;
-        //attr_var->val_size = s->val_size;
-
-        //next_state = s->next;
-        //s->next = attr_var->states;
-        //attr_var->states = s;
-        //attr_var->num_states++;
-    //}
-
-    /* state->next = self->states;
-    self->states = state;
-    self->num_states++;
-    state->numid = self->num_states;
-    state->phase = KND_UPDATED;
-    */
-    return knd_OK;
-}
-
 int knd_get_arg_value(struct kndAttrVar *src, struct kndAttrVar *query,
-                      struct kndProcCallArg *result_arg)
+                      struct kndProcCallArg *result_arg, struct kndTask *task)
 {
     struct kndAttrVar *curr_var;
     struct kndAttr *attr;
     struct kndAttrRef *ref;
     struct kndClass *parent_class = src->class_var->parent;
+    struct kndClassEntry *entry;
     struct kndClass *c;
     int err;
 
@@ -250,11 +210,12 @@ int knd_get_arg_value(struct kndAttrVar *src, struct kndAttrVar *query,
                 src->attr->ref_class_entry->name);
         knd_attr_var_str(src, 1);
     }
-    
-    if (src->attr->ref_class_entry) {
-        // TODO atomic
-        c = src->attr->ref_class_entry->class;
 
+    if (src->attr->ref_class_entry) {
+        entry = src->attr->ref_class_entry;
+        err = knd_class_acquire(entry, &c, task);
+        KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
+        
         err = knd_class_get_attr(c, query->name, query->name_size, &ref);
         if (err) return err;
         attr = ref->attr;
@@ -277,8 +238,6 @@ int knd_get_arg_value(struct kndAttrVar *src, struct kndAttrVar *query,
             case KND_ATTR_REF:
                 // knd_log("++ match ref: %.*s",
                 //        src->class->name_size, src->class->name);
-
-                assert (src->class_entry->class != NULL);
                 //return knd_get_class_attr_value(src->class_entry->class,
                 //                                query->children, result_arg);
                 break;
@@ -321,7 +280,7 @@ int knd_get_arg_value(struct kndAttrVar *src, struct kndAttrVar *query,
             //        query->children->name_size, query->children->name);
             //knd_attr_var_str(curr_var, 1);
             
-            err = knd_get_arg_value(curr_var, query->children, result_arg);
+            err = knd_get_arg_value(curr_var, query->children, result_arg, task);
             if (err) return err;
         }
     }
@@ -388,7 +347,7 @@ int knd_attr_ref_new(struct kndMemPool *mempool, struct kndAttrRef **result)
     return knd_OK;
 }
 
-int knd_attr_new(struct kndMemPool *mempool, struct kndAttr **result)
+int knd_attr_new(struct kndAttr **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;

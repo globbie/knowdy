@@ -330,7 +330,7 @@ static gsl_err_t parse_snapshot_task(void *obj, const char *unused_var(rec), siz
     int err;
 
     task->type = KND_SNAPSHOT_STATE;
-    err = knd_repo_snapshot(repo, 0, task);
+    err = knd_repo_snapshot(repo, task);
     if (err) {
         KND_TASK_LOG("failed to build a snapshot of user repo");
         return *total_size = 0, make_gsl_err(gsl_FAIL);
@@ -487,7 +487,6 @@ int knd_user_new(struct kndUser **user,
     struct kndUser *self;
     struct kndRepo *repo = task->repo;
     struct kndRepoAccess *acl;
-    struct kndSharedDictItem *dict_item = NULL;
     struct kndMemPool *mempool;
     struct kndOutput *out = steward->out;
     struct kndOutput *log = steward->log;
@@ -540,7 +539,7 @@ int knd_user_new(struct kndUser **user,
     if (err) goto error;
 
     err = knd_shared_dict_set(steward->repo_name_idx, reponame, reponame_size,
-                              (void*)self->repo, NULL, &dict_item, true);
+                              (void*)self->repo, NULL, true);
     KND_TASK_ERR("failed to register repo name \"%.*s\"", reponame_size, reponame);
 
     /* default acl */

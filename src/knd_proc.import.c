@@ -224,7 +224,7 @@ static gsl_err_t set_proc_name(void *obj, const char *name, size_t name_size)
 
             /* register globally */
             err = knd_shared_dict_set(task->idxs->proc_name_idx, name, name_size,
-                                      (void*)entry, NULL, NULL, false);
+                                      (void*)entry, NULL, false);
             if (err) return make_gsl_err_external(err);
             return make_gsl_err(gsl_OK);
         }

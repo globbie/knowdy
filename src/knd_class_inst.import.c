@@ -40,13 +40,20 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     struct kndClassInstEntry *entry;
     struct kndTask *task = ctx->task;
     struct kndSharedDict *class_name_idx = task->idxs->class_name_idx;
-
-    assert(self->entry->is_a != NULL);
-    assert(self->entry->is_a->class != NULL);
-    struct kndSharedDict *name_idx = self->entry->is_a->class->inst_name_idx;
-    struct kndClass *c;
+    struct kndSharedDict *name_idx;
+    struct kndClass *c, *inner_c;
     int err;
 
+    assert(self->entry->is_a != NULL);
+
+    err = knd_class_acquire(self->entry->is_a, &c, task);
+    if (err) {
+        KND_TASK_LOG("failed to acquire class %.*s",
+                     self->entry->is_a->name_size, self->entry->is_a->name);
+        return make_gsl_err_external(err);
+    }
+    name_idx = c->inst_name_idx;
+    
     if (name_size == 0) return make_gsl_err(gsl_OK);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
@@ -65,13 +72,17 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
             KND_TASK_LOG("inner obj: no such class: %.*s", name_size, name);
             return make_gsl_err(gsl_FAIL);
         }
-        c = class_entry->class;
 
-        err = knd_is_base(self->entry->is_a->class, c);
+        err = knd_class_acquire(class_entry, &inner_c, task);
+        if (err) {
+            KND_TASK_LOG("failed to acquire class %.*s", class_entry->name_size, class_entry->name);
+            return make_gsl_err_external(err);
+        }
+
+        err = knd_is_base(inner_c, c);
         if (err) {
             KND_TASK_LOG("no inheritance from %.*s to %.*s",
-                         self->entry->is_a->name_size, self->entry->is_a->name,
-                         c->name_size, c->name);
+                         inner_c->name_size, inner_c->name, c->name_size, c->name);
             return make_gsl_err_external(err);
         }
         self->entry->is_a = class_entry;
@@ -210,21 +221,25 @@ static int generate_uniq_inst_name(struct kndClassInst *inst, struct kndTask *ta
 
 static int register_by_name(struct kndClassInstEntry *entry, struct kndTask *task)
 {
-    struct kndSharedDict *name_idx = entry->is_a->class->inst_name_idx;
-    struct kndSharedDictItem *item = NULL;
+    struct kndSharedDict *name_idx;
     struct kndMemPool *mempool = task->user_ctx->mempool;
+    struct kndClass *c;
     int err;
 
+    err = knd_class_acquire(entry->is_a, &c, task);
+    KND_TASK_ERR("failed to acquire class %.*s", entry->is_a->name_size, entry->is_a->name);
+
+    name_idx = c->inst_name_idx;
     if (!name_idx) {
         err = knd_shared_dict_new(&name_idx, mempool, KND_MEDIUM_DICT_SIZE);
         KND_TASK_ERR("failed to create inst name idx");
-        entry->is_a->class->inst_name_idx = name_idx;
+
+        c->inst_name_idx = name_idx;
     }
 
-    err = knd_shared_dict_set(name_idx, entry->name, entry->name_size, (void*)entry,
-                              NULL, &item, false);
-    KND_TASK_ERR("name idx failed to register class inst %.*s, err:%d",
-                 entry->name_size, entry->name, err);
+    err = knd_shared_dict_set(name_idx, entry->name, entry->name_size, (void*)entry, NULL, false);
+    KND_TASK_ERR("name idx failed to register class inst %.*s",
+                 entry->name_size, entry->name);
 
     return knd_OK;
 }
@@ -233,7 +248,7 @@ int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *
                           struct kndTask *task)
 {
     struct kndMemPool *mempool = task->user_ctx->mempool;
-    struct kndClass *c = entry->class;
+    struct kndClass *c;
     struct kndClassInst *inst;
     struct kndClassInstEntry *inst_entry;
     struct kndClassVar *class_var;
@@ -243,16 +258,16 @@ int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *
     struct kndClassDeclar *declar = NULL;
     int err;
     gsl_err_t parser_err;
-    assert(entry->class != NULL);
 
     if (DEBUG_INST_IMPORT_LEVEL_2) {
         knd_log(".. {repo %.*s {class %.*s}} to import {inst %.*s} {task-type %d}",
                 entry->repo->name_size, entry->repo->name,
-                entry->name_size, entry->name, 
-                64, rec, task->type);
-        entry->class->str(entry->class, 1);
+                entry->name_size, entry->name,  64, rec, task->type);
     }
 
+    err = knd_class_acquire(entry, &c, task);
+    KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
+   
     switch (task->type) {
     case KND_BULK_LOAD_STATE:
         break;

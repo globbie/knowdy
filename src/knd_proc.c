@@ -308,7 +308,6 @@ int knd_proc_entry_clone(struct kndProcEntry *self, struct kndRepo *repo,
     struct kndMemPool *mempool = task->mempool;
     struct kndProcEntry *entry;
     struct kndSharedDict *name_idx = task->idxs->proc_name_idx;
-    struct kndSharedDictItem *item = NULL;
     int err;
 
     if (DEBUG_PROC_LEVEL_2) {
@@ -329,9 +328,8 @@ int knd_proc_entry_clone(struct kndProcEntry *self, struct kndRepo *repo,
     entry->descendants = self->descendants;
 
     err = knd_shared_dict_set(name_idx, entry->name,  entry->name_size,
-                              (void*)entry, task->ctx->commit, &item, false);
+                              (void*)entry, task->ctx->commit, false);
     KND_TASK_ERR("failed to register proc \"%.*s\"", entry->name_size, entry->name);
-    entry->dict_item = item;
 
     *result = entry;
     return knd_OK;

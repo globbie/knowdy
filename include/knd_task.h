@@ -25,6 +25,7 @@
 
 #include "knd_config.h"
 #include "knd_state.h"
+#include "knd_memblock.h"
 #include "knd_steward.h"
 #include "knd_repo.h"
 #include "knd_dict.h"
@@ -87,15 +88,7 @@ struct kndTaskDestination
     char URI[KND_NAME_SIZE];
     size_t URI_size;
 
-    //  auth 
-
-};
-
-struct kndMemBlock {
-    size_t tid;
-    char *buf;
-    size_t buf_size;
-    struct kndMemBlock *next;
+    //  auth
 };
 
 struct kndTaskContext {
@@ -242,7 +235,9 @@ struct kndTask
 
     struct kndMemPool *mempool;
     struct kndMemPool *cache_mempool;
-    // struct kndMemPool *cache_mempool_temp;
+
+    struct kndMemPool *ctx_mempool;
+    struct kndMemPool *ctx_cache_mempool;
 
     bool keep_local_WAL;
 
@@ -259,6 +254,9 @@ struct kndTask
     struct kndDict *attr_name_idx;
     struct kndDict *proc_name_idx;
     struct kndDict *proc_arg_name_idx;
+
+    /* cache */
+    struct kndSet  *cache_class_idx;
 };
 
 int knd_task_new(struct kndTask **result,
@@ -266,14 +264,7 @@ int knd_task_new(struct kndTask **result,
 int knd_task_init(struct kndTask *task, struct kndSteward *steward);
 void knd_task_del(struct kndTask *self);
 void knd_task_reset(struct kndTask *self);
-
-int knd_task_block_new(struct kndMemPool *mempool, struct kndTask **result);
-int knd_task_copy_block(struct kndTask *self, const char *input, size_t input_size,
-                        const char **output, size_t *output_size);
-
-int knd_task_read_file_block(struct kndTask *self, const char *filename, size_t filename_size,
-                             struct kndMemBlock **result);
-void knd_task_free_blocks(struct kndTask *self);
+void knd_task_cleanup(struct kndTask *task, struct kndSteward *steward);
 
 int knd_task_err_export(struct kndTask *self);
 int knd_task_run(struct kndTask *self, const char *input, size_t input_size);

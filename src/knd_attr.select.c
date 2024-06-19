@@ -107,8 +107,7 @@ static gsl_err_t parse_logic_OR_val_array(void *obj,
     return gsl_parse_array(&item_spec, rec, total_size);
 }
 
-static gsl_err_t run_set_attr_var(void *obj,
-                                  const char *val, size_t val_size)
+static gsl_err_t run_set_attr_var(void *obj, const char *val, size_t val_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
@@ -148,7 +147,7 @@ static gsl_err_t run_set_attr_var(void *obj,
     attr_var = attr_ref->attr_var;
 
     if (DEBUG_ATTR_SELECT_LEVEL_TMP) {
-        knd_log(".. updating attr var %.*s with value: \"%.*s\"",
+        knd_log(".. updating attr var %.*s with {value %.*s}",
                 attr_var->name_size, attr_var->name, val_size, val);
     }
 
@@ -171,7 +170,7 @@ static gsl_err_t run_set_attr_var(void *obj,
     }
 
     state_val->obj = (void*)attr_var;
-    state_val->val      = val;
+    state_val->val = val;
     state_val->val_size = val_size;
     state->val = state_val;
 
@@ -285,6 +284,7 @@ static gsl_err_t select_by_attr(void *obj, const char *val, size_t val_size)
     struct kndTask *task = ctx->task;
     struct kndMemPool *mempool = task->mempool;
     struct kndClass *self = ctx->class;
+    struct kndClassEntry *entry;
     struct kndClass *c;
     struct kndAttrVar *attr_var;
     struct kndAttrFacet *facet;
@@ -295,7 +295,9 @@ static gsl_err_t select_by_attr(void *obj, const char *val, size_t val_size)
     if (!val_size) return make_gsl_err(gsl_FORMAT);
     if (val_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    c = attr->ref_class_entry->class;
+    entry = attr->ref_class_entry;
+    err = knd_class_acquire(entry, &c, task);
+    if (err) return make_gsl_err_external(err);
 
     if (DEBUG_ATTR_SELECT_LEVEL_TMP) {
         knd_log("\n\n== _is class:%.*s  select %.*s attr (idx:%d) "
@@ -420,12 +422,9 @@ static gsl_err_t select_spec_by_baseclass(void *obj, const char *name, size_t na
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
-    
+
     err = knd_get_class(repo, name, name_size, &c, task);
     if (err) return make_gsl_err_external(err);
-
-    if (DEBUG_ATTR_SELECT_LEVEL_TMP)
-        c->str(c, 1);
 
     /* TODO: check attr hubs */
     //ctx->class = c;

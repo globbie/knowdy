@@ -48,7 +48,7 @@ static int index_class_inst(struct kndClass *c, struct kndClassDeclar *decl,
         ref->entry = inst->entry->is_a;
         ref->attr = var->attr;
         ref->next = c->text_idxs;
-        err = knd_class_idx_new(mempool, &ref->idx);
+        err = knd_class_idx_new(&ref->idx, mempool);
         ref->idx->entry = c->entry;
         if (err) return err;
 
@@ -138,7 +138,7 @@ static int get_class_idx(struct kndClass *c, struct kndAttrVar *var, struct kndC
             ref->attr = var->attr;
             ref->next = orig_idxs;
 
-            err = knd_class_idx_new(mempool, &ref->idx);
+            err = knd_class_idx_new(&ref->idx, mempool);
             ref->idx->entry = c->entry;
         }
     }
@@ -166,7 +166,7 @@ static int update_ancestor_idx(struct kndClass *base, struct kndClassDeclar *dec
     KND_TASK_ERR("failed to get a class idx");
 
     // TODO
-    FOREACH (ref, base->children) {
+    /*FOREACH (ref, base->children) {
         if (ref->class == entry->class) {
             err = append_child_idx(idx, term_idx, task);
             KND_TASK_ERR("failed to append terminal child idx");
@@ -180,7 +180,7 @@ static int update_ancestor_idx(struct kndClass *base, struct kndClassDeclar *dec
 
         err = append_child_idx(idx, child_idx, task);
         KND_TASK_ERR("failed to append child");
-    }
+        }*/
      // register terminal loc
     atomic_fetch_add_explicit(&idx->total_locs, 1, memory_order_relaxed);
    
@@ -232,11 +232,11 @@ static int index_class_declar(struct kndClassDeclar *decl, struct kndSentence *s
         decl->entry = entry;
     }
     
-    err = index_class_inst(entry->class, decl, sent, par, var, inst, &idx, task);
-    KND_TASK_ERR("failed to index text class inst");
+    //err = index_class_inst(entry->class, decl, sent, par, var, inst, &idx, task);
+    //KND_TASK_ERR("failed to index text class inst");
 
     // TODO
-    FOREACH (ref, decl->entry->class->ancestors) {
+    /*FOREACH (ref, decl->entry->class->ancestors) {
         if (ref->entry->repo != repo) {
             err = knd_get_class_entry(repo, ref->entry->name, ref->entry->name_size, false, &entry, task);
             if (err) {
@@ -245,9 +245,10 @@ static int index_class_declar(struct kndClassDeclar *decl, struct kndSentence *s
             }
             ref->entry = entry;
         }
+
         err = update_ancestor_idx(ref->entry->class, decl, var, inst, idx, task);
         if (err) return err;
-    }
+        }*/
     return knd_OK;
 }
 

@@ -29,8 +29,7 @@ static int dict_item_new(struct kndMemPool *mempool, struct kndDictItem **result
     return knd_OK;
 }
 
-static size_t 
-knd_dict_hash(const char *key, size_t key_size)
+static size_t knd_dict_hash(const char *key, size_t key_size)
 {
     const char *p = key;
     size_t h = 0;
@@ -48,6 +47,7 @@ void* knd_dict_get(struct kndDict *self, const char *key, size_t key_size)
 {
     size_t h = knd_dict_hash(key, key_size) % self->size;
     struct kndDictItem *item = self->hash_array[h];
+
     while (item) {
         if (item->key_size != key_size) goto next_item;
         if (!memcmp(item->key, key, key_size)) {

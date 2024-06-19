@@ -73,7 +73,7 @@ static int register_attr(struct kndClass *self, struct kndAttr *attr, struct knd
         attr_ref->next = next_attr_ref;
 
         err = knd_shared_dict_set(task->idxs->attr_name_idx, attr->name, attr->name_size,
-                                  (void*)attr_ref, NULL, NULL, true);
+                                  (void*)attr_ref, NULL, true);
         KND_TASK_ERR("failed to globally register attr name \"%.*s\"", name_size, name);
 
         err = attr_idx->add(attr_idx, attr->id, attr->id_size, (void*)attr_ref);

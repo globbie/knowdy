@@ -8,29 +8,29 @@
       {-- init-data-path /etc/knowdy/data --}
       {memory
          {main
-            {max-base-pages        5000}
-            {max-small_x4-pages    20000}
-            {max-small_x2-pages    31000}
-            {max-small-pages       90000}
-            {max-tiny-pages        120000}}
+            {max-base-pages        3000}
+            {max-small_x4-pages    1000}
+            {max-small_x2-pages    1000}
+            {max-small-pages       3000}
+            {max-tiny-pages        10000}}
          {cache
             {max-base-pages        5000}
-            {max-small_x4-pages    20000}
-            {max-small_x2-pages    31000}
-            {max-small-pages       90000}
-            {max-tiny-pages        120000}}
+            {max-small_x4-pages    2000}
+            {max-small_x2-pages    2000}
+            {max-small-pages       6000}
+            {max-tiny-pages        20000}}
          {user
             {max-base-pages        5000}
             {max-small_x4-pages    20000}
             {max-small_x2-pages    31000}
             {max-small-pages       90000}
-            {max-tiny-pages        120000}}
+            {max-tiny-pages        20000}}
          {ctx
-            {max-base-pages        10000}
-            {max-small_x4-pages    20000}
-            {max-small_x2-pages    31000}
-            {max-small-pages       90000}
-            {max-tiny-pages        120000}}
+            {max-base-pages        1000}
+            {max-small_x4-pages    1000}
+            {max-small_x2-pages    1000}
+            {max-small-pages       3000}
+            {max-tiny-pages        10000}}
       }
       {-- storage   quota-limit-total
                     max-leaf min-leaf

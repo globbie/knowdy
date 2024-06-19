@@ -427,17 +427,21 @@ static int steward_init(struct kndSteward *steward)
     struct kndOutput *log = steward->log;
     int err;
 
+    srand(time(NULL));
+
     err = knd_mkpath(steward->path, steward->path_size, 0755, false);
     KND_STEWARD_ERR("failed to make {steward-path %.*s}", steward->path_size, steward->path);
 
-    /* separate mempools for reading and writing */
+    /* system mempools for reading and writing */
     steward->mem_cache_config.memtype = KND_ALLOC_INCR;
     err = knd_mempool_create(&steward->mempool_read, &steward->mem_cache_config, 1);
-    KND_STEWARD_ERR("failed to init a cache read-only mempool");
+    KND_STEWARD_ERR("failed to init a read-only system cache mempool");
 
-    steward->mem_main_config.memtype = KND_ALLOC_SHARED;
+    steward->mem_main_config.memtype = KND_ALLOC_INCR;
     err = knd_mempool_create(&steward->mempool_write, &steward->mem_main_config, 1);
-    KND_STEWARD_ERR("failed to init a write mempool");
+    KND_STEWARD_ERR("failed to init a system mempool for writing");
+
+    steward->mem_ctx_config.memtype = KND_ALLOC_INCR;
 
     /* repos */
     err = knd_set_new(&steward->repo_idx, steward->mempool_write);
@@ -460,6 +464,8 @@ static int steward_init(struct kndSteward *steward)
     /* auxiliary service task */
     err = knd_task_new(&task, KND_AGENT_AUX, 0, steward);
     KND_STEWARD_ERR("failed to init a steward task");
+    task->mempool = steward->mempool_write;
+    task->cache_mempool = steward->mempool_read;
     steward->task = task;
 
     err = knd_repo_open(repo, task);
@@ -469,10 +475,6 @@ static int steward_init(struct kndSteward *steward)
     err = init_user_space(steward, task);
     KND_STEWARD_ERR("failed to init user space");
 
-    /* clean up all temporary memblocks */
-    knd_task_free_blocks(task);
-
-    srand(time(NULL));
     return knd_OK;
 }
 
@@ -551,16 +553,10 @@ int knd_steward_snapshot(struct kndSteward *steward)
     err = knd_mempool_create(&steward->mempool_write_temp, &steward->mem_main_config, 1);
     KND_STEWARD_ERR("failed to init a write mempool");
     steward->task->mempool = steward->mempool_write_temp;
-
     repo = steward->repo;
-    snapshot = atomic_load_explicit(&repo->snapshot, memory_order_relaxed);
-    num_commits = atomic_load_explicit(&snapshot->num_commits, memory_order_relaxed);
-    if (num_commits) {
-        knd_log(".. building on-disk snapshot of sys repo..");
 
-        err = knd_repo_snapshot(repo, num_commits, steward->task);
-        KND_STEWARD_ERR("failed to build a sys repo snapshot");        
-    }
+    err = knd_repo_snapshot(repo, steward->task);
+    KND_STEWARD_ERR("failed to build a sys repo snapshot");
 
     err = knd_repo_cache_update(repo, steward->task);
     KND_STEWARD_ERR("failed to update a repo cache");

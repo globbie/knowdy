@@ -28,10 +28,10 @@ int knd_charseq_marshall(void *elem, size_t *output_size, struct kndTask *task)
 
     OUT(seq->val, seq->val_size);
 
-    if (DEBUG_TEXT_GSP_LEVEL_2)
+    if (DEBUG_TEXT_GSP_LEVEL_2) {
         knd_log("** %zu => \"%.*s\" (size:%zu)",  seq->numid,
                 seq->val_size, seq->val, out->buf_size - orig_size);
-
+    }
     *output_size = out->buf_size - orig_size;
     return knd_OK;
 }
@@ -41,21 +41,22 @@ int knd_charseq_unmarshall(const char *elem_id, size_t elem_id_size,
 {
     struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndCharSeq *seq;
+    struct kndSharedSet *str_idx = task->idxs->str_idx;
     struct kndSharedDict *str_dict = task->idxs->str_dict;
     int err;
 
-    if (DEBUG_TEXT_GSP_LEVEL_2)
-        knd_log("charseq \"%.*s\" => \"%.*s\"", elem_id_size, elem_id, val_size, val);
-
+    if (DEBUG_TEXT_GSP_LEVEL_2) {
+        knd_log("{seq %.*s} => %.*s", elem_id_size, elem_id, val_size, val);
+    }
     err = knd_charseq_new(mempool, &seq);
     KND_TASK_ERR("charseq alloc failed");
     seq->val = val;
     seq->val_size = val_size;
 
-    err = knd_shared_set_add(task->idxs->str_idx, elem_id, elem_id_size, (void*)seq);
+    err = knd_shared_set_add(str_idx, elem_id, elem_id_size, (void*)seq);
     KND_TASK_ERR("failed to register charseq \"%.*s\" (err:%s)", val_size, val, knd_err_names[err]);
 
-    err = knd_shared_dict_set(str_dict, val, val_size, (void*)seq, NULL, &seq->item, false);
+    err = knd_shared_dict_set(str_dict, val, val_size, (void*)seq, NULL, false);
     KND_TASK_ERR("failed to register charseq \"%.*s\" in str dict (err:%s)",
                  val_size, val, knd_err_names[err]);
     

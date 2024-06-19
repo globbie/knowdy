@@ -44,22 +44,20 @@ int knd_class_inst_unmarshall(const char *elem_id, size_t elem_id_size, const ch
     return knd_OK;
 }
 
-int knd_class_inst_acquire(struct kndClassInstEntry *entry, struct kndClassInst **result, struct kndTask *task)
+int knd_class_inst_acquire(struct kndClassInstEntry *entry, struct kndClassInst **result,
+                           struct kndTask *task)
 {
     struct kndClassInst *inst = NULL, *prev_inst;
-
-    assert(entry->is_a != NULL);
-    assert(entry->is_a->class != NULL);
-
-    struct kndClass *c = entry->is_a->class;
-    // int num_readers;
+    struct kndClass *c;
+    struct kndStorageLeaf *leaf;
     int err;
 
-    assert(c != NULL);
+    assert(entry->is_a != NULL);
 
-    // TODO read/write conflicts
-    atomic_fetch_add_explicit(&entry->num_readers, 1, memory_order_relaxed);
- 
+    err = knd_class_acquire(entry->is_a, &c, task);
+    KND_TASK_ERR("failed to acquire class %.*s", entry->is_a->name_size, entry->is_a->name);
+    leaf = c->class_inst_idx_leaf;
+
     do {
         prev_inst = atomic_load_explicit(&entry->inst, memory_order_relaxed);
         if (prev_inst) {
@@ -68,9 +66,10 @@ int knd_class_inst_acquire(struct kndClassInstEntry *entry, struct kndClassInst 
             return knd_OK;
         }
         if (!inst) {
-            // NB: passing is_a class entry via task
+            // NB: passing is_a class entry via task context
             task->payload = entry->is_a;
             err = knd_shared_set_unmarshall_elem(c->inst_idx, entry->id, entry->id_size,
+                                                 leaf->filepath, leaf->filepath_size,
                                                  knd_class_inst_unmarshall, (void**)&inst, task);
             if (err) return err;
             inst->entry = entry;
@@ -121,21 +120,25 @@ int knd_class_inst_read(struct kndClassInst *self, const char *rec, size_t *tota
     struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndClassEntry *entry = task->payload;
     struct kndClassVar *class_var;
+    struct kndClass *c;
     int err;
     assert(entry != NULL);
 
     if (DEBUG_CLASS_INST_READ_LEVEL_2) {
         knd_log(".. reading class inst GSP (entry:%p): \"%.*s\"..", entry, 128, rec);
-        entry->class->str(entry->class, 1);
     }
 
     err = knd_class_var_new(mempool, &class_var);
     KND_TASK_ERR("failed to alloc a class var");
     class_var->type = KND_INSTANCE_BLUEPRINT;
     class_var->entry = entry;
-    class_var->parent = entry->class;
     class_var->parent_inst = self;
     self->class_var = class_var;
+
+    err = knd_class_acquire(entry, &c, task);
+    KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
+
+    class_var->parent = c;
 
     struct LocalContext ctx = {
         .task = task,

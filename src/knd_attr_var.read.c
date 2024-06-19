@@ -398,16 +398,14 @@ static int set_implied_attr_var(struct kndClass *c, const char *val, size_t val_
             buf[buf_size] = '\0';
             err = knd_parse_num(buf, &var->numval);
             KND_TASK_ERR("failed to parse num %.*s", buf_size, buf);
+
             // TODO: float parsing
+
         }
         break;
     case KND_ATTR_REF:
         err = knd_get_class_entry_by_id(task->repo, val, val_size, &entry, task);
-        KND_TASK_ERR("no such class entry: %.*s", val_size, val);
-
-        if (DEBUG_ATTR_VAR_READ_LEVEL_2)
-            knd_log("== ref class decoded %.*s => %.*s",
-                    val_size, val, entry->name_size, entry->name);
+        KND_TASK_ERR("no such {class %.*s}", val_size, val);
 
         var->class_entry = entry;
         // direct link from parent
@@ -434,11 +432,11 @@ static gsl_err_t set_attr_var_value(void *obj, const char *val, size_t val_size)
     struct kndClass *c = ctx->class;
     int err;
 
-    if (DEBUG_ATTR_VAR_READ_LEVEL_2)
+    if (DEBUG_ATTR_VAR_READ_LEVEL_2) {
         knd_log(".. set \"%.*s\" (%d) attr var value: \"%.*s\" => \"%.*s\"",
                 self->attr->name_size, self->attr->name, self->attr->type,
                 self->name_size, self->name, val_size, val);
-
+    }
     if (!val_size) return make_gsl_err(gsl_FORMAT);
     self->val = val;
     self->val_size = val_size;

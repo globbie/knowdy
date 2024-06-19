@@ -2,6 +2,7 @@
 
 #include <knd_err.h>
 #include <knd_config.h>
+#include <knd_memblock.h>
 #include <knd_mempool.h>
 
 struct kndUser;

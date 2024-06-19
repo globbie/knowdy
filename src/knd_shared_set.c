@@ -279,10 +279,7 @@ int knd_shared_set_new(struct kndSharedSet **result, struct kndMemPool *mempool)
     struct kndSharedSet *set;
     struct kndSharedSetElemIdx *idx;
     int err;
-    assert(mempool->small_page_size >= sizeof(struct kndSharedSet));
-    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, (void**)&set);
-    if (err) return err;
-    memset(set, 0, sizeof(struct kndSharedSet));
+    set = calloc(1, sizeof(struct kndSharedSet));
     set->mempool = mempool;
 
     err = knd_shared_set_elem_idx_new(set, &idx);

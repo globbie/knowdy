@@ -66,6 +66,8 @@ void knd_task_reset(struct kndTask *self)
     if (self->mempool)
         knd_mempool_reset(self->mempool);
 
+    // NB self->cache_mempool stays intact
+
     if (self->class_name_idx)
         knd_dict_reset(self->class_name_idx);
 
@@ -237,99 +239,6 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
     return knd_OK;
 }
 
-int knd_task_copy_block(struct kndTask *task, const char *input, size_t input_size,
-                        const char **output, size_t *output_size)
-{
-    int err;
-    struct kndMemBlock *block = calloc(1, sizeof(struct kndMemBlock));
-    if (!block) {
-        err = knd_NOMEM;
-        KND_TASK_ERR("block alloc failed");
-    }
-
-    char *b = malloc(input_size + 1);
-    if (!b) {
-        err = knd_NOMEM;
-        KND_TASK_ERR("block alloc failed");
-    }
-
-    memcpy(b, input, input_size);
-    b[input_size] = '\0';
-
-    block->tid = 0;
-    block->buf = b;
-    block->buf_size = input_size;
-    block->next = task->blocks;
-
-    task->blocks = block;
-    task->num_blocks++;
-    task->total_block_size += input_size;
-
-    *output = b;
-    *output_size = input_size;
-    return knd_OK;
-}
-
-int knd_task_read_file_block(struct kndTask *task, const char *filename, size_t file_size,
-                             struct kndMemBlock **result)
-{
-    FILE *file_stream;
-    size_t read_size;
-    size_t num_extra_bytes = 2; // closing brace + null term
-    int err;
-
-    struct kndMemBlock *block = calloc(1, sizeof(struct kndMemBlock));
-    if (!block) {
-        err = knd_NOMEM;
-        KND_TASK_ERR("block alloc failed");
-    }
-
-    char *b = malloc(file_size + num_extra_bytes);
-    if (!b) {
-        err = knd_NOMEM;
-        KND_TASK_ERR("file memblock alloc failed");
-    }
-
-    file_stream = fopen(filename, "r");
-    if (file_stream == NULL) {
-        err = knd_IO_FAIL;
-        KND_TASK_ERR("error opening FILE \"%s\"", filename);
-    }
-    read_size = fread(b, 1, file_size, file_stream);
-
-    b[file_size] = '}';
-    b[file_size + 1] = '\0';
-
-    if (DEBUG_TASK_LEVEL_2)
-        knd_log("   ++ FILE \"%s\" read OK: %.*s [size: %zu]\n",
-                filename, file_size + 1, b, read_size);
-
-    block->tid = 0;
-    block->buf = b;
-    block->buf_size = file_size + 1;
-    block->next = task->blocks;
-
-    task->blocks = block;
-    task->num_blocks++;
-    task->total_block_size += block->buf_size;
-
-    *result = block;
-    return knd_OK;
-}
-
-void knd_task_free_blocks(struct kndTask *task)
-{
-    struct kndMemBlock *block, *next_block = NULL;
-    for (block = task->blocks; block; block = next_block) {
-        next_block = block->next;
-        if (block->buf)
-            free(block->buf);
-        free(block);
-    }
-    task->total_block_size = 0;
-    task->num_blocks = 0;
-}
-
 static int task_context_new(struct kndTaskContext **result)
 {
     struct kndTaskContext *ctx;
@@ -337,6 +246,25 @@ static int task_context_new(struct kndTaskContext **result)
     if (!ctx) return knd_NOMEM;
     *result = ctx;
     return knd_OK;
+}
+
+void knd_task_cleanup(struct kndTask *task, struct kndSteward *steward)
+{
+    assert (steward != NULL);
+    assert (steward->repo != NULL);
+
+    knd_mempool_reset(task->mempool);
+    knd_mempool_reset(task->cache_mempool);
+
+    task->user_ctx = task->default_user_ctx;
+    task->user_ctx->mempool = steward->mempool_write;
+    task->user_ctx->repo = steward->repo;
+
+    if (steward->user) {
+        task->user_ctx->mempool = steward->user->mempool_write;
+        task->user_ctx->repo = steward->user->repo;
+        task->user_ctx->acls = steward->user->default_acls;
+    }
 }
 
 int knd_task_init(struct kndTask *task, struct kndSteward *steward)
@@ -354,18 +282,14 @@ int knd_task_init(struct kndTask *task, struct kndSteward *steward)
     task->path = steward->path;
     task->path_size = steward->path_size;
 
-    err = knd_mempool_create(&task->mempool, &steward->mem_main_config, 1);
-    KND_STEWARD_ERR("failed to init a mempool for writing");
-    err = knd_mempool_create(&task->cache_mempool, &steward->mem_cache_config, 2);
-    KND_STEWARD_ERR("failed to init a cache read-only mempool");
+    err = knd_mempool_create(&task->ctx_mempool, &steward->mem_ctx_config, 1);
+    KND_STEWARD_ERR("failed to init a local ctx mempool for writing");
 
-    /* current cache */
-    //mempool = task->cache_mempool;
-    //err = knd_dict_new(&task->cache->class_name_idx, mempool, KND_SMALL_DICT_SIZE);
-    //if (err) goto error;
-    
+    err = knd_mempool_create(&task->ctx_cache_mempool, &steward->mem_ctx_config, 2);
+    KND_STEWARD_ERR("failed to init a local ctx cache mempool");
+
     /* local name indices */
-    mempool = task->mempool;
+    mempool = task->ctx_mempool;
 
     err = knd_dict_new(&task->class_name_idx, mempool, KND_SMALL_DICT_SIZE);
     if (err) goto error;
@@ -377,6 +301,12 @@ int knd_task_init(struct kndTask *task, struct kndSteward *steward)
     err = knd_dict_new(&task->proc_name_idx, mempool, KND_SMALL_DICT_SIZE);
     if (err) goto error;
     err = knd_dict_new(&task->proc_arg_name_idx, mempool, KND_SMALL_DICT_SIZE);
+    if (err) goto error;
+
+
+    /* local cache */
+    mempool = task->ctx_cache_mempool;
+    err = knd_set_new(&task->cache_class_idx, mempool);
     if (err) goto error;
 
     /* system repo defaults */
@@ -410,9 +340,19 @@ int knd_task_new(struct kndTask **result,
     struct kndTask *task;
     int err;
 
-    task = malloc(sizeof(struct kndTask));
+    if (task_id == 0) {
+        if (role != KND_AGENT_AUX) {
+            knd_log("task id should be > 0 and < %zu", KND_MAX_TASKS);
+            return knd_CONFLICT;
+        }
+    }
+    if (task_id >= KND_MAX_TASKS || task_id < 0) {
+        knd_log("task id should be > 0 and < %zu", KND_MAX_TASKS);
+        return knd_CONFLICT;
+    }
+
+    task = calloc(1, sizeof(struct kndTask));
     if (!task) return knd_NOMEM;
-    memset(task, 0, sizeof(struct kndTask));
     task->role = role;
     task->id = task_id;
 

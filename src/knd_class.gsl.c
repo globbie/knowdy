@@ -49,7 +49,7 @@ struct LocalContext {
     struct kndText *text;
 };
 
-int knd_export_class_state_GSL(struct kndClassEntry *self, struct kndTask *task)
+int knd_export_class_state_GSL(struct kndClass *self, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndState *state;
@@ -58,7 +58,7 @@ int knd_export_class_state_GSL(struct kndClassEntry *self, struct kndTask *task)
 
     err = out->write(out, "{state ", strlen("{state "));                          RET_ERR();
 
-    state = atomic_load_explicit(&self->class->states, memory_order_relaxed);
+    state = atomic_load_explicit(&self->states, memory_order_relaxed);
     if (state) {
         err = out->writef(out, "%zu", state->commit->numid);                      RET_ERR();
         timestamp = state->commit->timestamp;
@@ -97,17 +97,15 @@ static int export_class_inst_state_GSL(struct kndClass *self, struct kndTask *ta
     return knd_OK;
 }
 
-static int export_conc_elem_GSL(void *obj,
-                                 const char *elem_id,
-                                 size_t elem_id_size,
-                                 size_t count,
-                                 void *elem)
+static int export_conc_elem_GSL(void *obj, const char *elem_id, size_t elem_id_size,
+                                size_t count, void *elem)
 {
     struct kndTask *task = obj;
     if (count < task->start_from) return knd_OK;
     if (task->batch_size >= task->batch_max) return knd_RANGE;
     struct kndOutput *out = task->out;
     struct kndClassEntry *entry = elem;
+    struct kndClass *c;
     struct kndState *state;
     size_t curr_depth = 0;
     int err;
@@ -116,9 +114,11 @@ static int export_conc_elem_GSL(void *obj,
         knd_log(".. GSL export class set elem: %.*s",
                 elem_id_size, elem_id);
 
+    err = knd_class_acquire(entry, &c, task);
+    KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
+
     if (!task->show_removed_objs) {
-        // TODO
-        state = entry->class->states;
+        state = c->states;
         if (state && state->phase == KND_REMOVED) return knd_OK;
     }
 
@@ -129,7 +129,8 @@ static int export_conc_elem_GSL(void *obj,
         err = knd_print_offset(out, task->ctx->format_indent);                         RET_ERR();
     }
 
-    err = knd_class_export_GSL(entry, task, true, 1);                                 RET_ERR();
+    err = knd_class_export_GSL(c, task, true, 1);
+    KND_TASK_ERR("failed to export GSL {class %.*s}", entry->name_size, entry->name);
 
     task->depth = curr_depth;
     task->ctx->batch_size++;
@@ -358,8 +359,8 @@ static int present_subclasses(struct kndClass *self, size_t num_children, struct
     struct kndOutput *out = task->out;
     struct kndClassRef *ref;
     struct kndClassEntry *entry = self->entry;
-    struct kndClassEntry *orig_entry = entry->base;
-    struct kndClass *c;
+    struct kndClassEntry *orig_entry = entry->orig;
+    struct kndClass *orig_c, *c;
     struct kndState *state;
     int err;
 
@@ -381,11 +382,9 @@ static int present_subclasses(struct kndClass *self, size_t num_children, struct
     }
     err = out->write(out, "[batch", strlen("[batch"));                            RET_ERR();
 
-    // TODO
-    for (ref = self->children; ref; ref = ref->next) {
-        c = ref->class;
-        // TODO: defreeze
-        if (!c) continue;
+    FOREACH (ref, self->children) {
+        err = knd_class_acquire(ref->entry, &c, task);
+        KND_TASK_ERR("failed to acquire {class %.*s}", ref->entry->name_size, ref->entry->name);
         
         state = c->states;
         if (state && state->phase == KND_REMOVED) continue;
@@ -397,11 +396,14 @@ static int present_subclasses(struct kndClass *self, size_t num_children, struct
     }
 
     if (orig_entry) {
-        // TODO acquire
-        FOREACH (ref, orig_entry->class->children) {
-            c = ref->class;
-            // TODO: defreeze
-            if (!c) continue;
+        err = knd_class_acquire(orig_entry, &orig_c, task);
+        KND_TASK_ERR("failed to acquire {class %.*s}", orig_entry->name_size, orig_entry->name);
+
+        FOREACH (ref, orig_c->children) {
+
+            err = knd_class_acquire(ref->entry, &c, task);
+            KND_TASK_ERR("failed to acquire class %.*s", ref->entry->name_size, ref->entry->name);
+
             state = c->states;
             if (state && state->phase == KND_REMOVED) continue;
 
@@ -617,11 +619,11 @@ static int export_inverse_rels(struct kndClass *self, struct kndTask *task, size
     return knd_OK;
 }
 
-int knd_class_export_GSL(struct kndClassEntry *entry, struct kndTask *task,
+int knd_class_export_GSL(struct kndClass *self, struct kndTask *task,
                          bool is_list_item, size_t depth)
 {
-    struct kndClass *self = entry->class;
-    struct kndClassEntry *orig_entry = entry->base;
+    struct kndClass *c;
+    struct kndClassEntry *orig_entry = self->entry->orig;
     struct kndOutput *out = task->out;
     struct kndState *state = self->states;
     size_t indent_size = task->ctx->format_indent;
@@ -630,17 +632,19 @@ int knd_class_export_GSL(struct kndClassEntry *entry, struct kndTask *task,
     int err;
 
     if (DEBUG_GSL_LEVEL_2) {
-        knd_log(".. GSL export: \"%.*s\" (repo:%.*s) "
+        knd_log(".. GSL export {repo %.*s {class %.*s}} "
                 " depth:%zu max depth:%zu indent size:%zu",
-                entry->name_size, entry->name, entry->repo->name_size, entry->repo->name,
+                self->entry->repo->name_size, self->entry->repo->name,
+                self->name_size, self->name,
                 task->depth, task->max_depth, indent_size);
     }
     OUT("{", 1);
     if (!is_list_item) {
         OUT("class ", strlen("class "));
     }
-    if (entry->name_size) {
-        err = out->write_escaped(out, entry->name, entry->name_size);
+
+    if (self->name_size) {
+        err = out->write_escaped(out, self->name, self->name_size);
         RET_ERR();
     }
 
@@ -711,9 +715,11 @@ int knd_class_export_GSL(struct kndClassEntry *entry, struct kndTask *task,
             num_children = state->val->val_size;
     }
 
-    // TODO atomic
-    if (orig_entry)
-        num_children += orig_entry->class->num_children;
+    if (orig_entry) {
+        err = knd_class_acquire(orig_entry, &c, task);
+        KND_TASK_ERR("failed to acquire class %.*s", orig_entry->name_size, orig_entry->name);
+        num_children += c->num_children;
+    }
 
     if (num_children) {
         if (indent_size) {

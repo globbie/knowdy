@@ -24,15 +24,10 @@ void knd_mempool_del(struct kndMemPool *self)
 void knd_mempool_report(struct kndMemPool *self, struct kndMemPoolReport *report)
 {
     size_t pages_used = self->pages_used;
-    size_t num_pages = self->num_pages;
     size_t tiny_pages_used = self->tiny_pages_used;
-    size_t num_tiny_pages = self->num_tiny_pages;
     size_t small_pages_used = self->small_pages_used;
-    size_t num_small_pages = self->num_small_pages;
     size_t small_x2_pages_used = self->small_x2_pages_used;
-    size_t num_small_x2_pages = self->num_small_x2_pages;
     size_t small_x4_pages_used = self->small_x4_pages_used;
-    size_t num_small_x4_pages = self->num_small_x4_pages;
 
     switch (self->type) {
     case KND_ALLOC_SHARED:
@@ -56,13 +51,9 @@ void knd_mempool_report(struct kndMemPool *self, struct kndMemPoolReport *report
         (small_x2_pages_used * KND_SMALL_X2_MEMPAGE_SIZE) +
         (small_x4_pages_used * KND_SMALL_X4_MEMPAGE_SIZE);
 
-    report->max_mem_usage = (num_pages * KND_BASE_MEMPAGE_SIZE) +
-        (num_tiny_pages * KND_TINY_MEMPAGE_SIZE) +
-        (num_small_pages * KND_SMALL_MEMPAGE_SIZE) +
-        (num_small_x2_pages * KND_SMALL_X2_MEMPAGE_SIZE) +
-        (num_small_x4_pages * KND_SMALL_X4_MEMPAGE_SIZE);
+    report->max_mem_usage = self->capacity;
 
-    if (report->total_mem_usage > (self->capacity * KND_OUTPUT_THRESHOLD_RATIO)) {
+    if (report->total_mem_usage > (self->capacity * KND_SNAPSHOT_MEM_THRESHOLD_RATIO)) {
         report->mem_threshold_alert = true;
     }
 }
@@ -70,7 +61,6 @@ void knd_mempool_report(struct kndMemPool *self, struct kndMemPoolReport *report
 static int present_status(struct kndMemPool *self, struct kndOutput *out)
 {
     size_t total_mem_usage = 0;
-    size_t max_mem_usage = 0;
     size_t pages_used = self->pages_used;
     size_t num_pages = self->num_pages;
     size_t tiny_pages_used = self->tiny_pages_used;
@@ -81,6 +71,7 @@ static int present_status(struct kndMemPool *self, struct kndOutput *out)
     size_t num_small_x2_pages = self->num_small_x2_pages;
     size_t small_x4_pages_used = self->small_x4_pages_used;
     size_t num_small_x4_pages = self->num_small_x4_pages;
+    bool usage_alert = false;
 
     switch (self->type) {
     case KND_ALLOC_SHARED:
@@ -98,12 +89,13 @@ static int present_status(struct kndMemPool *self, struct kndOutput *out)
         (small_pages_used * KND_SMALL_MEMPAGE_SIZE) +
         (small_x2_pages_used * KND_SMALL_X2_MEMPAGE_SIZE) +
         (small_x4_pages_used * KND_SMALL_X4_MEMPAGE_SIZE);
-    max_mem_usage = (num_pages * KND_BASE_MEMPAGE_SIZE) +
-        (num_tiny_pages * KND_TINY_MEMPAGE_SIZE) +
-        (num_small_pages * KND_SMALL_MEMPAGE_SIZE) +
-        (num_small_x2_pages * KND_SMALL_X2_MEMPAGE_SIZE) +
-        (num_small_x4_pages * KND_SMALL_X4_MEMPAGE_SIZE);
 
+    if (total_mem_usage > (self->capacity * (float)KND_SNAPSHOT_MEM_THRESHOLD_RATIO)) {
+        knd_log("{max-capacity %zu {threshold %zu}}",
+                self->capacity, self->capacity * (float)KND_SNAPSHOT_MEM_THRESHOLD_RATIO);
+        usage_alert = true;
+    }
+    
     OUTF("{base-pages     %zu of %zu {used %.2f%%}}\n",
          pages_used, num_pages,
          (double)pages_used / num_pages * 100);
@@ -119,9 +111,10 @@ static int present_status(struct kndMemPool *self, struct kndOutput *out)
     OUTF("{tiny-pages     %zu of %zu {used %.2f%%}}\n",
          tiny_pages_used, num_tiny_pages,
          (double)tiny_pages_used / num_tiny_pages * 100);
-    OUTF("{total %.2fM of max %.2fM}\n",
+    OUTF("{total %.2fM {max %.2fM} {threshold %.2f {usage-alert %d}}}\n",
          (double)total_mem_usage / (1024 * 1024),
-         (double)max_mem_usage / (1024 * 1024));
+         (double)self->capacity / (1024 * 1024),
+         KND_SNAPSHOT_MEM_THRESHOLD_RATIO, usage_alert);
 
     return knd_OK;
 }
@@ -264,8 +257,9 @@ int knd_mempool_page(struct kndMemPool *self, knd_mempage_t page_type, void **re
         pages = self->pages;
         break;
     }
-    if (*pages_used + 1 > num_pages)
+    if (*pages_used + 1 > num_pages) {
         return knd_NOMEM;
+    }
     offset = page_size * (*pages_used);
     c = pages + offset;
     *result = c;

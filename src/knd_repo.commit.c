@@ -106,7 +106,7 @@ static int check_class_conflicts(struct kndRepo *unused_var(self),
     knd_commit_confirm confirm;
     int err;
 
-    for (ref = new_commit->class_state_refs; ref; ref = ref->next) {
+    FOREACH (ref, new_commit->class_state_refs) {
         entry = ref->obj;
         state = ref->state;
 
@@ -190,37 +190,34 @@ static int update_indices(struct kndRepo *self, struct kndCommit *commit, struct
     struct kndStateRef *ref;
     struct kndClassEntry *entry;
     struct kndProcEntry *proc_entry;
-    struct kndSharedDictItem *item = NULL;
     struct kndRepo *repo = self;
     struct kndSharedDict *name_idx = task->idxs->class_name_idx;
     int err;
 
-    if (DEBUG_REPO_COMMIT_LEVEL_2)
+    if (DEBUG_REPO_COMMIT_LEVEL_2) {
         knd_log(".. commit #%zu to update the indices of %.*s [task role:%d]",
                 commit->numid, self->name_size, self->name, task->role);
-
+    }
     if (task->user_ctx) {
         repo = task->user_ctx->repo;
-        name_idx = task->idxs->class_name_idx;
     }
 
     FOREACH (ref, commit->class_state_refs) {
         entry = ref->obj;
-        if (DEBUG_REPO_COMMIT_LEVEL_2)
-            knd_log(".. idx update of class \"%.*s\" (phase:%d)",
+        if (DEBUG_REPO_COMMIT_LEVEL_2) {
+            knd_log(".. idx update of {class %.*s {phase %d}}",
                     entry->name_size, entry->name, ref->state->phase);
-
+        }
         switch (ref->state->phase) {
         case KND_CREATED:
-            if (DEBUG_REPO_COMMIT_LEVEL_3)
-                knd_log(".. class name idx of repo \"%.*s\" to register class \"%.*s\"",
+            if (DEBUG_REPO_COMMIT_LEVEL_3) {
+                knd_log(".. class name idx of {repo %.*s} to register {class %.*s}",
                         self->name_size, self->name, entry->name_size, entry->name);
-
+            }
             /* register new class */
             err = knd_shared_dict_set(name_idx, entry->name,  entry->name_size,
-                                      (void*)entry, commit, &item, false);
+                                      (void*)entry, commit, false);
             KND_TASK_ERR("failed to register class %.*s", entry->name_size, entry->name);
-            entry->dict_item = item;
             continue;
         case KND_REMOVED:
             entry->phase = KND_REMOVED;
@@ -260,9 +257,8 @@ static int update_indices(struct kndRepo *self, struct kndCommit *commit, struct
             break;
         }
         err = knd_shared_dict_set(name_idx, proc_entry->name,  proc_entry->name_size,
-                                  (void*)proc_entry, commit, &item, false);
+                                  (void*)proc_entry, commit, false);
         RET_ERR();
-        proc_entry->dict_item = item;
     }
     return knd_OK;
 }
@@ -369,10 +365,10 @@ int knd_confirm_commit(struct kndRepo *self, struct kndTask *task)
     int err;
     assert(commit != NULL);
 
-    if (DEBUG_REPO_COMMIT_LEVEL_TMP)
-        knd_log(">> \"%.*s\" repo to confirm commit #%zu",
+    if (DEBUG_REPO_COMMIT_LEVEL_TMP) {
+        knd_log(">> {repo %.*s} repo to confirm {commit #%zu}",
                 self->name_size, self->name, commit->numid);
-
+    }
     commit->repo = self;
 
     err = knd_resolve_commit(commit, task);

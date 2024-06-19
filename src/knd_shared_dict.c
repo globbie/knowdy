@@ -67,15 +67,12 @@ void* knd_shared_dict_get(struct kndSharedDict *self, const char *key, size_t ke
 }
 
 int knd_shared_dict_set(struct kndSharedDict *self, const char *key, size_t key_size,
-                        void *data, struct kndCommit *commit,
-                        struct kndSharedDictItem **result, bool allow_overwrite)
+                        void *data, struct kndCommit *commit, bool allow_overwrite)
 {
     struct kndSharedDictItem *head;
     struct kndSharedDictItem *new_item;
     size_t h = knd_shared_dict_hash(key, key_size) % self->size;
-
-    struct kndSharedDictItem *orig_head = atomic_load_explicit(&self->hash_array[h],
-                                                               memory_order_acquire);
+    struct kndSharedDictItem *orig_head = atomic_load_explicit(&self->hash_array[h], memory_order_acquire);
     struct kndSharedDictItem *item = orig_head;
     struct kndState *state;
     int err;
@@ -111,7 +108,6 @@ int knd_shared_dict_set(struct kndSharedDict *self, const char *key, size_t key_
         state->commit = commit;
         state->data = data;
         new_item->states = state;
-        *result = new_item;
     }
     new_item->data = data;
     new_item->key = key;

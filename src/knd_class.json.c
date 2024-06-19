@@ -48,12 +48,11 @@ struct LocalContext {
     struct kndClassVar *class_var;
 };
 
-int knd_export_class_state_JSON(struct kndClassEntry *self, struct kndTask *task)
+int knd_export_class_state_JSON(struct kndClass *self, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
-    struct kndState *state = self->class->states;
-    struct kndClass *c = self->class;
-    size_t latest_state_numid = self->class->init_state + self->class->num_states;
+    struct kndState *state = self->states;
+    size_t latest_state_numid = self->init_state + self->num_states;
     size_t total;
     int err;
 
@@ -83,9 +82,9 @@ int knd_export_class_state_JSON(struct kndClassEntry *self, struct kndTask *task
         }
     }
 
-    state = c->desc_states;
+    state = self->desc_states;
     if (state) {
-        latest_state_numid = c->init_desc_state + c->num_desc_states;
+        latest_state_numid = self->init_desc_state + self->num_desc_states;
         total = 0;
         if (state->val)
             total = state->val->val_size;
@@ -99,9 +98,9 @@ int knd_export_class_state_JSON(struct kndClassEntry *self, struct kndTask *task
         err = out->writec(out, '}');                                              RET_ERR();
     }
 
-    state = c->inst_states;
+    state = self->inst_states;
     if (state) {
-        latest_state_numid = c->init_inst_state + c->num_inst_states;
+        latest_state_numid = self->init_inst_state + self->num_inst_states;
         total = 0;
         if (state->val)
             total = state->val->val_size;
@@ -272,7 +271,6 @@ static int export_facet(struct kndClassFacet *parent_facet, struct kndTask *task
 {
     struct kndOutput *out = task->out;
     struct kndClassFacet *facet;
-    struct kndClassRef *ref;
     bool in_list = false;
     int err;
 
@@ -285,7 +283,7 @@ static int export_facet(struct kndClassFacet *parent_facet, struct kndTask *task
 
     // err = export_gloss_JSON(parent_facet->base->class, task);                     RET_ERR();
 
-    err = export_concise_JSON(parent_facet->base->class, task);                   RET_ERR();
+    //err = export_concise_JSON(parent_facet->base->class, task);                   RET_ERR();
     
     err = out->writef(out, ",\"_total\":%zu",
                       parent_facet->num_elems);                RET_ERR();
@@ -295,7 +293,7 @@ static int export_facet(struct kndClassFacet *parent_facet, struct kndTask *task
         err = out->write(out, ",\"_subclasses\":[",
                          strlen(",\"_subclasses\":["));                            RET_ERR();
 
-        for (facet = parent_facet->children; facet; facet = facet->next) {
+        FOREACH (facet, parent_facet->children) {
             if (in_list) {
                 err = out->writec(out, ',');                                      RET_ERR();
             }
@@ -303,16 +301,18 @@ static int export_facet(struct kndClassFacet *parent_facet, struct kndTask *task
             in_list = true;
         }
 
-        for (ref = parent_facet->elems; ref; ref = ref->next) {
+        /*FOREACH (ref, parent_facet->elems) {
             task->depth = 0;
             task->ctx->max_depth = 0;
             if (in_list) {
                 err = out->writec(out, ',');                                      RET_ERR();
             }
+
+
             err = knd_class_export_JSON(ref->entry->class, task, false, 0);
             RET_ERR();
             in_list = true;
-        }
+            }*/
         err = out->writec(out, ']');                                              RET_ERR();
     } 
 
@@ -738,15 +738,17 @@ int knd_class_export_JSON(struct kndClass *self, struct kndTask *task,
                           bool unused_var(is_list_item), size_t depth)
 {
     struct kndClassEntry *entry = self->entry;
-    struct kndClassEntry *orig_entry = entry->base;
+    struct kndClassEntry *orig_entry = entry->orig;
+    struct kndClass *c;
     struct kndOutput *out = task->out;
     struct kndState *state = self->states;
     size_t indent_size = task->ctx->format_indent;
     int err;
 
     if (DEBUG_JSON_LEVEL_2)
-        knd_log(".. JSON export: \"%.*s\" (repo:%.*s)  depth:%zu max depth:%zu",
-                entry->name_size, entry->name, entry->repo->name_size, entry->repo->name,
+        knd_log(".. JSON export: {repo %.*s {class %.*s}}  depth:%zu max depth:%zu",
+                entry->repo->name_size, entry->repo->name,
+                self->name_size, self->name,
                 task->depth, task->ctx->max_depth);
 
     OUT("{", 1);
@@ -808,7 +810,7 @@ int knd_class_export_JSON(struct kndClass *self, struct kndTask *task,
     if (self->num_states) {
         err = out->writec(out, ',');
         if (err) return err;
-        err = knd_export_class_state_JSON(entry, task);                            RET_ERR();
+        err = knd_export_class_state_JSON(self, task);                            RET_ERR();
     }
 
     /* display base classes only once */
@@ -816,6 +818,7 @@ int knd_class_export_JSON(struct kndClass *self, struct kndTask *task,
         err = export_baseclasses(self, task, depth + 1);
         KND_TASK_ERR("failed to export baseclass JSON");
     }
+
     /*else {
         if (orig_entry && orig_entry->class->num_baseclass_vars) {
             err = export_baseclass_vars(orig_entry->class, task);         RET_ERR();
@@ -826,15 +829,16 @@ int knd_class_export_JSON(struct kndClass *self, struct kndTask *task,
         err = export_attrs(self, task);
         KND_TASK_ERR("failed to export attrs JSON");
     } else {
-        if (orig_entry && orig_entry->class->num_attrs) {
-            err = export_attrs(orig_entry->class, task);                   RET_ERR();
+        if (orig_entry) {
+            err = knd_class_acquire(orig_entry, &c, task);
+            KND_TASK_ERR("failed to acquire class %.*s", orig_entry->name_size, orig_entry->name);
+
+            if (c->num_attrs) {
+                err = export_attrs(c, task);
+                RET_ERR();
+            }
         }
     }
-
-    /* inherited attrs */
-    //set = self->attr_idx;
-    //err = set->map(set, knd_export_inherited_attr, (void*)task); 
-    //if (err && err != knd_RANGE) return err;
 
     if (self->num_children) {
         err = present_subclasses(self, task, depth + 1);

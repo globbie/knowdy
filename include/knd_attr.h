@@ -274,7 +274,7 @@ int knd_apply_attr_var_updates(struct kndClass *self, struct kndClassUpdate *upd
 
 int knd_register_attr_ref(void *obj, const char *elem_id, size_t elem_id_size, size_t count, void *elem);
 
-int knd_get_arg_value(struct kndAttrVar *src, struct kndAttrVar *query, struct kndProcCallArg *arg);
+int knd_get_arg_value(struct kndAttrVar *src, struct kndAttrVar *query, struct kndProcCallArg *arg, struct kndTask *task);
 
 int knd_attr_export_GSL(struct kndAttr *self, struct kndTask *task, size_t depth);
 int knd_attr_export_JSON(struct kndAttr *self, struct kndTask *task, size_t depth);
@@ -284,7 +284,7 @@ int knd_attr_export(struct kndAttr *self, knd_format format, struct kndTask *tas
 void knd_attr_var_str(struct kndAttrVar *item, size_t depth);
 void knd_attr_str(struct kndAttr *attr, size_t depth);
 
-int knd_attr_new(struct kndMemPool *mempool, struct kndAttr **result);
+int knd_attr_new(struct kndAttr **result, struct kndMemPool *mempool);
 int knd_attr_var_new(struct kndMemPool *mempool, struct kndAttrVar **result);
 int knd_attr_ref_new(struct kndMemPool *mempool, struct kndAttrRef **result);
 int knd_attr_idx_new(struct kndMemPool *mempool, struct kndAttrIdx **result);

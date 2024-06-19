@@ -567,10 +567,10 @@ static gsl_err_t check_class_name(void *obj, const char *name, size_t name_size)
     struct kndRepo *repo          = ctx->repo;
     // struct kndClassEntry *entry = NULL;
 
-    if (DEBUG_CLASS_READ_LEVEL_2)
-        knd_log(".. repo \"%.*s\" to check a class name: \"%.*s\" (size:%zu)",
+    if (DEBUG_CLASS_READ_LEVEL_2) {
+        knd_log(".. {repo %.*s} to check {class-name %.*s {name-size %zu}}",
                 repo->name_size, repo->name, name_size, name, name_size);
-
+    }
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
     return make_gsl_err(gsl_OK);
@@ -590,9 +590,9 @@ static gsl_err_t read_attr(void *obj, const char *name, size_t name_size, const 
     gsl_err_t parser_err;
 
     if (DEBUG_CLASS_READ_LEVEL_2)
-        knd_log(".. reading attr: \"%.*s\" rec:\"%.*s\"", name_size, name, 32, rec);
+        knd_log(".. reading {attr %.*s} rec:\"%.*s\"", name_size, name, 32, rec);
 
-    err = knd_attr_new(mempool, &attr);
+    err = knd_attr_new(&attr, mempool);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     attr->parent = self;
 
@@ -739,61 +739,15 @@ int knd_class_read(struct kndClass *self, const char *rec, size_t *total_size, s
     return knd_OK;
 }
 
-int knd_class_acquire(struct kndClassEntry *entry, struct kndClass **result, struct kndTask *task)
-{
-    struct kndRepoCache *cache = task->cache;
-    struct kndClass *c = NULL;
-    int err;
-
-    assert (cache != NULL);
-
-    if (DEBUG_CLASS_READ_LEVEL_2) {
-        knd_log(">> acquire {class %.*s}", entry->name_size, entry->name);
-    }
-
-    /* globally cached object */
-    if (entry->class) {
-        *result = entry->class;
-        return knd_OK;
-    }
-
-    /* check local task cache */
-    err = knd_set_get(cache->class_idx, entry->id, entry->id_size, (void**)&c);
-    if (!err) {
-        *result = c;
-        return knd_OK;
-    }
-
-    /* check main idx */
-
-    
-    /* it's my duty to allocate resources */
-
-    task->payload = (void*)entry;
-    err = knd_shared_set_unmarshall_elem(task->idxs->class_idx, entry->id, entry->id_size,
-                                         knd_class_unmarshall, (void**)&c, task);
-    KND_TASK_ERR("failed to unmarshall class entry %.*s", entry->name_size, entry->name);
-    c->entry = entry;
-    c->name = entry->name;
-    c->name_size = entry->name_size;
-
-    /* update local task cache */
-    err = knd_set_add(cache->class_idx, entry->id, entry->id_size, (void*)entry);
-    KND_TASK_ERR("failed to update local task cache with class entry %.*s",
-                 entry->name_size, entry->name);
-
-    *result = c;
-    return knd_OK;
-}
-
 int knd_class_unmarshall(const char *unused_var(elem_id), size_t unused_var(elem_id_size),
                          const char *rec, size_t rec_size, void **result, struct kndTask *task)
 {
-    struct kndClass *c = NULL;
+    struct kndMemPool *mempool = task->ctx_mempool;
+    struct kndClass *c;
     size_t total_size = rec_size;
     int err;
 
-    err = knd_class_new(task->user_ctx->mempool, &c);
+    err = knd_class_new(&c, mempool);
     KND_TASK_ERR("failed to alloc a class to unmarshall");
     c->entry = task->payload;
     c->name = c->entry->name;

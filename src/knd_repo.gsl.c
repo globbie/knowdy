@@ -306,10 +306,10 @@ static int read_GSL_file(struct kndRepo *repo, struct kndConcFolder *parent_fold
     OUT(filename, filename_size);
     OUT(file_ext, file_ext_size);
 
-    if (DEBUG_REPO_GSL_LEVEL_3)
+    if (DEBUG_REPO_GSL_LEVEL_3) {
         knd_log(".. reading GSL {file %.*s} {content-type %d}",
                 out->buf_size, out->buf, content_type);
-
+    }
     file_out->reset(file_out);
     err = file_out->write_file_content(file_out, (const char*)out->buf);
     if (err) {
@@ -399,11 +399,15 @@ static int resolve_class(void *obj, const char *unused_var(elem_id),
 {
     struct kndTask *task = obj;
     struct kndClassEntry *entry = elem;
+    struct kndClass *c;
     int err;
 
-    if (entry->class->is_resolved) return knd_OK;
+    err = knd_class_acquire(entry, &c, task);
+    KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
 
-    err = knd_class_resolve(entry->class, task);
+    if (c->is_resolved) return knd_OK;
+
+    err = knd_class_resolve(c, task);
     KND_TASK_ERR("failed to resolve {class %.*s}", entry->name_size, entry->name);
 
     return knd_OK;
@@ -415,12 +419,16 @@ static int index_class(void *obj, const char *unused_var(elem_id),
 {
     struct kndTask *task = obj;
     struct kndClassEntry *entry = elem;
+    struct kndClass *c;
     struct kndSharedSet *class_idx = task->idxs->class_idx;
     int err;
 
-    if (entry->class->is_indexed) return knd_OK;
+    err = knd_class_acquire(entry, &c, task);
+    KND_TASK_ERR("failed to acquire {class %.*s}", entry->name_size, entry->name);
 
-    err = knd_class_index(entry->class, task);
+    if (c->is_indexed) return knd_OK;
+
+    err = knd_class_index(c, task);
     KND_TASK_ERR("failed to index {class %.*s}", entry->name_size, entry->name);
 
     err = knd_shared_set_add(class_idx, entry->id, entry->id_size, (void*)entry);
@@ -465,7 +473,7 @@ static int resolve_class_insts(struct kndRepo *self, struct kndTask *task)
         knd_log(".. resolving class instances in {repo %.*s}..", self->name_size, self->name);
 
     // TODO: iterate func in kndSharedDict
-    for (size_t i = 0; i < name_idx->size; i++) {
+    /*for (size_t i = 0; i < name_idx->size; i++) {
         item = atomic_load_explicit(&name_idx->hash_array[i], memory_order_relaxed);
         for (; item; item = item->next) {
             entry = item->data;
@@ -476,16 +484,11 @@ static int resolve_class_insts(struct kndRepo *self, struct kndTask *task)
             c = entry->class;
             if (!c->inst_name_idx) continue;
 
-            if (DEBUG_REPO_GSL_LEVEL_3) {
-                knd_log(".. resolving insts of {class %.*s}..",
-                        entry->name_size, entry->name);
-                c->str(c, 1);
-            }
             err = iterate_class_insts(c, task);
             KND_TASK_ERR("failed to iterate insts of class %.*s",
                          entry->name_size, entry->name);
         }
-    }
+        }*/
     return knd_OK;
 }
 
@@ -529,33 +532,32 @@ static int index_repo_class_insts(struct kndRepo *self, struct kndTask *task)
         items = atomic_load_explicit(&name_idx->hash_array[i], memory_order_relaxed);
         FOREACH (item, items) {
             entry = item->data;
-            if (!entry->class) {
-                knd_log("-- unresolved class entry: %.*s", entry->name_size, entry->name);
+
+            if (!entry->cached_version) {
+                knd_log("-- unresolved {class-entry %.*s}", entry->name_size, entry->name);
                 return knd_FAIL;
             }
-            c = entry->class;
+            
+            err = knd_class_acquire(entry, &c, task);
+            KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
+
             if (!c->inst_name_idx) continue;
 
-            if (DEBUG_REPO_GSL_LEVEL_3) {
-                knd_log(".. indexing insts of {class %.*s}..",
-                        entry->name_size, entry->name);
-            }
             err = index_class_insts(c, task);
-            KND_TASK_ERR("failed to iterate insts of class %.*s",
-                         entry->name_size, entry->name);
+            KND_TASK_ERR("failed to index insts of {class %.*s}", entry->name_size, entry->name);
         }
     }
     return knd_OK;
 }
 
-int knd_repo_read_source_files(struct kndRepo *self, struct kndTask *task)
+int knd_repo_read_sources(struct kndRepo *self, struct kndTask *task)
 {
     int err;
 
-    if (DEBUG_REPO_GSL_LEVEL_TMP)
-        knd_log(".. initial loading of schema files for {repo %.*s}",
+    if (DEBUG_REPO_GSL_LEVEL_TMP) {
+        knd_log(".. initial loading of schema source files for {repo %.*s}",
                 self->name_size, self->name);
-
+    }
     /* read a system-wide schema */
     task->type = KND_BULK_LOAD_STATE;
     err = read_GSL_file(self, NULL,

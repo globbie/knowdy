@@ -100,7 +100,7 @@ int knd_resolve_commit(struct kndCommit *commit, struct kndTask *task)
 
     if (DEBUG_COMMIT_LEVEL_TMP)
         knd_log(".. resolving commit #%zu", commit->numid);
-    
+
     FOREACH (ref, commit->class_state_refs) {
         if (ref->state->phase == KND_REMOVED) {
             continue;

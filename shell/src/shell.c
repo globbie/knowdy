@@ -33,6 +33,7 @@
 
 #include "knd_config.h"
 #include "knd_steward.h"
+#include "knd_memblock.h"
 #include "knd_user.h"
 #include "knd_text.h"
 #include "knd_utils.h"
@@ -87,8 +88,11 @@ static int check_file_rec(struct kndTask *task, const char *rec, size_t rec_size
         KND_TASK_ERR("max input file size limit reached");
     }
 
-    err = knd_task_read_file_block(task, buf, (size_t)st.st_size, &memblock);
-    KND_TASK_ERR("failed to read memblock from file \"%.*s\"", buf_size, buf);
+    err = knd_memblock_new(&memblock, 0);
+    KND_TASK_ERR("failed to alloc a memblock");
+    
+    err = knd_memblock_read_file(memblock, buf, (size_t)st.st_size);
+    KND_TASK_ERR("failed to read memblock from {file %.*s}", buf_size, buf);
 
     *result = memblock;
     return knd_OK;
@@ -101,6 +105,7 @@ static int knd_interact(struct kndSteward *steward)
     char  *buf;
     size_t buf_size;
     struct kndMemBlock *memblock = NULL;
+    struct kndMemBlock *write_memblock = NULL;
     const char *block;
     size_t block_size;
     const char *steward_role_name = knd_agent_role_names[steward->role];
@@ -149,7 +154,7 @@ static int knd_interact(struct kndSteward *steward)
 
         /* reader task is always the first to parse and validate the request */
         knd_task_reset(reader_task);
-        reader_task->mode = KND_TASK_TRACE_MODE;
+        // reader_task->mode = KND_TASK_TRACE_MODE;
 
         err = knd_task_run(reader_task, block, block_size);
         if (err != knd_OK) {
@@ -157,8 +162,8 @@ static int knd_interact(struct kndSteward *steward)
                     reader_task->output_size, reader_task->output);
             goto next_line;
         }
-        knd_log("=== REPLY ===\n\n%.*s",
-                reader_task->output_size, reader_task->output);
+
+        knd_log("=== REPLY ===\n\n%.*s", reader_task->output_size, reader_task->output);
 
         // out->reset(out);
         // reader_task->mempool->present(reader_task->mempool, out);
@@ -168,16 +173,17 @@ static int knd_interact(struct kndSteward *steward)
            possibly involving network communication */
         switch (reader_task->ctx->phase) {
         case KND_CONFIRM_COMMIT:
-            err = knd_task_copy_block(reader_task,
-                                      reader_task->output, reader_task->output_size,
-                                      &block, &block_size);
+            err = knd_memblock_new(&write_memblock, 0);
+            if (err) goto next_line;
+
+            err = knd_memblock_copy(write_memblock, reader_task->output, reader_task->output_size);
             if (err != knd_OK) {
                 knd_log("-- update block allocation failed");
                 goto next_line;
             }
-
+            
             knd_task_reset(writer_task);
-            err = knd_task_run(writer_task, block, block_size);
+            err = knd_task_run(writer_task, write_memblock->buf, write_memblock->buf_size);
             if (err != knd_OK) {
                 knd_log("-- update confirm failed: %.*s",
                         writer_task->output_size, writer_task->output);
@@ -201,19 +207,18 @@ static int knd_interact(struct kndSteward *steward)
                 KND_STEWARD_ERR("steward cleanup failed");
 
                 /* re-initialize all writing tasks */
-
-                
+                knd_task_cleanup(writer_task, steward);
             }
             break;
         default:
             break;
         }
-
         
         /* readline allocates a new buffer every time */
     next_line:
-        // free(buf);
+        free(buf);
         memblock = NULL;
+        write_memblock = NULL;
     }
     return knd_OK;
 }
@@ -252,7 +257,7 @@ static int knd_start(const char *config, size_t config_size)
 
     knd_steward_monitor(steward, &report);
     if (report.mem_threshold_alert) {
-        knd_log("!! mem utilization threshold reached");
+        knd_log("!! init stage: mem utilization threshold reached");
 
         err = knd_steward_snapshot(steward);
         if (err) goto error;

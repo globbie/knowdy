@@ -139,8 +139,7 @@ extern void knd_build_conc_abbr(const char *name, size_t name_size, char *buf, s
     // knd_log("class: \"%.*s\"  abbr: \"%.*s\"", name_size, name, abbr_size, buf);
 }
 
-extern void
-knd_num_to_str(size_t numval, char *buf, size_t *buf_size, size_t base)
+extern void knd_num_to_str(size_t numval, char *buf, size_t *buf_size, size_t base)
 {
     size_t curr_val = numval;
     size_t curr_size = 0;
@@ -502,8 +501,7 @@ int knd_read_UTF8_char(const char *rec, size_t rec_size, size_t *val, size_t *le
     return knd_FAIL;
 }
 
-extern int knd_parse_num(const char *val,
-                         long *result)
+extern int knd_parse_num(const char *val, long *result)
 /*int *warning)*/
 {
     long numval;

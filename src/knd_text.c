@@ -44,16 +44,16 @@ int knd_charseq_new(struct kndMemPool *mempool, struct kndCharSeq **result)
     return knd_OK;
 }
 
-int knd_charseq_decode(struct kndRepo *repo, const char *val, size_t val_size, struct kndCharSeq **result,
-                      struct kndTask *task)
+int knd_charseq_decode(struct kndRepo *repo, const char *val, size_t val_size,
+                       struct kndCharSeq **result, struct kndTask *task)
 {
     struct kndCharSeq *seq;
     int err;
 
-    if (DEBUG_TEXT_LEVEL_2)
-        knd_log(".. \"%.*s\" repo to decode \"%.*s\" charseq",
+    if (DEBUG_TEXT_LEVEL_2) {
+        knd_log(".. \"%.*s\" repo to decode {seq %.*s}",
                 repo->name_size, repo->name, val_size, val);
-
+    }
     assert(val_size <= KND_ID_SIZE);
 
     err = knd_shared_set_get(task->idxs->str_idx, val, val_size, (void**)&seq);
@@ -73,34 +73,36 @@ int knd_charseq_fetch(struct kndRepo *repo, const char *val, size_t val_size,
     assert(val != NULL);
     assert(val_size != 0);
 
-    if (DEBUG_TEXT_LEVEL_2)
+    if (DEBUG_TEXT_LEVEL_2) {
         knd_log(".. {repo %.*s} fetching {seq %.*s}",
                 repo->name_size, repo->name, val_size, val);
-
+    }
     seq = knd_shared_dict_get(task->idxs->str_dict, val, val_size);
     if (seq) {
-        if (DEBUG_TEXT_LEVEL_3)
-            knd_log(">> \"%.*s\" charseq already registered", val_size, val);
+        if (DEBUG_TEXT_LEVEL_3) {
+            knd_log(">> {seq %.*s} already registered", val_size, val);
+        }
         *result = seq;
         return knd_OK;
     }
+
     err = knd_charseq_new(mempool, &seq);
     KND_TASK_ERR("failed to alloc a charseq");
     seq->val = val;
     seq->val_size = val_size;
     seq->numid = atomic_fetch_add_explicit(&task->idxs->num_strs, 1, memory_order_relaxed);
-    
+ 
     err = knd_shared_dict_set(task->idxs->str_dict, val, val_size,
-                              (void*)seq, NULL, &seq->item, false);
+                              (void*)seq, NULL, false);
     KND_TASK_ERR("failed to register a charseq");
 
     knd_uid_create(seq->numid, idbuf, &idbuf_size);
     err = knd_shared_set_add(task->idxs->str_idx, idbuf, idbuf_size, (void*)seq);
     KND_TASK_ERR("failed to register a charseq by numid");
 
-    if (DEBUG_TEXT_LEVEL_3)
+    if (DEBUG_TEXT_LEVEL_3) {
         knd_log(">> {seq %.*s {id %.*s}} registered", val_size, val, idbuf_size, idbuf);
-
+    }
     *result = seq;
     return knd_OK;
 }

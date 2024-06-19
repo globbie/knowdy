@@ -59,10 +59,10 @@ static int update_class_name_idx(struct kndRepo *repo, struct kndClass *c,
     struct kndClassEntry *entry;
     int err;
 
-    err = knd_class_entry_new(task->mempool, &entry);
+    err = knd_class_entry_new(&entry, task->mempool);
     KND_TASK_ERR("failed to alloc a class entry");
     entry->repo = repo;
-    entry->class = c;
+    entry->cached_version = c;
     c->entry = entry;
 
     entry->name = name;
@@ -71,12 +71,8 @@ static int update_class_name_idx(struct kndRepo *repo, struct kndClass *c,
     c->name_size = name_size;
 
     /* register as a unique class name */
-    err = knd_shared_dict_set(task->idxs->class_name_idx, name, name_size, (void*)entry,
-                             NULL, NULL, false);
+    err = knd_shared_dict_set(task->idxs->class_name_idx, name, name_size, (void*)entry, NULL, false);
     KND_TASK_ERR("failed to register a class name");
-
-    if (DEBUG_CLASS_IMPORT_LEVEL_3)
-        knd_log("++ new class registered: %.*s", name_size, name);
 
     /* class name as a charseq */
     err = knd_charseq_fetch(repo, name, name_size, &seq, task);
@@ -188,7 +184,7 @@ static gsl_err_t set_class_var(void *obj, const char *name, size_t name_size)
         return make_gsl_err(gsl_OK);
     }
 
-    err = knd_class_entry_new(mempool, &entry);
+    err = knd_class_entry_new(&entry, mempool);
     if (err) return make_gsl_err_external(err);
     entry->name = name;
     entry->name_size = name_size;
@@ -240,9 +236,9 @@ static gsl_err_t parse_attr(void *obj, const char *name, size_t name_size,
     task->ctx->tr = NULL;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_3)
-        knd_log(".. parsing attr: \"%.*s\" rec:\"%.*s\"", name_size, name, 32, rec);
+        knd_log(".. parsing {attr %.*s} rec:\"%.*s\"", name_size, name, 32, rec);
 
-    err = knd_attr_new(mempool, &attr);
+    err = knd_attr_new(&attr, mempool);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     attr->parent = self;
 
@@ -458,7 +454,7 @@ gsl_err_t knd_class_import(struct kndRepo *repo, const char *rec, size_t *total_
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
         knd_log(".. {worker %zu} to import {class %.*s}", task->id, 128, rec);
 
-    err = knd_class_new(mempool, &c);
+    err = knd_class_new(&c, mempool);
     if (err) {
         KND_TASK_LOG("mempool failed to alloc kndClass");
         return make_gsl_err_external(err);

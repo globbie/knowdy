@@ -310,9 +310,6 @@ static int resolve_attr_var_list(struct kndClass *self, struct kndAttrVar *var, 
             c = local_class;
     }
 
-    if (DEBUG_ATTR_VAR_RESOLVE_LEVEL_2)
-        c->str(c, 1);
-
     FOREACH (item, var->list) {
         item->attr = attr;
         item->val = item->name;
@@ -348,6 +345,7 @@ static int resolve_attr_ref(struct kndAttrVar *parent_item, struct kndTask *task
     const char *val_classname = NULL;
     size_t val_classname_size = 0;
     struct kndClassEntry *entry;
+    struct kndClass *c;
     struct kndAttrVar *attr_var = NULL;
     struct kndAttrRef *attr_ref;
     int err;
@@ -388,10 +386,14 @@ static int resolve_attr_ref(struct kndAttrVar *parent_item, struct kndTask *task
 	KND_TASK_ERR("no attr name specified in attr ref \"%.*s\"",
                      parent_item->name_size, parent_item->name);
     }
-    err = knd_class_get_attr(entry->class, attrname, attrname_size, &attr_ref);
+
+    err = knd_class_acquire(entry, &c, task);
+    KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
+
+    err = knd_class_get_attr(c, attrname, attrname_size, &attr_ref);
     if (err) {
 	KND_TASK_ERR("no attr \"%.*s\" in class \"%.*s\"",
-                     attrname_size, attrname, entry->class->name_size, entry->class->name);
+                     attrname_size, attrname, entry->name_size, entry->name);
     }
     parent_item->class_entry = entry;
     parent_item->ref_attr = attr_ref->attr;
@@ -413,16 +415,21 @@ static int resolve_attr_ref(struct kndAttrVar *parent_item, struct kndTask *task
 static int resolve_ref(struct kndClass *self, struct kndAttrVar *var, struct kndTask *task)
 {
     struct kndClass *c, *ref_c;
+    struct kndClassEntry *entry;
     int err;
 
     assert (var->val != NULL);
     assert (var->val_size != 0);
 
-    c = var->attr->ref_class_entry->class;
+    entry = var->attr->ref_class_entry;
+    err = knd_class_acquire(entry, &c, task);
+    KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
+
     if (!c->is_resolved) {
         err = knd_class_resolve(c, task);
         KND_TASK_ERR("failed to resolve class \"%.*s\"", c->name_size, c->name);
     }
+
     err = knd_resolve_class_ref(self, var->val, var->val_size, c, &ref_c, task);
     if (err) return err;
     var->class_entry = ref_c->entry;

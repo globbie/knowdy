@@ -6,6 +6,7 @@
 
 #include "knd_class.h"
 #include "knd_utils.h"
+#include "knd_memblock.h"
 #include "knd_mempool.h"
 #include "knd_shared_set.h"
 #include "knd_repo.h"
@@ -25,20 +26,27 @@ static int unmarshall_block(struct kndSharedSet *self, struct kndSharedSetDir *d
                             int fd, size_t block_size,
                             char *idbuf, size_t idbuf_size, elem_unmarshall_cb cb, struct kndTask *task);
 
+static inline void append_memblock(struct kndSharedSet *self, struct kndMemBlock *block)
+{
+    block->next = self->blocks;
+    self->blocks = block;
+    self->num_blocks++;
+    self->total_block_size += block->buf_size;
+}
+
 static int payload_linear_scan(struct kndSharedSetDir *dir,
                                const char *block, size_t block_size, char *idbuf, size_t idbuf_size,
                                elem_unmarshall_cb cb, struct kndTask *task)
 {
     const char *b, *c;
     size_t remainder = block_size - 1;
-    // bool in_tag = true;
     void *result;
     size_t val_size;
     int err;
 
-    if (DEBUG_SHARED_SET_READ_LEVEL_2)
+    if (DEBUG_SHARED_SET_READ_LEVEL_2) {
         knd_log(".. linear scan of \"%.*s\" [size:%zu]", block_size, block, block_size);
-
+    }
     idbuf[idbuf_size] = *block;
     idbuf_size++;
     c = block + 1;
@@ -206,8 +214,9 @@ static int unmarshall_elems(struct kndSharedSetDir *dir, const char *block, size
 
         dir->elem_block_sizes[elem_id_val] = numval;
 
+        /* activate callback function */
         err = cb(idbuf, idbuf_size + 1, e, numval, &result, task);
-        KND_TASK_ERR("failed to unmarshall elem \"%.*s\"", idbuf_size + 1, idbuf);
+        KND_TASK_ERR("failed to unmarshall {elem %.*s}", idbuf_size + 1, idbuf);
         dir->num_term_elems++;
 
         e += numval;
@@ -370,27 +379,29 @@ static int unmarshall_block(struct kndSharedSet *self, struct kndSharedSetDir *d
                             int fd, size_t block_size, char *idbuf, size_t idbuf_size,
                             elem_unmarshall_cb cb, struct kndTask *task)
 {
-    struct kndRepo *repo = task->repo;
     struct kndMemBlock *block;
     ssize_t num_bytes;
     size_t subdir_block_size;
+    size_t block_numid;
     int err;
 
-    if (DEBUG_SHARED_SET_READ_LEVEL_2)
+    if (DEBUG_SHARED_SET_READ_LEVEL_2) {
         knd_log(">> id \"%.*s\" to unmarshall block from offset %zu (size: %zu)",
                 idbuf_size, idbuf, dir->global_offset, block_size);
-
+    }
     err = read_payload_size(dir, fd, dir->global_offset, block_size);
     KND_TASK_ERR("failed to read payload size");
 
     if (dir->payload_block_size) {
-        if (DEBUG_SHARED_SET_READ_LEVEL_2)
+        if (DEBUG_SHARED_SET_READ_LEVEL_2) {
             knd_log("== alloc a payload block of size %zu", dir->payload_block_size);
-        block = calloc(1, sizeof(struct kndMemBlock));
-        if (!block) {
-            err = knd_NOMEM;
-            KND_TASK_ERR("block alloc failed");
         }
+
+        knd_calc_num_id(idbuf, idbuf_size, &block_numid);
+    
+        err = knd_memblock_new(&block, block_numid);
+        KND_TASK_ERR("memblock alloc failed");
+
         block->buf_size = dir->payload_block_size + 1;
 
         char *b = malloc(block->buf_size);
@@ -405,10 +416,7 @@ static int unmarshall_block(struct kndSharedSet *self, struct kndSharedSetDir *d
         num_bytes = read(fd, b, dir->payload_block_size);
         if (num_bytes != (ssize_t)dir->payload_block_size) return knd_IO_FAIL;
 
-        block->next = repo->blocks;
-        repo->blocks = block;
-        repo->num_blocks++;
-        repo->total_block_size += block->buf_size;
+        append_memblock(self, block);
 
         err = unmarshall_elems(dir, block->buf, dir->payload_block_size,
                                idbuf, idbuf_size, cb, task);
@@ -440,10 +448,8 @@ int knd_shared_set_unmarshall_file(struct kndSharedSet *self,
     fd = open(filename, O_RDONLY);
     if (fd == -1) {
         err = knd_IO_FAIL;
-        KND_TASK_ERR("failed to open file");
+        KND_TASK_ERR("failed to open file %.*s", filename_size, filename);
     }
-    memcpy(self->path, filename, filename_size);
-    self->path_size = filename_size;
 
     err = knd_shared_set_dir_new(self, &dir);
     if (err) {
@@ -544,6 +550,7 @@ static int read_elem(struct kndSharedSet *self, int fd, struct kndSharedSetDir *
 }
 
 int knd_shared_set_unmarshall_elem(struct kndSharedSet *self, const char *id, size_t id_size,
+                                   const char *filename, size_t filename_size,
                                    elem_unmarshall_cb cb, void **result, struct kndTask *task)
 {
     int fd;
@@ -551,16 +558,16 @@ int knd_shared_set_unmarshall_elem(struct kndSharedSet *self, const char *id, si
     int err;
 
     if (DEBUG_SHARED_SET_READ_LEVEL_2) {
-        knd_log(".. unmarshall {elem %.*s} from {leaf %s}",
-                id_size, id, self->path);
+        knd_log(".. unmarshall {elem %.*s} from {file %.*s}",
+                id_size, id, filename_size, filename);
     }
 
     // TODO: check cache
 
-    fd = open(self->path, O_RDONLY);
+    fd = open(filename, O_RDONLY);
     if (fd == -1) {
         err = knd_IO_FAIL;
-        KND_TASK_ERR("failed to open file %s", self->path);
+        KND_TASK_ERR("failed to open file %.*s", filename_size, filename);
     }
 
     task->type = KND_UNFREEZE_STATE;

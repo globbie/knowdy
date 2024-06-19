@@ -140,21 +140,20 @@ static int export_glosses(struct kndClass *self, struct kndOutput *out)
 static int export_baseclass_vars(struct kndClass *self, struct kndTask *task, struct kndOutput *out)
 {
     struct kndClassVar *item;
-    struct kndClass *c;
     int err;
 
     OUT("[is", strlen("[is"));
     FOREACH (item, self->baseclass_vars) {
         OUT("{", 1);
-        c = item->entry->class;
-        OUT(c->entry->id, c->entry->id_size);
+
+        OUT(item->entry->id, item->entry->id_size);
         if (item->attrs) {
             err = knd_attr_vars_export_GSP(item->attrs, out, task, 0, false);
             if (err) return err;
         }
-        err = out->writec(out, '}');                                              RET_ERR();
+        OUTC('}');
     }
-    err = out->writec(out, ']');                                                  RET_ERR();
+    OUTC(']');
     return knd_OK;
 }
 
@@ -438,15 +437,47 @@ int knd_class_export_GSP(struct kndClass *self, struct kndTask *task)
     return knd_OK;
 }
 
-int knd_class_marshall(void *elem, size_t *output_size, struct kndTask *task)
+int knd_class_names_marshall(void *elem, size_t *output_size, struct kndTask *task)
 {
-    struct kndClassEntry *entry = elem;
+    struct kndSharedDictItem *item, *items = elem;
+    struct kndClassEntry *entry;
+    struct kndClass *c;
     struct kndOutput *out = task->out;
     size_t orig_size = out->buf_size;
     int err;
-    assert(entry->class != NULL);
 
-    err = knd_class_export_GSP(entry->class, task);
+    FOREACH (item, items) {
+        entry = item->data;
+        // TODO check commit version
+
+        OUT("{c ", strlen("{c "));
+        OUT(entry->name, entry->name_size);
+        OUT("{id ", strlen("{id "));
+        OUT(entry->id, entry->id_size);
+        OUT("}}", strlen("}}"));
+
+        if (DEBUG_CLASS_GSP_LEVEL_3) {
+            knd_log("== {class %.*s {id %.*s}} {GSP {size %zu}}", 
+                    entry->name_size,  entry->name, 
+                    entry->id_size, entry->id, out->buf_size - orig_size);
+        }
+    }
+    *output_size = out->buf_size - orig_size;
+    return knd_OK;
+}
+
+int knd_class_marshall(void *elem, size_t *output_size, struct kndTask *task)
+{
+    struct kndClassEntry *entry = elem;
+    struct kndClass *c;
+    struct kndOutput *out = task->out;
+    size_t orig_size = out->buf_size;
+    int err;
+
+    err = knd_class_acquire(entry, &c, task);
+    KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
+
+    err = knd_class_export_GSP(c, task);
     KND_TASK_ERR("failed to export class GSP");
 
     if (DEBUG_CLASS_GSP_LEVEL_3) {
@@ -454,7 +485,7 @@ int knd_class_marshall(void *elem, size_t *output_size, struct kndTask *task)
         knd_calc_num_id(entry->id, entry->id_size, &numid);
 
         knd_log("== {class %.*s {id %.*s {numid %zu}}} {GSP {size %zu}}", 
-                entry->class->name_size,  entry->class->name, 
+                entry->name_size,  entry->name, 
                 entry->id_size, entry->id, numid, out->buf_size - orig_size);
     }
     *output_size = out->buf_size - orig_size;
@@ -469,7 +500,6 @@ int knd_class_entry_unmarshall(const char *elem_id, size_t elem_id_size,
     struct kndClassEntry *entry = NULL;
     struct kndRepo *repo = task->repo;
     struct kndCharSeq *seq;
-    struct kndSharedDictItem *item;
     const char *c, *name = rec;
     size_t name_size;
     int err;
@@ -477,7 +507,7 @@ int knd_class_entry_unmarshall(const char *elem_id, size_t elem_id_size,
     if (DEBUG_CLASS_GSP_LEVEL_2)
         knd_log(">> GSP class entry \"%.*s\" => \"%.*s\"", elem_id_size, elem_id, rec_size, rec);
 
-    err = knd_class_entry_new(mempool, &entry);
+    err = knd_class_entry_new(&entry, mempool);
     KND_TASK_ERR("failed to alloc a class entry");
     entry->repo = task->repo;
     memcpy(entry->id, elem_id, elem_id_size);
@@ -507,9 +537,8 @@ int knd_class_entry_unmarshall(const char *elem_id, size_t elem_id_size,
     entry->seq = seq;
 
     err = knd_shared_dict_set(task->idxs->class_name_idx, entry->name, entry->name_size,
-                              (void*)entry, NULL, &item, false);
+                              (void*)entry, NULL, false);
     KND_TASK_ERR("failed to register class name");
-    entry->dict_item = item;
 
     err = knd_shared_set_add(task->idxs->class_idx, entry->id, entry->id_size, (void*)entry);
     KND_TASK_ERR("failed to register class entry \"%.*s\"", entry->id_size, entry->id);

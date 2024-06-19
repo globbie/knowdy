@@ -49,6 +49,7 @@ static gsl_err_t build_search_plan(void *obj, const char *unused_var(name), size
     struct kndTextSearchReport *report, *pref = task->ctx->reports;
     struct kndClassDeclar *declar;
     struct kndClassEntry *entry;
+    struct kndClass *c;
     struct kndClassRef *text_idxs;
     int err;
 
@@ -68,7 +69,13 @@ static gsl_err_t build_search_plan(void *obj, const char *unused_var(name), size
             knd_log(">> class declar: %.*s (repo:%.*s)",
                     entry->name_size, entry->name, entry->repo->name_size, entry->repo->name);
 
-        text_idxs = atomic_load_explicit(&entry->class->text_idxs, memory_order_relaxed);
+        err = knd_class_acquire(entry, &c, task);
+        if (err) {
+            KND_TASK_LOG("failed to acquire class %.*s", entry->name_size, entry->name);
+            return make_gsl_err_external(err);
+        }
+
+        text_idxs = atomic_load_explicit(&c->text_idxs, memory_order_relaxed);
         FOREACH (ref, text_idxs) {
             if (DEBUG_TEXT_SEARCH_LEVEL_TMP)
                 knd_log("** text idx: \"%.*s\" (repo:%.*s) text idx:%p class idx:%p",
@@ -114,7 +121,8 @@ static gsl_err_t set_text_src(void *obj, const char *name, size_t name_size)
 
     err = knd_get_class_entry(repo, name, name_size, false, &entry, task);
     if (err) {
-        KND_TASK_LOG("class \"%.*s\" not found in repo \"%.*s\"", name_size, name, repo->name_size, repo->name);
+        KND_TASK_LOG("class \"%.*s\" not found in repo \"%.*s\"",
+                     name_size, name, repo->name_size, repo->name);
         return make_gsl_err_external(err);
     }
     err = knd_text_search_report_new(task->mempool, &report);
@@ -135,6 +143,7 @@ static gsl_err_t parse_src_attr(void *obj, const char *name, size_t name_size, c
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
     struct kndAttrRef *attr_ref;
+    struct kndClassEntry *entry;
     struct kndClass *c;
     int err;
 
@@ -144,10 +153,17 @@ static gsl_err_t parse_src_attr(void *obj, const char *name, size_t name_size, c
         return *total_size = 0, make_gsl_err_external(err);
     }
 
-    c = ctx->report->entry->class;
+    entry = ctx->report->entry;
+    err = knd_class_acquire(entry, &c, task);
+    if (err) {
+        KND_TASK_LOG("failed to acquire class %.*s", entry->name_size, entry->name);
+        return *total_size = 0, make_gsl_err_external(err);
+    }
+
     err = knd_class_get_attr(c, name, name_size, &attr_ref);
     if (err) {
-        KND_TASK_LOG("attr \"%.*s\" not found in class \"%.*s\"", name_size, name, c->name_size, c->name);
+        KND_TASK_LOG("{attr %.*s} not found in {class %.*s}",
+                     name_size, name, c->name_size, c->name);
         return *total_size = 0, make_gsl_err_external(err);
     }
 

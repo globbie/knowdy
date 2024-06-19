@@ -494,42 +494,51 @@ int knd_resolve_proc_arg_var(struct kndProc *proc, struct kndProcArgVar *var, st
 {
     struct kndProcArgRef *ref;
     struct kndClassEntry *entry;
-    struct kndClass *c = NULL;
+    struct kndClass *template_c = NULL;
+    struct kndClass *c;
     int err;
 
-    if (DEBUG_PROC_ARG_LEVEL_2)
+    if (DEBUG_PROC_ARG_LEVEL_2) {
         knd_log("\n.. resolving proc arg var \"%.*s\"  of \"%.*s\"",
                 var->name_size, var->name, proc->name_size, proc->name);
+    }
 
     err = knd_proc_get_arg(proc, var->name, var->name_size, &ref, task);
     KND_TASK_ERR("\"%.*s\" proc arg not approved", var->name_size, var->name);
 
-    if (ref->var && ref->var->template)
-        c = ref->var->template->class;
+    if (ref->var && ref->var->template) {
+        entry = ref->var->template;
+        err = knd_class_acquire(entry, &template_c, task);
+        KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
+    }
 
     if (var->val_size) {
         entry = knd_shared_dict_get(task->idxs->class_name_idx, var->val, var->val_size);
         if (!entry) {
             err = knd_NO_MATCH;
-            KND_TASK_ERR("no such class: %.*s", var->val_size, var->val);
+            KND_TASK_ERR("no such {class %.*s}", var->val_size, var->val);
         }
         var->template = entry;
 
-        if (c) {
-            if (c == entry->class) {
+        if (template_c) {
+            err = knd_class_acquire(entry, &c, task);
+            KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
+
+            if (template_c == c) {
                 err = knd_FORMAT;
                 KND_TASK_ERR("same class template specified twice");
             }
-            err = knd_is_base(c, entry->class);
-            KND_TASK_ERR("\"%.*s\" is not a subclass of arg var template class \"%.*s\"",
-                         entry->name_size, entry->name, c->name_size, c->name);
+
+            err = knd_is_base(template_c, c);
+            KND_TASK_ERR("{class %.*s} is not a subclass of arg var template {class %.*s}",
+                         entry->name_size, entry->name, template_c->name_size, template_c->name);
         }
     }
 
-    if (DEBUG_PROC_ARG_LEVEL_2)
-        knd_log("NB: \"%.*s\" proc arg gets a new class template from \"%.*s\"",
+    if (DEBUG_PROC_ARG_LEVEL_2) {
+        knd_log("NB: {proc-arg %.*s} gets a new class template from {proc %.*s}",
                 var->name_size, var->name, proc->name_size, proc->name);
-
+    }
     ref->var = var;
     return knd_OK;
 }

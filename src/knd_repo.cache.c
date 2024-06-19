@@ -12,7 +12,7 @@
 #include "knd_user.h"
 #include "knd_query.h"
 #include "knd_task.h"
-#include "knd_dict.h"
+#include "knd_shared_dict.h"
 #include "knd_class.h"
 #include "knd_class_inst.h"
 #include "knd_proc.h"
@@ -28,22 +28,82 @@
 #define DEBUG_REPO_CACHE_LEVEL_3 0
 #define DEBUG_REPO_CACHE_LEVEL_TMP 1
 
+static bool detect_if_cacheable(struct kndClassEntry *entry)
+{
+    size_t num_requests = atomic_load_explicit(&entry->num_requests, memory_order_relaxed);
+    if (num_requests) {
+        //knd_log("{class %.*s {num-requests %zu}}",
+        //        entry->name_size, entry->name, num_requests);
+        // TODO
+        return true;
+    }
+    return false;
+}
+
 static int reindex_class(void *obj, const char *unused_var(elem_id),
                          size_t unused_var(elem_id_size),
                          size_t unused_var(count), void *elem)
 {
     struct kndTask *task = obj;
-    struct kndClassEntry *entry = elem;
-    struct kndDict *class_name_idx = task->cache->class_name_idx;
+    struct kndClassEntry *orig_entry = elem;
+    struct kndClassEntry *entry;
+    struct kndRepoSnapshot *snapshot = task->repo->snapshot_temp;
+    struct kndMemPool *mempool = task->mempool;
+    assert (snapshot != NULL);
+
+    struct kndSharedDict *class_name_idx = snapshot->idxs.class_name_idx;
+    struct kndSharedSet  *class_idx = snapshot->idxs.class_idx;
     int err;
 
-    knd_log(".. reindex %.*s", entry->name_size, entry->name);
+    if (DEBUG_REPO_CACHE_LEVEL_3) {
+        knd_log(".. reindex %.*s", orig_entry->name_size, orig_entry->name);
+    }
 
-    // TODO: copy class entry
+    err = knd_class_entry_copy(orig_entry, &entry, mempool, task);
+    KND_TASK_ERR("failed to make a class entry copy");
 
-    err = knd_dict_set(class_name_idx, entry->name, entry->name_size, (void*)entry);
-    KND_TASK_ERR("failed to assign {class %.*s} to cache idx",
-                 entry->name_size, entry->name);
+    err = knd_shared_dict_set(class_name_idx, entry->name, entry->name_size, (void*)entry, NULL, false);
+    KND_TASK_ERR("failed to assign {class %.*s} to cache class name idx", entry->name_size, entry->name);
+
+    err = knd_shared_set_add(class_idx, entry->id, entry->id_size, (void*)entry);
+    KND_TASK_ERR("failed to assign {class %.*s} to cache class idx", entry->name_size, entry->name);
+
+    return knd_OK;
+}
+
+static int build_cache_item(void *obj, const char *unused_var(elem_id),
+                            size_t unused_var(elem_id_size),
+                            size_t unused_var(count), void *elem)
+{
+    struct kndTask *task = obj;
+    struct kndClassEntry *orig_entry = elem;
+    struct kndClassEntry *entry;
+    struct kndRepoSnapshot *snapshot = task->repo->snapshot_temp;
+    struct kndMemPool *cache_mempool = task->cache_mempool;
+    struct kndClass *c, *c_copy = NULL;
+
+    assert (snapshot != NULL);
+    struct kndSharedSet *class_idx = snapshot->idxs.class_idx;
+    int err;
+
+    /* no caching */
+    if (!detect_if_cacheable(orig_entry)) return knd_OK;
+
+    if (DEBUG_REPO_CACHE_LEVEL_2) {
+        knd_log(".. cache copy of {class %.*s}", orig_entry->name_size, orig_entry->name);
+    }
+
+    err = knd_class_acquire(orig_entry, &c, task);
+    KND_TASK_ERR("failed to acquire class %.*s", orig_entry->name_size, orig_entry->name);
+
+    /* NB: using cache mempool */
+    err = knd_class_copy(c, &c_copy, cache_mempool, task);
+    KND_TASK_ERR("failed to make a class copy");
+
+    err = knd_shared_set_get(class_idx, orig_entry->id, orig_entry->id_size, (void**)&entry);
+    KND_TASK_ERR("no such entry {class %.*s}", orig_entry->name_size, orig_entry->name);
+    c_copy->entry = entry;
+    entry->cached_version = c_copy;
 
     return knd_OK;
 }
@@ -61,27 +121,13 @@ int knd_repo_cache_update(struct kndRepo *repo, struct kndTask *task)
 
     // filter out the least recently used entries
 
+    task->repo = repo;
+
     err = knd_shared_set_map(idxs->class_idx, reindex_class, (void*)task);
     KND_TASK_ERR("failed to reindex class idx in {repo %.*s}", repo->name_size, repo->name);
 
-    return knd_OK;
-}
+    err = knd_shared_set_map(idxs->class_idx, build_cache_item, (void*)task);
+    KND_TASK_ERR("failed to build class cache for {repo %.*s}", repo->name_size, repo->name);
 
-int knd_repo_cache_new(struct kndMemPool *mempool, struct kndRepoCache **result)
-{
-    struct kndRepoCache *cache;
-    int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndRepoCache));
-    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, (void**)&cache);
-    if (err) return err;
-    memset(cache, 0, sizeof(struct kndRepoCache));
-
-    err = knd_set_new(&cache->class_idx, mempool);
-    if (err) return err;
-
-    err = knd_dict_new(&cache->class_name_idx, mempool, KND_MEDIUM_DICT_SIZE);
-    if (err) return err;
-
-    *result = cache;
     return knd_OK;
 }
