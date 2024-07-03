@@ -11,7 +11,6 @@ struct kndUserContext;
 struct kndQuery;
 struct kndTask;
 struct kndSharedDict;
-struct kndStorageLeaf;
 struct kndTaskContext;
 
 #include <time.h>
@@ -54,40 +53,13 @@ struct kndRepoRef
     struct kndRepoRef *next;
 };
 
-struct kndStorageLeaf
-{
-    size_t numid;
-    size_t min_leaf_size;
-    size_t max_leaf_size;
-
-    char range_from_id[KND_ID_SIZE];
-    size_t range_from_id_size;
-
-    char range_to_id[KND_ID_SIZE];
-    size_t range_to_id_size;
-
-    size_t num_elems;
-
-    char filepath[KND_PATH_SIZE + 1];
-    size_t filepath_size;
-    size_t file_size;
-    char file_hash[KND_HASH_SIZE];
-    size_t file_hash_size;
-
-    struct kndStorageLeaf *next;
-    struct kndStorageLeaf *tail;
-    size_t num_leaves;
-};
-
 struct kndRepoIndices
 {
     struct kndSharedSet *class_idx;
-    //struct kndStorageLeaf *class_idx_leaf;
     atomic_size_t num_classes;
     atomic_size_t class_id_count;
 
     struct kndSharedDict *class_name_idx;
-    //struct kndStorageLeaf *class_name_idx_leaf;
 
     struct kndSet  *attr_idx;
     struct kndSharedDict *attr_name_idx;
@@ -174,23 +146,15 @@ struct kndRepo
     struct kndRepoRef *children;
     size_t num_children;
 
-    char **source_files;
-    size_t num_source_files;
-
     bool restore_mode;
     size_t intersect_matrix_size;
 
+    // TODO remove
     struct kndClass *root_class;
     struct kndProc  *root_proc;
 
     struct kndRepoSnapshot * _Atomic snapshot;
     struct kndRepoSnapshot *snapshot_temp;
-
-    struct kndMemPool *mempool;
-    
-    struct kndMemBlock *blocks;
-    size_t num_blocks;
-    size_t total_block_size;
 };
 
 int knd_present_repo_state(struct kndRepo *self, struct kndTask *task);
@@ -207,12 +171,16 @@ gsl_err_t knd_repo_parse_commit(void *obj, const char *rec, size_t *total_size);
 int knd_apply_commit(void *obj, const char *unused_var(elem_id), size_t unused_var(elem_id_size),
                      size_t unused_var(count), void *elem);
 
-int knd_repo_open(struct kndRepo *self, struct kndTask *task);
+int knd_repo_read(struct kndRepo *self, struct kndTask *task);
 int knd_repo_restore(struct kndRepo *self, struct kndRepoSnapshot *snapshot, struct kndTask *task);
 
-int knd_repo_snapshot(struct kndRepo *self, struct kndTask *task);
-void knd_repo_snapshot_free(struct kndRepoSnapshot *snapshot);
-int knd_repo_cache_update(struct kndRepo *repo, struct kndTask *task);
+int knd_repo_snapshot_create(struct kndRepo *self, struct kndTask *task);
+int knd_repo_snapshot_read(struct kndRepoSnapshot *snapshot, struct kndTask *task);
+void knd_repo_snapshot_del(struct kndRepoSnapshot *snapshot);
+int knd_repo_snapshot_fetch_memblock(struct kndRepoSnapshot *self, size_t space_required,
+                                     struct kndMemBlock **result, struct kndTask *task);
+
+int knd_repo_cache_update(struct kndRepoSnapshot *snapshot, struct kndTask *task);
 int knd_repo_cleanup(struct kndRepo *repo, struct kndTask *task);
 
 void knd_repo_del(struct kndRepo *self);
@@ -225,6 +193,4 @@ int knd_repo_transfer_commits(struct kndRepo *repo, struct kndTask *task);
 
 int knd_repo_new(struct kndRepo **self, const char *name, size_t name_size,
                  const char *path, size_t path_size,
-                 const char *schema_path, size_t schema_path_size, struct kndMemPool *mempool);
-
-int knd_storage_leaf_new(struct kndStorageLeaf **result);
+                 const char *schema_path, size_t schema_path_size);

@@ -86,7 +86,8 @@ set(SOURCES src/knd_attr.c src/knd_attr.import.c
         src/knd_attr_var.gsl.c src/knd_attr_var.json.c src/knd_attr_var.gsp.c
         src/knd_rel.c src/knd_rel.import.c src/knd_rel.resolve.c
         src/knd_rel_pred.resolve.c 
-        src/knd_class.c src/knd_class.gsl.c src/knd_class.gsp.c src/knd_class.read.c
+        src/knd_class.c src/knd_class.gsl.c
+        src/knd_class.encode.c src/knd_class.decode.c src/knd_class.read.c
         src/knd_class.import.c src/knd_class.json.c src/knd_class.resolve.c src/knd_class.index.c
         src/knd_class.select.c src/knd_class.states.c
         src/knd_class_inst.c src/knd_class_inst.gsl.c src/knd_class_inst.gsp.c
@@ -103,7 +104,7 @@ set(SOURCES src/knd_attr.c src/knd_attr.import.c
         src/knd_proc.svg.c src/knd_proc_arg.c
         src/knd_proc_arg.gsl.c src/knd_proc_arg.json.c src/knd_proc_call.c
         src/knd_repo.c src/knd_repo.gsl.c src/knd_repo.gsp.c
-        src/knd_repo.commit.c src/knd_repo.open.c src/knd_repo.cache.c
+        src/knd_repo.commit.c src/knd_repo.read.c src/knd_repo.cache.c
         src/knd_set.c src/knd_shared_set.c src/knd_shared_set.gsp.c
         src/knd_shared_set.read.c src/knd_set_idx.c
         src/knd_steward.c

@@ -292,6 +292,8 @@ static gsl_err_t parse_schema(void *obj, const char *rec, size_t *total_size)
 {
     struct kndSteward *self = obj;
 
+    knd_log(".. parsing rec size %zu", *total_size);
+
     struct gslTaskSpec specs[] = {
         {   .is_implied = true,
             .run = run_check_schema,
@@ -374,6 +376,8 @@ static int steward_read_config(struct kndSteward *steward, const char *config, s
     struct kndOutput *out = steward->out;
     struct kndOutput *log = steward->log;
 
+    knd_log("config size: %zu", config_size);
+
     parser_err = gsl_parse_task(config, &total_parsed, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code != gsl_OK) {
         KND_STEWARD_LOG("failed to read configuration file");
@@ -444,15 +448,14 @@ static int steward_init(struct kndSteward *steward)
     steward->mem_ctx_config.memtype = KND_ALLOC_INCR;
 
     /* repos */
-    err = knd_set_new(&steward->repo_idx, steward->mempool_write);
-    KND_STEWARD_ERR("failed to create a set idx");
+    //err = knd_set_new(&steward->repo_idx, steward->mempool_write);
+    //KND_STEWARD_ERR("failed to create a set idx");
 
-    err = knd_shared_dict_new(&steward->repo_name_idx, steward->mempool_write, KND_MEDIUM_DICT_SIZE);
-    KND_STEWARD_ERR("failed to create a dict idx");
+    //err = knd_shared_dict_new(&steward->repo_name_idx, steward->mempool_write, KND_MEDIUM_DICT_SIZE);
+    //KND_STEWARD_ERR("failed to create a dict idx");
 
     err = knd_repo_new(&repo, "/", 1, steward->path, steward->path_size,
-                       steward->schema_path, steward->schema_path_size,
-                       steward->mempool_write);
+                       steward->schema_path, steward->schema_path_size);
     KND_STEWARD_ERR("failed to create a repo");
     steward->repo = repo;
 
@@ -468,7 +471,8 @@ static int steward_init(struct kndSteward *steward)
     task->cache_mempool = steward->mempool_read;
     steward->task = task;
 
-    err = knd_repo_open(repo, task);
+    err = knd_repo_read(repo, task);
+    knd_log("ERR: %.*s", task->log->buf_size, task->log->buf);
     KND_STEWARD_ERR("failed to open a repo");
 
     /* depends on {class User} from the system repo */
@@ -537,13 +541,12 @@ void knd_steward_monitor(struct kndSteward *steward, struct kndResourceReport *r
     report->mem_threshold_alert = memrep.mem_threshold_alert;
 }
 
-int knd_steward_snapshot(struct kndSteward *steward)
+int knd_steward_snapshot_create(struct kndSteward *steward)
 {
     struct kndOutput *out = steward->out;
     struct kndOutput *log = steward->log;
+    struct kndTask *task = steward->task;
     struct kndRepo *repo;
-    struct kndRepoSnapshot *snapshot;
-    size_t num_commits;
     int err;
 
     err = knd_mempool_create(&steward->mempool_read_temp, &steward->mem_cache_config, 1);
@@ -552,29 +555,37 @@ int knd_steward_snapshot(struct kndSteward *steward)
 
     err = knd_mempool_create(&steward->mempool_write_temp, &steward->mem_main_config, 1);
     KND_STEWARD_ERR("failed to init a write mempool");
-    steward->task->mempool = steward->mempool_write_temp;
+
+    task->mempool = steward->mempool_write_temp;
     repo = steward->repo;
 
-    err = knd_repo_snapshot(repo, steward->task);
-    KND_STEWARD_ERR("failed to build a sys repo snapshot");
+    err = knd_repo_snapshot_create(repo, task);
+    if (err) {
+        log->write(log, task->log->buf, task->log->buf_size);
+    }
+    KND_STEWARD_ERR("failed to build a sys repo temp snapshot");
 
-    err = knd_repo_cache_update(repo, steward->task);
-    KND_STEWARD_ERR("failed to update a repo cache");
+    task->snapshot = repo->snapshot_temp;
+    task->idxs = &repo->snapshot_temp->idxs;
+    task->mempool = steward->mempool_read_temp;
 
-    //err = knd_repo_snapshot(steward->user->repo, steward->task);
-    //KND_STEWARD_ERR("failed to build a user repo snapshot");
+    err = knd_repo_snapshot_read(repo->snapshot_temp, task);
+    if (err) {
+        log->write(log, task->log->buf, task->log->buf_size);
+    }
+    KND_STEWARD_ERR("failed to read a sys repo temp snapshot");
 
     return knd_OK;
 }
 
-int knd_steward_cleanup(struct kndSteward *steward)
+int knd_steward_snapshot_activate(struct kndSteward *steward)
 {
     struct kndOutput *out = steward->out;
     struct kndOutput *log = steward->log;
     struct kndRepo *repo = steward->repo;
     int err;
 
-    knd_log("cleaning up..");
+    knd_log(".. activating new snapshot ..");
 
     // TODO iterate all repos
 
@@ -582,6 +593,11 @@ int knd_steward_cleanup(struct kndSteward *steward)
     KND_STEWARD_ERR("failed to cleanup a repo");
 
     // free prev mempools
+    knd_mempool_del(steward->mempool_read);
+    knd_mempool_del(steward->mempool_write);
 
+    steward->mempool_read = steward->mempool_read_temp;
+    steward->mempool_write = steward->mempool_write_temp;
+ 
     return knd_OK;
 }

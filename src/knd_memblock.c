@@ -10,11 +10,18 @@
 #define DEBUG_MEMBLOCK_LEVEL_0 0
 #define DEBUG_MEMBLOCK_LEVEL_TMP 1
 
-int knd_memblock_new(struct kndMemBlock **result, size_t numid)
+int knd_memblock_new(struct kndMemBlock **result, size_t numid, size_t capacity)
 {
-    struct kndMemBlock *block = calloc(1, sizeof(struct kndMemBlock));
+    struct kndMemBlock *block = malloc(sizeof(struct kndMemBlock));
     if (!block) return knd_NOMEM;
+    block->buf = malloc(capacity + 1);
+    if (!block->buf) {
+        free(block);
+        return knd_NOMEM;
+    }
+    block->capacity = capacity;
     block->numid = numid;
+    block->buf_size = 0;
     *result = block;
     return knd_OK;
 }
@@ -33,24 +40,29 @@ int knd_memblock_copy(struct kndMemBlock *block, const char *input, size_t input
     return knd_OK;
 }
 
+int knd_memblock_write(struct kndMemBlock *self, const char *buf, size_t buf_size)
+{
+    if (buf_size > self->capacity - self->buf_size - 1)
+        return knd_NOMEM;
+
+    memcpy(self->buf + self->buf_size, buf, buf_size);
+    self->buf_size += buf_size;
+    self->buf[self->buf_size] = '\0';
+    return knd_OK;
+}
+
 int knd_memblock_read_file(struct kndMemBlock *block, const char *filename, size_t file_size)
 {
     FILE *file_stream;
     size_t read_size;
-    size_t num_extra_bytes = 2; // closing brace + null term
-    char *b = malloc(file_size + num_extra_bytes);
-    if (!b) return knd_NOMEM;
+
+    if (file_size >= block->capacity) return knd_LIMIT;
 
     file_stream = fopen(filename, "r");
     if (!file_stream) return knd_IO_FAIL;
-    read_size = fread(b, 1, file_size, file_stream);
+    read_size = fread(block->buf, 1, file_size, file_stream);
     if (!read_size) return knd_IO_FAIL;
-
-    b[file_size] = '}';
-    b[file_size + 1] = '\0';
-
-    block->buf = b;
-    block->buf_size = file_size + 1;
+    if (read_size != file_size) return knd_IO_FAIL;
 
     return knd_OK;
 }

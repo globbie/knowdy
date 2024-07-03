@@ -32,7 +32,7 @@ struct LocalContext {
     struct kndStatement  *stm;
 };
 
-int knd_charseq_new(struct kndMemPool *mempool, struct kndCharSeq **result)
+int knd_charseq_new(struct kndCharSeq **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
@@ -44,20 +44,28 @@ int knd_charseq_new(struct kndMemPool *mempool, struct kndCharSeq **result)
     return knd_OK;
 }
 
-int knd_charseq_decode(struct kndRepo *repo, const char *val, size_t val_size,
+int knd_charseq_decode(const char *id, size_t id_size,
                        struct kndCharSeq **result, struct kndTask *task)
 {
+    struct kndSharedSet *str_idx = task->idxs->str_idx;
     struct kndCharSeq *seq;
+    struct kndStorageLeaf *leaf;
     int err;
+    assert(id_size <= KND_ID_SIZE);
 
-    if (DEBUG_TEXT_LEVEL_2) {
-        knd_log(".. \"%.*s\" repo to decode {seq %.*s}",
-                repo->name_size, repo->name, val_size, val);
+    err = knd_shared_set_get(str_idx, id, id_size, (void**)&seq);
+    if (!err) {
+        *result = seq;
+        return knd_OK;
     }
-    assert(val_size <= KND_ID_SIZE);
 
-    err = knd_shared_set_get(task->idxs->str_idx, val, val_size, (void**)&seq);
-    KND_TASK_ERR("failed to decode \"%.*s\" charseq ", val_size, val);
+    err = knd_shared_set_find_leaf(str_idx, id, id_size, &leaf, task);
+    KND_TASK_ERR("no storage leaf found for unmarshalling {seq %.*s}", id_size, id);
+
+    err = knd_storage_leaf_read_elem(leaf, id, id_size,
+                                     knd_string_unmarshall, (void**)&seq, task);
+    KND_TASK_ERR("failed to unmarshall {seq %.*s}", id_size, id);
+
     *result = seq;
     return knd_OK;
 }
@@ -86,14 +94,13 @@ int knd_charseq_fetch(struct kndRepo *repo, const char *val, size_t val_size,
         return knd_OK;
     }
 
-    err = knd_charseq_new(mempool, &seq);
+    err = knd_charseq_new(&seq, mempool);
     KND_TASK_ERR("failed to alloc a charseq");
     seq->val = val;
     seq->val_size = val_size;
     seq->numid = atomic_fetch_add_explicit(&task->idxs->num_strs, 1, memory_order_relaxed);
  
-    err = knd_shared_dict_set(task->idxs->str_dict, val, val_size,
-                              (void*)seq, NULL, false);
+    err = knd_shared_dict_set(task->idxs->str_dict, val, val_size, (void*)seq);
     KND_TASK_ERR("failed to register a charseq");
 
     knd_uid_create(seq->numid, idbuf, &idbuf_size);

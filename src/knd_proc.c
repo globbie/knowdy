@@ -327,8 +327,7 @@ int knd_proc_entry_clone(struct kndProcEntry *self, struct kndRepo *repo,
     entry->num_ancestors = self->num_ancestors;
     entry->descendants = self->descendants;
 
-    err = knd_shared_dict_set(name_idx, entry->name,  entry->name_size,
-                              (void*)entry, task->ctx->commit, false);
+    err = knd_shared_dict_set(name_idx, entry->name,  entry->name_size, (void*)entry);
     KND_TASK_ERR("failed to register proc \"%.*s\"", entry->name_size, entry->name);
 
     *result = entry;

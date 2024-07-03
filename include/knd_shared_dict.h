@@ -31,14 +31,16 @@ struct kndSharedDict
 
     struct kndMemPool *mempool;
     struct kndSharedSet *idx;
+
+    bool allow_key_overwrite;
 };
 
-int knd_shared_dict_new(struct kndSharedDict **self, struct kndMemPool *mempool, size_t init_size);
+int knd_shared_dict_new(struct kndSharedDict **dict, size_t init_size,
+                        struct kndMemPool *mempool, bool allow_key_overwrite);
 void knd_shared_dict_del(struct kndSharedDict *self);
 
 void* knd_shared_dict_get(struct kndSharedDict *self, const char *key, size_t key_size);
-int knd_shared_dict_set(struct kndSharedDict *self, const char *key, size_t key_size,
-                        void *data, struct kndCommit *commit, bool allow_overwrite);
+int knd_shared_dict_set(struct kndSharedDict *self, const char *key, size_t key_size, void *data);
 int knd_shared_dict_remove(struct kndSharedDict *self, const char *key, size_t key_size);
 int knd_shared_dict_map(struct kndSharedDict *self, map_cb_func cb, void *obj);
 

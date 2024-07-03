@@ -475,20 +475,22 @@ static int export_baseclasses(struct kndClass *self, struct kndTask *task, size_
         OUT("{", 1);
         OUT(cvar->entry->name, cvar->entry->name_size);
 
-        err = knd_class_acquire(cvar->entry, &c, task);
-        KND_TASK_ERR("failed to acquire baseclass %.*s", cvar->entry->name_size, cvar->entry->name);
+        // TODO
+        /*err = knd_class_acquire(cvar->entry, &c, task);
+        KND_TASK_ERR("failed to acquire baseclass %.*s",
+                     cvar->entry->name_size, cvar->entry->name);
 
         if (c->tr) {
             err = knd_text_gloss_export_GSL(c->tr, true, task, depth + 2);
             KND_TASK_ERR("failed to export baseclass gloss GSL");
-        }
+            }*/
        
-        if (cvar->attrs) {
+        /*if (cvar->attrs) {
             curr_depth = task->ctx->depth;
             err = knd_attr_vars_export_GSL(cvar->attrs, task, false, depth + 2);
             KND_TASK_ERR("failed to export attr vars GSL");
             task->ctx->depth = curr_depth;   
-        }
+            }*/
         OUT("}", 1);
         cvar_count++;
     }

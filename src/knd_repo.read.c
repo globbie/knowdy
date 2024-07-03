@@ -222,6 +222,8 @@ static int restore_journals(struct kndRepo *self, struct kndRepoSnapshot *snapsh
     size_t buf_size;
     struct stat st;
     struct kndMemBlock *memblock;
+    size_t block_size;
+    size_t footer_size = strlen("}") + 1; // closing brace + null-termination
     int err;
 
     for (size_t i = 0; i < snapshot->max_journals; i++) {
@@ -239,11 +241,12 @@ static int restore_journals(struct kndRepo *self, struct kndRepoSnapshot *snapsh
             knd_log(".. restoring the journal file: %.*s", buf_size, buf);
         }
 
-        err = knd_memblock_new(&memblock, i);
+        block_size = (size_t)st.st_size + footer_size;
+        err = knd_memblock_new(&memblock, i, block_size);
         KND_TASK_ERR("failed to alloc a memblock");
         
         err = knd_memblock_read_file(memblock, buf, (size_t)st.st_size);
-        KND_TASK_ERR("failed to read memblock from %s (size:%zu)", out->buf, st.st_size);
+        KND_TASK_ERR("failed to read memblock from %s {size %zu}", out->buf, st.st_size);
 
         err = restore_commits(self, memblock, task);
         KND_TASK_ERR("failed to restore commits from %s", out->buf);
@@ -326,67 +329,54 @@ int knd_repo_restore(struct kndRepo *self, struct kndRepoSnapshot *snapshot, str
     return knd_OK;
 }
 
-static int read_str_idx(const char *path, size_t path_size, struct kndTask *task)
+static int read_class_name_idx(struct kndSharedDict *class_name_idx, struct kndTask *task)
 {
-    struct kndOutput *out = task->file_out;
-    struct stat st;
-    const char *filename = "strings.gsp";
-    size_t filename_size = strlen(filename);
+    struct kndSharedSet *idx = class_name_idx->idx;
+    struct kndStorageLeaf *leaf;
     int err;
 
-    out->reset(out);
-    OUT(path, path_size);
-    OUT(filename, filename_size);
-
-    if (out->buf_size >= KND_PATH_SIZE) return knd_LIMIT;
-
-    memcpy(task->filepath, out->buf, out->buf_size);
-    task->filepath_size = out->buf_size;
-    task->filepath[task->filepath_size] = '\0';
-
     if (DEBUG_REPO_LEVEL_TMP) {
-        knd_log(".. open {string-idx %.*s}", out->buf_size, out->buf);
+        knd_log(".. reading {class-name-idx %.*s}", idx->path_size, idx->path);
     }
-    if (stat(out->buf, &st)) {
-        return knd_NO_MATCH;
+    FOREACH (leaf, idx->leaves) {
+        err = knd_storage_leaf_open(idx, leaf, knd_class_names_unmarshall, task);
+        KND_TASK_ERR("failed to read class names idx");
     }
-
-    if (DEBUG_REPO_LEVEL_TMP) {
-        knd_log(".. unmarshall {string-idx %.*s {size %zu}}",
-                out->buf_size, out->buf, (size_t)st.st_size);
-    }
-    err = knd_shared_set_unmarshall_file(task->idxs->str_idx, out->buf, out->buf_size,
-                                         (size_t)st.st_size, knd_charseq_unmarshall, task);
-    KND_TASK_ERR("failed to unmarshall str idx file");
-
-    atomic_store_explicit(&task->idxs->num_strs, task->idxs->str_idx->num_elems,
-                          memory_order_relaxed);
     return knd_OK;
 }
 
-static int read_class_storage(const char *path, size_t path_size, struct kndTask *task)
+static int read_str_idx(struct kndSharedSet *idx, struct kndTask *task)
 {
-    struct kndOutput *out = task->file_out;
-    struct stat st;
-    const char *filename = "classes.gsp";
-    size_t filename_size = strlen(filename);
+    struct kndStorageLeaf *leaf;
     int err;
-    out->reset(out);
-    OUT(path, path_size);
-    OUT(filename, filename_size);
-    if (stat(out->buf, &st)) {
-        return knd_NO_MATCH;
-    }
 
     if (DEBUG_REPO_LEVEL_TMP) {
-        knd_log(".. reading {class-snapshot %.*s {size %zu}}",
-                out->buf_size, out->buf, (size_t)st.st_size);
+        knd_log(".. reading {str-idx %.*s}", idx->path_size, idx->path);
     }
-    err = knd_shared_set_unmarshall_file(task->idxs->class_idx, out->buf, out->buf_size,
-                                         (size_t)st.st_size, knd_class_entry_unmarshall, task);
-    KND_TASK_ERR("failed to unmarshall class storage GSP file");
+
+    FOREACH (leaf, idx->leaves) {
+        err = knd_storage_leaf_open(idx, leaf, NULL, task);
+        KND_TASK_ERR("failed to read str idx");
+    }
     return knd_OK;
 }
+
+static int read_class_idx(struct kndSharedSet *idx, struct kndTask *task)
+{
+    struct kndStorageLeaf *leaf;
+    int err;
+
+    if (DEBUG_REPO_LEVEL_TMP) {
+        knd_log(".. reading {class-idx %.*s}", idx->path_size, idx->path);
+    }
+
+    FOREACH (leaf, idx->leaves) {
+        err = knd_storage_leaf_open(idx, leaf, NULL, task);
+        KND_TASK_ERR("failed to read class idx");
+    }
+    return knd_OK;
+}
+
 
 static int read_repo_meta(struct kndRepo *repo, struct kndRepoSnapshot *snapshot,
                           struct kndTask *task)
@@ -435,37 +425,43 @@ static int fetch_latest_snapshot(struct kndRepo *repo, struct kndRepoSnapshot **
     return knd_OK;
 }
 
-static int read_snapshot(struct kndRepoSnapshot *snapshot, struct kndTask *task)
+int knd_repo_snapshot_read(struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
-    struct kndOutput *out = task->file_out;
-    const char *filename;
-    size_t filename_size;
+    struct kndSharedDict *class_name_idx = snapshot->idxs.class_name_idx;
+    struct kndSharedSet *class_idx = snapshot->idxs.class_idx;
+    struct kndSharedSet *str_idx = snapshot->idxs.str_idx;
     int err;
 
-    out->reset(out);
-    OUT(snapshot->repo->path, snapshot->repo->path_size);
-    OUTF("snapshot_%zu/", snapshot->numid);
-    filename = out->buf;
-    filename_size = out->buf_size;
-
     if (DEBUG_REPO_LEVEL_TMP) {
-        knd_log(".. reading {latest-snapshot %.*s}", filename_size, filename);
+        knd_log("\n.. reading {latest-snapshot %.*s}",
+                snapshot->path_size, snapshot->path);
     }
 
-    // TODO read snapshot metadata, signature
+    // TODO read snapshot metadata
 
-    /* decode string names */
-    err = read_str_idx(filename, filename_size, task);
-    KND_TASK_ERR("failed to read string idx in {snapshot #%zu {path %.*s}}",
-                 snapshot->numid, filename_size, filename);
+    err = read_class_name_idx(class_name_idx, task);
+    KND_TASK_ERR("failed to read class name idx in {snapshot #%zu {path %.*s}}",
+                 snapshot->numid, snapshot->path_size, snapshot->path);
 
-    err = read_class_storage(filename, filename_size, task);
-    KND_TASK_ERR("failed to read storage leaf at %.*s", filename_size, filename);
+    err = read_str_idx(str_idx, task);
+    KND_TASK_ERR("failed to read strings idx in {snapshot #%zu {path %.*s}}",
+                 snapshot->numid, snapshot->path_size, snapshot->path);
+
+    err = read_class_idx(class_idx, task);
+    KND_TASK_ERR("failed to read class idx in {snapshot #%zu {path %.*s}}",
+                 snapshot->numid, snapshot->path_size, snapshot->path);
+
+    err = knd_repo_cache_update(snapshot, task);
+    if (err) {
+        knd_log("ERR: %.*s", task->log->buf_size, task->log->buf);
+    }
+
+    KND_TASK_ERR("failed to update a repo cache");
 
     return knd_OK;
 }
 
-int knd_repo_open(struct kndRepo *self, struct kndTask *task)
+int knd_repo_read(struct kndRepo *self, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndRepoSnapshot *snapshot;
@@ -491,7 +487,6 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
     }
     err = fetch_latest_snapshot(self, &snapshot, task);
     KND_TASK_ERR("failed to fetch any repo snapshots");
-
     task->snapshot = snapshot;
     task->idxs = &snapshot->idxs;
 
@@ -509,8 +504,7 @@ int knd_repo_open(struct kndRepo *self, struct kndTask *task)
     default:
         break;
     }
-
-    err = read_snapshot(snapshot, task);
+    err = knd_repo_snapshot_read(snapshot, task);
     KND_TASK_ERR("failed to read the latest snapshot");
 
     err = knd_repo_restore(self, snapshot, task);

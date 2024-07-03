@@ -96,11 +96,15 @@ struct kndClassRef
 
 struct kndClassVar
 {
+    knd_classvar_t type;
+
+    const char *name;
+    size_t name_size;
+
     char id[KND_ID_SIZE];
     size_t id_size;
     size_t numid;
 
-    knd_classvar_t type;
     struct kndClassEntry *entry;
 
     struct kndAttrVar *attrs;
@@ -134,7 +138,6 @@ struct kndClassEntry
     struct kndClass * _Atomic curr_version;
     atomic_size_t   num_requests;
 
-    struct kndSharedDictItem *dict_item; // ??
     knd_state_phase phase;
 
     struct kndClassEntry *next;
@@ -261,11 +264,14 @@ int knd_class_acquire(struct kndClassEntry *self, struct kndClass **result, stru
 int knd_class_release(struct kndClassEntry *self, struct kndTask *task);
 
 int knd_class_names_marshall(void *elem, size_t *output_size, struct kndTask *task);
+int knd_class_names_unmarshall(const char *elem_id, size_t elem_id_size,
+                               const char *rec, size_t rec_size, struct kndTask *task);
+
 int knd_class_marshall(void *elem, size_t *output_size, struct kndTask *task);
-int knd_class_entry_unmarshall(const char *elem_id, size_t elem_id_size,
-                               const char *val, size_t val_size, void **result, struct kndTask *task);
 int knd_class_unmarshall(const char *elem_id, size_t elem_id_size,
                          const char *val, size_t val_size, void **result, struct kndTask *task);
+int knd_class_entry_unmarshall(const char *elem_id, size_t elem_id_size,
+                               const char *val, size_t val_size, void **result, struct kndTask *task);
 
 int knd_class_read(struct kndClass *self, const char *rec, size_t *total_size, struct kndTask *task);
 int knd_class_inst_idx_fetch(struct kndClass *self, struct kndSharedDict **result, struct kndTask *task);
@@ -312,12 +318,13 @@ int knd_class_entry_new(struct kndClassEntry **result, struct kndMemPool *mempoo
 int knd_class_new(struct kndClass **result, struct kndMemPool *mempool);
 int knd_class_idx_new(struct kndClassIdx **result, struct kndMemPool *mempool);
 
+int knd_inner_class_new(struct kndClass **self, struct kndMemPool *mempool);
+int knd_class_var_new(struct kndClassVar **result, struct kndMemPool *mempool);
+int knd_class_ref_new(struct kndClassRef **result, struct kndMemPool *mempool);
+
+int knd_class_facet_new(struct kndClassFacet **result, struct kndMemPool *mempool);
+
 int knd_class_commit_new(struct kndMemPool *mempool, struct kndClassCommit **result);
-int knd_class_var_new(struct kndMemPool *mempool, struct kndClassVar **result);
-int knd_class_ref_new(struct kndMemPool *mempool, struct kndClassRef **result);
-int knd_class_facet_new(struct kndMemPool *mempool, struct kndClassFacet **result);
-int knd_inner_class_new(struct kndMemPool *mempool, struct kndClass **self);
-// void knd_class_free(struct kndMemPool *mempool, struct kndClass *self);
 
 // knd_class.select.c
 extern gsl_err_t knd_class_select(struct kndRepo *repo,

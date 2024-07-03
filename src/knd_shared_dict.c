@@ -52,32 +52,38 @@ void* knd_shared_dict_get(struct kndSharedDict *self, const char *key, size_t ke
     assert(key != NULL);
     assert(key_size != 0);
     size_t h = knd_shared_dict_hash(key, key_size) % self->size;
-    struct kndSharedDictItem *item = atomic_load_explicit(&self->hash_array[h], memory_order_relaxed);
-    while (item) {
-        if (item->key_size != key_size) goto next_item;
+    struct kndSharedDictItem *item, *items =\
+        atomic_load_explicit(&self->hash_array[h], memory_order_relaxed);
+
+    FOREACH (item, items) {
+        if (item->key_size != key_size) continue;
         if (!memcmp(item->key, key, key_size)) {
             if (item->phase == KND_SHARED_DICT_REMOVED)
                 return NULL;
             return item->data;
         }
-    next_item:
-        item = item->next;
     }
     return NULL;
 }
 
-int knd_shared_dict_set(struct kndSharedDict *self, const char *key, size_t key_size,
-                        void *data, struct kndCommit *commit, bool allow_overwrite)
+int knd_shared_dict_set(struct kndSharedDict *self, const char *key, size_t key_size, void *data)
 {
     struct kndSharedDictItem *head;
     struct kndSharedDictItem *new_item;
     size_t h = knd_shared_dict_hash(key, key_size) % self->size;
-    struct kndSharedDictItem *orig_head = atomic_load_explicit(&self->hash_array[h], memory_order_acquire);
+    struct kndSharedDictItem *orig_head =\
+        atomic_load_explicit(&self->hash_array[h], memory_order_acquire);
     struct kndSharedDictItem *item = orig_head;
-    struct kndState *state;
+    // struct kndState *state;
     int err;
 
+    //size_t num_items = atomic_load_explicit(&self->num_items, memory_order_relaxed);
+    //knd_log(".. add name %.*s to dict %p {total-items %zu}",
+    //        key_size, key, self, num_items);
+
     while (item) {
+        // knd_log(">> hash %zu {dict-item %.*s} vs {key %.*s}",
+        //        h, item->key_size, item->key, key_size, key);
         if (item->key_size != key_size) goto next_item;
         if (!memcmp(item->key, key, key_size)) {
             break;
@@ -85,7 +91,8 @@ int knd_shared_dict_set(struct kndSharedDict *self, const char *key, size_t key_
     next_item:
         item = item->next;
     }
-    if (item && !allow_overwrite) {
+
+    if (item && !self->allow_key_overwrite) {
         switch (item->phase) {
         case KND_SHARED_DICT_VALID:
             //knd_log("-- valid entry already present in kndSharedDict: %.*s",
@@ -101,14 +108,14 @@ int knd_shared_dict_set(struct kndSharedDict *self, const char *key, size_t key_
     memset(new_item, 0, sizeof(struct kndSharedDictItem));
 
     new_item->phase = KND_SHARED_DICT_VALID;
-    if (commit) {
+    /*if (commit) {
         new_item->phase = KND_SHARED_DICT_PENDING;
         err = knd_state_new(self->mempool, &state);
         if (err) return err;
         state->commit = commit;
         state->data = data;
         new_item->states = state;
-    }
+        }*/
     new_item->data = data;
     new_item->key = key;
     new_item->key_size = key_size;
@@ -176,20 +183,18 @@ int knd_shared_dict_map(struct kndSharedDict *idx, map_cb_func cb, void *obj)
 
 void knd_shared_dict_del(struct kndSharedDict *self)
 {
-    //struct kndSharedDictItem *item;
-    // TODO
     free(self->hash_array);
-    free(self);
 }
 
-int knd_shared_dict_new(struct kndSharedDict **dict, struct kndMemPool *mempool, size_t init_size)
+int knd_shared_dict_new(struct kndSharedDict **dict, size_t init_size,
+                        struct kndMemPool *mempool, bool allow_key_overwrite)
 {
     void *page;
     struct kndSharedDict *self;
     int err;
 
-    assert(mempool->small_page_size >= sizeof(struct kndSharedDict));
-    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
+    assert(mempool->tiny_page_size >= sizeof(struct kndSharedDict));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndSharedDict));
     self = page;
@@ -199,6 +204,8 @@ int knd_shared_dict_new(struct kndSharedDict **dict, struct kndMemPool *mempool,
 
     self->size = init_size;
     self->mempool = mempool;
+
+    self->allow_key_overwrite  = allow_key_overwrite;
 
     *dict = self;
 

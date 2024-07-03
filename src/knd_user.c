@@ -76,12 +76,12 @@ int knd_create_user_repo(struct kndTask *task)
     int err;
     assert(ctx->repo == NULL);
 
-    err = knd_repo_new(&repo, "~", 1, ctx->path, ctx->path_size, NULL, 0, ctx->mempool);
+    err = knd_repo_new(&repo, "~", 1, ctx->path, ctx->path_size, NULL, 0);
     KND_TASK_ERR("failed to alloc new repo");
     repo->base = ctx->base_repo;
     ctx->repo = repo;
 
-    err = knd_repo_open(repo, task);
+    err = knd_repo_read(repo, task);
     if (err) {
         KND_TASK_LOG("failed to open repo: %.*s", repo->name_size, repo->name);
         ctx->repo = NULL;
@@ -330,7 +330,7 @@ static gsl_err_t parse_snapshot_task(void *obj, const char *unused_var(rec), siz
     int err;
 
     task->type = KND_SNAPSHOT_STATE;
-    err = knd_repo_snapshot(repo, task);
+    err = knd_repo_snapshot_create(repo, task);
     if (err) {
         KND_TASK_LOG("failed to build a snapshot of user repo");
         return *total_size = 0, make_gsl_err(gsl_FAIL);
@@ -535,12 +535,12 @@ int knd_user_new(struct kndUser **user,
     self->reponame = reponame;
     self->reponame_size = reponame_size;
     err = knd_repo_new(&self->repo, reponame, reponame_size,
-                       path, path_size, schema_path, schema_path_size, mempool);
+                       path, path_size, schema_path, schema_path_size);
     if (err) goto error;
 
-    err = knd_shared_dict_set(steward->repo_name_idx, reponame, reponame_size,
-                              (void*)self->repo, NULL, true);
-    KND_TASK_ERR("failed to register repo name \"%.*s\"", reponame_size, reponame);
+    //err = knd_shared_dict_set(steward->repo_name_idx, reponame, reponame_size,
+    //                          (void*)self->repo, NULL, true);
+    //KND_TASK_ERR("failed to register repo name \"%.*s\"", reponame_size, reponame);
 
     /* default acl */
     err = knd_repo_access_new(mempool, &acl);
@@ -556,7 +556,7 @@ int knd_user_new(struct kndUser **user,
     task->user_ctx->acls = self->default_acls;
     task->mempool = mempool;
 
-    err = knd_repo_open(self->repo, task);
+    err = knd_repo_read(self->repo, task);
     if (err) goto error;
 
     err = knd_set_new(&self->user_idx, mempool);

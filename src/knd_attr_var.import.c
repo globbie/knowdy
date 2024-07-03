@@ -246,9 +246,10 @@ static gsl_err_t import_attr_var_list_item(void *obj, const char *rec, size_t *t
     attr_var->parent = self;
     ctx->attr_var = attr_var;
 
-    if (DEBUG_ATTR_VAR_LEVEL_3)
-        knd_log("== importing a list item of %.*s: %.*s", self->name_size, self->name, 32, rec);
-
+    if (DEBUG_ATTR_VAR_LEVEL_3) {
+        knd_log("== importing a list item of %.*s: %.*s",
+                self->name_size, self->name, 32, rec);
+    }
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_attr_var_name,
@@ -280,33 +281,24 @@ static gsl_err_t import_attr_var_list_item(void *obj, const char *rec, size_t *t
     return append_attr_var_list_item(self, attr_var);
 }
 
-int knd_import_attr_var_list(struct kndClassVar *self, const char *name, size_t name_size,
+int knd_import_attr_var_list(struct kndClassVar *cvar, const char *name, size_t name_size,
                              const char *rec, size_t *total_size, struct kndTask *task)
 {
     struct kndAttrVar *attr_var;
     struct kndMemPool *mempool = task->user_ctx->mempool;
     gsl_err_t parser_err;
-    int err, e;
+    int err;
 
-    if (!self->entry) {
-        knd_log("-- anonymous class var: %.*s?  REC:%.*s", 64, rec);
-        struct kndOutput *log = task->log; 
-        log->reset(log);
-        e = log->write(log, "no baseclass name specified", strlen("no baseclass name specified"));
-        if (e) return e;
-        task->http_code = HTTP_BAD_REQUEST;
-        return knd_FAIL;
+    if (DEBUG_ATTR_VAR_LEVEL_2) {
+        knd_log("== import attr attr_var list: \"%.*s\" REC: %.*s",
+                name_size, name, 32, rec);
     }
-
-    if (DEBUG_ATTR_VAR_LEVEL_2)
-        knd_log("== import attr attr_var list: \"%.*s\" REC: %.*s", name_size, name, 32, rec);
-
     err = knd_attr_var_new(mempool, &attr_var);
     KND_TASK_ERR("failed to alloc an attr var");
-    attr_var->class_var = self;
+    attr_var->class_var = cvar;
     attr_var->name = name;
     attr_var->name_size = name_size;
-    append_attr_var(self, attr_var);
+    append_attr_var(cvar, attr_var);
 
     struct LocalContext ctx = {
         .list_parent = attr_var,

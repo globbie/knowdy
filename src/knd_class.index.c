@@ -175,7 +175,7 @@ static int index_baseclass(struct kndClass *self, struct kndClass *base, struct 
         }*/
 
     /* register as a child */
-    err = knd_class_ref_new(mempool, &ref);
+    err = knd_class_ref_new(&ref, mempool);
     KND_TASK_ERR("failed to alloc class ref");
     ref->entry = entry;
     ref->class = self;
@@ -276,8 +276,8 @@ int knd_class_index(struct kndClass *self, struct kndTask *task)
     }
     /* a child of the root class */
     if (!self->baseclass_vars) {
-        err = index_baseclass(self, repo->root_class, task);
-        KND_TASK_ERR("failed to index class of a root");
+        //err = index_baseclass(self, repo->root_class, task);
+        //KND_TASK_ERR("failed to index class of a root");
     } else {
         err = index_baseclasses(self, task);
         KND_TASK_ERR("failed to index baseclasses");

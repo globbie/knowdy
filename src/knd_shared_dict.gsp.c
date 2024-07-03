@@ -20,7 +20,8 @@
 
 int knd_shared_dict_marshall(struct kndSharedDict *self, const char *path, size_t path_size,
                              const char *pref, size_t pref_size,
-                             elem_marshall_cb cb, struct kndSharedDict *result_dict, struct kndTask *task)
+                             elem_marshall_cb cb, struct kndSharedDict *result_dict,
+                             struct kndTask *task)
 {
     struct kndSharedSet *idx;
     char idbuf[KND_ID_SIZE];

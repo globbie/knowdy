@@ -203,10 +203,7 @@ final:
     return err;
 }
 
-
-static int
-kndOutput_init(struct kndOutput *self,
-               size_t capacity)
+static int kndOutput_init(struct kndOutput *self, size_t capacity)
 {
     self->buf_size = 0;
     self->capacity = capacity;

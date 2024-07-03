@@ -191,7 +191,7 @@ static int resolve_inner_var(struct kndClass *self, struct kndAttrVar *var, stru
                     c->name_size, c->name, c->is_resolved);
         }
         err = knd_class_get_attr(c, item->name, item->name_size, &attr_ref);
-        KND_TASK_ERR("no attr \"%.*s\" in class \"%.*s\"",
+        KND_TASK_ERR("no {attr %.*s} in {class %.*s}",
                      item->name_size, item->name, c->name_size, c->name);
 
         attr = attr_ref->attr;
@@ -392,7 +392,7 @@ static int resolve_attr_ref(struct kndAttrVar *parent_item, struct kndTask *task
 
     err = knd_class_get_attr(c, attrname, attrname_size, &attr_ref);
     if (err) {
-	KND_TASK_ERR("no attr \"%.*s\" in class \"%.*s\"",
+	KND_TASK_ERR("no attr \"%.*s\" in {class %.*s}",
                      attrname_size, attrname, entry->name_size, entry->name);
     }
     parent_item->class_entry = entry;
@@ -448,13 +448,14 @@ int knd_resolve_attr_vars(struct kndClass *self, struct kndClassVar *cvar, struc
     int err;
 
     if (DEBUG_ATTR_VAR_RESOLVE_LEVEL_2) {
-        knd_log("\n>> resolving attr vars of {class %.*s} {base %.*s}",
-                self->entry->name_size, self->entry->name, cvar->entry->name_size, cvar->entry->name);
+        knd_log(".. resolving attr vars of {class %.*s} {baseclass %.*s}",
+                self->entry->name_size, self->entry->name,
+                cvar->entry->name_size, cvar->entry->name);
     }
 
     FOREACH (var, cvar->attrs) {
         err = knd_class_get_attr(self, var->name, var->name_size, &attr_ref);
-        KND_TASK_ERR("no attr \"%.*s\" in class \"%.*s\"",
+        KND_TASK_ERR("no {attr %.*s} in {class %.*s}",
                      var->name_size, var->name, self->name_size, self->name);
         attr = attr_ref->attr;
         attr_ref->attr_var = var;

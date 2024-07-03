@@ -64,10 +64,9 @@ static gsl_err_t run_get_class(void *obj, const char *name, size_t name_size)
     }
     err = knd_get_class_entry(ctx->repo, name, name_size, true, &entry, task);
     if (err) {
-        KND_TASK_LOG("\"%.*s\" class name not found", name_size, name);
-        task->ctx->http_code = HTTP_NOT_FOUND;
+        KND_TASK_LOG("{class %.*s} not found", name_size, name);
         task->ctx->error = knd_NO_MATCH;
-        return make_gsl_err_external(err);
+        return make_gsl_err(gsl_FAIL);
     }
     err = knd_class_acquire(entry, &c, task);
     if (err) {
@@ -86,6 +85,7 @@ subsets_option(void *obj, const char *unused_var(name), size_t unused_var(name_s
     return make_gsl_err(gsl_OK);
 }
 
+#if 0
 static int update_subset(struct kndClassFacet *parent_facet,
                          struct kndClassEntry *facet_entry,
                          struct kndClassEntry *entry, struct kndTask *task)
@@ -147,7 +147,6 @@ static int update_subset(struct kndClassFacet *parent_facet,
     return knd_OK;
 }
 
-#if 0
 static int facetize_class(void *obj,
                           const char *unused_var(elem_id),
                           size_t unused_var(elem_id_size),

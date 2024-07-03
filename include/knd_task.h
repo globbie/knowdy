@@ -247,8 +247,8 @@ struct kndTask
 
     struct kndDict *repo_name_idx;
 
-    struct kndSet  *class_idx;
     struct kndDict *class_name_idx;
+    struct kndSet  *class_idx;
     struct kndDict *class_inst_alias_idx;
 
     struct kndDict *attr_name_idx;

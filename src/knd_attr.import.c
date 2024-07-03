@@ -59,12 +59,13 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     self->name = name;
     self->name_size = name_size;
 
-    err = knd_charseq_fetch(repo, name, name_size, &seq, task);
+    /*err = knd_charseq_fetch(repo, name, name_size, &seq, task);
     if (err) {
         KND_TASK_LOG("failed to encode a charseq %.*s", name_size, name);
         return make_gsl_err_external(err);
     }
     self->seq = seq;
+    */
     return make_gsl_err(gsl_OK);
 }
 
@@ -89,6 +90,9 @@ static gsl_err_t set_ref_class(void *obj, const char *name, size_t name_size)
         knd_log("-- attr name not specified");
         return make_gsl_err(gsl_FAIL);
     }
+    self->classname = name;
+    self->classname_size = name_size;
+
     self->ref_classname = name;
     self->ref_classname_size = name_size;
     return make_gsl_err(gsl_OK);

@@ -291,8 +291,8 @@ int knd_attr_var_new(struct kndMemPool *mempool, struct kndAttrVar **result)
 {
     void *page;
     int err;
-    assert(mempool->small_x2_page_size >= sizeof(struct kndAttrVar));
-    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL_X2, &page);
+    assert(mempool->small_x4_page_size >= sizeof(struct kndAttrVar));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL_X4, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndAttrVar));
     *result = page;

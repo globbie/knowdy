@@ -184,7 +184,6 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
 static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
-
     // no explicit repo selection -> defaults to system repo
     task->user_ctx->repo = task->repo;
 
@@ -198,9 +197,9 @@ static gsl_err_t parse_proc_import(void *obj, const char *rec, size_t *total_siz
     struct kndTask *task = obj;
     int err;
 
-    if (DEBUG_TASK_LEVEL_2)
+    if (DEBUG_TASK_LEVEL_2) {
         knd_log(".. parsing the system proc import: \"%.*s\"..", 64, rec);
-
+    }
     task->type = KND_COMMIT_STATE;
     if (!task->ctx->commit) {
         err = knd_commit_new(task->mempool, &task->ctx->commit);
@@ -321,10 +320,8 @@ gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
             knd_log("commit confirm err:%d code:%d", err, parser_err.code);
             return parser_err;
         }
-
         // TODO
-        // check resource usage threshold, raise alert flag if needed
-        
+        // check resource usage threshold, raise alert flag if needed        
         // knd_log(".. building report for commit %zu", task->ctx->commit->numid);
         break;
     default:

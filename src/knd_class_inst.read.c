@@ -34,7 +34,7 @@ int knd_class_inst_unmarshall(const char *elem_id, size_t elem_id_size, const ch
     if (DEBUG_CLASS_INST_READ_LEVEL_2)
         knd_log(">> GSP class inst \"%.*s\" => \"%.*s\"", elem_id_size, elem_id, rec_size, rec);
 
-    err = knd_class_inst_new(mempool, &inst);
+    err = knd_class_inst_new(&inst, mempool);
     KND_TASK_ERR("failed to alloc a class inst");
 
     err = knd_class_inst_read(inst, rec, &total_size, task);
@@ -66,15 +66,18 @@ int knd_class_inst_acquire(struct kndClassInstEntry *entry, struct kndClassInst 
             return knd_OK;
         }
         if (!inst) {
-            // NB: passing is_a class entry via task context
+
+            /*err = knd_get_leaf(c->inst_idx, entry->is_a, &leaf, task);
+            KND_TASK_ERR("no storage leaf found for unmarshalling class entry %.*d",
+                         entry->id_size, entry->id);
             task->payload = entry->is_a;
-            err = knd_shared_set_unmarshall_elem(c->inst_idx, entry->id, entry->id_size,
-                                                 leaf->filepath, leaf->filepath_size,
-                                                 knd_class_inst_unmarshall, (void**)&inst, task);
+            err = knd_storage_leaf_read_elem(, entry->id, entry->id_size,
+                                             leaf->filepath, leaf->filepath_size,
+                                             knd_class_inst_unmarshall, (void**)&inst, task);
             if (err) return err;
             inst->entry = entry;
             inst->name = entry->name;
-            inst->name_size = entry->name_size;
+            inst->name_size = entry->name_size; */
         }
     } while (!atomic_compare_exchange_weak(&entry->inst, &prev_inst, inst));
 
@@ -128,7 +131,7 @@ int knd_class_inst_read(struct kndClassInst *self, const char *rec, size_t *tota
         knd_log(".. reading class inst GSP (entry:%p): \"%.*s\"..", entry, 128, rec);
     }
 
-    err = knd_class_var_new(mempool, &class_var);
+    err = knd_class_var_new(&class_var, mempool);
     KND_TASK_ERR("failed to alloc a class var");
     class_var->type = KND_INSTANCE_BLUEPRINT;
     class_var->entry = entry;

@@ -114,7 +114,7 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *is
             // TODO free new_name_idx if (new_name_idx != NULL) 
             break;
         }
-        err = knd_shared_dict_new(&new_name_idx, mempool, KND_MEDIUM_DICT_SIZE);
+        err = knd_shared_dict_new(&new_name_idx, KND_MEDIUM_DICT_SIZE, mempool, false);
         KND_TASK_ERR("failed to create inst name idx");
 
     } while (!atomic_compare_exchange_weak(&c->inst_name_idx, &name_idx, new_name_idx));
@@ -139,8 +139,7 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *is
         switch (ref->state->phase) {
         case KND_CREATED:
             if (entry->name_size) {
-                err = knd_shared_dict_set(name_idx, entry->name, entry->name_size, (void*)entry,
-                                          commit, false);
+                err = knd_shared_dict_set(name_idx, entry->name, entry->name_size, (void*)entry);
                 KND_TASK_ERR("name idx failed to register class inst %.*s, err:%d",
                              entry->name_size, entry->name, err);                
             }

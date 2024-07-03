@@ -30,6 +30,14 @@
 #define DEBUG_REPO_GSL_LEVEL_3 0
 #define DEBUG_REPO_GSL_LEVEL_TMP 1
 
+static inline void append_memblock(struct kndRepoSnapshot *self, struct kndMemBlock *block)
+{
+    block->next = self->blocks;
+    self->blocks = block;
+    self->num_blocks++;
+    self->total_block_size += block->buf_size;
+}
+
 static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
@@ -274,10 +282,10 @@ static int read_GSL_file(struct kndRepo *repo, struct kndConcFolder *parent_fold
 {
     struct kndOutput *out = task->out;
     struct kndOutput *file_out = task->file_out;
+    struct kndRepoSnapshot *snapshot = task->snapshot;
+    struct kndMemBlock *block;
     struct kndConcFolder *folder, *folders;
     const char *c;
-    char *rec;
-    char **recs;
     size_t folder_name_size;
     const char *index_folder_name = "index";
     size_t index_folder_name_size = strlen("index");
@@ -313,33 +321,29 @@ static int read_GSL_file(struct kndRepo *repo, struct kndConcFolder *parent_fold
     file_out->reset(file_out);
     err = file_out->write_file_content(file_out, (const char*)out->buf);
     if (err) {
-        knd_log("failed to read GSL file \"%.*s\"", out->buf_size, out->buf);
+        knd_log("failed to read GSL {file %.*s}", out->buf_size, out->buf);
         return err;
     }
+    err = knd_memblock_new(&block, snapshot->num_blocks, file_out->buf_size + 1);
+    KND_TASK_ERR("failed to alloc a memblock");
 
-    // TODO: find another place for storage
-    rec = malloc(file_out->buf_size + 1);
-    if (!rec) return knd_NOMEM;
-    memcpy(rec, file_out->buf, file_out->buf_size);
-    rec[file_out->buf_size] = '\0';
+    block->buf_size = file_out->buf_size;
+    memcpy(block->buf, file_out->buf, file_out->buf_size);
+    block->buf[block->buf_size] = '\0';
 
-    recs = (char**)realloc(repo->source_files, (repo->num_source_files + 1) * sizeof(char*));
-    if (!recs) return knd_NOMEM;
-    recs[repo->num_source_files] = rec;
+    append_memblock(snapshot, block);
 
-    repo->source_files = recs;
-    repo->num_source_files++;
-
-    if (DEBUG_REPO_GSL_LEVEL_3)
-        knd_log("== total GSL files: %zu", repo->num_source_files);
-
-    task->input = rec;
-    task->input_size = file_out->buf_size;
+    if (DEBUG_REPO_GSL_LEVEL_2) {
+        knd_log("== total GSL source files: %zu", snapshot->num_blocks);
+    }
+    task->input = block->buf;
+    task->input_size = block->buf_size;
 
     /* actual parsing */
-    err = parse_GSL(task, (const char*)rec, &chunk_size);
+    err = parse_GSL(task, (const char*)block->buf, &chunk_size);
     if (err) {
-        knd_log("-- parsing of \"%.*s\" failed, err: %d", out->buf_size, out->buf, err);
+        knd_log("-- parsing of GSL source {file %.*s} failed, err: %d",
+                out->buf_size, out->buf, err);
         return err;
     }
 

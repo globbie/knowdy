@@ -88,7 +88,7 @@ static int check_file_rec(struct kndTask *task, const char *rec, size_t rec_size
         KND_TASK_ERR("max input file size limit reached");
     }
 
-    err = knd_memblock_new(&memblock, 0);
+    err = knd_memblock_new(&memblock, 0, (size_t)st.st_size);
     KND_TASK_ERR("failed to alloc a memblock");
     
     err = knd_memblock_read_file(memblock, buf, (size_t)st.st_size);
@@ -122,7 +122,7 @@ static int knd_interact(struct kndSteward *steward)
 
     /* start serving requests */
 
-    knd_log("\n++ Knowdy steward service is up and running!\n"
+    knd_log("\n++ Knowdy Steward is up and running!\n"
             "   {steward-role %s}  {knd-version %s}\n",
             steward_role_name, KND_VERSION);
     knd_log("   (finish session by pressing Ctrl+C)\n");
@@ -173,7 +173,7 @@ static int knd_interact(struct kndSteward *steward)
            possibly involving network communication */
         switch (reader_task->ctx->phase) {
         case KND_CONFIRM_COMMIT:
-            err = knd_memblock_new(&write_memblock, 0);
+            err = knd_memblock_new(&write_memblock, 0, reader_task->output_size);
             if (err) goto next_line;
 
             err = knd_memblock_copy(write_memblock, reader_task->output, reader_task->output_size);
@@ -198,12 +198,12 @@ static int knd_interact(struct kndSteward *steward)
                 knd_log("!! mem utilization threshold reached");
 
                 /* build an on-disk snapshot up to the latest commit number */
-                err = knd_steward_snapshot(steward);
+                err = knd_steward_snapshot_create(steward);
                 KND_STEWARD_ERR("failed to build an on-disk snapshot");
 
                 /* suspend all writing tasks */
 
-                err = knd_steward_cleanup(steward);
+                err = knd_steward_snapshot_activate(steward);
                 KND_STEWARD_ERR("steward cleanup failed");
 
                 /* re-initialize all writing tasks */
@@ -252,17 +252,16 @@ static int knd_start(const char *config, size_t config_size)
         knd_log("ERR >> failed to create a steward");
         return err;
     }
-
     present_mempools(steward);
 
     knd_steward_monitor(steward, &report);
     if (report.mem_threshold_alert) {
         knd_log("!! init stage: mem utilization threshold reached");
 
-        err = knd_steward_snapshot(steward);
+        err = knd_steward_snapshot_create(steward);
         if (err) goto error;
 
-        err = knd_steward_cleanup(steward);
+        err = knd_steward_snapshot_activate(steward);
         if (err) goto error;
     }
 

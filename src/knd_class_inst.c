@@ -120,7 +120,7 @@ int knd_class_inst_export_commit(struct kndStateRef *state_refs, struct kndTask 
     return knd_OK;
 }
 
-int knd_class_inst_ref_new(struct kndMemPool *mempool, struct kndClassInstRef **result)
+int knd_class_inst_ref_new(struct kndClassInstRef **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
@@ -132,7 +132,7 @@ int knd_class_inst_ref_new(struct kndMemPool *mempool, struct kndClassInstRef **
     return knd_OK;
 }
 
-int knd_class_inst_entry_new(struct kndMemPool *mempool, struct kndClassInstEntry **result)
+int knd_class_inst_entry_new(struct kndClassInstEntry **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
@@ -144,7 +144,7 @@ int knd_class_inst_entry_new(struct kndMemPool *mempool, struct kndClassInstEntr
     return knd_OK;
 }
 
-int knd_class_inst_new(struct kndMemPool *mempool, struct kndClassInst **result)
+int knd_class_inst_new(struct kndClassInst **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;

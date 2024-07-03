@@ -125,7 +125,9 @@ struct kndAttrVarRef
     struct kndAttr *attr;
     struct kndState *states;
     struct kndAttrVarRef *children;
+
     struct kndAttrVarRef *next;
+    struct kndAttrVarRef *tail;
 };
 
 struct kndAttrVar
@@ -139,6 +141,9 @@ struct kndAttrVar
 
     const char *val;
     size_t val_size;
+    char val_id[KND_ID_SIZE];
+    size_t val_id_size;
+
     struct kndCharSeq *seq;
 
     long numval;
@@ -149,6 +154,7 @@ struct kndAttrVar
 
     struct kndClassVar *class_var;
     struct kndText *text;
+
     struct kndAttrVar *parent;
     struct kndAttrVar *children;
     struct kndAttrVar *tail;
@@ -173,7 +179,6 @@ struct kndAttrVar
     struct kndClassInstEntry *class_inst_entry;
 
     struct kndProcEntry *proc_entry;
-    // struct kndProc *proc;
 
     struct kndAttr *ref_attr;
 
@@ -187,7 +192,9 @@ struct kndAttrRef
     struct kndAttr *attr;
     struct kndAttrVar *attr_var;
     struct kndClassEntry *class_entry;
+
     struct kndAttrRef *next;
+    struct kndAttrRef *tail;
 };
 
 struct kndAttrIdx
@@ -215,7 +222,8 @@ struct kndAttr
 
     const char *name;
     size_t name_size;
-    struct kndCharSeq *seq;
+    struct kndClassEntry *cls;
+    //struct kndCharSeq *seq;
 
     struct kndClass *parent;
 
@@ -226,6 +234,10 @@ struct kndAttr
     bool is_indexed;
     bool is_implied;
     bool is_unique;
+
+    const char *classname;
+    size_t classname_size;
+    struct kndClassEntry *class_entry;
 
     const char *format_classname;
     size_t format_classname_size;
@@ -352,3 +364,5 @@ gsl_err_t knd_attr_implied(void *obj, const char *name, size_t name_size);
 gsl_err_t knd_attr_required(void *obj, const char *name, size_t name_size);
 gsl_err_t knd_attr_unique(void *obj, const char *name, size_t name_size);
 gsl_err_t knd_parse_quant_type(void *obj, const char *rec, size_t *total_size);
+
+int knd_attr_names_marshall(void *elem, size_t *output_size, struct kndTask *task);

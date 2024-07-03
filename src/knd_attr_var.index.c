@@ -81,7 +81,7 @@ static int attr_hub_add_classref(struct kndAttrHub *hub, struct kndClassEntry *t
     /* topic already registered? */
     err = knd_set_get(set, topic->id, topic->id_size, (void**)&ref);
     if (err) {
-        err = knd_class_ref_new(mempool, &ref);
+        err = knd_class_ref_new(&ref, mempool);
         KND_TASK_ERR("failed to alloc class ref");
         ref->entry = topic;
 

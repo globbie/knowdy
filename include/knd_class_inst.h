@@ -113,9 +113,9 @@ int kndClassInst_new(struct kndClassInst **self);
 
 void knd_class_inst_str(struct kndClassInst *self, size_t depth);
 
-int knd_class_inst_ref_new(struct kndMemPool *mempool, struct kndClassInstRef **result);
-int knd_class_inst_entry_new(struct kndMemPool *mempool, struct kndClassInstEntry **result);
-int knd_class_inst_new(struct kndMemPool *mempool, struct kndClassInst **result);
+int knd_class_inst_new(struct kndClassInst **result, struct kndMemPool *mempool);
+int knd_class_inst_ref_new(struct kndClassInstRef **result, struct kndMemPool *mempool);
+int knd_class_inst_entry_new(struct kndClassInstEntry **result, struct kndMemPool *mempool);
 
 int knd_class_inst_export(struct kndClassInst *self, knd_format format, bool is_list_item,
                           knd_state_phase phase, struct kndTask *task);

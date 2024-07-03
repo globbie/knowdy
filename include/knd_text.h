@@ -46,11 +46,14 @@ struct kndCharSeq
 {
     knd_charseq_enc_type enc;
 
+    /* repo wide str idx id */
+    char id[KND_ID_SIZE];
+    size_t id_size;
+    size_t numid; 
+
+    /* the actual string */
     const char *val;
     size_t val_size;
-    size_t numid; // global str idx id
-
-    struct kndSharedDictItem *item;
 };
 
 struct kndDiscourseContext
@@ -298,18 +301,18 @@ int knd_text_build_JSON(const char *rec, size_t rec_size, struct kndTask *task);
 
 int knd_par_export_GSL(struct kndPar *par, struct kndTask *task);
 
-int knd_charseq_fetch(struct kndRepo *repo, const char *val, size_t val_size, struct kndCharSeq **result,
-                      struct kndTask *task);
+int knd_charseq_new(struct kndCharSeq **result, struct kndMemPool *mempool);
+int knd_charseq_fetch(struct kndRepo *repo, const char *val, size_t val_size,
+                      struct kndCharSeq **result, struct kndTask *task);
 int knd_charseq_marshall(void *elem, size_t *output_size, struct kndTask *task);
 int knd_charseq_unmarshall(const char *elem_id, size_t elem_id_size, const char *val, size_t val_size,
                            void **result, struct kndTask *task);
-int knd_charseq_decode(struct kndRepo *repo, const char *val, size_t val_size, struct kndCharSeq **result,
-                       struct kndTask *task);
+int knd_charseq_decode(const char *id, size_t id_size,
+                       struct kndCharSeq **result, struct kndTask *task);
 
 int knd_text_new(struct kndMemPool *mempool, struct kndText **result);
 int knd_synode_new(struct kndMemPool *mempool, struct kndSyNode **result);
 int knd_synode_spec_new(struct kndMemPool *mempool, struct kndSyNodeSpec **result);
-int knd_charseq_new(struct kndMemPool *mempool, struct kndCharSeq **result);
 
 int knd_par_new(struct kndMemPool *mempool, struct kndPar **result);
 int knd_class_declar_new(struct kndMemPool *mempool, struct kndClassDeclar **result);
@@ -328,3 +331,6 @@ gsl_err_t knd_read_gloss_array(void *obj, const char *rec, size_t *total_size);
 
 int knd_synode_export_JSON(struct kndSyNode *syn, struct kndTask *task);
 int knd_synode_concise_export_JSON(struct kndSyNode *syn, struct kndTask *task);
+
+int knd_string_unmarshall(const char *elem_id, size_t elem_id_size,
+                          const char *rec, size_t rec_size, void **result, struct kndTask *task);

@@ -31,30 +31,9 @@
 #define DEBUG_REPO_LEVEL_3 0
 #define DEBUG_REPO_LEVEL_TMP 1
 
-static void free_blocks(struct kndRepo *repo)
-{
-    struct kndMemBlock *block, *next_block = NULL;
-    for (block = repo->blocks; block; block = next_block) {
-        next_block = block->next;
-        if (block->buf)
-            free(block->buf);
-        free(block);
-    }
-    repo->total_block_size = 0;
-    repo->num_blocks = 0;
-}
-
 void knd_repo_del(struct kndRepo *self)
 {
-    if (self->num_source_files) {
-        for (size_t i = 0; i < self->num_source_files; i++)
-            free(self->source_files[i]);
-        free(self->source_files);
-    }
-
-    if (self->num_blocks)
-        free_blocks(self);
-    
+    // del snapshots
     free(self);
 }
 
@@ -95,7 +74,8 @@ static int present_latest_state_JSON(struct kndRepo *self, struct kndOutput *out
     return knd_OK;
 }
 
-static gsl_err_t present_repo_state(void *obj, const char *unused_var(name), size_t unused_var(name_size))
+static gsl_err_t present_repo_state(void *obj, const char *unused_var(name),
+                                    size_t unused_var(name_size))
 {
     struct kndTask *task = obj;
     struct kndRepo *repo = task->repo;
@@ -222,11 +202,11 @@ static gsl_err_t run_select_repo(void *obj, const char *name, size_t name_size)
             return make_gsl_err(gsl_NO_MATCH);
         }
     }
-
     task->repo = repo;
     task->user_ctx->repo = repo;
 
     snapshot = atomic_load_explicit(&repo->snapshot, memory_order_relaxed);
+    assert (snapshot != NULL);
 
     task->snapshot = snapshot;
     task->idxs = &repo->snapshot->idxs;
@@ -240,7 +220,7 @@ static gsl_err_t parse_snapshot_task(void *obj, const char *unused_var(rec), siz
     int err;
 
     task->type = KND_SNAPSHOT_STATE;
-    err = knd_repo_snapshot(task->repo, task);
+    err = knd_repo_snapshot_create(task->repo, task);
     if (err) {
         KND_TASK_LOG("failed to build a snapshot of {repo %.*s}",
                      task->repo->name_size, task->repo->name);
@@ -255,7 +235,7 @@ static gsl_err_t decode_seq(void *obj, const char *val, size_t val_size)
     struct kndCharSeq *seq;
     int err;
 
-    err = knd_charseq_decode(task->repo, val, val_size, &seq, task);
+    err = knd_charseq_decode(val, val_size, &seq, task);
     if (err) {
         KND_TASK_LOG("failed to decode a text charseq %.*s", val_size, val);
         return make_gsl_err_external(err);
@@ -375,8 +355,7 @@ int knd_repo_index_proc_arg(struct kndRepo *repo, struct kndProc *proc,
         next_arg_ref = knd_shared_dict_get(arg_name_idx, arg->name, arg->name_size);
         arg_ref->next = next_arg_ref;
 
-        err = knd_shared_dict_set(arg_name_idx, arg->name, arg->name_size,
-                                  (void*)arg_ref, NULL, true);
+        err = knd_shared_dict_set(arg_name_idx, arg->name, arg->name_size, (void*)arg_ref);
         KND_TASK_ERR("failed to globally register {arg %.*s}", arg->name_size, arg->name);
 
         err = arg_idx->add(arg_idx, arg->id, arg->id_size, (void*)arg_ref);
@@ -446,7 +425,7 @@ static int build_snapshot_path(struct kndRepoSnapshot *s, struct kndTask *task)
 }
 
 int knd_repo_snapshot_new(struct kndRepoSnapshot **result, size_t numid, size_t latest_commit_id,
-                          struct kndRepo *repo,  struct kndTask *task)
+                          struct kndRepo *repo, struct kndTask *task)
 {
     struct kndRepoSnapshot *s;
     struct kndMemPool *mempool = task->mempool;
@@ -460,7 +439,7 @@ int knd_repo_snapshot_new(struct kndRepoSnapshot **result, size_t numid, size_t 
 
     err = build_snapshot_path(s, task);
     KND_TASK_ERR("failed to build a snapshot path");
-    
+
     err = knd_set_new(&s->commit_idx, mempool);
     if (err) return err;
     s->max_journals = KND_MAX_JOURNALS;
@@ -469,22 +448,22 @@ int knd_repo_snapshot_new(struct kndRepoSnapshot **result, size_t numid, size_t 
     /* indices for writing */
     err = knd_shared_set_new(&s->idxs.str_idx, mempool);
     if (err) return err;
-    err = knd_shared_dict_new(&s->idxs.str_dict, mempool, KND_MEDIUM_DICT_SIZE);
+    err = knd_shared_dict_new(&s->idxs.str_dict, KND_MEDIUM_DICT_SIZE, mempool, false);
     if (err) return err;
 
     err = knd_shared_set_new(&s->idxs.class_idx, mempool);
     if (err) return err;
-    err = knd_shared_dict_new(&s->idxs.class_name_idx, mempool, KND_MEDIUM_DICT_SIZE);
+    err = knd_shared_dict_new(&s->idxs.class_name_idx, KND_MEDIUM_DICT_SIZE, mempool, false);
     if (err) return err;
 
     err = knd_set_new(&s->idxs.attr_idx, mempool);
     if (err) return err;
-    err = knd_shared_dict_new(&s->idxs.attr_name_idx, mempool, KND_MEDIUM_DICT_SIZE);
+    err = knd_shared_dict_new(&s->idxs.attr_name_idx, KND_MEDIUM_DICT_SIZE, mempool, false);
     if (err) return err;
 
     err = knd_shared_set_new(&s->idxs.proc_idx, mempool);
     if (err) return err;
-    err = knd_shared_dict_new(&s->idxs.proc_name_idx, mempool, KND_MEDIUM_DICT_SIZE);
+    err = knd_shared_dict_new(&s->idxs.proc_name_idx, KND_MEDIUM_DICT_SIZE, mempool, false);
     if (err) return err;
 
     *result = s;
@@ -497,7 +476,7 @@ int knd_repo_cleanup(struct kndRepo *repo, struct kndTask *task)
     int err;
     assert (repo->snapshot_temp != NULL);
 
-    /* it is safe to transfer all interim commits to new memory */
+    /* it is now safe to transfer all interim commits to new memory */
     err = knd_repo_transfer_commits(repo, task);
     KND_TASK_ERR("failed to transfer sys repo commits");
 
@@ -507,13 +486,44 @@ int knd_repo_cleanup(struct kndRepo *repo, struct kndTask *task)
     repo->snapshot_temp = NULL;
 
     /* release prev resources */
-    // knd_repo_snapshot_free(snapshot);
+    knd_repo_snapshot_del(snapshot);
 
     return knd_OK;
 }
 
+int knd_repo_snapshot_fetch_memblock(struct kndRepoSnapshot *self,
+                                     size_t space_required,
+                                     struct kndMemBlock **result,
+                                     struct kndTask *task)
+{
+    struct kndMemBlock *block, *curr_block;
+    int err;
 
-void knd_repo_snapshot_free(struct kndRepoSnapshot *snapshot)
+    if (space_required >= KND_MEMBLOCK_BUF_SIZE) return knd_LIMIT;
+
+    if (!self->blocks) {
+        err = knd_memblock_new(&block, 0, KND_MEMBLOCK_BUF_SIZE);
+        KND_TASK_ERR("failed to alloc a memblock");
+        *result = block;
+        return knd_OK;
+    }
+
+    curr_block = self->blocks;
+    if ((curr_block->capacity - curr_block->buf_size) >= space_required) {
+        *result = curr_block;
+        return knd_OK;
+    }
+
+    err = knd_memblock_new(&block, 0, KND_MEMBLOCK_BUF_SIZE);
+    KND_TASK_ERR("failed to alloc a memblock");
+    block->next = curr_block;
+    self->blocks = block;
+    self->num_blocks++;
+    *result = block;
+    return knd_OK;
+}
+
+void knd_repo_snapshot_del(struct kndRepoSnapshot *snapshot)
 {
     struct kndMemBlock *block, *next_block;
 
@@ -523,11 +533,12 @@ void knd_repo_snapshot_free(struct kndRepoSnapshot *snapshot)
             free(block->buf);
         free(block);
     }
+    free(snapshot);
 }
 
 int knd_repo_new(struct kndRepo **repo, const char *name, size_t name_size,
                  const char *path, size_t path_size,
-                 const char *schema_path, size_t schema_path_size, struct kndMemPool *mempool)
+                 const char *schema_path, size_t schema_path_size)
 {
     struct kndRepo *self;
     struct kndClass *c;
@@ -571,58 +582,8 @@ int knd_repo_new(struct kndRepo **repo, const char *name, size_t name_size,
             self->path_size++;
         }
     }
-
     self->schema_path = schema_path;
     self->schema_path_size = schema_path_size;
-
-    err = knd_class_entry_new(&entry, mempool);
-    if (err) goto error;
-    entry->name = "/";
-    entry->name_size = 1;
-
-    err = knd_class_new(&c, mempool);
-    if (err) goto error;
-    c->name = entry->name;
-    c->name_size = 1;
-    entry->cached_version = c;
-    c->entry = entry;
-    c->state_top = true;
-
-    c->entry->repo = self;
-    self->root_class = c;
-
-
-    /*** PROC ***/
-    err = knd_proc_entry_new(mempool, &proc_entry);
-    if (err) goto error;
-    proc_entry->name = "/";
-    proc_entry->name_size = 1;
-
-    err = knd_proc_new(mempool, &proc);
-    if (err) goto error;
-    proc->name = proc_entry->name;
-    proc->name_size = 1;
-    proc_entry->proc = proc;
-    proc->entry = proc_entry;
-
-    proc->entry->repo = self;
-    self->root_proc = proc;
-
-    /*
-    err = knd_set_new(mempool, &task->idxs->proc_idx);
-    if (err) goto error;
-
-    err = knd_shared_dict_new(&task->idxs->proc_name_idx, KND_LARGE_DICT_SIZE);
-    if (err) goto error;
-
-    err = knd_set_new(mempool, &task->idxs->proc_arg_idx);
-    if (err) goto error;
-    err = knd_shared_dict_new(&task->idxs->proc_arg_name_idx, KND_MEDIUM_DICT_SIZE);
-    if (err) goto error;
-
-    err = knd_shared_dict_new(&task->idxs->proc_inst_name_idx, KND_LARGE_DICT_SIZE);
-    if (err) goto error;
-    */
  
     *repo = self;
     return knd_OK;

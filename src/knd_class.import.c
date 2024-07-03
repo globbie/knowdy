@@ -71,7 +71,7 @@ static int update_class_name_idx(struct kndRepo *repo, struct kndClass *c,
     c->name_size = name_size;
 
     /* register as a unique class name */
-    err = knd_shared_dict_set(task->idxs->class_name_idx, name, name_size, (void*)entry, NULL, false);
+    err = knd_shared_dict_set(task->idxs->class_name_idx, name, name_size, (void*)entry);
     KND_TASK_ERR("failed to register a class name");
 
     /* class name as a charseq */
@@ -161,40 +161,13 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
 
 static gsl_err_t set_class_var(void *obj, const char *name, size_t name_size)
 {
-    struct LocalContext *ctx      = obj;
-    struct kndTask *task          = ctx->task;
-    struct kndMemPool *mempool    = task->user_ctx->mempool;
-    struct kndClassVar *self      = ctx->class_var;
-    struct kndRepo *repo          = task->repo;
-    struct kndDict *class_name_idx = task->class_name_idx;
-    struct kndClassEntry *entry;
-    void *result;
-    int err;
-
-    if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log(".. {repo %.*s} to check a {class-var %.*s} {task %zu}",
-                repo->name_size, repo->name, name_size, name, task->id);
+    struct kndClassVar *self = obj;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    result = knd_dict_get(class_name_idx, name, name_size);
-    if (result) {
-        self->entry = result;
-        return make_gsl_err(gsl_OK);
-    }
-
-    err = knd_class_entry_new(&entry, mempool);
-    if (err) return make_gsl_err_external(err);
-    entry->name = name;
-    entry->name_size = name_size;
-
-    err = knd_dict_set(class_name_idx, entry->name, name_size, (void*)entry);
-    if (err) return make_gsl_err_external(err);
-
-    entry->repo = repo;
-    self->entry = entry;
-
+    self->name = name;
+    self->name_size = name_size;
     return make_gsl_err(gsl_OK);
 }
 
@@ -322,13 +295,9 @@ static gsl_err_t parse_class_var(const char *rec, size_t *total_size, struct Loc
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_class_var,
-          .obj = ctx
+          .obj = ctx->class_var
         },
         { .validate = import_attr_var,
-          .obj = ctx
-        },
-        { .type = GSL_SET_ARRAY_STATE,
-          .validate = import_attr_var_list,
           .obj = ctx
         },
         { .type = GSL_GET_ARRAY_STATE,
@@ -358,10 +327,10 @@ static gsl_err_t parse_baseclass(void *obj, const char *rec, size_t *total_size)
     gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_log(".. parsing the base class: \"%.*s\"", 32, rec);
-
-    err = knd_class_var_new(mempool, &class_var);
+    if (DEBUG_CLASS_IMPORT_LEVEL_2) {
+        knd_log(".. parsing the base {class %.*s}", 32, rec);
+    }
+    err = knd_class_var_new(&class_var, mempool);
     if (err) {
         KND_TASK_LOG("failed to alloc a class var");
         return *total_size = 0, make_gsl_err_external(err);

@@ -43,7 +43,7 @@ static int index_class_inst(struct kndClass *c, struct kndClassDeclar *decl,
         if (ref->entry == inst->entry->is_a) break;
     }
     if (!ref) {
-        err = knd_class_ref_new(mempool, &ref);
+        err = knd_class_ref_new(&ref, mempool);
         if (err) return err;
         ref->entry = inst->entry->is_a;
         ref->attr = var->attr;
@@ -102,7 +102,7 @@ static int append_child_idx(struct kndClassIdx *idx, struct kndClassIdx *child_i
             // idx is already registered
             if (ref->entry == child_idx->entry) return knd_OK;
         }
-        err = knd_class_ref_new(mempool, &ref);
+        err = knd_class_ref_new(&ref, mempool);
         if (err) return err;
         ref->entry = child_idx->entry;
         ref->idx =   child_idx;
@@ -132,7 +132,7 @@ static int get_class_idx(struct kndClass *c, struct kndAttrVar *var, struct kndC
             if (ref->entry == src->entry->is_a) break;
         }
         if (!ref) {
-            err = knd_class_ref_new(mempool, &ref);
+            err = knd_class_ref_new(&ref, mempool);
             if (err) return err;
             ref->entry = src->entry->is_a;
             ref->attr = var->attr;
@@ -274,7 +274,7 @@ static int index_proc_inst(struct kndProcEntry *entry, struct kndProcDeclar *dec
     }
 
     if (!ref) {
-        err = knd_class_ref_new(mempool, &ref);
+        err = knd_class_ref_new(&ref, mempool);
         if (err) return err;
         ref->entry = inst->entry->is_a;
         ref->attr = var->attr;

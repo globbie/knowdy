@@ -40,12 +40,12 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     attr->name = name;
     attr->name_size = name_size;
 
-    err = knd_charseq_fetch(repo, name, name_size, &seq, task);
+    /*    err = knd_charseq_fetch(repo, name, name_size, &seq, task);
     if (err) {
         KND_TASK_LOG("failed to encode a charseq %.*s", name_size, name);
         return make_gsl_err_external(err);
     }
-    attr->seq = seq;
+    attr->seq = seq;*/
     return make_gsl_err(gsl_OK);
 }
 

@@ -45,15 +45,16 @@
 static int register_attr(struct kndClass *self, struct kndAttr *attr, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
-    struct kndSet *attr_idx    = task->idxs->attr_idx;
-    struct kndAttrRef *attr_ref, *next_attr_ref;
+    struct kndSharedDict *attr_name_idx = task->idxs->attr_name_idx;
+    struct kndSet *attr_idx = task->idxs->attr_idx;
+    struct kndAttrRef *attr_ref, *attr_refs;
     const char *name = attr->name;
     size_t name_size = attr->name_size;
     int err;
 
-    if (DEBUG_ATTR_RESOLVE_LEVEL_2) {
-        knd_log(".. register attr: %.*s (host class: %.*s) task type:%d",
-                name_size, name, self->name_size, self->name, task->type);
+    if (DEBUG_ATTR_RESOLVE_LEVEL_3) {
+        knd_log(".. register {class %.*s {attr %.*s}}",
+                self->name_size, self->name, name_size, name);
     }
     err = knd_attr_ref_new(mempool, &attr_ref);
     KND_TASK_ERR("failed to alloc kndAttrRef")
@@ -69,12 +70,20 @@ static int register_attr(struct kndClass *self, struct kndAttr *attr, struct knd
     case KND_RESTORE_STATE:
         // fall through
     case KND_BULK_LOAD_STATE:
-        next_attr_ref = knd_shared_dict_get(task->idxs->attr_name_idx, name, name_size);
-        attr_ref->next = next_attr_ref;
-
-        err = knd_shared_dict_set(task->idxs->attr_name_idx, attr->name, attr->name_size,
-                                  (void*)attr_ref, NULL, true);
-        KND_TASK_ERR("failed to globally register attr name \"%.*s\"", name_size, name);
+        attr_refs = knd_shared_dict_get(attr_name_idx, name, name_size);
+        if (!attr_refs) {
+            err = knd_shared_dict_set(attr_name_idx, attr->name, attr->name_size,
+                                      (void*)attr_ref);
+            KND_TASK_ERR("failed to globally register attr name \"%.*s\"", name_size, name);
+        } else {
+            if (attr_refs->tail) {
+                attr_refs->tail->next = attr_ref;
+                attr_refs->tail = attr_ref;
+            } else {
+                attr_refs->next = attr_ref;
+            }
+            attr_refs->tail = attr_ref;
+        }
 
         err = attr_idx->add(attr_idx, attr->id, attr->id_size, (void*)attr_ref);
         KND_TASK_ERR("failed to globally register numid of attr \"%.*s\"", name_size, name);
@@ -85,6 +94,7 @@ static int register_attr(struct kndClass *self, struct kndAttr *attr, struct knd
     default:
         break;
     }
+
     /* local task name idx */
     err = knd_dict_set(task->attr_name_idx, name, name_size, (void*)attr_ref);
     KND_TASK_ERR("failed to register attr name %.*s", name_size, name);
@@ -106,9 +116,10 @@ static int check_attr_name_conflict(struct kndClass *self, struct kndAttr *attr_
     struct kndSharedDict *attr_name_idx = task->idxs->attr_name_idx;
     int err;
 
-    if (DEBUG_ATTR_RESOLVE_LEVEL_2)
-        knd_log(".. checking attrs name conflict: %.*s",
+    if (DEBUG_ATTR_RESOLVE_LEVEL_2) {
+        knd_log(".. checking attr name conflict: %.*s",
                 attr_candidate->name_size, attr_candidate->name);
+    }
 
     /* global attr name search */
     attr_ref = knd_shared_dict_get(attr_name_idx, attr_candidate->name, attr_candidate->name_size);
@@ -117,7 +128,6 @@ static int check_attr_name_conflict(struct kndClass *self, struct kndAttr *attr_
     while (attr_ref) {
         attr = attr_ref->attr;
 
-        /* local attr storage lookup */
         err = attr_idx->get(attr_idx, attr->id, attr->id_size, &obj);
         if (!err) {
             err = knd_CONFLICT;
@@ -127,7 +137,6 @@ static int check_attr_name_conflict(struct kndClass *self, struct kndAttr *attr_
         }
         attr_ref = attr_ref->next;
     }
-
     return knd_OK;
 }
 
@@ -142,7 +151,7 @@ int knd_attr_hub_resolve(struct kndAttrHub *hub, struct kndTask *task)
                  hub->topic_template->name_size, hub->topic_template->name);
 
     err = knd_set_get(c->attr_idx, hub->attr_id, hub->attr_id_size, (void**)&ref);
-    KND_TASK_ERR("no attr %.*s in class %.*s", hub->attr_id_size, hub->attr_id,
+    KND_TASK_ERR("no {attr %.*s} in class %.*s", hub->attr_id_size, hub->attr_id,
                  hub->topic_template->name_size, hub->topic_template->name);
 
     hub->attr = ref->attr;
@@ -176,7 +185,20 @@ int knd_attr_resolve(struct kndAttr *attr, struct kndTask *task)
         KND_TASK_ERR("failed to resolve rel attr %.*s", attr->name_size, attr->name);
         break;
     case KND_ATTR_INNER:
-        // fall through
+        if (!attr->classname_size) {
+            err = knd_FAIL;
+            KND_TASK_ERR("no class specified for {attr %.*s}",
+                         attr->name_size, attr->name);
+        }
+        entry = knd_shared_dict_get(class_name_idx,
+                                    attr->classname, attr->classname_size);
+        if (!entry) {
+            err = knd_NO_MATCH;
+            KND_TASK_ERR("no such {class %.*s}",
+                         attr->classname_size, attr->classname);
+        }
+        attr->class_entry = entry;
+        break;
     case KND_ATTR_REF:
         if (!attr->ref_classname_size) {
             err = knd_FAIL;
@@ -223,9 +245,10 @@ int knd_resolve_primary_attrs(struct kndClass *self, struct kndTask *task)
     struct kndAttr *attr;
     int err;
 
-    if (DEBUG_ATTR_RESOLVE_LEVEL_2)
-        knd_log(".. resolving primary attrs of %.*s [total:%zu]",
+    if (DEBUG_ATTR_RESOLVE_LEVEL_2) {
+        knd_log(".. resolving primary attrs of {class %.*s {total-attrs %zu}}",
                 self->name_size, self->name, self->num_attrs);
+    }
 
     FOREACH (attr, self->attrs) {
         err = check_attr_name_conflict(self, attr, task);

@@ -98,13 +98,13 @@ static int export_commit_GSL(struct kndRepo *self, struct kndCommit *commit, str
 }
 
 static int check_class_conflicts(struct kndRepo *unused_var(self),
-                                 struct kndCommit *new_commit, struct kndTask *task)
+                                 struct kndCommit *new_commit, struct kndTask *unused_var(task))
 {
     struct kndStateRef *ref;
     struct kndClassEntry *entry;
     struct kndState *state;
-    knd_commit_confirm confirm;
-    int err;
+    //knd_commit_confirm confirm;
+    //int err;
 
     FOREACH (ref, new_commit->class_state_refs) {
         entry = ref->obj;
@@ -125,7 +125,7 @@ static int check_class_conflicts(struct kndRepo *unused_var(self),
 
             // knd_log(".. any new states in class name idx?");
 
-            state = atomic_load_explicit(&entry->dict_item->states, memory_order_acquire);
+            /*state = atomic_load_explicit(&entry->dict_item->states, memory_order_acquire);
 
             for (; state; state = state->next) {
                 if (state->commit == new_commit) continue;
@@ -140,7 +140,8 @@ static int check_class_conflicts(struct kndRepo *unused_var(self),
                 default:
                     break;
                 }
-            }
+                }*/
+            
             break;
         default:
             break;
@@ -215,8 +216,7 @@ static int update_indices(struct kndRepo *self, struct kndCommit *commit, struct
                         self->name_size, self->name, entry->name_size, entry->name);
             }
             /* register new class */
-            err = knd_shared_dict_set(name_idx, entry->name,  entry->name_size,
-                                      (void*)entry, commit, false);
+            err = knd_shared_dict_set(name_idx, entry->name,  entry->name_size, (void*)entry);
             KND_TASK_ERR("failed to register class %.*s", entry->name_size, entry->name);
             continue;
         case KND_REMOVED:
@@ -257,7 +257,7 @@ static int update_indices(struct kndRepo *self, struct kndCommit *commit, struct
             break;
         }
         err = knd_shared_dict_set(name_idx, proc_entry->name,  proc_entry->name_size,
-                                  (void*)proc_entry, commit, false);
+                                  (void*)proc_entry);
         RET_ERR();
     }
     return knd_OK;
@@ -451,8 +451,9 @@ int knd_apply_commit(void *obj, const char *unused_var(elem_id), size_t unused_v
 
 int knd_repo_transfer_commits(struct kndRepo *repo, struct kndTask *task)
 {
-    knd_log(".. transfer commits in {repo %.*s} task: %p",
-            repo->name_size, repo->name, task);
+    knd_log(".. transfer commits in {repo %.*s}",
+            repo->name_size, repo->name);
 
+    
     return knd_OK;
 }

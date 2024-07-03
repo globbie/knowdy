@@ -66,6 +66,42 @@ static int export_glosses(struct kndAttr *self, struct kndOutput *out)
     return knd_OK;
 }
 
+int knd_attr_names_marshall(void *elem, size_t *output_size, struct kndTask *task)
+{
+    struct kndSharedDictItem *item, *items = elem;
+    struct kndAttrRef *attr_ref, *attr_refs;
+    struct kndAttr *attr;
+    struct kndOutput *out = task->out;
+    size_t orig_size = out->buf_size;
+    size_t num_requests;
+
+    OUT("[n", strlen("[n"));
+
+    FOREACH (item, items) {
+        attr_refs = item->data;
+        attr = attr_refs->attr;
+
+        OUT("{", strlen("{"));
+        OUT(attr->name, attr->name_size);
+
+        OUT("[a", strlen("[a"));
+
+        FOREACH (attr_ref, attr_refs) {
+            // TODO check commit version
+            attr = attr_ref->attr;
+            OUT("{", strlen("{"));
+            OUT(attr->id, attr->id_size);
+            OUT("}", strlen("}"));
+        }
+        OUT("]", strlen("]"));
+        OUT("}", strlen("}"));
+    }
+    OUT("]", strlen("]"));
+
+    *output_size = out->buf_size - orig_size;
+    return knd_OK;
+}
+
 int knd_attr_export_GSP(struct kndAttr *self, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
@@ -80,12 +116,12 @@ int knd_attr_export_GSP(struct kndAttr *self, struct kndTask *task)
     OUT(type_name, type_name_size);
 
     OUT(" ", 1);
-    knd_uid_create(self->seq->numid, buf, &buf_size);
-    OUT(buf, buf_size);
+    //knd_uid_create(self->sid, buf, &buf_size);
+    //OUT(buf, buf_size);
 
-    OUT("{id ", strlen("{id "));
+    //OUT("{id ", strlen("{id "));
     OUT(self->id, self->id_size);
-    OUT("}", 1);
+    //OUT("}", 1);
 
     if (self->is_a_set) {
         OUT("{t set}", strlen("{t set}"));
@@ -114,8 +150,14 @@ int knd_attr_export_GSP(struct kndAttr *self, struct kndTask *task)
         OUT("}", 1);
     }
 
-    if (self->ref_class_entry) {
+    if (self->class_entry) {
         OUT("{c ", strlen("{c "));
+        OUT(self->class_entry->id, self->class_entry->id_size);
+        OUT("}", 1);
+    }
+
+    if (self->ref_class_entry) {
+        OUT("{rc ", strlen("{rc "));
         OUT(self->ref_class_entry->id, self->ref_class_entry->id_size);
         OUT("}", 1);
     }

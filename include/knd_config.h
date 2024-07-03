@@ -342,6 +342,7 @@ static const char *const knd_format_names[] = {
 #define KND_TEMP_BUF_SIZE 1024
 #define KND_MED_BUF_SIZE 1024 * 5
 
+#define KND_MEMBLOCK_BUF_SIZE 1024 * 1024
 #define KND_FILE_BUF_SIZE 1024 * 1024 * 10
 #define KND_LARGE_BUF_SIZE 1024 * 1024
 #define KND_SMALL_BUF_SIZE 64

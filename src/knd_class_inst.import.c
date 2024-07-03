@@ -231,13 +231,13 @@ static int register_by_name(struct kndClassInstEntry *entry, struct kndTask *tas
 
     name_idx = c->inst_name_idx;
     if (!name_idx) {
-        err = knd_shared_dict_new(&name_idx, mempool, KND_MEDIUM_DICT_SIZE);
+        err = knd_shared_dict_new(&name_idx, KND_MEDIUM_DICT_SIZE, mempool, false);
         KND_TASK_ERR("failed to create inst name idx");
 
         c->inst_name_idx = name_idx;
     }
 
-    err = knd_shared_dict_set(name_idx, entry->name, entry->name_size, (void*)entry, NULL, false);
+    err = knd_shared_dict_set(name_idx, entry->name, entry->name_size, (void*)entry);
     KND_TASK_ERR("name idx failed to register class inst %.*s",
                  entry->name_size, entry->name);
 
@@ -281,16 +281,16 @@ int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *
     default:
         task->type = KND_COMMIT_STATE;
     }    
-    err = knd_class_inst_entry_new(mempool, &inst_entry);
+    err = knd_class_inst_entry_new(&inst_entry, mempool);
     KND_TASK_ERR("class inst  alloc failed");
     inst_entry->is_a = entry;
 
-    err = knd_class_inst_new(mempool, &inst);
+    err = knd_class_inst_new(&inst, mempool);
     KND_TASK_ERR("class inst alloc failed");
     inst->entry = inst_entry;
     inst_entry->inst = inst;
 
-    err = knd_class_var_new(mempool, &class_var);
+    err = knd_class_var_new(&class_var, mempool);
     KND_TASK_ERR("failed to alloc a class var");
     class_var->type = KND_INSTANCE_BLUEPRINT;
     class_var->entry = entry;

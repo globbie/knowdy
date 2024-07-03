@@ -89,10 +89,11 @@ parse_schema_path(void *obj, const char *rec, size_t *total_size)
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static gsl_err_t
-parse_schema(void *obj, const char *rec, size_t *total_size)
+static gsl_err_t parse_schema(void *obj, const char *rec, size_t *total_size)
 {
     struct kndSteward *self = obj;
+
+    knd_log(".. parse schema {total-size %zu}", *total_size);
 
     struct gslTaskSpec specs[] = {
         {   .is_implied = true,

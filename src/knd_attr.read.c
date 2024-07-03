@@ -46,34 +46,24 @@ struct LocalContext {
     struct kndTask     *task;
 };
 
-static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
+static gsl_err_t set_attr_id(void *obj, const char *id, size_t id_size)
 {
-    struct LocalContext *ctx = obj;
-    struct kndAttr *self = ctx->attr;
-    struct kndTask *task = ctx->task;
-    struct kndCharSeq *seq;
+    struct kndAttr *attr = obj;
     int err;
 
-    self->name = name;
-    self->name_size = name_size;
+    if (!id_size) return make_gsl_err(gsl_FORMAT);
+    if (id_size > KND_ID_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    if (name_size <= KND_ID_SIZE) {
-        err = knd_shared_set_get(task->idxs->str_idx, name, name_size, (void**)&seq);
-        if (err) {
-            KND_TASK_LOG("failed to decode attr name code \"%.*s\"", name_size, name);
-            return make_gsl_err_external(err);
-        }
-        self->name = seq->val;
-        self->name_size = seq->val_size;
-        self->seq = seq;
-    }
+    memcpy(attr->id, id, id_size);
+    attr->id_size = id_size;
+
     return make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t set_ref_class(void *obj, const char *id, size_t id_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndAttr *self = ctx->attr;
+    struct kndAttr *attr = ctx->attr;
     struct kndClassEntry *entry;
     struct kndTask *task = ctx->task;
     int err;
@@ -85,16 +75,17 @@ static gsl_err_t set_ref_class(void *obj, const char *id, size_t id_size)
         KND_TASK_LOG("failed to link class entry \"%.*s\"", id_size, id);
         return make_gsl_err_external(err);
     }
-    self->ref_classname = entry->name;
-    self->ref_classname_size = entry->name_size;
-    self->ref_class_entry = entry;
+
+    attr->ref_classname = entry->name;
+    attr->ref_classname_size = entry->name_size;
+    attr->ref_class_entry = entry;
     return make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t confirm_idx(void *obj, const char *unused_var(name), size_t unused_var(name_size))
 {
-    struct kndAttr *self = obj;
-    self->is_indexed = true;
+    struct kndAttr *attr = obj;
+    attr->is_indexed = true;
     return make_gsl_err(gsl_OK);
 }
 
@@ -102,16 +93,16 @@ static gsl_err_t confirm_implied(void *obj,
                                  const char *unused_var(name),
                                  size_t unused_var(name_size))
 {
-    struct kndAttr *self = obj;
-    self->is_implied = true;
+    struct kndAttr *attr = obj;
+    attr->is_implied = true;
     return make_gsl_err(gsl_OK);
 }
 static gsl_err_t confirm_required(void *obj,
                                   const char *unused_var(name),
                                   size_t unused_var(name_size))
 {
-    struct kndAttr *self = obj;
-    self->is_required = true;
+    struct kndAttr *attr = obj;
+    attr->is_required = true;
     return make_gsl_err(gsl_OK);
 }
 
@@ -119,34 +110,34 @@ static gsl_err_t confirm_unique(void *obj,
                                 const char *unused_var(name),
                                 size_t unused_var(name_size))
 {
-    struct kndAttr *self = obj;
-    self->is_unique = true;
+    struct kndAttr *attr = obj;
+    attr->is_unique = true;
     return make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t set_quant(void *obj, const char *name, size_t name_size)
 {
-    struct kndAttr *self = (struct kndAttr*)obj;
+    struct kndAttr *attr = (struct kndAttr*)obj;
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_SHORT_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
     if (!memcmp("set", name, name_size)) {
-        self->quant_type = KND_ATTR_SET;
-        self->is_a_set = true;
+        attr->quant_type = KND_ATTR_SET;
+        attr->is_a_set = true;
     }
     return make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t set_quant_uniq(void *obj, const char *unused_var(name), size_t unused_var(name_size))
 {
-    struct kndAttr *self = (struct kndAttr*)obj;
-    self->set_is_unique = true;
+    struct kndAttr *attr = (struct kndAttr*)obj;
+    attr->set_is_unique = true;
     return make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t set_quant_atomic(void *obj, const char *unused_var(name), size_t unused_var(name_size))
 {
-    struct kndAttr *self = obj;
-    self->set_is_atomic = true;
+    struct kndAttr *attr = obj;
+    attr->set_is_atomic = true;
     return make_gsl_err(gsl_OK);
 }
 
@@ -159,46 +150,28 @@ static gsl_err_t confirm_attr(void *obj, const char *unused_var(name), size_t un
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_id(void *obj, const char *rec, size_t *total_size)
-{
-    struct kndAttr *self = obj;
-
-    struct gslTaskSpec specs[] = {
-        {   .is_implied = true,
-            .buf = self->id,
-            .buf_size = &self->id_size,
-            .max_buf_size = KND_ID_SIZE
-        }
-    };
-    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-}
-
 static gsl_err_t parse_quant_type(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndAttr *self = obj;
-    if (!self->name_size) {
-        knd_log("-- attr name not specified");
-        return make_gsl_err(gsl_FAIL);
-    }
+    struct kndAttr *attr = obj;
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_quant,
-          .obj = self
+          .obj = attr
         },
         { .name = "uniq",
           .name_size = strlen("uniq"),
           .run = set_quant_uniq,
-          .obj = self
+          .obj = attr
         },
         { .name = "atom",
           .name_size = strlen("atom"),
           .run = set_quant_atomic,
-          .obj = self
+          .obj = attr
         },
         { .is_default = true,
           .run = confirm_attr,
-          .obj = self
+          .obj = attr
         }
     };
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
@@ -208,35 +181,31 @@ static gsl_err_t read_glosses(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndAttr *self = ctx->attr;
+    struct kndAttr *attr = ctx->attr;
     gsl_err_t parser_err;
 
     parser_err = knd_read_gloss_array((void*)task, rec, total_size);
     if (parser_err.code) return *total_size = 0, parser_err;
 
     if (task->ctx->tr) {
-        self->tr = task->ctx->tr;
+        attr->tr = task->ctx->tr;
         task->ctx->tr = NULL;
     }
     return make_gsl_err(gsl_OK);
 }
 
-gsl_err_t knd_attr_read(struct kndAttr *self, struct kndTask *task, const char *rec, size_t *total_size)
+gsl_err_t knd_attr_read(struct kndAttr *attr, struct kndTask *task,
+                        const char *rec, size_t *total_size)
 {
     struct LocalContext ctx = {
-        .attr = self,
+        .attr = attr,
         .repo = task->repo,
         .task = task
     };
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = run_set_name,
-          .obj = &ctx
-        },
-        { .name = "id",
-          .name_size = strlen("id"),
-          .parse = parse_id,
-          .obj = self
+          .run = set_attr_id,
+          .obj = attr
         },
         { .type = GSL_GET_ARRAY_STATE,
           .name = "_g",
@@ -249,35 +218,40 @@ gsl_err_t knd_attr_read(struct kndAttr *self, struct kndTask *task, const char *
           .run = set_ref_class,
           .obj = &ctx
         },
+        { .name = "rc",
+          .name_size = strlen("rc"),
+          .run = set_ref_class,
+          .obj = &ctx
+        },
         { .name = "t",
           .name_size = strlen("t"),
           .parse = parse_quant_type,
-          .obj = self
+          .obj = attr
         },
         { .name = "idx",
           .name_size = strlen("idx"),
           .run = confirm_idx,
-          .obj = self
+          .obj = attr
         },
         { .name = "impl",
           .name_size = strlen("impl"),
           .run = confirm_implied,
-          .obj = self
+          .obj = attr
         },
         { .name = "req",
           .name_size = strlen("req"),
           .run = confirm_required,
-          .obj = self
+          .obj = attr
         },
         { .name = "uniq",
           .name_size = strlen("uniq"),
           .run = confirm_unique,
-          .obj = self
+          .obj = attr
         },
         { .name = "concise",
           .name_size = strlen("concise"),
           .parse = gsl_parse_size_t,
-          .obj = &self->concise_level
+          .obj = &attr->concise_level
         }
     };
     gsl_err_t err;
@@ -288,10 +262,10 @@ gsl_err_t knd_attr_read(struct kndAttr *self, struct kndTask *task, const char *
     err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (err.code) return err;
 
-    if (self->type == KND_ATTR_INNER) {
-        if (!self->ref_classname_size) {
+    if (attr->type == KND_ATTR_INNER) {
+        if (!attr->ref_classname_size) {
             knd_log("-- ref class not specified in %.*s",
-                    self->name_size, self->name);
+                    attr->name_size, attr->name);
             return make_gsl_err_external(knd_FAIL);
         }
     }

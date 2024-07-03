@@ -56,9 +56,11 @@ int knd_class_inst_entry_unmarshall(const char *elem_id, size_t elem_id_size, co
     assert(is_a != NULL);
 
     if (DEBUG_CLASS_INST_GSP_LEVEL_2) {
-        knd_log(">> GSP class inst entry \"%.*s\" => \"%.*s\"", elem_id_size, elem_id, rec_size, rec);
+        knd_log(">> GSP class inst entry \"%.*s\" => \"%.*s\"",
+                elem_id_size, elem_id, rec_size, rec);
     }
-    err = knd_class_inst_entry_new(mempool, &entry);
+
+    err = knd_class_inst_entry_new(&entry, mempool);
     KND_TASK_ERR("failed to alloc a class entry");
     entry->repo = task->repo;
     memcpy(entry->id, elem_id, elem_id_size);
@@ -90,9 +92,8 @@ int knd_class_inst_entry_unmarshall(const char *elem_id, size_t elem_id_size, co
 
     err = knd_class_acquire(is_a, &cls, task);
     KND_TASK_ERR("failed to acquire {class %.*s}", is_a->name_size, is_a->name);
-    
-    err = knd_shared_dict_set(cls->inst_name_idx, entry->name, entry->name_size,
-                              (void*)entry, NULL, false);
+
+    err = knd_shared_dict_set(cls->inst_name_idx, entry->name, entry->name_size, (void*)entry);
     KND_TASK_ERR("failed to register class inst name");
 
     err = knd_shared_set_add(cls->inst_idx, entry->id, entry->id_size, (void*)entry);

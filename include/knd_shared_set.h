@@ -19,32 +19,70 @@
  */
 #pragma once
 
-struct kndStorageLeaf;
-struct kndRepoSnapshot;
-struct kndTask;
 
 #include "knd_config.h"
 #include "knd_memblock.h"
 #include "knd_mempool.h"
 
-typedef int (*elem_marshall_cb)(void *obj, size_t *buf_size, struct kndTask *task);
-typedef int (*elem_unmarshall_cb)(const char *elem_id, size_t elem_id_size, const char *val, size_t val_size,
-                                  void **result, struct kndTask *task);
-typedef int (*map_cb_func)(void *obj, const char *elem_id, size_t elem_id_size, size_t count, void *elem);
-
+struct kndRepoSnapshot;
+struct kndTask;
 struct kndSharedSet;
+struct kndSharedSetDir;
 struct kndSharedSetFooter;
-struct kndStorageLeaf;
+
+typedef int (*elem_marshall_cb)(void *obj, size_t *buf_size, struct kndTask *task);
+typedef int (*elem_unmarshall_cb)(const char *elem_id, size_t elem_id_size,
+                                  const char *val, size_t val_size,
+                                  void **result, struct kndTask *task);
+typedef int (*leaf_unmarshall_cb)(const char *elem_id, size_t elem_id_size,
+                                  const char *val, size_t val_size, struct kndTask *task);
+typedef int (*map_cb_func)(void *obj, const char *elem_id, size_t elem_id_size,
+                           size_t count, void *elem);
+
+
+struct kndSharedSetDirIdx {
+    size_t elem_block_sizes[KND_RADIX_BASE];
+    struct kndSharedSetDir * _Atomic subdirs[KND_RADIX_BASE];
+};
+
+struct kndStorageLeaf
+{
+    size_t numid;
+    size_t min_leaf_size;
+    size_t max_leaf_size;
+
+    struct kndSharedSet *parent;
+    struct kndSharedSetDir *dir;
+
+    size_t num_elems;
+
+    char range_from_id[KND_ID_SIZE];
+    size_t range_from_id_size;
+    size_t range_from;
+
+    char range_to_id[KND_ID_SIZE];
+    size_t range_to_id_size;
+    size_t range_to;
+
+    char filepath[KND_PATH_SIZE + 1];
+    size_t filepath_size;
+    size_t file_size;
+
+    char file_hash[KND_HASH_SIZE];
+    size_t file_hash_size;
+
+    struct kndStorageLeaf *next;
+    struct kndStorageLeaf *tail;
+    size_t num_leaves;
+};
 
 struct kndSharedSetDir
 {
-    size_t elem_block_sizes[KND_RADIX_BASE];
-    struct kndSharedSetDir * _Atomic subdirs[KND_RADIX_BASE];
-
     char id[KND_ID_SIZE];
     size_t id_size;
 
     struct kndStorageLeaf *leaf;
+    struct kndSharedSetDirIdx *idx;
 
     size_t num_term_elems;
     size_t payload_block_size;
@@ -89,12 +127,14 @@ struct kndSharedSet
     size_t path_size;
 
     struct kndStorageLeaf *leaves;
+    size_t num_leaves;
+
     bool allow_overwrite;
 };
 
 int knd_shared_set_new(struct kndSharedSet **result, struct kndMemPool *mempool);
-int knd_shared_set_elem_idx_new(struct kndSharedSet *self, struct kndSharedSetElemIdx **result);
-int knd_shared_set_dir_new(struct kndSharedSet *self, struct kndSharedSetDir **result);
+int knd_shared_set_elem_idx_new(struct kndSharedSetElemIdx **result, struct kndMemPool *mempool);
+int knd_shared_set_dir_new(struct kndSharedSetDir **result, struct kndMemPool *mempool);
 
 int knd_shared_set_get(struct kndSharedSet *self, const char *key, size_t key_size, void **elem);
 int knd_shared_set_add(struct kndSharedSet *self, const char *key, size_t key_size, void *elem);
@@ -106,8 +146,12 @@ int knd_shared_set_marshall(struct kndSharedSet *idx, const char *path, size_t p
                             elem_marshall_cb cb, struct kndSharedSet *result_idx,
                             struct kndTask *task);
 
-int knd_shared_set_unmarshall_file(struct kndSharedSet *self, const char *filename, size_t filename_size,
-                                   size_t filesize, elem_unmarshall_cb cb, struct kndTask *task);
-int knd_shared_set_unmarshall_elem(struct kndSharedSet *self, const char *id, size_t id_size,
-                                   const char *filename, size_t filename_size,
-                                   elem_unmarshall_cb cb, void **elem, struct kndTask *task);
+int knd_shared_set_find_leaf(struct kndSharedSet *class_idx, const char *id, size_t id_size,
+                             struct kndStorageLeaf **result, struct kndTask *task);
+int knd_storage_leaf_open(struct kndSharedSet *self, struct kndStorageLeaf *leaf,
+                          leaf_unmarshall_cb cb, struct kndTask *task);
+
+int knd_storage_leaf_read_elem(struct kndStorageLeaf *leaf, const char *id, size_t id_size,
+                               elem_unmarshall_cb cb, void **result, struct kndTask *task);
+
+int knd_storage_leaf_new(struct kndStorageLeaf **result, size_t numid, struct kndSharedSet *idx);

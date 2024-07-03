@@ -36,12 +36,12 @@
 
 #include <gsl-parser.h>
 
-#define DEBUG_CLASS_GSP_LEVEL_1 0
-#define DEBUG_CLASS_GSP_LEVEL_2 0
-#define DEBUG_CLASS_GSP_LEVEL_3 0
-#define DEBUG_CLASS_GSP_LEVEL_4 0
-#define DEBUG_CLASS_GSP_LEVEL_5 0
-#define DEBUG_CLASS_GSP_LEVEL_TMP 1
+#define DEBUG_CLASS_ENCODE_LEVEL_1 0
+#define DEBUG_CLASS_ENCODE_LEVEL_2 0
+#define DEBUG_CLASS_ENCODE_LEVEL_3 0
+#define DEBUG_CLASS_ENCODE_LEVEL_4 0
+#define DEBUG_CLASS_ENCODE_LEVEL_5 0
+#define DEBUG_CLASS_ENCODE_LEVEL_TMP 1
 
 struct LocalContext {
     struct kndTask *task;
@@ -54,11 +54,13 @@ struct LocalContext {
     struct kndClassVar *class_var;
 };
 
-int knd_class_inst_idx_fetch(struct kndClass *self, struct kndSharedDict **result, struct kndTask *task)
+int knd_class_inst_idx_fetch(struct kndClass *self, struct kndSharedDict **result,
+                             struct kndTask *task)
 {
     struct kndOutput *out = task->file_out;
     struct kndSharedSet *idx, *new_idx;
     struct kndSharedDict *name_idx, *new_name_idx;
+    struct kndStorageLeaf *leaf;
     struct stat st;
     int err;
 
@@ -72,15 +74,16 @@ int knd_class_inst_idx_fetch(struct kndClass *self, struct kndSharedDict **resul
     OUT(self->entry->id, self->entry->id_size);
     OUT(".gsp", strlen(".gsp"));
 
-    if (DEBUG_CLASS_GSP_LEVEL_2)
+    if (DEBUG_CLASS_ENCODE_LEVEL_2)
         knd_log(">> open class inst storage in %.*s", out->buf_size, out->buf);
 
     if (stat(out->buf, &st)) {
         return knd_NO_MATCH;
     }
 
-    if (DEBUG_CLASS_GSP_LEVEL_2)
-        knd_log(".. reading class inst storage: %.*s [%zu]", out->buf_size, out->buf, (size_t)st.st_size);
+    if (DEBUG_CLASS_ENCODE_LEVEL_2)
+        knd_log(".. reading class inst storage: %.*s [%zu]",
+                out->buf_size, out->buf, (size_t)st.st_size);
 
     do {
         name_idx = atomic_load_explicit(&self->inst_name_idx, memory_order_acquire);
@@ -89,7 +92,7 @@ int knd_class_inst_idx_fetch(struct kndClass *self, struct kndSharedDict **resul
             *result = name_idx;
             break;
         }
-        err = knd_shared_dict_new(&new_name_idx, task->mempool, KND_MEDIUM_DICT_SIZE);
+        err = knd_shared_dict_new(&new_name_idx, KND_MEDIUM_DICT_SIZE, task->mempool, false);
         KND_TASK_ERR("failed to create inst name idx");
         *result = new_name_idx;
     } while (!atomic_compare_exchange_weak(&self->inst_name_idx, &name_idx, new_name_idx));
@@ -106,9 +109,9 @@ int knd_class_inst_idx_fetch(struct kndClass *self, struct kndSharedDict **resul
     } while (!atomic_compare_exchange_weak(&self->inst_idx, &idx, new_idx));
 
     task->payload = self->entry;
-    err = knd_shared_set_unmarshall_file(self->inst_idx, out->buf, out->buf_size,
-                                         (size_t)st.st_size, knd_class_inst_entry_unmarshall, task);
-    KND_TASK_ERR("failed to unmarshall class inst storage GSP file");
+
+    //err = knd_shared_set_unmarshall_leaf(self->inst_idx, leaf, knd_class_inst_entry_unmarshall, task);
+    //KND_TASK_ERR("failed to unmarshall class inst storage GSP file");
     return knd_OK;
 }
 
@@ -145,6 +148,13 @@ static int export_baseclass_vars(struct kndClass *self, struct kndTask *task, st
     OUT("[is", strlen("[is"));
     FOREACH (item, self->baseclass_vars) {
         OUT("{", 1);
+
+        if (item->entry->id_size == 0) {
+            knd_log("unresolved base class ref %.*s in {class %.*s}?",
+                    item->entry->name_size, item->entry->name,
+                    self->name_size, self->name);
+        }
+        //assert (item->entry->id_size != 0);
 
         OUT(item->entry->id, item->entry->id_size);
         if (item->attrs) {
@@ -393,12 +403,12 @@ int knd_class_export_GSP(struct kndClass *self, struct kndTask *task)
 
     assert(entry->seq != NULL);
 
-    if (DEBUG_CLASS_GSP_LEVEL_2)
+    if (DEBUG_CLASS_ENCODE_LEVEL_2)
         knd_log(".. GSP export of \"%.*s\" [%.*s]",
                 entry->name_size, entry->name, entry->id_size, entry->id);
 
-    knd_uid_create(entry->seq->numid, idbuf, &idbuf_size);
-    OUT(idbuf, idbuf_size);
+    //knd_uid_create(entry->seq->numid, idbuf, &idbuf_size);
+    //OUT(idbuf, idbuf_size);
 
     if (self->tr) {
         err = export_glosses(self, out);
@@ -441,27 +451,37 @@ int knd_class_names_marshall(void *elem, size_t *output_size, struct kndTask *ta
 {
     struct kndSharedDictItem *item, *items = elem;
     struct kndClassEntry *entry;
-    struct kndClass *c;
     struct kndOutput *out = task->out;
     size_t orig_size = out->buf_size;
-    int err;
+    size_t num_requests;
+
+    OUT("[c", strlen("[c"));
 
     FOREACH (item, items) {
         entry = item->data;
         // TODO check commit version
 
-        OUT("{c ", strlen("{c "));
+        OUT("{", strlen("{"));
         OUT(entry->name, entry->name_size);
         OUT("{id ", strlen("{id "));
         OUT(entry->id, entry->id_size);
-        OUT("}}", strlen("}}"));
+        OUT("}", strlen("}"));
 
-        if (DEBUG_CLASS_GSP_LEVEL_3) {
+        num_requests = atomic_load_explicit(&entry->num_requests, memory_order_relaxed);
+        if (num_requests) {
+            OUT("{freq ", strlen("{freq "));
+            OUTF("%zu", num_requests);
+            OUT("}", strlen("}"));
+        }
+        OUT("}", strlen("}"));
+        if (DEBUG_CLASS_ENCODE_LEVEL_3) {
             knd_log("== {class %.*s {id %.*s}} {GSP {size %zu}}", 
                     entry->name_size,  entry->name, 
                     entry->id_size, entry->id, out->buf_size - orig_size);
         }
     }
+    OUT("]", strlen("]"));
+
     *output_size = out->buf_size - orig_size;
     return knd_OK;
 }
@@ -480,7 +500,7 @@ int knd_class_marshall(void *elem, size_t *output_size, struct kndTask *task)
     err = knd_class_export_GSP(c, task);
     KND_TASK_ERR("failed to export class GSP");
 
-    if (DEBUG_CLASS_GSP_LEVEL_3) {
+    if (DEBUG_CLASS_ENCODE_LEVEL_3) {
         size_t numid = 0;
         knd_calc_num_id(entry->id, entry->id_size, &numid);
 
@@ -491,64 +511,3 @@ int knd_class_marshall(void *elem, size_t *output_size, struct kndTask *task)
     *output_size = out->buf_size - orig_size;
     return knd_OK;
 }
-
-int knd_class_entry_unmarshall(const char *elem_id, size_t elem_id_size,
-                               const char *rec, size_t rec_size,
-                               void **result, struct kndTask *task)
-{
-    struct kndMemPool *mempool = task->user_ctx->mempool;
-    struct kndClassEntry *entry = NULL;
-    struct kndRepo *repo = task->repo;
-    struct kndCharSeq *seq;
-    const char *c, *name = rec;
-    size_t name_size;
-    int err;
-
-    if (DEBUG_CLASS_GSP_LEVEL_2)
-        knd_log(">> GSP class entry \"%.*s\" => \"%.*s\"", elem_id_size, elem_id, rec_size, rec);
-
-    err = knd_class_entry_new(&entry, mempool);
-    KND_TASK_ERR("failed to alloc a class entry");
-    entry->repo = task->repo;
-    memcpy(entry->id, elem_id, elem_id_size);
-    entry->id_size = elem_id_size;
-
-    /* get name numid */
-    c = name;
-    while (*c) {
-        if (*c == '{' || *c == '[') break;
-        c++;
-    }
-    name_size = c - name;
-    if (!name_size) {
-        err = knd_FORMAT;
-        KND_TASK_ERR("anonymous class entry in GSP");
-    }
-    if (name_size > KND_ID_SIZE) {
-        err = knd_FORMAT;
-        KND_TASK_ERR("invalid class name numid in GSP");
-    }
-
-    err = knd_charseq_decode(repo, name, name_size, &seq, task);
-    KND_TASK_ERR("failed to decode a charseq");
-
-    entry->name = seq->val;
-    entry->name_size = seq->val_size;
-    entry->seq = seq;
-
-    err = knd_shared_dict_set(task->idxs->class_name_idx, entry->name, entry->name_size,
-                              (void*)entry, NULL, false);
-    KND_TASK_ERR("failed to register class name");
-
-    err = knd_shared_set_add(task->idxs->class_idx, entry->id, entry->id_size, (void*)entry);
-    KND_TASK_ERR("failed to register class entry \"%.*s\"", entry->id_size, entry->id);
-
-    if (DEBUG_CLASS_GSP_LEVEL_3)
-        knd_log("== class name decoded \"%.*s\" => \"%.*s\" (repo:%.*s)",
-                entry->id_size, entry->id, entry->name_size, entry->name,
-                repo->name_size, repo->name);
-
-    *result = entry;
-    return knd_OK;
-}
-
