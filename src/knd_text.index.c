@@ -9,6 +9,7 @@
 #include "knd_repo.h"
 #include "knd_class.h"
 #include "knd_attr.h"
+#include "knd_attr_stm.h"
 #include "knd_proc.h"
 #include "knd_user.h"
 #include "knd_utils.h"
@@ -21,8 +22,9 @@
 #define DEBUG_TEXT_IDX_LEVEL_3 0
 #define DEBUG_TEXT_IDX_LEVEL_TMP 1
 
+#if 0
 static int index_class_inst(struct kndClass *c, struct kndClassDeclar *decl,
-                            struct kndSentence *sent, struct kndPar *par, struct kndAttrVar *var,
+                            struct kndSentence *sent, struct kndPar *par, struct kndAttrStm *var,
                             struct kndClassInst *inst, struct kndClassIdx **result, struct kndTask *task)
 {
     struct kndClassRef *ref = NULL;
@@ -113,7 +115,7 @@ static int append_child_idx(struct kndClassIdx *idx, struct kndClassIdx *child_i
     return knd_OK;
 }
 
-static int get_class_idx(struct kndClass *c, struct kndAttrVar *var, struct kndClassInst *src,
+static int get_class_idx(struct kndClass *c, struct kndAttrStm *var, struct kndClassInst *src,
                          struct kndClassIdx **result, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
@@ -149,7 +151,7 @@ static int get_class_idx(struct kndClass *c, struct kndAttrVar *var, struct kndC
 }
 
 static int update_ancestor_idx(struct kndClass *base, struct kndClassDeclar *decl,
-                               struct kndAttrVar *var, struct kndClassInst *src,
+                               struct kndAttrStm *var, struct kndClassInst *src,
                                struct kndClassIdx *term_idx, struct kndTask *task)
 {
     struct kndClassEntry *entry = decl->entry;
@@ -187,8 +189,10 @@ static int update_ancestor_idx(struct kndClass *base, struct kndClassDeclar *dec
     return knd_OK;
 }
 
-static int index_class_declar(struct kndClassDeclar *decl, struct kndSentence *sent, struct kndPar *par, 
-                              struct kndAttrVar *var, struct kndClassInst *inst, struct kndRepo *repo, struct kndTask *task)
+static int index_class_declar(struct kndClassDeclar *decl, struct kndSentence *sent,
+                              struct kndPar *par,  struct kndAttrStm *var,
+                              struct kndClassInst *inst, struct kndRepo *repo,
+                              struct kndTask *task)
 {
     struct kndClassRef *ref;
     struct kndClassIdx *idx;
@@ -199,7 +203,6 @@ static int index_class_declar(struct kndClassDeclar *decl, struct kndSentence *s
 
     /* update local inst index */
     // TODO
-#if 0
     if (idx) {
         knd_log(">> \"%.*\" (repo:%.*s) to update local attr idx with \"%.*s\"",
                 inst->name_size, inst->name, inst->entry->is_a->repo->name_size,
@@ -219,7 +222,6 @@ static int index_class_declar(struct kndClassDeclar *decl, struct kndSentence *s
             idx->num_locs++;
         }
     }
-#endif
     
     /* global concept index */
     entry = decl->entry;
@@ -252,9 +254,8 @@ static int index_class_declar(struct kndClassDeclar *decl, struct kndSentence *s
     return knd_OK;
 }
 
-#if 0
 static int index_proc_inst(struct kndProcEntry *entry, struct kndProcDeclar *decl,
-                           struct kndSentence *sent, struct kndPar *par, struct kndAttrVar *var,
+                           struct kndSentence *sent, struct kndPar *par, struct kndAttrStm *var,
                            struct kndClassInst *inst, struct kndTask *task)
 {
     struct kndClassRef *ref = NULL;
@@ -303,12 +304,9 @@ static int index_proc_inst(struct kndProcEntry *entry, struct kndProcDeclar *dec
     
     return knd_OK;
 }
-#endif
 
-
-#if 0
 static int index_proc_declar(struct kndProcDeclar *decl, struct kndSentence *sent, struct kndPar *par, 
-                             struct kndAttrVar *var, struct kndClassInst *inst, struct kndRepo *repo, struct kndTask *task)
+                             struct kndAttrStm *var, struct kndClassInst *inst, struct kndRepo *repo, struct kndTask *task)
 {
     struct kndProcRef *ref;
     //struct kndAttrIdx *idx = inst->entry->attr_idxs;
@@ -366,12 +364,12 @@ static int index_proc_declar(struct kndProcDeclar *decl, struct kndSentence *sen
 
 int knd_text_index(struct kndText *self, struct kndRepo *repo, struct kndTask *task)
 {
-    struct kndAttrVar *var = self->attr_var;
-    struct kndClassInst *inst = var->class_var->parent_inst;
+    struct kndAttrStm *var = self->attr_stm;
+    struct kndClassInst *inst = var->base_pred->parent_inst;
     struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
     struct kndPar *par;
     struct kndSentence *sent;
-    struct kndClassDeclar *decl;
+    //struct kndClassDeclar *decl;
     struct kndAttrIdx *idx;
     int err;
 
@@ -395,10 +393,10 @@ int knd_text_index(struct kndText *self, struct kndRepo *repo, struct kndTask *t
                         var->name_size, var->name, par->numid, sent->numid,
                         sent->seq->val_size, sent->seq->val);
             
-            FOREACH (decl, sent->stm->declars) {
-                err = index_class_declar(decl, sent, par, var, inst, repo, task);
-                KND_TASK_ERR("failed to index class declar");
-            }
+            //FOREACH (decl, sent->stm->declars) {
+            //    err = index_class_declar(decl, sent, par, var, inst, repo, task);
+            //    KND_TASK_ERR("failed to index class declar");
+            //}
             
             // FOREACH (proc_decl, sent->stm->proc_declars) {
             //    err = index_proc_declar(proc_decl, sent, par, var, inst, repo, task);

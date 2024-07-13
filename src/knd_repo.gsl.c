@@ -409,7 +409,7 @@ static int resolve_class(void *obj, const char *unused_var(elem_id),
     err = knd_class_acquire(entry, &c, task);
     KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
 
-    if (c->is_resolved) return knd_OK;
+    if (c->phase >= KND_CLASS_RESOLVED) return knd_OK;
 
     err = knd_class_resolve(c, task);
     KND_TASK_ERR("failed to resolve {class %.*s}", entry->name_size, entry->name);
@@ -441,61 +441,7 @@ static int index_class(void *obj, const char *unused_var(elem_id),
     return knd_OK;
 }
 
-static int iterate_class_insts(struct kndClass *c, struct kndTask *task)
-{
-    struct kndClassInstEntry *entry;
-    struct kndSharedDictItem *item;
-    struct kndSharedDict *name_idx = c->inst_name_idx;
-    int err;
-
-    if (DEBUG_REPO_GSL_LEVEL_2)
-        knd_log(".. resolving insts of {class %.*s}..", c->name_size, c->name);
-
-    // TODO: iterate func in kndSharedDict
-    for (size_t i = 0; i < name_idx->size; i++) {
-        item = atomic_load_explicit(&name_idx->hash_array[i], memory_order_relaxed);
-        for (; item; item = item->next) {
-            entry = item->data;
-
-            err = knd_class_inst_resolve(entry->inst, task);
-            KND_TASK_ERR("failed to resolve {class %.*s {inst %.*s}}",
-                         c->name_size, c->name, entry->name_size, entry->name);
-        }
-    }
-    return knd_OK;
-}
-
-static int resolve_class_insts(struct kndRepo *self, struct kndTask *task)
-{
-    struct kndClass *c;
-    struct kndClassEntry *entry;
-    struct kndSharedDictItem *item;
-    struct kndSharedDict *name_idx = task->idxs->class_name_idx;
-    int err;
-
-    if (DEBUG_REPO_GSL_LEVEL_2)
-        knd_log(".. resolving class instances in {repo %.*s}..", self->name_size, self->name);
-
-    // TODO: iterate func in kndSharedDict
-    /*for (size_t i = 0; i < name_idx->size; i++) {
-        item = atomic_load_explicit(&name_idx->hash_array[i], memory_order_relaxed);
-        for (; item; item = item->next) {
-            entry = item->data;
-            if (!entry->class) {
-                knd_log("-- unresolved class entry: %.*s", entry->name_size, entry->name);
-                return knd_FAIL;
-            }
-            c = entry->class;
-            if (!c->inst_name_idx) continue;
-
-            err = iterate_class_insts(c, task);
-            KND_TASK_ERR("failed to iterate insts of class %.*s",
-                         entry->name_size, entry->name);
-        }
-        }*/
-    return knd_OK;
-}
-
+#if 0
 static int index_class_insts(struct kndClass *c, struct kndTask *task)
 {
     struct kndClassInstEntry *entry;
@@ -553,6 +499,7 @@ static int index_repo_class_insts(struct kndRepo *self, struct kndTask *task)
     }
     return knd_OK;
 }
+#endif
 
 int knd_repo_read_sources(struct kndRepo *self, struct kndTask *task)
 {
@@ -589,11 +536,11 @@ int knd_repo_read_sources(struct kndRepo *self, struct kndTask *task)
                             KND_GSL_INIT_DATA, task);
         KND_TASK_ERR("init data import failed");
 
-        err = resolve_class_insts(self, task);
-        KND_TASK_ERR("class insts resolving failed");
+        //err = resolve_class_insts(self, task);
+        //KND_TASK_ERR("class insts resolving failed");
 
-        err = index_repo_class_insts(self, task);
-        KND_TASK_ERR("class insts indexing failed");
+        //err = index_repo_class_insts(self, task);
+        //KND_TASK_ERR("class insts indexing failed");
     }
     return knd_OK;
 }

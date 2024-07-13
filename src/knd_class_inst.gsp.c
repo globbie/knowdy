@@ -6,6 +6,7 @@
 #include "knd_shared_set.h"
 #include "knd_shared_dict.h"
 #include "knd_attr.h"
+#include "knd_attr_stm.h"
 
 #define DEBUG_CLASS_INST_GSP_LEVEL_1 0
 #define DEBUG_CLASS_INST_GSP_LEVEL_2 0
@@ -15,7 +16,7 @@
 struct LocalContext {
     struct kndTask *task;
     struct kndRepo *repo;
-    struct kndAttrVar *attr_var;
+    struct kndAttrStm *attr_stm;
     struct kndClass *class;
     struct kndClassRef *class_ref;
     struct kndClassInst *class_inst;
@@ -130,9 +131,9 @@ int knd_class_inst_export_GSP(struct kndClassInst *self, struct kndTask *task)
         err = out->writef(out, "%zu", self->linear_len);                   RET_ERR();
         err = out->writec(out, '}');                                 RET_ERR();
     }
-    if (self->class_var->attrs) {
+    if (self->base_pred->attr_stms) {
         curr_depth = task->ctx->depth;
-        err = knd_attr_vars_export_GSP(self->class_var->attrs, out, task, 0, false);
+        err = knd_attr_stms_export_GSP(self->base_pred->attr_stms, out, task, 0, false);
         KND_TASK_ERR("failed to export attr vars GSP");
         task->ctx->depth = curr_depth;
     }

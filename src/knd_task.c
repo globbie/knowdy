@@ -249,6 +249,36 @@ static int task_context_new(struct kndTaskContext **result)
     return knd_OK;
 }
 
+int knd_task_fetch_memblock(struct kndTask *task,
+                            size_t space_required, struct kndMemBlock **result)
+{
+    struct kndMemBlock *block, *curr_block;
+    int err;
+
+    if (space_required >= KND_MEMBLOCK_BUF_SIZE) return knd_LIMIT;
+
+    if (!task->blocks) {
+        err = knd_memblock_new(&block, 0, KND_MEMBLOCK_BUF_SIZE);
+        KND_TASK_ERR("failed to alloc a memblock");
+        *result = block;
+        return knd_OK;
+    }
+
+    curr_block = task->blocks;
+    if ((curr_block->capacity - curr_block->buf_size) >= space_required) {
+        *result = curr_block;
+        return knd_OK;
+    }
+
+    err = knd_memblock_new(&block, 0, KND_MEMBLOCK_BUF_SIZE);
+    KND_TASK_ERR("failed to alloc a memblock");
+    block->next = curr_block;
+    task->blocks = block;
+    task->num_blocks++;
+    *result = block;
+    return knd_OK;
+}
+
 void knd_task_cleanup(struct kndTask *task, struct kndSteward *steward)
 {
     assert (steward != NULL);

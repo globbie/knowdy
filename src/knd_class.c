@@ -22,6 +22,7 @@
 #include "knd_class.h"
 #include "knd_class_inst.h"
 #include "knd_attr.h"
+#include "knd_attr_stm.h"
 #include "knd_task.h"
 #include "knd_user.h"
 #include "knd_text.h"
@@ -75,10 +76,10 @@ static int str_attr_idx_rec(void *unused_var(obj),
     struct kndAttrRef *src_ref = elem;
 
     //knd_log("   + %.*s => %p",
-    //        src_ref->attr->name_size, src_ref->attr->name, src_ref->attr_var);   
+    //        src_ref->attr->name_size, src_ref->attr->name, src_ref->attr_stm);   
 
-    if (!src_ref->attr_var) return knd_OK;
-    knd_attr_var_str(src_ref->attr_var, 2);
+    if (!src_ref->attr_stm) return knd_OK;
+    knd_attr_stm_str(src_ref->attr_stm, 2);
 
     return knd_OK;
 }
@@ -86,13 +87,12 @@ static int str_attr_idx_rec(void *unused_var(obj),
 void knd_class_str(struct kndClass *self, size_t depth)
 {
     struct kndText *tr;
-    struct kndClassVar *item;
-    struct kndAttrVar *var;
+    struct kndClassBasePred *item;
+    struct kndAttrStm *var;
     struct kndClassRef *ref;
     struct kndClassEntry *entry;
     const char *name;
     size_t name_size;
-    char resolved_state = '-';
     int err;
 
     knd_log("\n{class %.*s {id %.*s}  {numid %zu}",
@@ -120,24 +120,21 @@ void knd_class_str(struct kndClass *self, size_t depth)
                 tr->locale_size, tr->locale, tr->seq->val_size, tr->seq->val);
     }
 
-    if (self->baseclass_vars) {
-        FOREACH (item, self->baseclass_vars) {
-            resolved_state = '-';
-
+    if (self->base_preds) {
+        FOREACH (item, self->base_preds) {
             if (item->entry) {
                 name = item->entry->name;
                 name_size = item->entry->name_size;
 
-                knd_log("%*s_base \"%.*s\" id:%.*s [%c]",
+                knd_log("%*s_base {class %.*s} {id %.*s}",
                         (depth + 1) * KND_OFFSET_SIZE, "",
                         name_size, name,
-                        item->entry->id_size, item->entry->id,
-                        resolved_state);
+                        item->entry->id_size, item->entry->id);
             }
 
-            if (item->attrs) {
-                FOREACH (var, item->attrs)
-                    knd_attr_var_str(var, depth + 1);
+            if (item->attr_stms) {
+                FOREACH (var, item->attr_stms)
+                    knd_attr_stm_str(var, depth + 1);
             }
         }
     }
@@ -337,15 +334,13 @@ int knd_is_base(struct kndClass *self, struct kndClass *child)
     struct kndClassRef *ref;
 
     if (DEBUG_CLASS_LEVEL_2) {
-        knd_log(".. check inheritance: %.*s (repo:%.*s) [resolved: %d] => "
-                " %.*s (repo:%.*s) num ancestors:%zu [base resolved:%d  resolved:%d]",
+        knd_log(".. check inheritance: %.*s {repo %.*s} => "
+                " %.*s {repo %.*s}  {num-ancestors %zu}",
                 child->name_size, child->name,
                 child->entry->repo->name_size, child->entry->repo->name,
-                child->is_resolved,
                 self->entry->name_size, self->entry->name,
                 self->entry->repo->name_size, self->entry->repo->name,
-                self->num_ancestors,
-                self->base_is_resolved, self->is_resolved);
+                self->num_ancestors);
     }
     FOREACH (ref, child->ancestors) {
          if (ref->entry == self->entry)
@@ -392,8 +387,8 @@ int knd_class_get_attr(struct kndClass *self, const char *name, size_t name_size
     return knd_NO_MATCH;
 }
 
-int knd_class_get_attr_var(struct kndClass *self, const char *name, size_t name_size,
-                           struct kndAttrVar **result)
+int knd_class_get_attr_stm(struct kndClass *self, const char *name, size_t name_size,
+                           struct kndAttrStm **result)
 {
     struct kndAttrRef *ref;
     struct LocalContext ctx = {
@@ -405,9 +400,9 @@ int knd_class_get_attr_var(struct kndClass *self, const char *name, size_t name_
     switch (err) {
     case knd_EXISTS:
         ref = ctx.attr_ref;
-        if (!ref->attr_var) return knd_NO_MATCH;
+        if (!ref->attr_stm) return knd_NO_MATCH;
 
-        *result = ref->attr_var;
+        *result = ref->attr_stm;
         return knd_OK;
     default:
         break;
@@ -497,13 +492,6 @@ int knd_get_class_entry(struct kndRepo *repo, const char *name, size_t name_size
         return knd_NO_MATCH;
     }
 
-    if (DEBUG_CLASS_LEVEL_TMP) {
-        knd_log("++ {repo %.*s {entry %p {class %.*s {cached-version %p {class-name-idx %p}}}}",
-                repo->name_size, repo->name, entry,
-                name_size, name, entry->cached_version,
-                class_name_idx);
-    }
-
     *result = entry;
     return knd_OK;
 }
@@ -552,8 +540,9 @@ int knd_class_acquire(struct kndClassEntry *entry, struct kndClass **result, str
     struct kndStorageLeaf *leaf;
     int err;
 
-    if (DEBUG_CLASS_LEVEL_2) {
-        knd_log(">> acquire {class %.*s}", entry->name_size, entry->name);
+    if (DEBUG_CLASS_LEVEL_TMP) {
+        knd_log(">> acquire {class %.*s {id %.*s}}",
+                entry->name_size, entry->name, entry->id_size, entry->id);
     }
 
     atomic_fetch_add_explicit(&entry->num_requests, 1, memory_order_relaxed);
@@ -573,17 +562,12 @@ int knd_class_acquire(struct kndClassEntry *entry, struct kndClass **result, str
     KND_TASK_ERR("no storage leaf found for unmarshalling class entry %.*d",
                  entry->id_size, entry->id);
 
-    task->payload = (void*)entry;
-
     err = knd_storage_leaf_read_elem(leaf, entry->id, entry->id_size,
-                                     knd_class_unmarshall, (void**)&c, task);
+                                     knd_class_unmarshall, entry, (void**)&c, task);
     KND_TASK_ERR("failed to read {class %.*s}", entry->name_size, entry->name);
 
-    c->entry = entry;
-    c->name = entry->name;
-    c->name_size = entry->name_size;
-
-    atomic_store_explicit(&entry->curr_version, c, memory_order_relaxed);
+    err = knd_class_decode(c, task);
+    KND_TASK_ERR("failed to decode {class %.*s}", c->name_size, c->name);
 
     *result = c;
     return knd_OK;
@@ -656,7 +640,7 @@ static int class_attrs_copy(struct kndClass *orig, struct kndClass *c,
         attr->is_implied = orig_attr->is_implied;
         attr->is_indexed = orig_attr->is_indexed;
         attr->is_unique = orig_attr->is_unique;
-        
+
         if (!c->attr_tail) {
             c->attr_tail = attr;
             c->attrs = attr;
@@ -726,14 +710,14 @@ int knd_class_entry_clone(struct kndClassEntry *self, struct kndRepo *repo,
     return knd_OK;
 }
 
-int knd_class_var_new(struct kndClassVar **result, struct kndMemPool *mempool)
+int knd_class_base_pred_new(struct kndClassBasePred **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
-    assert(mempool->small_page_size >= sizeof(struct kndClassVar));
+    assert(mempool->small_page_size >= sizeof(struct kndClassBasePred));
     err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
     if (err) return err;
-    memset(page, 0,  sizeof(struct kndClassVar));
+    memset(page, 0,  sizeof(struct kndClassBasePred));
     *result = page;
     return knd_OK;
 }

@@ -18,6 +18,7 @@
 #include "knd_class.h"
 #include "knd_class_inst.h"
 #include "knd_attr.h"
+#include "knd_attr_stm.h"
 #include "knd_task.h"
 #include "knd_state.h"
 #include "knd_user.h"
@@ -32,26 +33,26 @@
 #include "knd_output.h"
 #include "knd_http_codes.h"
 
-#define DEBUG_ATTR_VAR_JSON_LEVEL_1 0
-#define DEBUG_ATTR_VAR_JSON_LEVEL_2 0
-#define DEBUG_ATTR_VAR_JSON_LEVEL_3 0
-#define DEBUG_ATTR_VAR_JSON_LEVEL_4 0
-#define DEBUG_ATTR_VAR_JSON_LEVEL_5 0
-#define DEBUG_ATTR_VAR_JSON_LEVEL_TMP 1
+#define DEBUG_ATTR_STM_JSON_LEVEL_1 0
+#define DEBUG_ATTR_STM_JSON_LEVEL_2 0
+#define DEBUG_ATTR_STM_JSON_LEVEL_3 0
+#define DEBUG_ATTR_STM_JSON_LEVEL_4 0
+#define DEBUG_ATTR_STM_JSON_LEVEL_5 0
+#define DEBUG_ATTR_STM_JSON_LEVEL_TMP 1
 
-static int attr_var_list_export_JSON(struct kndAttrVar *parent_var, struct kndTask *task, size_t depth);
+static int attr_stm_list_export_JSON(struct kndAttrStm *parent_var, struct kndTask *task, size_t depth);
 
-static int inner_var_export_JSON(struct kndAttrVar *var, struct kndTask *task, size_t depth)
+static int inner_var_export_JSON(struct kndAttrStm *var, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     struct kndAttr *attr = var->attr;
     struct kndClass *c;
-    struct kndAttrVar *item;
+    struct kndAttrStm *item;
     size_t count = 0;
     size_t indent_size = task->ctx->format_indent;
     int err;
 
-    if (DEBUG_ATTR_VAR_JSON_LEVEL_2)
+    if (DEBUG_ATTR_STM_JSON_LEVEL_2)
         knd_log(".. JSON export inner var \"%.*s\"", var->name_size, var->name);
 
     if (var->implied_attr) {
@@ -91,7 +92,7 @@ static int inner_var_export_JSON(struct kndAttrVar *var, struct kndTask *task, s
     }
 
     FOREACH (item, var->children) {
-        if (DEBUG_ATTR_VAR_JSON_LEVEL_2)
+        if (DEBUG_ATTR_STM_JSON_LEVEL_2)
             knd_log("* inner var child %.*s => %.*s",
                     item->name_size, item->name, item->val_size, item->val);
         if (count) {
@@ -104,19 +105,19 @@ static int inner_var_export_JSON(struct kndAttrVar *var, struct kndTask *task, s
         }
 
         if (item->attr->is_a_set) {
-            err = attr_var_list_export_JSON(item, task, depth);
+            err = attr_stm_list_export_JSON(item, task, depth);
             KND_TASK_ERR("failed to export inner var list JSON");
             continue;
         }
 
-        err = knd_attr_var_export_JSON(item, task, depth + 1);
+        err = knd_attr_stm_export_JSON(item, task, depth + 1);
         KND_TASK_ERR("failed to export JSON inner attr var");
         count++;
     }    
     return knd_OK;
 }
 
-static int ref_var_export_JSON(struct kndAttrVar *var, struct kndTask *task, size_t depth)
+static int ref_var_export_JSON(struct kndAttrStm *var, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     size_t indent_size = task->ctx->format_indent;
@@ -143,7 +144,7 @@ static int ref_var_export_JSON(struct kndAttrVar *var, struct kndTask *task, siz
 }
 
 #if 0
-static int proc_var_export_JSON(struct kndAttrVar *var, struct kndTask *task)
+static int proc_var_export_JSON(struct kndAttrStm *var, struct kndTask *task)
 {
     assert(var->proc_entry != NULL);
     // int err = knd_proc_export_JSON(var->proc, task, false, 0);                   RET_ERR();
@@ -151,16 +152,16 @@ static int proc_var_export_JSON(struct kndAttrVar *var, struct kndTask *task)
 }
 #endif
 
-static int attr_var_list_export_JSON(struct kndAttrVar *parent_var, struct kndTask *task, size_t depth)
+static int attr_stm_list_export_JSON(struct kndAttrStm *parent_var, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
-    struct kndAttrVar *var;
+    struct kndAttrStm *var;
     bool in_list = false;
     size_t count = 0;
     size_t indent_size = task->ctx->format_indent;
     int err;
 
-    if (DEBUG_ATTR_VAR_JSON_LEVEL_2)
+    if (DEBUG_ATTR_STM_JSON_LEVEL_2)
         knd_log(".. export JSON list: %.*s\n\n", parent_var->name_size, parent_var->name);
 
     if (indent_size) {
@@ -246,11 +247,11 @@ static int attr_var_list_export_JSON(struct kndAttrVar *parent_var, struct kndTa
     return knd_OK;
 }
 
-int knd_attr_vars_export_JSON(struct kndAttrVar *vars, struct kndTask *task,
+int knd_attr_stms_export_JSON(struct kndAttrStm *vars, struct kndTask *task,
                               bool is_concise, size_t depth)
 {
     struct kndOutput *out = task->out;
-    struct kndAttrVar *var;
+    struct kndAttrStm *var;
     struct kndAttr *attr;
     struct kndClass *c;
     size_t indent_size = task->ctx->format_indent;
@@ -263,7 +264,7 @@ int knd_attr_vars_export_JSON(struct kndAttrVar *vars, struct kndTask *task,
 
         OUT(",", 1);
         if (attr->is_a_set) {
-            err = attr_var_list_export_JSON(var, task, depth);
+            err = attr_stm_list_export_JSON(var, task, depth);
             if (err) return err;
             continue;
         }
@@ -371,7 +372,7 @@ int knd_attr_vars_export_JSON(struct kndAttrVar *vars, struct kndTask *task,
     return knd_OK;
 }
 
-int knd_attr_var_export_JSON(struct kndAttrVar *var, struct kndTask *task, size_t depth)
+int knd_attr_stm_export_JSON(struct kndAttrStm *var, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     size_t indent_size = task->ctx->format_indent;

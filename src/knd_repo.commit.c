@@ -156,10 +156,10 @@ static int check_commit_conflicts(struct kndRepo *self, struct kndCommit *commit
     struct kndRepoSnapshot *snapshot;
     int err;
 
-    if (DEBUG_REPO_COMMIT_LEVEL_TMP)
+    if (DEBUG_REPO_COMMIT_LEVEL_TMP) {
         knd_log(".. new commit #%zu (%p) to check any commit conflicts since state #%zu",
                 commit->numid, commit, commit->orig_state_id);
-
+    }
     snapshot = task->snapshot;
     do {
         head_commit = atomic_load_explicit(&snapshot->commits, memory_order_relaxed);
@@ -449,11 +449,29 @@ int knd_apply_commit(void *obj, const char *unused_var(elem_id), size_t unused_v
     return knd_OK;
 }
 
-int knd_repo_transfer_commits(struct kndRepo *repo, struct kndTask *task)
+int knd_repo_transfer_commits(struct kndRepo *repo, struct kndTask *unused_var(task))
 {
-    knd_log(".. transfer commits in {repo %.*s}",
-            repo->name_size, repo->name);
+    struct kndCommit *commit = NULL;
+    struct kndRepoSnapshot *snapshot;
 
+    assert (repo->snapshot_temp != NULL);
+
+    snapshot = atomic_load_explicit(&repo->snapshot, memory_order_relaxed);    
+
+    if (DEBUG_REPO_COMMIT_LEVEL_TMP) {
+        knd_log(".. transfer the remaining delta of latest commits in {repo %.*s}",
+                repo->name_size, repo->name);
+    }
+
+    commit = atomic_load_explicit(&snapshot->commits, memory_order_relaxed);
+    while (commit) {
+        if (commit->numid <= snapshot->start_from_commit_id) break;
+
+        knd_log(">> commit #%zu", commit->numid);
+        //= repo->snapshot_temp
+       
+        commit = commit->prev;
+    }    
     
     return knd_OK;
 }

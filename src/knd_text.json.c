@@ -61,7 +61,7 @@ static int export_propositions(struct kndProposition *props, struct kndTask *tas
             KND_TASK_ERR("failed to present proc inst synode JSON");
         }
         
-        if (inst->procvar) {
+       if (inst->procvar) {
             arg_count = 0;
             OUT(",\"args\":{", strlen(",\"args\":{"));
             FOREACH (var, inst->procvar->args) {

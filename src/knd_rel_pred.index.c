@@ -1,5 +1,5 @@
 static int index_inst_ref(struct kndClassInstEntry *topic_inst,
-                          struct kndAttr *attr, struct kndAttrVar *var, struct kndTask *task)
+                          struct kndAttr *attr, struct kndAttrStm *var, struct kndTask *task)
 {
     struct kndClass *spec;
     struct kndAttrHub *hub;

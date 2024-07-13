@@ -456,7 +456,7 @@ int knd_repo_snapshot_new(struct kndRepoSnapshot **result, size_t numid, size_t 
     err = knd_shared_dict_new(&s->idxs.class_name_idx, KND_MEDIUM_DICT_SIZE, mempool, false);
     if (err) return err;
 
-    err = knd_set_new(&s->idxs.attr_idx, mempool);
+    err = knd_shared_set_new(&s->idxs.attr_idx, mempool);
     if (err) return err;
     err = knd_shared_dict_new(&s->idxs.attr_name_idx, KND_MEDIUM_DICT_SIZE, mempool, false);
     if (err) return err;
@@ -470,7 +470,7 @@ int knd_repo_snapshot_new(struct kndRepoSnapshot **result, size_t numid, size_t 
     return knd_OK;
 }
 
-int knd_repo_cleanup(struct kndRepo *repo, struct kndTask *task)
+int knd_repo_snapshot_activate(struct kndRepo *repo, struct kndTask *task)
 {
     struct kndRepoSnapshot *snapshot;
     int err;
@@ -541,11 +541,6 @@ int knd_repo_new(struct kndRepo **repo, const char *name, size_t name_size,
                  const char *schema_path, size_t schema_path_size)
 {
     struct kndRepo *self;
-    struct kndClass *c;
-    struct kndClassEntry *entry;
-    struct kndProc *proc;
-    struct kndProcEntry *proc_entry;
-    int err;
 
     if (name_size >= (KND_NAME_SIZE - 1)) return knd_LIMIT;
 
@@ -587,7 +582,4 @@ int knd_repo_new(struct kndRepo **repo, const char *name, size_t name_size,
  
     *repo = self;
     return knd_OK;
- error:
-    // TODO: release resources
-    return err;
 }

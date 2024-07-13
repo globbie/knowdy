@@ -24,18 +24,18 @@
 #define DEBUG_CLASS_QUERY_LEVEL_TMP 1
 
 
-int knd_class_match_query(struct kndClass *self, struct kndAttrVar *query)
+int knd_class_match_query(struct kndClass *self, struct kndAttrStm *query)
 {
     struct kndSet *attr_idx = self->attr_idx;
     knd_logic_t logic = query->logic;
     struct kndAttrRef *attr_ref;
-    struct kndAttrVar *attr_var;
+    struct kndAttrStm *attr_stm;
     struct kndAttr *attr;
     void *result;
     int err;
 
-    FOREACH (attr_var, query->children) {
-        attr = attr_var->attr;
+    FOREACH (attr_stm, query->children) {
+        attr = attr_stm->attr;
 
         err = attr_idx->get(attr_idx, attr->id, attr->id_size, &result);
         if (err) {
@@ -45,15 +45,15 @@ int knd_class_match_query(struct kndClass *self, struct kndAttrVar *query)
         }
         attr_ref = result;
 
-        if (!attr_ref->attr_var) {
+        if (!attr_ref->attr_stm) {
             return knd_OK;
         }
 
         /* _null value expected */
-        if (!attr_var->val || !attr_var->numval) {
+        if (!attr_stm->val || !attr_stm->numval) {
             return knd_NO_MATCH;
         }
-        err = knd_attr_var_match(attr_ref->attr_var, attr_var);
+        err = knd_attr_stm_match(attr_ref->attr_stm, attr_stm);
         if (err == knd_NO_MATCH) {
             switch (logic) {
                 case KND_LOGIC_AND:

@@ -11,6 +11,7 @@
 #include "knd_proc.h"
 #include "knd_proc_arg.h"
 #include "knd_attr.h"
+#include "knd_attr_stm.h"
 #include "knd_user.h"
 #include "knd_utils.h"
 #include "knd_mempool.h"
@@ -39,7 +40,7 @@ int knd_statement_resolve(struct kndStatement *stm, struct kndTask *task)
     FOREACH (cd, stm->declars) {
         FOREACH (ci, cd->insts) {
             if (!ci->inst) continue;
-            if (!ci->inst->class_var) continue;
+            if (!ci->inst->base_pred) continue;
             err = resolve_class_inst(stm, ci, task);
             KND_TASK_ERR("failed to resolve class inst \"%.*s\"", ci->name_size, ci->name);
         }
@@ -65,14 +66,14 @@ static gsl_err_t parse_text(void *obj, const char *rec, size_t *total_size)
         KND_TASK_LOG("text import failed");
         return parser_err;
     }
-    ctx->attr_var->text = text;
-    text->attr_var = ctx->attr_var;
+    ctx->attr_stm->text = text;
+    text->attr_stm = ctx->attr_stm;
 
     return make_gsl_err(gsl_OK);
 }
 #endif
 
-int knd_text_resolve(struct kndAttrVar *attr_var, struct kndTask *task)
+int knd_text_resolve(struct kndAttrStm *attr_stm, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndText *text;
@@ -80,16 +81,16 @@ int knd_text_resolve(struct kndAttrVar *attr_var, struct kndTask *task)
 
     if (DEBUG_TEXT_RESOLVE_LEVEL_2)
         knd_log(".. resolving text attr var: %.*s  class:%.*s",
-                attr_var->name_size, attr_var->name,
-                attr_var->class_var->parent->name_size,
-                attr_var->class_var->parent->name);
+                attr_stm->name_size, attr_stm->name,
+                attr_stm->base_pred->parent->name_size,
+                attr_stm->base_pred->parent->name);
 
     err = knd_text_new(mempool, &text);
-    KND_TASK_ERR("failed to alloc a text field %.*s", attr_var->name_size, attr_var->name);
+    KND_TASK_ERR("failed to alloc a text field %.*s", attr_stm->name_size, attr_stm->name);
 
-    err = knd_charseq_fetch(task->repo, attr_var->val, attr_var->val_size, &text->seq, task);
-    KND_TASK_ERR("failed to fetch a charseq of %.*s", attr_var->name_size, attr_var->name);
+    err = knd_charseq_fetch(task->repo, attr_stm->val, attr_stm->val_size, &text->seq, task);
+    KND_TASK_ERR("failed to fetch a charseq of %.*s", attr_stm->name_size, attr_stm->name);
     
-    attr_var->text = text;
+    attr_stm->text = text;
     return knd_OK;
 }

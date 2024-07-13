@@ -14,14 +14,17 @@ int knd_memblock_new(struct kndMemBlock **result, size_t numid, size_t capacity)
 {
     struct kndMemBlock *block = malloc(sizeof(struct kndMemBlock));
     if (!block) return knd_NOMEM;
-    block->buf = malloc(capacity + 1);
-    if (!block->buf) {
+    block->init = malloc(capacity + 1);
+    if (!block->init) {
         free(block);
         return knd_NOMEM;
     }
     block->capacity = capacity;
     block->numid = numid;
+
+    block->buf = block->init;
     block->buf_size = 0;
+
     *result = block;
     return knd_OK;
 }
@@ -40,14 +43,19 @@ int knd_memblock_copy(struct kndMemBlock *block, const char *input, size_t input
     return knd_OK;
 }
 
-int knd_memblock_write(struct kndMemBlock *self, const char *buf, size_t buf_size)
+int knd_memblock_write(struct kndMemBlock *self, const char *buf, size_t buf_size,
+                       const char **result)
 {
+    char *curr = self->buf + self->buf_size;
+
     if (buf_size > self->capacity - self->buf_size - 1)
         return knd_NOMEM;
 
-    memcpy(self->buf + self->buf_size, buf, buf_size);
+    memcpy(curr, buf, buf_size);
     self->buf_size += buf_size;
     self->buf[self->buf_size] = '\0';
+
+    *result = curr;
     return knd_OK;
 }
 

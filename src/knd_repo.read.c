@@ -14,6 +14,7 @@
 #include "knd_dict.h"
 #include "knd_shared_dict.h"
 #include "knd_class.h"
+#include "knd_attr.h"
 #include "knd_class_inst.h"
 #include "knd_proc.h"
 #include "knd_mempool.h"
@@ -345,6 +346,22 @@ static int read_class_name_idx(struct kndSharedDict *class_name_idx, struct kndT
     return knd_OK;
 }
 
+static int read_attr_name_idx(struct kndSharedDict *attr_name_idx, struct kndTask *task)
+{
+    struct kndSharedSet *idx = attr_name_idx->idx;
+    struct kndStorageLeaf *leaf;
+    int err;
+
+    if (DEBUG_REPO_LEVEL_TMP) {
+        knd_log(".. reading {attr-name-idx %.*s}", idx->path_size, idx->path);
+    }
+    FOREACH (leaf, idx->leaves) {
+        err = knd_storage_leaf_open(idx, leaf, knd_attr_names_unmarshall, task);
+        KND_TASK_ERR("failed to read attr names idx");
+    }
+    return knd_OK;
+}
+
 static int read_str_idx(struct kndSharedSet *idx, struct kndTask *task)
 {
     struct kndStorageLeaf *leaf;
@@ -429,6 +446,7 @@ int knd_repo_snapshot_read(struct kndRepoSnapshot *snapshot, struct kndTask *tas
 {
     struct kndSharedDict *class_name_idx = snapshot->idxs.class_name_idx;
     struct kndSharedSet *class_idx = snapshot->idxs.class_idx;
+    struct kndSharedDict *attr_name_idx = snapshot->idxs.attr_name_idx;
     struct kndSharedSet *str_idx = snapshot->idxs.str_idx;
     int err;
 
@@ -441,6 +459,10 @@ int knd_repo_snapshot_read(struct kndRepoSnapshot *snapshot, struct kndTask *tas
 
     err = read_class_name_idx(class_name_idx, task);
     KND_TASK_ERR("failed to read class name idx in {snapshot #%zu {path %.*s}}",
+                 snapshot->numid, snapshot->path_size, snapshot->path);
+
+    err = read_attr_name_idx(attr_name_idx, task);
+    KND_TASK_ERR("failed to read attr name idx in {snapshot #%zu {path %.*s}}",
                  snapshot->numid, snapshot->path_size, snapshot->path);
 
     err = read_str_idx(str_idx, task);

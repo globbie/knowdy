@@ -18,6 +18,7 @@
 #include "knd_class.h"
 #include "knd_class_inst.h"
 #include "knd_attr.h"
+#include "knd_attr_stm.h"
 #include "knd_task.h"
 #include "knd_state.h"
 #include "knd_commit.h"
@@ -45,7 +46,7 @@ struct LocalContext {
     struct kndTask *task;
     struct kndRepo *repo;
     struct kndClass *class;
-    struct kndClassVar *class_var;
+    struct kndClassBasePred *base_pred;
 };
 
 int knd_export_class_state_JSON(struct kndClass *self, struct kndTask *task)
@@ -233,16 +234,16 @@ static int export_class_ref(void *obj, const char *unused_var(elem_id), size_t u
 
 static int export_concise_JSON(struct kndClass *self, struct kndTask *task)
 {
-    struct kndClassVar *item;
+    struct kndClassBasePred *item;
     int err;
 
     if (DEBUG_JSON_LEVEL_2)
         knd_log(".. export concise JSON for %.*s..",
                 self->entry->name_size, self->entry->name);
 
-    FOREACH (item, self->baseclass_vars) {
-        if (!item->attrs) continue;
-        err = knd_attr_vars_export_JSON(item->attrs, task, true, 0);
+    FOREACH (item, self->base_preds) {
+        if (!item->attr_stms) continue;
+        err = knd_attr_stms_export_JSON(item->attr_stms, task, true, 0);
         KND_TASK_ERR("failed to export attr vars JSON");
     }
     if (DEBUG_JSON_LEVEL_2)
@@ -658,7 +659,7 @@ static int export_inverse_rels(struct kndClass *self, struct kndTask *task, size
 static int export_baseclasses(struct kndClass *self, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
-    struct kndClassVar *cvar;
+    struct kndClassBasePred *bp;
     struct kndClass *c;
     size_t count = 0;
     size_t indent_size = task->ctx->format_indent;
@@ -680,7 +681,7 @@ static int export_baseclasses(struct kndClass *self, struct kndTask *task, size_
     }
     OUT("[", 1);
 
-    FOREACH (cvar, self->baseclass_vars) {
+    FOREACH (bp, self->base_preds) {
         if (count) {
             OUT(",", 1);
         }
@@ -700,20 +701,20 @@ static int export_baseclasses(struct kndClass *self, struct kndTask *task, size_
             OUT(" ", 1);
         }
         OUT("\"", 1);
-        OUT(cvar->entry->name, cvar->entry->name_size);
+        OUT(bp->entry->name, bp->entry->name_size);
         OUT("\"", 1);
 
         /* get localized gloss */
-        err = knd_class_acquire(cvar->entry, &c, task);
-        KND_TASK_ERR("failed to acquire base class %.*s", cvar->entry->name_size, cvar->entry->name);
+        err = knd_class_acquire(bp->entry, &c, task);
+        KND_TASK_ERR("failed to acquire base class %.*s", bp->entry->name_size, bp->entry->name);
         if (c->tr) {
             err = knd_text_gloss_export_JSON(c->tr, task, depth + 2);
             KND_TASK_ERR("failed to export baseclass gloss JSON");
         }
 
         /* attr vars */
-        if (cvar->attrs) {
-            err = knd_attr_vars_export_JSON(cvar->attrs, task, false, depth + 2);
+        if (bp->attr_stms) {
+            err = knd_attr_stms_export_JSON(bp->attr_stms, task, false, depth + 2);
             KND_TASK_ERR("failed to export attr vars JSON");
         }
 
@@ -814,14 +815,14 @@ int knd_class_export_JSON(struct kndClass *self, struct kndTask *task,
     }
 
     /* display base classes only once */
-    if (self->num_baseclass_vars) {
+    if (self->num_base_preds) {
         err = export_baseclasses(self, task, depth + 1);
         KND_TASK_ERR("failed to export baseclass JSON");
     }
 
     /*else {
-        if (orig_entry && orig_entry->class->num_baseclass_vars) {
-            err = export_baseclass_vars(orig_entry->class, task);         RET_ERR();
+        if (orig_entry && orig_entry->class->num_base_preds) {
+            err = export_base_preds(orig_entry->class, task);         RET_ERR();
         }
         }*/
 

@@ -29,7 +29,7 @@ struct kndTask;
 struct kndSyNode;
 struct kndStatement;
 struct kndRepo;
-struct kndAttrVar;
+struct kndAttrStm;
 
 typedef enum knd_charseq_enc_type {
     KND_CHARSEQ_UTF8,
@@ -250,16 +250,22 @@ struct kndPar
 
 struct kndText
 {
+    char id[KND_ID_SIZE];
+    size_t id_size;
+
+    char locale_id[KND_ID_SIZE];
+    size_t locale_id_size;
     const char *locale;
     size_t locale_size;
 
-    struct kndAttrVar *attr_var;
+    struct kndAttrStm *attr_stm;
     struct kndCharSeq *seq;
     struct kndCharSeq *abbr;
 
     struct kndSyNode *synodes;
     struct kndStatement *stms;
 
+    // TODO text structure
     struct kndPar *pars;
     struct kndPar *last_par;
     size_t num_pars;
@@ -276,7 +282,7 @@ struct kndText
 
 void knd_text_str(struct kndText *self, size_t depth);
 gsl_err_t knd_text_import(struct kndText *self, const char *rec, size_t *total_size, struct kndTask *task);
-int knd_text_resolve(struct kndAttrVar *attr_var, struct kndTask *task);
+int knd_text_resolve(struct kndAttrStm *attr_stm, struct kndTask *task);
 
 gsl_err_t knd_text_read(struct kndText *self, const char *rec, size_t *total_size, struct kndTask *task);
 int knd_text_index(struct kndText *self, struct kndRepo *repo, struct kndTask *task);
@@ -333,4 +339,4 @@ int knd_synode_export_JSON(struct kndSyNode *syn, struct kndTask *task);
 int knd_synode_concise_export_JSON(struct kndSyNode *syn, struct kndTask *task);
 
 int knd_string_unmarshall(const char *elem_id, size_t elem_id_size,
-                          const char *rec, size_t rec_size, void **result, struct kndTask *task);
+                          const char *rec, size_t rec_size, void *ctx, void **result, struct kndTask *task);

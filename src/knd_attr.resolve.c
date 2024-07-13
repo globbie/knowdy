@@ -46,7 +46,7 @@ static int register_attr(struct kndClass *self, struct kndAttr *attr, struct knd
 {
     struct kndMemPool *mempool = task->mempool;
     struct kndSharedDict *attr_name_idx = task->idxs->attr_name_idx;
-    struct kndSet *attr_idx = task->idxs->attr_idx;
+    struct kndSharedSet *attr_idx = task->idxs->attr_idx;
     struct kndAttrRef *attr_ref, *attr_refs;
     const char *name = attr->name;
     size_t name_size = attr->name_size;
@@ -56,7 +56,7 @@ static int register_attr(struct kndClass *self, struct kndAttr *attr, struct knd
         knd_log(".. register {class %.*s {attr %.*s}}",
                 self->name_size, self->name, name_size, name);
     }
-    err = knd_attr_ref_new(mempool, &attr_ref);
+    err = knd_attr_ref_new(&attr_ref, mempool);
     KND_TASK_ERR("failed to alloc kndAttrRef")
     attr_ref->attr = attr;
     attr_ref->class_entry = self->entry;
@@ -85,10 +85,10 @@ static int register_attr(struct kndClass *self, struct kndAttr *attr, struct knd
             attr_refs->tail = attr_ref;
         }
 
-        err = attr_idx->add(attr_idx, attr->id, attr->id_size, (void*)attr_ref);
+        err = knd_shared_set_add(attr_idx, attr->id, attr->id_size, (void*)attr_ref);
         KND_TASK_ERR("failed to globally register numid of attr \"%.*s\"", name_size, name);
 
-        err = self->attr_idx->add(self->attr_idx, attr->id, attr->id_size, (void*)attr_ref);
+        err = knd_set_add(self->attr_idx, attr->id, attr->id_size, (void*)attr_ref);
         KND_TASK_ERR("failed to locally register numid of attr \"%.*s\"", name_size, name);
         return knd_OK;
     default:

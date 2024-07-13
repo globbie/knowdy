@@ -6,6 +6,7 @@
 #include "knd_class.h"
 #include "knd_mempool.h"
 #include "knd_attr.h"
+#include "knd_attr_stm.h"
 #include "knd_repo.h"
 
 #include "knd_text.h"
@@ -117,23 +118,23 @@ static gsl_err_t run_set_alias(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t import_attr_var(void *obj, const char *name, size_t name_size,
+static gsl_err_t import_attr_stm(void *obj, const char *name, size_t name_size,
                                  const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     int err;
-    err = knd_import_attr_var(ctx->class_inst->class_var, name, name_size,
+    err = knd_import_attr_stm(ctx->class_inst->base_pred, name, name_size,
                               rec, total_size, ctx->task);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t import_attr_var_list(void *obj, const char *name, size_t name_size,
+static gsl_err_t import_attr_stm_list(void *obj, const char *name, size_t name_size,
                                       const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     int err;
-    err = knd_import_attr_var_list(ctx->class_inst->class_var, name, name_size,
+    err = knd_import_attr_stm_list(ctx->class_inst->base_pred, name, name_size,
                                    rec, total_size, ctx->task);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     return make_gsl_err(gsl_OK);
@@ -184,11 +185,11 @@ static gsl_err_t import_class_inst(struct kndClassInst *self, const char *rec, s
           .parse = gsl_parse_size_t,
           .obj = &self->linear_len
         },
-        { .validate = import_attr_var,
+        { .validate = import_attr_stm,
           .obj = &ctx
         },
         { .type = GSL_GET_ARRAY_STATE,
-          .validate = import_attr_var_list,
+          .validate = import_attr_stm_list,
           .obj = &ctx
         },
         { .is_default = true,
@@ -251,7 +252,7 @@ int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *
     struct kndClass *c;
     struct kndClassInst *inst;
     struct kndClassInstEntry *inst_entry;
-    struct kndClassVar *class_var;
+    struct kndClassBasePred *base_pred;
     struct kndState *state;
     struct kndStateRef *state_ref;
     struct kndTaskContext *ctx = task->ctx;
@@ -290,13 +291,13 @@ int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *
     inst->entry = inst_entry;
     inst_entry->inst = inst;
 
-    err = knd_class_var_new(&class_var, mempool);
+    err = knd_class_base_pred_new(&base_pred, mempool);
     KND_TASK_ERR("failed to alloc a class var");
-    class_var->type = KND_INSTANCE_BLUEPRINT;
-    class_var->entry = entry;
-    class_var->parent = c;
-    class_var->parent_inst = inst;
-    inst->class_var = class_var;
+    base_pred->type = KND_INSTANCE_BLUEPRINT;
+    base_pred->entry = entry;
+    base_pred->parent = c;
+    base_pred->parent_inst = inst;
+    inst->base_pred = base_pred;
 
     parser_err = import_class_inst(inst, rec, total_size, task);
     if (parser_err.code) return parser_err.code;

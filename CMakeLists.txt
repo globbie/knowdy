@@ -1,6 +1,14 @@
 cmake_minimum_required(VERSION 3.2)
 project(knowdy C)
+
 find_package(PkgConfig)
+
+option(KND_PYTHON_SUPPORT "Build Python C extension module" OFF)
+
+if(KND_PYTHON_SUPPORT)
+    find_package(PythonInterp 3.5 REQUIRED)
+    find_package(PythonLibs 3.5 REQUIRED)
+endif()
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -65,7 +73,7 @@ set(GSL_PARSER_LIBRARY "${CMAKE_BINARY_DIR}/libs/gsl-parser/lib/libgsl-parser_st
 
 include_directories("include")
 
-set(HEADERS include/knd_attr.h include/knd_rel.h
+set(HEADERS include/knd_attr.h include/knd_attr_stm.h include/knd_rel.h
         include/knd_class.h include/knd_class_inst.h include/knd_config.h
         include/knd_dict.h include/knd_shared_dict.h
         include/knd_err.h
@@ -79,11 +87,12 @@ set(HEADERS include/knd_attr.h include/knd_rel.h
         include/knd_state.h include/knd_commit.h
         include/knd_task.h include/knd_text.h
         include/knd_user.h include/knd_utils.h include/knd_version.h)
-set(SOURCES src/knd_attr.c src/knd_attr.import.c
-        src/knd_attr.read.c src/knd_attr.resolve.c src/knd_attr.select.c
+set(SOURCES src/knd_attr.c src/knd_attr.import.c src/knd_attr.resolve.c
+        src/knd_attr.read.c src/knd_attr.decode.c src/knd_attr.select.c
         src/knd_attr.json.c src/knd_attr.gsl.c src/knd_attr.gsp.c
-        src/knd_attr_var.import.c src/knd_attr_var.index.c src/knd_attr_var.resolve.c src/knd_attr_var.read.c
-        src/knd_attr_var.gsl.c src/knd_attr_var.json.c src/knd_attr_var.gsp.c
+        src/knd_attr_stm.c src/knd_attr_stm.import.c src/knd_attr_stm.index.c
+        src/knd_attr_stm.resolve.c src/knd_attr_stm.read.c src/knd_attr_stm.decode.c
+        src/knd_attr_stm.gsl.c src/knd_attr_stm.json.c src/knd_attr_stm.gsp.c
         src/knd_rel.c src/knd_rel.import.c src/knd_rel.resolve.c
         src/knd_rel_pred.resolve.c 
         src/knd_class.c src/knd_class.gsl.c
@@ -111,7 +120,7 @@ set(SOURCES src/knd_attr.c src/knd_attr.import.c
         src/knd_state.c src/knd_commit.c
         src/knd_task.c src/knd_task.select.c
         src/knd_text.c src/knd_text.import.c src/knd_text.resolve.c src/knd_text.index.c
-        src/knd_text.read.c src/knd_text.search.c src/knd_text.select.c
+        src/knd_text.read.c src/knd_text.decode.c src/knd_text.search.c src/knd_text.select.c
         src/knd_text.gsl.c src/knd_text.gsp.c src/knd_text.json.c
         src/knd_user.c src/knd_utils.c)
 

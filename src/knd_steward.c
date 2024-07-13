@@ -292,8 +292,6 @@ static gsl_err_t parse_schema(void *obj, const char *rec, size_t *total_size)
 {
     struct kndSteward *self = obj;
 
-    knd_log(".. parsing rec size %zu", *total_size);
-
     struct gslTaskSpec specs[] = {
         {   .is_implied = true,
             .run = run_check_schema,
@@ -375,8 +373,6 @@ static int steward_read_config(struct kndSteward *steward, const char *config, s
     gsl_err_t parser_err;
     struct kndOutput *out = steward->out;
     struct kndOutput *log = steward->log;
-
-    knd_log("config size: %zu", config_size);
 
     parser_err = gsl_parse_task(config, &total_parsed, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code != gsl_OK) {
@@ -589,8 +585,8 @@ int knd_steward_snapshot_activate(struct kndSteward *steward)
 
     // TODO iterate all repos
 
-    err = knd_repo_cleanup(repo, steward->task);
-    KND_STEWARD_ERR("failed to cleanup a repo");
+    err = knd_repo_snapshot_activate(repo, steward->task);
+    KND_STEWARD_ERR("failed to activate a snapshot repo");
 
     // free prev mempools
     knd_mempool_del(steward->mempool_read);

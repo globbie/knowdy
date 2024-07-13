@@ -27,8 +27,8 @@
 #define DEBUG_ATTR_LEVEL_TMP 1
 
 struct LocalContext {
-    struct kndClassVar *class_var;
-    struct kndAttrVar  *list_parent;
+    struct kndClassBasePred *class_var;
+    struct kndAttrStm  *list_parent;
     struct kndAttr     *attr;
     struct kndRepo     *repo;
     struct kndTask     *task;
@@ -50,22 +50,11 @@ static gsl_err_t confirm_attr(void *obj,
 static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndTask *task = ctx->task;
-    struct kndRepo *repo = task->repo;
     struct kndAttr *self = ctx->attr;
-    struct kndCharSeq *seq;
-    int err;
 
     self->name = name;
     self->name_size = name_size;
 
-    /*err = knd_charseq_fetch(repo, name, name_size, &seq, task);
-    if (err) {
-        KND_TASK_LOG("failed to encode a charseq %.*s", name_size, name);
-        return make_gsl_err_external(err);
-    }
-    self->seq = seq;
-    */
     return make_gsl_err(gsl_OK);
 }
 
@@ -320,6 +309,7 @@ gsl_err_t knd_attr_import(struct kndAttr *self, struct kndTask *task,
         }
         return err;
     }
+
     /* reassign glosses */
     if (task->ctx->tr) {
         self->tr = task->ctx->tr;

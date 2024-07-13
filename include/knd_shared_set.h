@@ -19,7 +19,6 @@
  */
 #pragma once
 
-
 #include "knd_config.h"
 #include "knd_memblock.h"
 #include "knd_mempool.h"
@@ -32,13 +31,12 @@ struct kndSharedSetFooter;
 
 typedef int (*elem_marshall_cb)(void *obj, size_t *buf_size, struct kndTask *task);
 typedef int (*elem_unmarshall_cb)(const char *elem_id, size_t elem_id_size,
-                                  const char *val, size_t val_size,
-                                  void **result, struct kndTask *task);
+                                  const char *rec, size_t rec_size,
+                                  void *ctx, void **result, struct kndTask *task);
 typedef int (*leaf_unmarshall_cb)(const char *elem_id, size_t elem_id_size,
-                                  const char *val, size_t val_size, struct kndTask *task);
+                                  const char *rec, size_t rec_size, struct kndTask *task);
 typedef int (*map_cb_func)(void *obj, const char *elem_id, size_t elem_id_size,
                            size_t count, void *elem);
-
 
 struct kndSharedSetDirIdx {
     size_t elem_block_sizes[KND_RADIX_BASE];
@@ -152,6 +150,6 @@ int knd_storage_leaf_open(struct kndSharedSet *self, struct kndStorageLeaf *leaf
                           leaf_unmarshall_cb cb, struct kndTask *task);
 
 int knd_storage_leaf_read_elem(struct kndStorageLeaf *leaf, const char *id, size_t id_size,
-                               elem_unmarshall_cb cb, void **result, struct kndTask *task);
+                               elem_unmarshall_cb cb, void *ctx, void **result, struct kndTask *task);
 
 int knd_storage_leaf_new(struct kndStorageLeaf **result, size_t numid, struct kndSharedSet *idx);

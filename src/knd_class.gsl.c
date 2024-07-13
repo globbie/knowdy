@@ -18,6 +18,7 @@
 #include "knd_class.h"
 #include "knd_class_inst.h"
 #include "knd_attr.h"
+#include "knd_attr_stm.h"
 #include "knd_task.h"
 #include "knd_state.h"
 #include "knd_commit.h"
@@ -45,7 +46,7 @@ struct LocalContext {
     struct kndTask *task;
     struct kndRepo *repo;
     struct kndClass *class;
-    struct kndClassVar *class_var;
+    struct kndClassBasePred *class_var;
     struct kndText *text;
 };
 
@@ -226,16 +227,17 @@ static int export_concise_GSL(struct kndClass *self,
                               struct kndTask *task,
                               size_t depth)
 {
-    struct kndClassVar *item;
+    struct kndClassBasePred *item;
     int err;
 
     if (DEBUG_GSL_LEVEL_2)
         knd_log(".. export concise GSL for %.*s..",
                 self->entry->name_size, self->entry->name);
 
-    FOREACH (item, self->baseclass_vars) {
-        if (!item->attrs) continue;
-        err = knd_attr_vars_export_GSL(item->attrs, task, true, depth);
+    FOREACH (item, self->base_preds) {
+        if (!item->attr_stms) continue;
+
+        err = knd_attr_stms_export_GSL(item->attr_stms, task, true, depth);
         RET_ERR();
     }
 
@@ -332,6 +334,7 @@ static int present_subclass(struct kndClassRef *ref, struct kndTask *task, size_
     int err;
 
     OUT("{", 1);
+    OUT(" ", 1);
     OUT(entry->name, entry->name_size);
 
     /* localized glosses */
@@ -343,10 +346,6 @@ static int present_subclass(struct kndClassRef *ref, struct kndTask *task, size_
         RET_ERR();
     }
 
-    //err = out->write(out, "{_id ", strlen("{_id "));                              RET_ERR();
-    //err = out->writef(out, "%zu", entry->numid);                                  RET_ERR();
-    //err = out->writec(out, '}');                                                  RET_ERR();
-
     err = export_concise_GSL(c, task, depth);
     RET_ERR();
 
@@ -354,7 +353,8 @@ static int present_subclass(struct kndClassRef *ref, struct kndTask *task, size_
     return knd_OK;
 }
 
-static int present_subclasses(struct kndClass *self, size_t num_children, struct kndTask *task, size_t depth)
+static int present_subclasses(struct kndClass *self, size_t num_children,
+                              struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     struct kndClassRef *ref;
@@ -392,7 +392,8 @@ static int present_subclasses(struct kndClass *self, size_t num_children, struct
             err = out->writec(out, '\n');                                         RET_ERR();
             err = knd_print_offset(out, (depth + 2) * task->ctx->format_indent);       RET_ERR();
         }
-        err = present_subclass(ref, task, depth + 2);                             RET_ERR();
+        err = present_subclass(ref, task, depth + 2);
+        RET_ERR();
     }
 
     if (orig_entry) {
@@ -449,14 +450,13 @@ static int export_attrs(struct kndClass *self, struct kndTask *task, size_t dept
     return knd_OK;
 }
 
-static int export_baseclasses(struct kndClass *self, struct kndTask *task, size_t depth)
+static int export_base_preds(struct kndClass *self, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
-    struct kndClassVar *cvar;
-    struct kndClass *c;
-    size_t cvar_count = 0;
-    size_t curr_depth = task->ctx->depth;
+    struct kndClassBasePred *bp;
+    size_t bp_count = 0;
     size_t indent_size = task->ctx->format_indent;
+    size_t curr_depth;
     int err;
 
     if (indent_size) {
@@ -466,33 +466,33 @@ static int export_baseclasses(struct kndClass *self, struct kndTask *task, size_
     }
     OUT("[is", strlen("[is"));
 
-    FOREACH (cvar, self->baseclass_vars) {
+    FOREACH (bp, self->base_preds) {
         if (indent_size) {
             OUT("\n", 1);
             err = knd_print_offset(out, (depth + 1) * indent_size);
             RET_ERR();
         }
         OUT("{", 1);
-        OUT(cvar->entry->name, cvar->entry->name_size);
+        OUT(bp->entry->name, bp->entry->name_size);
 
         // TODO
-        /*err = knd_class_acquire(cvar->entry, &c, task);
+        /*err = knd_class_acquire(bp->entry, &c, task);
         KND_TASK_ERR("failed to acquire baseclass %.*s",
-                     cvar->entry->name_size, cvar->entry->name);
+                     bp->entry->name_size, bp->entry->name);
 
         if (c->tr) {
             err = knd_text_gloss_export_GSL(c->tr, true, task, depth + 2);
             KND_TASK_ERR("failed to export baseclass gloss GSL");
             }*/
        
-        /*if (cvar->attrs) {
+        if (bp->attr_stms) {
             curr_depth = task->ctx->depth;
-            err = knd_attr_vars_export_GSL(cvar->attrs, task, false, depth + 2);
+            err = knd_attr_stms_export_GSL(bp->attr_stms, task, false, depth + 1);
             KND_TASK_ERR("failed to export attr vars GSL");
             task->ctx->depth = curr_depth;   
-            }*/
+        }
         OUT("}", 1);
-        cvar_count++;
+        bp_count++;
     }
     OUT("]", 1);
     return knd_OK;
@@ -700,8 +700,8 @@ int knd_class_export_GSL(struct kndClass *self, struct kndTask *task,
     }
 
     /* display base classes only once */
-    if (self->num_baseclass_vars) {
-        err = export_baseclasses(self, task, depth + 1);
+    if (self->num_base_preds) {
+        err = export_base_preds(self, task, depth + 1);
         RET_ERR();
     }
 

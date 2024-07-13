@@ -1,18 +1,11 @@
 #include "knd_mempool.h"
-#include "knd_text.h"
-#include "knd_repo.h"
 #include "knd_user.h"
-#include "knd_utils.h"
-
-#include <assert.h>
-#include <string.h>
 
 #include "knd_task.h"
 #include "knd_attr.h"
 #include "knd_rel.h"
 #include "knd_class.h"
 #include "knd_proc.h"
-#include "knd_repo.h"
 
 #include <gsl-parser.h>
 
@@ -21,8 +14,8 @@
 #define DEBUG_REL_IMPORT_LEVEL_TMP 1
 
 struct LocalContext {
-    struct kndClassVar *class_var;
-    struct kndAttrVar  *list_parent;
+    struct kndClassBasePred *class_var;
+    struct kndAttrStm  *list_parent;
     struct kndAttr     *attr;
     struct kndRel     *rel;
     struct kndTask     *task;
@@ -31,11 +24,8 @@ struct LocalContext {
 static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndTask *task = ctx->task;
-    struct kndRepo *repo = task->repo;
+    //struct kndTask *task = ctx->task;
     struct kndAttr *attr = ctx->rel->attr;
-    struct kndCharSeq *seq;
-    int err;
 
     attr->name = name;
     attr->name_size = name_size;
@@ -123,8 +113,8 @@ gsl_err_t knd_rel_import(struct kndAttr *attr, struct kndTask *task,
           .obj = &ctx
         },
         { .type = GSL_GET_ARRAY_STATE,
-          .name = "_gloss",
-          .name_size = strlen("_gloss"),
+          .name = "gloss",
+          .name_size = strlen("gloss"),
           .parse = knd_parse_gloss_array,
           .obj = task
         },

@@ -40,7 +40,7 @@
 #define DEBUG_ATTR_GSP_LEVEL_TMP 1
 
 struct LocalContext {
-    struct kndClassVar *class_var;
+    struct kndClassBasePred *class_var;
     struct kndAttr     *attr;
     struct kndRepo     *repo;
     struct kndTask     *task;
@@ -52,14 +52,13 @@ static int export_glosses(struct kndAttr *self, struct kndOutput *out)
     char idbuf[KND_ID_SIZE];
     size_t id_size = 0;
     struct kndText *t;
-    OUT("[_g", strlen("[_g"));
+    OUT("[g", strlen("[g"));
     FOREACH (t, self->tr) {
         OUT("{", 1);
         OUT(t->locale, t->locale_size);
         OUT("{t ", strlen("{t "));
         knd_uid_create(t->seq->numid, idbuf, &id_size);
         OUT(idbuf, id_size);
-        // OUT(t->seq, t->seq_size);
         OUT("}}", 2);
     }
     OUT("]", 1);
@@ -73,7 +72,6 @@ int knd_attr_names_marshall(void *elem, size_t *output_size, struct kndTask *tas
     struct kndAttr *attr;
     struct kndOutput *out = task->out;
     size_t orig_size = out->buf_size;
-    size_t num_requests;
 
     OUT("[n", strlen("[n"));
 

@@ -42,12 +42,12 @@
 #define DEBUG_CLASS_COMP_LEVEL_TMP 1
 
 extern int knd_compute_num_value(struct kndAttr *attr,
-                                 struct kndAttrVar *attr_var,
+                                 struct kndAttrStm *attr_stm,
                                  long *result)
 {
     struct kndProcCall *proc_call;
     struct kndProcCallArg *arg;
-    struct kndClassVar *class_var;
+    struct kndClassBasePred *base_pred;
     long numval = 0;
     long times = 0;
     long quant = 0;
@@ -61,12 +61,12 @@ extern int knd_compute_num_value(struct kndAttr *attr,
                 proc_call->name_size, proc_call->name);
 
     /*    for (arg = proc_call->args; arg; arg = arg->next) {
-        class_var = arg->class_var;
+        base_pred = arg->base_pred;
 
         if (DEBUG_CLASS_COMP_LEVEL_2)
             knd_log("ARG: %.*s", arg->name_size, arg->name);
 
-        err = knd_get_arg_value(attr_var, class_var->attrs, arg);
+        err = knd_get_arg_value(attr_stm, base_pred->attrs, arg);
         if (err) return err;
 
         if (!strncmp("times", arg->name, arg->name_size)) {
@@ -100,13 +100,13 @@ extern int knd_compute_num_value(struct kndAttr *attr,
     return knd_OK;
 }
 
-/*static int compute_list_sum(struct kndAttrVar *parent_var,
-                            struct kndAttrVar *query,
+/*static int compute_list_sum(struct kndAttrStm *parent_var,
+                            struct kndAttrStm *query,
                             struct kndAttr *unused_var(attr),
                             struct kndProcCallArg *arg,
                             long *result)
 {
-    struct kndAttrVar *curr_var;
+    struct kndAttrStm *curr_var;
     long total_numval = 0;
     int err;
 
@@ -123,8 +123,8 @@ extern int knd_compute_num_value(struct kndAttr *attr,
         }
 
         if (query->children) {
-            //for (attr_var = query->children; attr_var; attr_var = attr_var->next) {
-            //    knd_log(" child query elem: %.*s", attr_var->name_size, attr_var->name);
+            //for (attr_stm = query->children; attr_stm; attr_stm = attr_stm->next) {
+            //    knd_log(" child query elem: %.*s", attr_stm->name_size, attr_stm->name);
             // }
             if (!curr_var->children) continue;
 
@@ -150,14 +150,14 @@ extern int knd_compute_num_value(struct kndAttr *attr,
 */
 
 /*
-static int compute_attr_var_value(struct kndClass *self,
-                                  struct kndAttrVar *query,
+static int compute_attr_stm_value(struct kndClass *self,
+                                  struct kndAttrStm *query,
                                   struct kndAttr *attr,
                                   struct kndProcCallArg *arg)
 {
-    struct kndAttrVar *select_var;
-    struct kndAttrVar *field_var;
-    struct kndAttrVar *attr_var;
+    struct kndAttrStm *select_var;
+    struct kndAttrStm *field_var;
+    struct kndAttrStm *attr_stm;
     struct kndAttrRef *ref = NULL;
     void *obj;
     int err;
@@ -187,10 +187,10 @@ static int compute_attr_var_value(struct kndClass *self,
                                   ref->attr->id, ref->attr->id_size, &obj);
         if (err) return err;
         ref = obj;
-        attr_var = ref->attr_var;
+        attr_stm = ref->attr_stm;
 
-        if (attr_var) {
-            err = compute_list_sum(ref->attr_var, field_var, attr, arg, &arg->numval);
+        if (attr_stm) {
+            err = compute_list_sum(ref->attr_stm, field_var, attr, arg, &arg->numval);
             if (err) return err;
         }
     }
@@ -199,12 +199,12 @@ static int compute_attr_var_value(struct kndClass *self,
 */
 
 extern int knd_compute_class_attr_num_value(struct kndClass *self,
-                                            struct kndAttrVar *attr_var)
+                                            struct kndAttrStm *attr_stm)
 {
-    struct kndAttr *attr = attr_var->attr;
+    struct kndAttr *attr = attr_stm->attr;
     struct kndProcCall *proc_call;
     struct kndProcCallArg *arg;
-    struct kndClassVar *class_var;
+    struct kndClassBasePred *base_pred;
     long numval = 0;
     long times = 0;
     long total = 0;
@@ -221,7 +221,7 @@ extern int knd_compute_class_attr_num_value(struct kndClass *self,
                 proc_call->name_size, proc_call->name,
                 proc_call->type);
         knd_log("== attr var: \"%.*s\"",
-                attr_var->name_size, attr_var->name);
+                attr_stm->name_size, attr_stm->name);
     }
 
     /* 
@@ -229,9 +229,9 @@ extern int knd_compute_class_attr_num_value(struct kndClass *self,
         if (DEBUG_CLASS_COMP_LEVEL_2)
             knd_log("ARG: %.*s", arg->name_size, arg->name);
 
-        class_var = arg->class_var;
-        err = compute_attr_var_value(self,
-                                     class_var->attrs, attr, arg);
+        base_pred = arg->base_pred;
+        err = compute_attr_stm_value(self,
+                                     base_pred->attrs, attr, arg);
         if (err) return err;
 
         if (!strncmp("total", arg->name, arg->name_size)) {
@@ -290,7 +290,7 @@ extern int knd_compute_class_attr_num_value(struct kndClass *self,
     default:
         break;
     }
-    attr_var->numval = numval;
+    attr_stm->numval = numval;
     return knd_OK;
 }
 

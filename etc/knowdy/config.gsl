@@ -11,7 +11,7 @@
             {max-base-pages        3000}
             {max-small_x4-pages    1000}
             {max-small_x2-pages    1000}
-            {max-small-pages       3000}
+            {max-small-pages       4000}
             {max-tiny-pages        10000}}
          {cache
             {max-base-pages        5000}

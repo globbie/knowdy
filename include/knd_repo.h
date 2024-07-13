@@ -56,12 +56,11 @@ struct kndRepoRef
 struct kndRepoIndices
 {
     struct kndSharedSet *class_idx;
+    struct kndSharedDict *class_name_idx;
     atomic_size_t num_classes;
     atomic_size_t class_id_count;
 
-    struct kndSharedDict *class_name_idx;
-
-    struct kndSet  *attr_idx;
+    struct kndSharedSet  *attr_idx;
     struct kndSharedDict *attr_name_idx;
     atomic_size_t   attr_id_count;
     atomic_size_t   num_attrs;
@@ -69,7 +68,6 @@ struct kndRepoIndices
     struct kndSharedSet  *proc_idx;
     struct kndSharedDict *proc_name_idx;
     struct kndSharedDict *proc_inst_name_idx;
-
     atomic_size_t num_procs;
     atomic_size_t proc_id_count;
 
@@ -176,12 +174,12 @@ int knd_repo_restore(struct kndRepo *self, struct kndRepoSnapshot *snapshot, str
 
 int knd_repo_snapshot_create(struct kndRepo *self, struct kndTask *task);
 int knd_repo_snapshot_read(struct kndRepoSnapshot *snapshot, struct kndTask *task);
+int knd_repo_snapshot_activate(struct kndRepo *repo, struct kndTask *task);
 void knd_repo_snapshot_del(struct kndRepoSnapshot *snapshot);
 int knd_repo_snapshot_fetch_memblock(struct kndRepoSnapshot *self, size_t space_required,
                                      struct kndMemBlock **result, struct kndTask *task);
 
 int knd_repo_cache_update(struct kndRepoSnapshot *snapshot, struct kndTask *task);
-int knd_repo_cleanup(struct kndRepo *repo, struct kndTask *task);
 
 void knd_repo_del(struct kndRepo *self);
 

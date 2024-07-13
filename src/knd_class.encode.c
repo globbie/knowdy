@@ -21,6 +21,7 @@
 #include "knd_class.h"
 #include "knd_class_inst.h"
 #include "knd_attr.h"
+#include "knd_attr_stm.h"
 #include "knd_task.h"
 #include "knd_user.h"
 #include "knd_text.h"
@@ -46,12 +47,12 @@
 struct LocalContext {
     struct kndTask *task;
     struct kndRepo *repo;
-    struct kndAttrVar *attr_var;
+    struct kndAttrStm *attr_stm;
     struct kndClass *class;
     struct kndClass *baseclass;
     struct kndClassRef *class_ref;
     struct kndClassInst *class_inst;
-    struct kndClassVar *class_var;
+    struct kndClassBasePred *class_var;
 };
 
 int knd_class_inst_idx_fetch(struct kndClass *self, struct kndSharedDict **result,
@@ -60,7 +61,6 @@ int knd_class_inst_idx_fetch(struct kndClass *self, struct kndSharedDict **resul
     struct kndOutput *out = task->file_out;
     struct kndSharedSet *idx, *new_idx;
     struct kndSharedDict *name_idx, *new_name_idx;
-    struct kndStorageLeaf *leaf;
     struct stat st;
     int err;
 
@@ -140,13 +140,13 @@ static int export_glosses(struct kndClass *self, struct kndOutput *out)
     return knd_OK;
 }
 
-static int export_baseclass_vars(struct kndClass *self, struct kndTask *task, struct kndOutput *out)
+static int export_base_preds(struct kndClass *self, struct kndTask *task, struct kndOutput *out)
 {
-    struct kndClassVar *item;
+    struct kndClassBasePred *item;
     int err;
 
     OUT("[is", strlen("[is"));
-    FOREACH (item, self->baseclass_vars) {
+    FOREACH (item, self->base_preds) {
         OUT("{", 1);
 
         if (item->entry->id_size == 0) {
@@ -154,11 +154,10 @@ static int export_baseclass_vars(struct kndClass *self, struct kndTask *task, st
                     item->entry->name_size, item->entry->name,
                     self->name_size, self->name);
         }
-        //assert (item->entry->id_size != 0);
 
         OUT(item->entry->id, item->entry->id_size);
-        if (item->attrs) {
-            err = knd_attr_vars_export_GSP(item->attrs, out, task, 0, false);
+        if (item->attr_stms) {
+            err = knd_attr_stms_export_GSP(item->attr_stms, out, task, 0, false);
             if (err) return err;
         }
         OUTC('}');
@@ -316,8 +315,8 @@ static int export_class_body_commits(struct kndClass *self,
         err = export_glosses(self, out);                                          RET_ERR();
     }
 
-    if (self->baseclass_vars) {
-        err = export_baseclass_vars(self, task, out);                                   RET_ERR();
+    if (self->base_preds) {
+        err = export_base_preds(self, task, out);                                   RET_ERR();
     }
 
     if (self->attrs) {
@@ -394,8 +393,6 @@ int knd_class_export_commits_GSP(struct kndClass *self, struct kndClassCommit *c
 
 int knd_class_export_GSP(struct kndClass *self, struct kndTask *task)
 {
-    char idbuf[KND_ID_SIZE];
-    size_t idbuf_size = 0;
     struct kndOutput *out = task->out;
     struct kndAttr *attr;
     struct kndClassEntry *entry = self->entry;
@@ -414,8 +411,8 @@ int knd_class_export_GSP(struct kndClass *self, struct kndTask *task)
         err = export_glosses(self, out);
         KND_TASK_ERR("failed to export glosses");
     }
-    if (self->baseclass_vars) {
-        err = export_baseclass_vars(self, task, out);
+    if (self->base_preds) {
+        err = export_base_preds(self, task, out);
         KND_TASK_ERR("failed to export baseclass vars");
     }
     if (self->attrs) {

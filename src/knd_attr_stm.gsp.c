@@ -18,6 +18,7 @@
 #include "knd_class.h"
 #include "knd_class_inst.h"
 #include "knd_attr.h"
+#include "knd_attr_stm.h"
 #include "knd_task.h"
 #include "knd_state.h"
 #include "knd_user.h"
@@ -33,40 +34,40 @@
 #include "knd_output.h"
 #include "knd_http_codes.h"
 
-#define DEBUG_ATTR_VAR_GSP_LEVEL_1 0
-#define DEBUG_ATTR_VAR_GSP_LEVEL_2 0
-#define DEBUG_ATTR_VAR_GSP_LEVEL_3 0
-#define DEBUG_ATTR_VAR_GSP_LEVEL_4 0
-#define DEBUG_ATTR_VAR_GSP_LEVEL_5 0
-#define DEBUG_ATTR_VAR_GSP_LEVEL_TMP 1
+#define DEBUG_ATTR_STM_GSP_LEVEL_1 0
+#define DEBUG_ATTR_STM_GSP_LEVEL_2 0
+#define DEBUG_ATTR_STM_GSP_LEVEL_3 0
+#define DEBUG_ATTR_STM_GSP_LEVEL_4 0
+#define DEBUG_ATTR_STM_GSP_LEVEL_5 0
+#define DEBUG_ATTR_STM_GSP_LEVEL_TMP 1
 
 struct LocalContext {
-    struct kndClassVar *class_var;
-    struct kndAttrVar  *list_parent;
+    struct kndClassBasePred *base_pred;
+    struct kndAttrStm  *list_parent;
     struct kndSet      *attr_idx;
     struct kndAttr     *attr;
-    struct kndAttrVar  *attr_var;
+    struct kndAttrStm  *attr_stm;
     struct kndRepo     *repo;
     struct kndTask     *task;
 };
 
-static int attr_var_list_export_GSP(struct kndAttrVar *parent_item, struct kndTask *task, struct kndOutput *out);
+static int attr_stm_list_export_GSP(struct kndAttrStm *parent_item, struct kndTask *task, struct kndOutput *out);
 
-static int inner_var_export_GSP(struct kndAttrVar *var, struct kndTask *task)
+static int inner_var_export_GSP(struct kndAttrStm *var, struct kndTask *task)
 {
     char idbuf[KND_ID_SIZE];
     size_t idbuf_size;
     struct kndOutput *out = task->out;
-    struct kndAttrVar *item;
+    struct kndAttrStm *item;
     struct kndAttr *attr;
     // struct kndClass *c;
     struct kndCharSeq *seq;
     int err;
 
-    if (DEBUG_ATTR_VAR_GSP_LEVEL_2) {
+    if (DEBUG_ATTR_STM_GSP_LEVEL_2) {
         knd_log(">> class \"%.*s\" var:%.*s (%p) attr type:%d",
-                var->class_var->parent->name_size,
-                var->class_var->parent->name,
+                var->base_pred->parent->name_size,
+                var->base_pred->parent->name,
                 var->name_size, var->name, var, var->attr->type);
         // knd_log(".. GSP export inner item: %.*s",
         //        var->name_size, var->name);
@@ -93,7 +94,7 @@ static int inner_var_export_GSP(struct kndAttrVar *var, struct kndTask *task)
     FOREACH (item, var->children) {
         attr = item->attr;
         if (attr->is_a_set) {
-            err = attr_var_list_export_GSP(item, task, out);
+            err = attr_stm_list_export_GSP(item, task, out);
             KND_TASK_ERR("failed to export inner attr var list");
             continue;
         }
@@ -134,7 +135,7 @@ static int inner_var_export_GSP(struct kndAttrVar *var, struct kndTask *task)
 }
 
 #if 0
-static int proc_item_export_GSP(struct kndAttrVar *item, struct kndTask *task)
+static int proc_item_export_GSP(struct kndAttrStm *item, struct kndTask *task)
 {
     struct kndProc *proc = item->proc;
     struct kndOutput *out = task->out;
@@ -146,18 +147,18 @@ static int proc_item_export_GSP(struct kndAttrVar *item, struct kndTask *task)
 }
 #endif
 
-static int attr_var_list_export_GSP(struct kndAttrVar *var, struct kndTask *task, struct kndOutput *out)
+static int attr_stm_list_export_GSP(struct kndAttrStm *var, struct kndTask *task, struct kndOutput *out)
 {
     char idbuf[KND_ID_SIZE];
     size_t idbuf_size;
     struct kndCharSeq *seq;
-    struct kndAttrVar *item;
+    struct kndAttrStm *item;
 
     assert(var->attr != NULL);
     knd_attr_type attr_type = var->attr->type;
     int err;
 
-    if (DEBUG_ATTR_VAR_GSP_LEVEL_2)
+    if (DEBUG_ATTR_STM_GSP_LEVEL_2)
         knd_log(".. export GSP list: %.*s", var->name_size, var->name);
 
     OUT("[", 1);
@@ -189,7 +190,7 @@ static int attr_var_list_export_GSP(struct kndAttrVar *var, struct kndTask *task
             break;
         default:
             OUT(item->name, item->name_size);
-            // err = knd_attr_var_export_GSP(item, task, out, 0);
+            // err = knd_attr_stm_export_GSP(item, task, out, 0);
             // KND_TASK_ERR("failed to export attr var");
             break;
         }
@@ -199,10 +200,10 @@ static int attr_var_list_export_GSP(struct kndAttrVar *var, struct kndTask *task
     return knd_OK;
 }
 
-int knd_attr_vars_export_GSP(struct kndAttrVar *items, struct kndOutput *out, struct kndTask *task,
+int knd_attr_stms_export_GSP(struct kndAttrStm *items, struct kndOutput *out, struct kndTask *task,
                              size_t unused_var(depth), bool is_concise)
 {
-    struct kndAttrVar *item;
+    struct kndAttrStm *item;
     struct kndAttr *attr;
     int err;
 
@@ -212,21 +213,22 @@ int knd_attr_vars_export_GSP(struct kndAttrVar *items, struct kndOutput *out, st
         if (is_concise && !attr->concise_level) continue;
 
         if (attr->is_a_set) {
-            err = attr_var_list_export_GSP(item, task, out);
+            err = attr_stm_list_export_GSP(item, task, out);
             KND_TASK_ERR("failed to export attr var list");
             continue;
         }
         OUT("{", 1);
         OUT(attr->id, attr->id_size);
+        OUT(attr->name, attr->name_size);
         OUT(" ", 1);
-        err = knd_attr_var_export_GSP(item, task, out, 0);
+        err = knd_attr_stm_export_GSP(item, task, out, 0);
         KND_TASK_ERR("failed to export attr var");
         OUT("}", 1);
     }
     return knd_OK;
 }
 
-int knd_attr_var_export_GSP(struct kndAttrVar *var, struct kndTask *task, struct kndOutput *out,
+int knd_attr_stm_export_GSP(struct kndAttrStm *var, struct kndTask *task, struct kndOutput *out,
                             size_t unused_var(depth))
 {
     char idbuf[KND_ID_SIZE];

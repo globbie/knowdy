@@ -98,7 +98,7 @@ struct kndProcArg
     size_t classname_size;
     struct kndClassEntry *template;
 
-    struct kndAttrVar *attr_var;
+    struct kndAttrStm *attr_stm;
 
     struct kndProcCall  *proc_call;
     struct kndProcEntry *proc_entry;

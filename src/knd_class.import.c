@@ -21,6 +21,7 @@
 #include "knd_class.h"
 #include "knd_class_inst.h"
 #include "knd_attr.h"
+#include "knd_attr_stm.h"
 #include "knd_task.h"
 #include "knd_user.h"
 #include "knd_dict.h"
@@ -49,7 +50,7 @@ struct LocalContext {
     struct kndTask *task;
     struct kndRepo *repo;
     struct kndClass *class;
-    struct kndClassVar *class_var;
+    struct kndClassBasePred *base_pred;
 };
 
 static int update_class_name_idx(struct kndRepo *repo, struct kndClass *c,
@@ -107,6 +108,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
             err = KND_CONFLICT;
             return make_gsl_err_external(err);
         }
+
         err = update_class_name_idx(repo, c, name, name_size, task);
         if (err) {
             KND_TASK_LOG("failed to update class name idx with {class %.*s}", name_size, name);
@@ -159,10 +161,9 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_FAIL);
 }
 
-static gsl_err_t set_class_var(void *obj, const char *name, size_t name_size)
+static gsl_err_t set_base_pred(void *obj, const char *name, size_t name_size)
 {
-    struct kndClassVar *self = obj;
-
+    struct kndClassBasePred *self = obj;
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
@@ -174,15 +175,14 @@ static gsl_err_t set_class_var(void *obj, const char *name, size_t name_size)
 static gsl_err_t parse_logic_clause(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
-    // struct kndClass *self = ctx->class;
     struct kndTask *task = ctx->task;
     struct kndLogicClause *clause;
     struct kndMemPool *mempool = task->user_ctx->mempool;
     int err;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_2)
+    if (DEBUG_CLASS_IMPORT_LEVEL_2) {
         knd_log(".. parsing logic clause: \"%.*s\"", 32, rec);
-
+    }
     err = knd_logic_clause_new(mempool, &clause);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
@@ -263,45 +263,45 @@ static gsl_err_t parse_attr(void *obj, const char *name, size_t name_size,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t import_attr_var(void *obj, const char *name, size_t name_size,
+static gsl_err_t import_attr_stm(void *obj, const char *name, size_t name_size,
                                  const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     int err;
 
-    err = knd_import_attr_var(ctx->class_var, name, name_size, rec, total_size, ctx->task);
+    err = knd_import_attr_stm(ctx->base_pred, name, name_size, rec, total_size, ctx->task);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t import_attr_var_list(void *obj, const char *name, size_t name_size,
+static gsl_err_t import_attr_stm_list(void *obj, const char *name, size_t name_size,
                                       const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     int err;
 
-    err = knd_import_attr_var_list(ctx->class_var, name, name_size,
+    err = knd_import_attr_stm_list(ctx->base_pred, name, name_size,
                                    rec, total_size, ctx->task);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_class_var(const char *rec, size_t *total_size, struct LocalContext *ctx)
+static gsl_err_t parse_base_pred(const char *rec, size_t *total_size, struct LocalContext *ctx)
 {
     gsl_err_t parser_err;
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = set_class_var,
-          .obj = ctx->class_var
+          .run = set_base_pred,
+          .obj = ctx->base_pred
         },
-        { .validate = import_attr_var,
+        { .validate = import_attr_stm,
           .obj = ctx
         },
         { .type = GSL_GET_ARRAY_STATE,
-          .validate = import_attr_var_list,
+          .validate = import_attr_stm_list,
           .obj = ctx
         },
         { .name = "_pred",
@@ -322,7 +322,7 @@ static gsl_err_t parse_baseclass(void *obj, const char *rec, size_t *total_size)
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
     struct kndClass *self = ctx->class;
-    struct kndClassVar *class_var;
+    struct kndClassBasePred *base_pred;
     struct kndMemPool *mempool = task->user_ctx->mempool;
     gsl_err_t parser_err;
     int err;
@@ -330,25 +330,25 @@ static gsl_err_t parse_baseclass(void *obj, const char *rec, size_t *total_size)
     if (DEBUG_CLASS_IMPORT_LEVEL_2) {
         knd_log(".. parsing the base {class %.*s}", 32, rec);
     }
-    err = knd_class_var_new(&class_var, mempool);
+    err = knd_class_base_pred_new(&base_pred, mempool);
     if (err) {
-        KND_TASK_LOG("failed to alloc a class var");
+        KND_TASK_LOG("failed to alloc a base pred");
         return *total_size = 0, make_gsl_err_external(err);
     }
-    class_var->parent = self;
+    base_pred->parent = self;
 
-    ctx->class_var = class_var;
-    parser_err = parse_class_var(rec, total_size, ctx);
+    ctx->base_pred = base_pred;
+    parser_err = parse_base_pred(rec, total_size, ctx);
     if (parser_err.code) return parser_err;
 
-    if (!self->baseclass_vars) {
-        self->baseclass_tail = class_var;
-        self->baseclass_vars = class_var;
+    if (!self->base_preds) {
+        self->base_preds_tail = base_pred;
+        self->base_preds = base_pred;
     } else {
-        self->baseclass_tail->next = class_var;
-        self->baseclass_tail = class_var;
+        self->base_preds_tail->next = base_pred;
+        self->base_preds_tail = base_pred;
     }
-    self->num_baseclass_vars++;
+    self->num_base_preds++;
 
     return make_gsl_err(gsl_OK);
 }
@@ -378,7 +378,7 @@ static gsl_err_t add_uniq_attr(void *obj, const char *name, size_t name_size,
     if (DEBUG_CLASS_IMPORT_LEVEL_2)
         knd_log(">> add uniq attr: \"%.*s\"", name_size, name);
 
-    err = knd_attr_ref_new(mempool, &ref);
+    err = knd_attr_ref_new(&ref, mempool);
     if (err) {
         KND_TASK_LOG("failed to alloc kndAttrRef");
         return *total_size = 0, make_gsl_err_external(err);
@@ -420,9 +420,9 @@ gsl_err_t knd_class_import(struct kndRepo *repo, const char *rec, size_t *total_
     int err;
     gsl_err_t parser_err;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_2)
+    if (DEBUG_CLASS_IMPORT_LEVEL_2) {
         knd_log(".. {worker %zu} to import {class %.*s}", task->id, 128, rec);
-
+    }
     err = knd_class_new(&c, mempool);
     if (err) {
         KND_TASK_LOG("mempool failed to alloc kndClass");
@@ -494,6 +494,8 @@ gsl_err_t knd_class_import(struct kndRepo *repo, const char *rec, size_t *total_
         c->tr = task->ctx->tr;
         task->ctx->tr = NULL;
     }
+
+    c->phase = KND_CLASS_IMPORTED;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_3) {
         knd_log("++  {class %.*s} import completed!", c->name_size, c->name);

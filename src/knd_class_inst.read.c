@@ -6,6 +6,7 @@
 #include "knd_shared_set.h"
 #include "knd_shared_dict.h"
 #include "knd_attr.h"
+#include "knd_attr_stm.h"
 
 #define DEBUG_CLASS_INST_READ_LEVEL_1 0
 #define DEBUG_CLASS_INST_READ_LEVEL_2 0
@@ -15,7 +16,7 @@
 struct LocalContext {
     struct kndTask *task;
     struct kndRepo *repo;
-    struct kndAttrVar *attr_var;
+    struct kndAttrStm *attr_stm;
     struct kndClass *class;
     struct kndClassRef *class_ref;
     struct kndClassInst *class_inst;
@@ -98,21 +99,21 @@ static gsl_err_t check_class_inst_name(void *obj, const char *name, size_t name_
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t read_attr_var(void *obj, const char *name, size_t name_size,
+static gsl_err_t read_attr_stm(void *obj, const char *name, size_t name_size,
                                const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     int err;
-    err = knd_read_attr_var(ctx->class_inst->class_var, name, name_size, rec, total_size, ctx->task);
+    err = knd_read_attr_stm(ctx->class_inst->base_pred, name, name_size, rec, total_size, ctx->task);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t read_attr_var_list(void *obj, const char *name, size_t name_size, const char *rec, size_t *total_size)
+static gsl_err_t read_attr_stm_list(void *obj, const char *name, size_t name_size, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     int err;
-    err = knd_read_attr_var_list(ctx->class_inst->class_var, name, name_size, rec, total_size, ctx->task);
+    err = knd_read_attr_stm_list(ctx->class_inst->base_pred, name, name_size, rec, total_size, ctx->task);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     return make_gsl_err(gsl_OK);
 }
@@ -122,7 +123,7 @@ int knd_class_inst_read(struct kndClassInst *self, const char *rec, size_t *tota
 {
     struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndClassEntry *entry = task->payload;
-    struct kndClassVar *class_var;
+    struct kndClassBasePred *base_pred;
     struct kndClass *c;
     int err;
     assert(entry != NULL);
@@ -131,17 +132,17 @@ int knd_class_inst_read(struct kndClassInst *self, const char *rec, size_t *tota
         knd_log(".. reading class inst GSP (entry:%p): \"%.*s\"..", entry, 128, rec);
     }
 
-    err = knd_class_var_new(&class_var, mempool);
+    err = knd_class_base_pred_new(&base_pred, mempool);
     KND_TASK_ERR("failed to alloc a class var");
-    class_var->type = KND_INSTANCE_BLUEPRINT;
-    class_var->entry = entry;
-    class_var->parent_inst = self;
-    self->class_var = class_var;
+    base_pred->type = KND_INSTANCE_BLUEPRINT;
+    base_pred->entry = entry;
+    base_pred->parent_inst = self;
+    self->base_pred = base_pred;
 
     err = knd_class_acquire(entry, &c, task);
     KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
 
-    class_var->parent = c;
+    base_pred->parent = c;
 
     struct LocalContext ctx = {
         .task = task,
@@ -154,11 +155,11 @@ int knd_class_inst_read(struct kndClassInst *self, const char *rec, size_t *tota
           .run = check_class_inst_name,
           .obj = &ctx
         },
-        { .validate = read_attr_var,
+        { .validate = read_attr_stm,
           .obj = &ctx
         },
         { .type = GSL_GET_ARRAY_STATE,
-          .validate = read_attr_var_list,
+          .validate = read_attr_stm_list,
           .obj = &ctx
         }
     };

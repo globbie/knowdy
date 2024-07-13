@@ -44,76 +44,6 @@ int knd_charseq_new(struct kndCharSeq **result, struct kndMemPool *mempool)
     return knd_OK;
 }
 
-int knd_charseq_decode(const char *id, size_t id_size,
-                       struct kndCharSeq **result, struct kndTask *task)
-{
-    struct kndSharedSet *str_idx = task->idxs->str_idx;
-    struct kndCharSeq *seq;
-    struct kndStorageLeaf *leaf;
-    int err;
-    assert(id_size <= KND_ID_SIZE);
-
-    err = knd_shared_set_get(str_idx, id, id_size, (void**)&seq);
-    if (!err) {
-        *result = seq;
-        return knd_OK;
-    }
-
-    err = knd_shared_set_find_leaf(str_idx, id, id_size, &leaf, task);
-    KND_TASK_ERR("no storage leaf found for unmarshalling {seq %.*s}", id_size, id);
-
-    err = knd_storage_leaf_read_elem(leaf, id, id_size,
-                                     knd_string_unmarshall, (void**)&seq, task);
-    KND_TASK_ERR("failed to unmarshall {seq %.*s}", id_size, id);
-
-    *result = seq;
-    return knd_OK;
-}
-
-int knd_charseq_fetch(struct kndRepo *repo, const char *val, size_t val_size,
-                      struct kndCharSeq **result, struct kndTask *task)
-{
-    char idbuf[KND_ID_SIZE];
-    size_t idbuf_size;
-    struct kndMemPool *mempool = task->user_ctx->mempool;
-    struct kndCharSeq *seq;
-    int err;
-    assert(val != NULL);
-    assert(val_size != 0);
-
-    if (DEBUG_TEXT_LEVEL_2) {
-        knd_log(".. {repo %.*s} fetching {seq %.*s}",
-                repo->name_size, repo->name, val_size, val);
-    }
-    seq = knd_shared_dict_get(task->idxs->str_dict, val, val_size);
-    if (seq) {
-        if (DEBUG_TEXT_LEVEL_3) {
-            knd_log(">> {seq %.*s} already registered", val_size, val);
-        }
-        *result = seq;
-        return knd_OK;
-    }
-
-    err = knd_charseq_new(&seq, mempool);
-    KND_TASK_ERR("failed to alloc a charseq");
-    seq->val = val;
-    seq->val_size = val_size;
-    seq->numid = atomic_fetch_add_explicit(&task->idxs->num_strs, 1, memory_order_relaxed);
- 
-    err = knd_shared_dict_set(task->idxs->str_dict, val, val_size, (void*)seq);
-    KND_TASK_ERR("failed to register a charseq");
-
-    knd_uid_create(seq->numid, idbuf, &idbuf_size);
-    err = knd_shared_set_add(task->idxs->str_idx, idbuf, idbuf_size, (void*)seq);
-    KND_TASK_ERR("failed to register a charseq by numid");
-
-    if (DEBUG_TEXT_LEVEL_3) {
-        knd_log(">> {seq %.*s {id %.*s}} registered", val_size, val, idbuf_size, idbuf);
-    }
-    *result = seq;
-    return knd_OK;
-}
-
 int knd_text_search_report_new(struct kndMemPool *mempool, struct kndTextSearchReport **result)
 {
     void *page;
@@ -250,8 +180,8 @@ int knd_text_new(struct kndMemPool *mempool, struct kndText **result)
 {
     void *page;
     int err;
-    assert(mempool->small_page_size >= sizeof(struct kndText));
-    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
+    assert(mempool->small_x2_page_size >= sizeof(struct kndText));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL_X2, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndText));
     *result = page;

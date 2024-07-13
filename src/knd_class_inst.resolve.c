@@ -18,6 +18,7 @@
 #include "knd_config.h"
 #include "knd_mempool.h"
 #include "knd_attr.h"
+#include "knd_attr_stm.h"
 #include "knd_class_inst.h"
 
 #define DEBUG_INST_RESOLVE_LEVEL_1 0
@@ -42,8 +43,8 @@ int knd_class_inst_resolve(struct kndClassInst *self, struct kndTask *task)
                 self->name_size, self->name);
     }
 
-    if (self->class_var->attrs) {
-        err = knd_resolve_attr_vars(c, self->class_var, task);
+    if (self->base_pred->attr_stms) {
+        err = knd_resolve_attr_stms(c, self->base_pred, task);
         KND_TASK_ERR("failed to resolve {class %.*s {inst %.*s}}",
                      c->entry->name_size, c->entry->name,
                      self->name_size, self->name);

@@ -4,6 +4,7 @@
 
 #include "knd_class_inst.h"
 #include "knd_attr.h"
+#include "knd_attr_stm.h"
 #include "knd_set.h"
 #include "knd_shared_set.h"
 
@@ -214,9 +215,9 @@ int knd_class_inst_export_GSL(struct kndClassInst *self, bool is_list_item,
         err = out->writec(out, '}');                                 RET_ERR();
     }
 
-    if (self->class_var && self->class_var->attrs) {
+    if (self->base_pred && self->base_pred->attr_stms) {
         curr_depth = task->ctx->depth;
-        err = knd_attr_vars_export_GSL(self->class_var->attrs,
+        err = knd_attr_stms_export_GSL(self->base_pred->attr_stms,
                                        task, false, depth + 1);  RET_ERR();
         task->ctx->depth = curr_depth;   
     }

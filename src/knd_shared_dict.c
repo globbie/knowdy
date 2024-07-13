@@ -74,16 +74,8 @@ int knd_shared_dict_set(struct kndSharedDict *self, const char *key, size_t key_
     struct kndSharedDictItem *orig_head =\
         atomic_load_explicit(&self->hash_array[h], memory_order_acquire);
     struct kndSharedDictItem *item = orig_head;
-    // struct kndState *state;
-    int err;
-
-    //size_t num_items = atomic_load_explicit(&self->num_items, memory_order_relaxed);
-    //knd_log(".. add name %.*s to dict %p {total-items %zu}",
-    //        key_size, key, self, num_items);
 
     while (item) {
-        // knd_log(">> hash %zu {dict-item %.*s} vs {key %.*s}",
-        //        h, item->key_size, item->key, key_size, key);
         if (item->key_size != key_size) goto next_item;
         if (!memcmp(item->key, key, key_size)) {
             break;

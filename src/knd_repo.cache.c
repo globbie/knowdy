@@ -31,44 +31,13 @@
 static bool detect_if_cacheable(struct kndClassEntry *entry)
 {
     size_t num_requests = atomic_load_explicit(&entry->num_requests, memory_order_relaxed);
-    if (num_requests > 5) {
+    if (num_requests > 3) {
         //knd_log("{class %.*s {num-requests %zu}}",
         //        entry->name_size, entry->name, num_requests);
         // TODO
         return true;
     }
     return false;
-}
-
-static int reindex_class(void *obj, const char *unused_var(elem_id),
-                         size_t unused_var(elem_id_size),
-                         size_t unused_var(count), void *elem)
-{
-    struct kndTask *task = obj;
-    struct kndClassEntry *orig_entry = elem;
-    struct kndClassEntry *entry;
-    struct kndRepoSnapshot *snapshot = task->repo->snapshot_temp;
-    struct kndMemPool *mempool = task->mempool;
-    assert (snapshot != NULL);
-
-    struct kndSharedDict *class_name_idx = snapshot->idxs.class_name_idx;
-    struct kndSharedSet  *class_idx = snapshot->idxs.class_idx;
-    int err;
-
-    if (DEBUG_REPO_CACHE_LEVEL_3) {
-        knd_log(".. reindex %.*s", orig_entry->name_size, orig_entry->name);
-    }
-
-    err = knd_class_entry_copy(orig_entry, &entry, mempool, task);
-    KND_TASK_ERR("failed to make a class entry copy");
-
-    err = knd_shared_dict_set(class_name_idx, entry->name, entry->name_size, (void*)entry);
-    KND_TASK_ERR("failed to assign {class %.*s} to cache class name idx", entry->name_size, entry->name);
-
-    err = knd_shared_set_add(class_idx, entry->id, entry->id_size, (void*)entry);
-    KND_TASK_ERR("failed to assign {class %.*s} to cache class idx", entry->name_size, entry->name);
-
-    return knd_OK;
 }
 
 static int build_cache_item(void *obj, const char *unused_var(elem_id),
@@ -78,8 +47,7 @@ static int build_cache_item(void *obj, const char *unused_var(elem_id),
     struct kndTask *task = obj;
     struct kndClassEntry *entry = elem;
     struct kndRepoSnapshot *snapshot = task->snapshot;
-    struct kndMemPool *cache_mempool = task->mempool;
-    struct kndClass *c, *c_copy = NULL;
+    struct kndClass *c;
     struct kndSharedSet *class_idx = snapshot->idxs.class_idx;
     struct kndStorageLeaf *leaf = NULL;
     int err;
@@ -87,23 +55,26 @@ static int build_cache_item(void *obj, const char *unused_var(elem_id),
     if (!detect_if_cacheable(entry)) return knd_OK;
 
     if (DEBUG_REPO_CACHE_LEVEL_TMP) {
-        knd_log(".. make a cache copy of {class %.*s {id %.*s}}",
+        knd_log("\n.. making a cache copy of {class %.*s {id %.*s}}",
                 entry->name_size, entry->name, entry->id_size, entry->id);
     }
 
-    err = knd_shared_set_find_leaf(class_idx, entry->id, entry->id_size, &leaf, task);
-    KND_TASK_ERR("no storage leaf found for unmarshalling class entry %.*s",
-                 entry->id_size, entry->id);
+    err = knd_class_acquire(entry, &c, task);
+    KND_TASK_ERR("failed to acquire {class %.*s}", entry->name_size, entry->name);
+    
+    /*    err = knd_shared_set_find_leaf(class_idx, entry->id, entry->id_size, &leaf, task);
+    KND_TASK_ERR("no storage leaf found for unmarshalling {class %.*s {id %.*s}}",
+                 entry->name_size, entry->name, entry->id_size, entry->id);
 
-    task->payload = (void*)entry;
     err = knd_storage_leaf_read_elem(leaf, entry->id, entry->id_size,
-                                     knd_class_unmarshall, (void**)&c, task);
+                                     knd_class_unmarshall, entry, (void**)&c, task);
     KND_TASK_ERR("failed to unmarshall {class %.*s}", entry->name_size, entry->name);
 
-    c->entry = entry;
-    c->name = entry->name;
-    c->name_size = entry->name_size;
-    entry->cached_version = c;
+    if (c->phase < KND_CLASS_DECODED) {
+        err = knd_class_decode(c, task);
+        KND_TASK_ERR("failed to decode {class %.*s}", c->name_size, c->name);
+    }
+    */
 
     return knd_OK;
 }

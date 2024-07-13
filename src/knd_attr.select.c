@@ -20,6 +20,7 @@
 #include "knd_class.h"
 #include "knd_class_inst.h"
 #include "knd_attr.h"
+#include "knd_attr_stm.h"
 #include "knd_task.h"
 #include "knd_user.h"
 #include "knd_text.h"
@@ -48,13 +49,13 @@ struct LocalContext {
 
     struct kndRepo    *repo;
 
-    struct kndAttrVar *clauses;
-    struct kndAttrVar *attr_var;
+    struct kndAttrStm *clauses;
+    struct kndAttrStm *attr_stm;
     struct kndAttr    *attr;
     knd_logic_t logic;
 };
 
-static gsl_err_t parse_nested_attr_var(void *obj,
+static gsl_err_t parse_nested_attr_stm(void *obj,
                                        const char *name, size_t name_size,
                                        const char *rec, size_t *total_size);
 
@@ -65,29 +66,29 @@ static gsl_err_t set_logic_OR_val(void *obj, const char *val, size_t val_size)
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
     struct kndMemPool *mempool = task->mempool;
-    struct kndAttrVar *attr_var;
+    struct kndAttrStm *attr_stm;
     int err;
 
     if (DEBUG_ATTR_SELECT_LEVEL_2)
         knd_log("== set logic OR val: %.*s", val_size, val);
 
-    err = knd_attr_var_new(mempool, &attr_var);
+    err = knd_attr_stm_new(&attr_stm, mempool);
     if (err) return make_gsl_err_external(err);
 
-    attr_var->attr = ctx->attr;
-    attr_var->val = val;
-    attr_var->val_size = val_size;
+    attr_stm->attr = ctx->attr;
+    attr_stm->val = val;
+    attr_stm->val_size = val_size;
 
     if (ctx->attr->type == KND_ATTR_NUM) {
         memcpy(buf, val, val_size);
         buf_size = val_size;
         buf[buf_size] = '\0';
         // TODO
-        err = knd_parse_num(buf, &attr_var->numval);
+        err = knd_parse_num(buf, &attr_stm->numval);
     }
     
-    attr_var->next = ctx->attr_var;
-    ctx->attr_var = attr_var;
+    attr_stm->next = ctx->attr_stm;
+    ctx->attr_stm = attr_stm;
 
     return make_gsl_err(gsl_OK);
 }
@@ -107,16 +108,16 @@ static gsl_err_t parse_logic_OR_val_array(void *obj,
     return gsl_parse_array(&item_spec, rec, total_size);
 }
 
-static gsl_err_t run_set_attr_var(void *obj, const char *val, size_t val_size)
+static gsl_err_t run_set_attr_stm(void *obj, const char *val, size_t val_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
     struct kndAttr *attr;
     struct kndAttrRef *attr_ref;
-    struct kndAttrVar *attr_var;
+    struct kndAttrStm *attr_stm;
     struct kndOutput *log = task->log;
     struct kndMemPool *mempool = task->mempool;
-    struct kndSet *attr_idx = task->idxs->attr_idx;
+    struct kndSharedSet *attr_idx = task->idxs->attr_idx;
     struct kndState *state;
     struct kndStateRef *state_ref;
     struct kndStateVal *state_val;
@@ -136,7 +137,7 @@ static gsl_err_t run_set_attr_var(void *obj, const char *val, size_t val_size)
     }
 
     /*  attr var exists? */
-    err = attr_idx->get(attr_idx, attr->id, attr->id_size, &elem);
+    err = knd_shared_set_get(attr_idx, attr->id, attr->id_size, &elem);
     if (err) {
         knd_log("-- no attr var \"%.*s\" in local attr idx",
                 attr->name_size, attr->name);
@@ -144,11 +145,11 @@ static gsl_err_t run_set_attr_var(void *obj, const char *val, size_t val_size)
     }
 
     attr_ref = elem;
-    attr_var = attr_ref->attr_var;
+    attr_stm = attr_ref->attr_stm;
 
     if (DEBUG_ATTR_SELECT_LEVEL_TMP) {
         knd_log(".. updating attr var %.*s with {value %.*s}",
-                attr_var->name_size, attr_var->name, val_size, val);
+                attr_stm->name_size, attr_stm->name, val_size, val);
     }
 
     err = knd_state_new(mempool, &state);
@@ -161,7 +162,7 @@ static gsl_err_t run_set_attr_var(void *obj, const char *val, size_t val_size)
         return make_gsl_err_external(err);
     }
     state_ref->state = state;
-    state_ref->type = KND_STATE_ATTR_VAR;
+    state_ref->type = KND_STATE_ATTR_STM;
 
     err = knd_state_val_new(mempool, &state_val);
     if (err) {
@@ -169,18 +170,18 @@ static gsl_err_t run_set_attr_var(void *obj, const char *val, size_t val_size)
         return make_gsl_err_external(err);
     }
 
-    state_val->obj = (void*)attr_var;
+    state_val->obj = (void*)attr_stm;
     state_val->val = val;
     state_val->val_size = val_size;
     state->val = state_val;
 
-    attr_var->val = val;
-    attr_var->val_size = val_size;
+    attr_stm->val = val;
+    attr_stm->val_size = val_size;
 
-    state->next = attr_var->states;
-    attr_var->states = state;
-    attr_var->num_states++;
-    state->numid = attr_var->num_states;
+    state->next = attr_stm->states;
+    attr_stm->states = state;
+    attr_stm->num_states++;
+    state->numid = attr_stm->num_states;
 
     task->type = KND_COMMIT_STATE;
 
@@ -191,29 +192,29 @@ static gsl_err_t run_set_attr_var(void *obj, const char *val, size_t val_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t present_attr_var_selection(void *obj,
+static gsl_err_t present_attr_stm_selection(void *obj,
                                             const char *unused_var(val),
                                             size_t unused_var(val_size))
 {
     struct LocalContext *ctx = obj;
     int err;
 
-    // FIXME(k15tfu): assert(ctx->selected_attr_ref->attr_var);
+    // FIXME(k15tfu): assert(ctx->selected_attr_ref->attr_stm);
 
-    if (!ctx->selected_attr_ref->attr_var) {
+    if (!ctx->selected_attr_ref->attr_stm) {
         // FIXME(k15tfu): Why it's empty??
         knd_log("-- not implemented: export empty attr var");
 //        err = ctx->task->log->writef(ctx->task->log, "not implemented: export empty attr var");
 //        if (err) return make_gsl_err_external(err);
 //        return make_gsl_err_external(knd_FAIL);
 
-        // WORKAROUND: export attribute (not attr_var)  FIXME(k15tfu): remove this
+        // WORKAROUND: export attribute (not attr_stm)  FIXME(k15tfu): remove this
         err = knd_attr_export(ctx->selected_attr_ref->attr, KND_FORMAT_GSP/*ctx->task->format*/, ctx->task);
         if (err) return make_gsl_err_external(err);
         return make_gsl_err(gsl_OK);
     }
 
-    err = knd_attr_var_export_GSL(ctx->selected_attr_ref->attr_var, ctx->task, 0);
+    err = knd_attr_stm_export_GSL(ctx->selected_attr_ref->attr_stm, ctx->task, 0);
     if (err) {
         knd_log("-- attr export failed");
         return make_gsl_err_external(err);
@@ -229,7 +230,7 @@ static gsl_err_t present_attr_var_selection(void *obj,
     struct kndTask *task = ctx->task;
     struct kndClass *self = ctx->class;
     struct kndAttr *attr;
-    struct kndAttrVar *attr_var;
+    struct kndAttrStm *attr_stm;
     struct kndRepo *repo = ctx->repo;
     struct kndOutput *out = task->out;
     int err;
@@ -246,13 +247,13 @@ static gsl_err_t present_attr_var_selection(void *obj,
     }
     attr = ctx->attr;
 
-    if (repo->curr_attr_var) {
-        attr_var = repo->curr_attr_var;
+    if (repo->curr_attr_stm) {
+        attr_stm = repo->curr_attr_stm;
 
         err = out->writec(out, '{');
         if (err) return make_gsl_err_external(err);
 
-        err = knd_attr_var_export_JSON(attr_var, task);
+        err = knd_attr_stm_export_JSON(attr_stm, task);
         if (err) return make_gsl_err_external(err);
 
         err = out->writec(out, '}');
@@ -286,7 +287,7 @@ static gsl_err_t select_by_attr(void *obj, const char *val, size_t val_size)
     struct kndClass *self = ctx->class;
     struct kndClassEntry *entry;
     struct kndClass *c;
-    struct kndAttrVar *attr_var;
+    struct kndAttrStm *attr_stm;
     struct kndAttrFacet *facet;
     struct kndOutput *log = task->log;
     struct kndAttr *attr = ctx->attr;
@@ -314,12 +315,12 @@ static gsl_err_t select_by_attr(void *obj, const char *val, size_t val_size)
     /* TODO: special value: _null */
     if (val_size == strlen("_null")) {
         if (!memcmp(val, "_null", val_size)) {
-            err = knd_attr_var_new(mempool, &attr_var);
+            err = knd_attr_stm_new(&attr_stm, mempool);
             if (err) return make_gsl_err_external(err);
-            attr_var->attr = ctx->attr;
+            attr_stm->attr = ctx->attr;
 
-            attr_var->next = ctx->clauses;
-            ctx->clauses = attr_var;
+            attr_stm->next = ctx->clauses;
+            ctx->clauses = attr_stm;
             return make_gsl_err(gsl_OK);
         }
     }
@@ -382,9 +383,9 @@ static gsl_err_t parse_classref_clause(struct kndAttr *attr,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static gsl_err_t set_attr_var_value(void *obj, const char *val, size_t val_size)
+static gsl_err_t set_attr_stm_value(void *obj, const char *val, size_t val_size)
 {
-    struct kndAttrVar *self = obj;
+    struct kndAttrStm *self = obj;
 
     if (DEBUG_ATTR_SELECT_LEVEL_2)
         knd_log(".. set attr var value: %.*s %.*s",
@@ -398,16 +399,16 @@ static gsl_err_t set_attr_var_value(void *obj, const char *val, size_t val_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t confirm_attr_var(void *obj,
+static gsl_err_t confirm_attr_stm(void *obj,
                                   const char *unused_var(name),
                                   size_t unused_var(name_size))
 {
-    struct kndAttrVar *attr_var = obj;
+    struct kndAttrStm *attr_stm = obj;
     // TODO empty values?
     if (DEBUG_ATTR_SELECT_LEVEL_1) {
-        if (!attr_var->val_size)
+        if (!attr_stm->val_size)
             knd_log("NB: attr var value not set in %.*s",
-                    attr_var->name_size, attr_var->name);
+                    attr_stm->name_size, attr_stm->name);
     }
     return make_gsl_err(gsl_OK);
 }
@@ -459,34 +460,34 @@ static gsl_err_t parse_baseclass_select(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_nested_attr_var(void *obj,
+static gsl_err_t parse_nested_attr_stm(void *obj,
                                        const char *name, size_t name_size,
                                        const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndAttrVar *self = ctx->attr_var;
+    struct kndAttrStm *self = ctx->attr_stm;
     struct kndTask    *task = ctx->task;
-    struct kndAttrVar *attr_var;
+    struct kndAttrStm *attr_stm;
     struct kndMemPool *mempool = task->mempool;
     gsl_err_t parser_err;
     int err;
 
-    err = knd_attr_var_new(mempool, &attr_var);
+    err = knd_attr_stm_new(&attr_stm, mempool);
     if (err) return *total_size = 0, make_gsl_err_external(err);
-    attr_var->parent = self;
+    attr_stm->parent = self;
 
-    attr_var->name = name;
-    attr_var->name_size = name_size;
-    ctx->attr_var = attr_var;
+    attr_stm->name = name;
+    attr_stm->name_size = name_size;
+    ctx->attr_stm = attr_stm;
 
     if (DEBUG_ATTR_SELECT_LEVEL_TMP)
         knd_log(".. select nested attr: \"%.*s\" REC: %.*s",
-                attr_var->name_size, attr_var->name, 64, rec);
+                attr_stm->name_size, attr_stm->name, 64, rec);
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = set_attr_var_value,
-          .obj = attr_var
+          .run = set_attr_stm_value,
+          .obj = attr_stm
         },
         { .name = "_is",
           .name_size = strlen("_is"),
@@ -494,12 +495,12 @@ static gsl_err_t parse_nested_attr_var(void *obj,
           .parse = parse_baseclass_select,
           .obj = ctx
         },
-        { .validate = parse_nested_attr_var,
+        { .validate = parse_nested_attr_stm,
           .obj = ctx
         },
         { .is_default = true,
-          .run = confirm_attr_var,
-          .obj = attr_var
+          .run = confirm_attr_stm,
+          .obj = attr_stm
         }
     };
 
@@ -508,11 +509,11 @@ static gsl_err_t parse_nested_attr_var(void *obj,
 
     if (DEBUG_ATTR_SELECT_LEVEL_TMP)
         knd_log("++ attr var: \"%.*s\" val:%.*s",
-                attr_var->name_size, attr_var->name,
-                attr_var->val_size, attr_var->val);
+                attr_stm->name_size, attr_stm->name,
+                attr_stm->val_size, attr_stm->val);
 
-    //attr_var->next = self->children;
-    //self->children = attr_var;
+    //attr_stm->next = self->children;
+    //self->children = attr_stm;
     //self->num_children++;
 
     return make_gsl_err(gsl_OK);
@@ -531,7 +532,7 @@ static gsl_err_t parse_inner_class_clause(struct kndAttr *attr,
     struct LocalContext ctx = {
         .task = parent_ctx->task,
         .attr = parent_ctx->attr,
-        .attr_var = parent_ctx->attr_var
+        .attr_stm = parent_ctx->attr_stm
     };
 
     struct gslTaskSpec specs[] = {
@@ -539,7 +540,7 @@ static gsl_err_t parse_inner_class_clause(struct kndAttr *attr,
           .run = select_by_attr,
           .obj = &ctx
         },
-        { .validate = parse_nested_attr_var,
+        { .validate = parse_nested_attr_stm,
           .obj = &ctx
         }
     };
@@ -608,7 +609,7 @@ int knd_attr_select_clause(struct kndAttr *attr, struct kndClass *c, struct kndR
                            struct kndTask *task, const char *rec, size_t *total_size)
 {
     struct kndMemPool *mempool = task->mempool;
-    struct kndAttrVar *attr_var;
+    struct kndAttrStm *attr_stm;
     gsl_err_t parser_err;
     int err;
 
@@ -653,22 +654,22 @@ int knd_attr_select_clause(struct kndAttr *attr, struct kndClass *c, struct kndR
     if (!attr->is_indexed) {
         /* some logical clauses present */
         if (ctx.clauses) {
-            err = knd_attr_var_new(mempool, &attr_var);
+            err = knd_attr_stm_new(&attr_stm, mempool);
             if (err) return err;
 
-            attr_var->attr = attr;
-            attr_var->logic = ctx.logic;
-            attr_var->children = ctx.clauses;
+            attr_stm->attr = attr;
+            attr_stm->logic = ctx.logic;
+            attr_stm->children = ctx.clauses;
 
-            // attr_var->next = task->attr_var;
-            // task->attr_var = attr_var;
+            // attr_stm->next = task->attr_stm;
+            // task->attr_stm = attr_stm;
         }
     }
     return knd_OK;
 }
 
-extern int knd_attr_var_match(struct kndAttrVar *self,
-                              struct kndAttrVar *query)
+extern int knd_attr_stm_match(struct kndAttrStm *self,
+                              struct kndAttrStm *query)
 {
     // TODO not just numeric types
 
@@ -677,7 +678,7 @@ extern int knd_attr_var_match(struct kndAttrVar *self,
     return knd_OK;
 }
 
-gsl_err_t knd_select_attr_var(struct kndClass *class, const char *name, size_t name_size,
+gsl_err_t knd_select_attr_stm(struct kndClass *class, const char *name, size_t name_size,
                               const char *rec, size_t *total_size, struct kndTask *task)
 {
     struct kndAttrRef *selected_attr_ref;
@@ -703,11 +704,11 @@ gsl_err_t knd_select_attr_var(struct kndClass *class, const char *name, size_t n
     };
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = run_set_attr_var,
+          .run = run_set_attr_stm,
           .obj = &ctx
         },
         { .is_default = true,
-          .run = present_attr_var_selection,
+          .run = present_attr_stm_selection,
           .obj = &ctx
         }
     };

@@ -22,6 +22,7 @@
 #include "knd_class.h"
 #include "knd_class_inst.h"
 #include "knd_attr.h"
+#include "knd_attr_stm.h"
 #include "knd_task.h"
 #include "knd_user.h"
 #include "knd_text.h"
@@ -46,7 +47,7 @@ struct LocalContext {
     struct kndTask *task;
     struct kndRepo *repo;
     struct kndClass *class;
-    struct kndClassVar *class_var;
+    struct kndClassBasePred *base_pred;
 };
 
 static int index_attr(void *obj, const char *unused_var(elem_id), size_t unused_var(elem_id_size),
@@ -57,7 +58,7 @@ static int index_attr(void *obj, const char *unused_var(elem_id), size_t unused_
     struct kndClass   *self = ctx->class;
     struct kndAttrRef *src_ref  = elem;
     struct kndAttr    *attr     = src_ref->attr;
-    struct kndAttrVar *var     = src_ref->attr_var;
+    struct kndAttrStm *var     = src_ref->attr_stm;
     int err;
 
     if (!var) {
@@ -68,14 +69,14 @@ static int index_attr(void *obj, const char *unused_var(elem_id), size_t unused_
     }
 
     /* NB: only directly owned attr vars are indexed */
-    if (var->class_var->parent != self) return knd_OK;
+    if (var->base_pred->parent != self) return knd_OK;
 
     if (attr->is_a_set) {
-        err = knd_index_attr_var_list(self->entry, attr, var, task);
+        err = knd_index_attr_stm_list(self->entry, attr, var, task);
         KND_TASK_ERR("failed to index attr var list %.*s", attr->name_size, attr->name);
         return knd_OK;
     }
-    err = knd_index_attr_var(self->entry, attr, var, task);
+    err = knd_index_attr_stm(self->entry, attr, var, task);
     KND_TASK_ERR("failed to index attr var %.*s", attr->name_size, attr->name);
     return knd_OK;
 }
@@ -223,7 +224,7 @@ static int index_baseclass(struct kndClass *self, struct kndClass *base, struct 
 
 static int index_baseclasses(struct kndClass *self, struct kndTask *task)
 {
-    struct kndClassVar *cvar;
+    struct kndClassBasePred *bp;
     struct kndClass *c;
     int err;
 
@@ -231,9 +232,9 @@ static int index_baseclasses(struct kndClass *self, struct kndTask *task)
         knd_log(".. {class %.*s} to update its base class indices..",
                 self->name_size, self->name);
     }
-    FOREACH (cvar, self->baseclass_vars) {
-        err = knd_class_acquire(cvar->entry, &c, task);
-        KND_TASK_ERR("failed to acquire {class %.*s}", cvar->entry->name_size, cvar->entry->name);
+    FOREACH (bp, self->base_preds) {
+        err = knd_class_acquire(bp->entry, &c, task);
+        KND_TASK_ERR("failed to acquire {class %.*s}", bp->entry->name_size, bp->entry->name);
 
         err = index_baseclass(self, c, task);
         KND_TASK_ERR("failed to index a baseclass");
@@ -257,7 +258,6 @@ int knd_class_update_indices(struct kndRepo *repo, struct kndClassEntry *self,
 
 int knd_class_index(struct kndClass *self, struct kndTask *task)
 {
-    struct kndRepo *repo = self->entry->repo;
     int err;
 
     if (self->is_indexed) return knd_OK;
@@ -275,7 +275,7 @@ int knd_class_index(struct kndClass *self, struct kndTask *task)
                 self->entry->id_size, self->entry->id);
     }
     /* a child of the root class */
-    if (!self->baseclass_vars) {
+    if (!self->base_preds) {
         //err = index_baseclass(self, repo->root_class, task);
         //KND_TASK_ERR("failed to index class of a root");
     } else {

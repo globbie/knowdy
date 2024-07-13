@@ -1,6 +1,7 @@
 #include "knd_commit.h"
 #include "knd_class.h"
 #include "knd_attr.h"
+#include "knd_attr_stm.h"
 #include "knd_task.h"
 #include "knd_text.h"
 #include "knd_repo.h"
@@ -183,7 +184,6 @@ static int facetize_class(void *obj,
     }
     return knd_OK;
 }
-#endif
 
 static int create_subsets(struct kndSet *set, struct kndClass *c, struct kndTask *task)
 {
@@ -206,6 +206,7 @@ static int create_subsets(struct kndSet *set, struct kndClass *c, struct kndTask
     */
     return knd_OK;
 }
+#endif
 
 static gsl_err_t
 parse_get_class_by_numid(void *obj, const char *rec, size_t *total_size)
@@ -720,7 +721,7 @@ validate_select_class_attr(void *obj, const char *name, size_t name_size,
         if (err) return *total_size = 0, make_gsl_err_external(err);
         return *total_size = 0, make_gsl_err_external(knd_FAIL);
     }
-    return knd_select_attr_var(ctx->selected_class, name, name_size,
+    return knd_select_attr_stm(ctx->selected_class, name, name_size,
                                rec, total_size, ctx->task);
 }
 
@@ -816,17 +817,15 @@ static gsl_err_t present_class_selection(void *obj, const char *unused_var(val),
             }
 
             /* result set subdivision required? */
-            if (ctx->create_subsets) {
+            /*if (ctx->create_subsets) {
                 err = create_subsets(ctx->selected_base->descendants, ctx->selected_base, task);
                 if (err) return make_gsl_err_external(err);
                 
                 err = knd_class_facets_export(task);
                 if (err) return make_gsl_err_external(err);
 
-                // free_subsets(task);
-
                 return make_gsl_err(gsl_OK);
-            }
+                }*/
 
             err = knd_class_set_export(ctx->selected_base->descendants, task->ctx->format, task);
             if (err) return make_gsl_err_external(err);
@@ -855,16 +854,15 @@ static gsl_err_t present_class_selection(void *obj, const char *unused_var(val),
         }
 
         /* result set subdivision required? */
-        if (ctx->create_subsets) {
+        /*if (ctx->create_subsets) {
             err = create_subsets(set, ctx->selected_base, task);
             if (err) return make_gsl_err_external(err);
 
             err = knd_class_facets_export(task);
             if (err) return make_gsl_err_external(err);
 
-            // free_subsets(task);
             return make_gsl_err(gsl_OK);
-        }
+            }*/
 
         err = knd_class_set_export(set, task->ctx->format, task);
         if (err) return make_gsl_err_external(err);

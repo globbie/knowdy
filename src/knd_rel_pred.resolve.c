@@ -15,6 +15,7 @@
 #include "knd_task.h"
 #include "knd_class.h"
 #include "knd_proc.h"
+#include "knd_attr_stm.h"
 #include "knd_rel.h"
 #include "knd_repo.h"
 
@@ -23,14 +24,14 @@
 #define DEBUG_REL_PRED_RESOLVE_LEVEL_3 0
 #define DEBUG_REL_PRED_RESOLVE_LEVEL_TMP 1
 
-int knd_rel_pred_resolve(struct kndAttrVar *var, struct kndTask *task)
+int knd_rel_pred_resolve(struct kndAttrStm *var, struct kndTask *task)
 {
     struct kndSharedDict *class_name_idx = task->idxs->class_name_idx;
     struct kndAttr *attr = var->attr;
     struct kndRel *rel = attr->impl;
     struct kndClassEntry *entry;
     struct kndClass *template_c, *c;
-    struct kndAttrVar *item;
+    struct kndAttrStm *item;
     int err;
 
     assert(rel->proc != NULL);
@@ -56,7 +57,8 @@ int knd_rel_pred_resolve(struct kndAttrVar *var, struct kndTask *task)
     
     err = knd_class_acquire(entry, &c, task);
     KND_TASK_ERR("failed to acquire class \"%.*s\"", entry->name_size, entry->name);
-    if (!c->is_resolved) {
+
+    if (c->phase < KND_CLASS_RESOLVED) {
         err = knd_class_resolve(c, task);
         KND_TASK_ERR("failed to resolve class %.*s", c->name_size, c->name);
     }

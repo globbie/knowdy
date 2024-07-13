@@ -27,7 +27,7 @@
 #include <stddef.h>
 #include <string.h>
 
-struct kndAttrVar;
+struct kndAttrStm;
 struct kndMemPool;
 
 typedef enum knd_proc_type {
@@ -51,7 +51,7 @@ struct kndProcCallArg
     long numval;
 
     struct kndProcArg *arg;
-    struct kndAttrVar *attr_var;
+    struct kndAttrStm *attr_stm;
 
     struct kndProcCallArg *next;
 };

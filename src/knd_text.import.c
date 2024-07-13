@@ -115,10 +115,10 @@ static gsl_err_t parse_gloss_item(void *obj, const char *rec, size_t *total_size
     if (t->locale_size == 0 || t->seq == NULL)
         return make_gsl_err(gsl_FORMAT);  // error: both attrs required
 
-    if (DEBUG_TEXT_IMPORT_LEVEL_3)
+    if (DEBUG_TEXT_IMPORT_LEVEL_3) {
         knd_log(".. read gloss translation: \"%.*s\",  text: \"%.*s\"",
                 t->locale_size, t->locale, t->seq->val_size, t->seq->val);
-
+    }
     // append
     t->next = task->ctx->tr;
     task->ctx->tr = t;

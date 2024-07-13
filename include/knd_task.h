@@ -271,3 +271,6 @@ int knd_task_run(struct kndTask *self, const char *input, size_t input_size);
 
 // knd_task.select.c
 gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size);
+
+int knd_task_fetch_memblock(struct kndTask *task,
+                            size_t space_required, struct kndMemBlock **result);

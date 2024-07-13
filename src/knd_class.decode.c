@@ -22,6 +22,7 @@
 #include "knd_class.h"
 #include "knd_class_inst.h"
 #include "knd_attr.h"
+#include "knd_attr_stm.h"
 #include "knd_task.h"
 #include "knd_user.h"
 #include "knd_text.h"
@@ -106,3 +107,67 @@ int knd_class_entry_unmarshall(const char *elem_id, size_t elem_id_size,
     return knd_OK;
 }
 
+int knd_class_decode(struct kndClass *c, struct kndTask *task)
+{
+    struct kndClassBasePred *bp;
+    struct kndText *t;
+    struct kndAttr *attr;
+    struct kndClass *base;
+    size_t count = 0;
+    int err;
+
+    if (DEBUG_CLASS_DECODE_LEVEL_TMP) {
+        knd_log("\n.. decoding {class %.*s {num-bases %zu}}",
+                c->name_size, c->name, c->num_base_preds);
+        FOREACH (bp, c->base_preds) {
+            knd_log("  %zu) {base %.*s {id %.*s}}", count,
+                    bp->entry->name_size, bp->entry->name,
+                    bp->entry->id_size, bp->entry->id);
+            count++;
+        }
+    }
+
+    if (c->phase >= KND_CLASS_DECODED) {
+        knd_log("-- vicious circle detected in decoding {class %.*s}", c->name_size, c->name);
+        return knd_FAIL;
+    }
+
+    if (c->tr) {
+        FOREACH (t, c->tr) {
+            err = knd_charseq_decode(t->id, t->id_size, &t->seq, task);
+            KND_TASK_ERR("failed to decode {class %.*s {gloss %.*s}}",
+                         c->name_size, c->name, t->id_size, t->id);
+        }
+    }
+
+    count = 0;
+    FOREACH (bp, c->base_preds) {
+        knd_log("  %zu)  >> {base %.*s {id %.*s}}",
+                count,
+                bp->entry->name_size, bp->entry->name,
+                bp->entry->id_size, bp->entry->id);
+
+        count++;
+        err = knd_class_acquire(bp->entry, &base, task);
+        KND_TASK_ERR("failed to acquire {base %.*s} of {class %.*s}",
+                     bp->entry->name_size, bp->entry->name,
+                     c->name_size, c->name);
+
+        if (bp->attr_stms) {
+            err = knd_decode_attr_stms(base, bp->attr_stms, task);
+            KND_TASK_ERR("failed to decode attr stms of {class %.*s}",
+                         base->name_size, base->name);
+        }
+    }
+
+    if (c->num_attrs) {
+        FOREACH (attr, c->attrs) {
+            err = knd_attr_decode(attr, task);
+            KND_TASK_ERR("failed to decode {class %.*s {attr %.*s}}",
+                         c->name_size, c->name, attr->id_size, attr->id);
+        }
+    }
+
+    c->phase = KND_CLASS_DECODED;
+    return knd_OK;
+}

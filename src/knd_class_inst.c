@@ -6,6 +6,7 @@
 #include "knd_class.h"
 #include "knd_mempool.h"
 #include "knd_attr.h"
+#include "knd_attr_stm.h"
 #include "knd_repo.h"
 
 #include "knd_text.h"
@@ -30,7 +31,7 @@
 void knd_class_inst_str(struct kndClassInst *self, size_t depth)
 {
     //struct kndState *state = self->states;
-    struct kndAttrVar *item;
+    struct kndAttrStm *item;
 
     if (self->type == KND_OBJ_ADDR) {
         knd_log("\n%*s>>> class inst \"%.*s::%.*s\"  numid:%zu",
@@ -41,9 +42,10 @@ void knd_class_inst_str(struct kndClassInst *self, size_t depth)
         //    knd_log("    state:%zu  phase:%d", state->numid, state->phase);
         //}
     }
-    if (self->class_var->attrs) {
-        FOREACH (item, self->class_var->attrs)
-            knd_attr_var_str(item, depth + 1);
+    if (self->base_pred->attr_stms) {
+        FOREACH (item, self->base_pred->attr_stms) {
+            knd_attr_stm_str(item, depth + 1);
+        }
     }
 }
 

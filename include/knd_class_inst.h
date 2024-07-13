@@ -93,7 +93,7 @@ struct kndClassInst
     struct kndClassInstEntry *entry;
     struct kndClassInst *root;
 
-    struct kndClassVar *class_var;
+    struct kndClassBasePred *base_pred;
     struct kndAttrHub *attr_hubs;
 
     size_t linear_pos;

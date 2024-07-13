@@ -11,6 +11,7 @@
 #include "knd_task.h"
 #include "knd_class.h"
 #include "knd_attr.h"
+#include "knd_attr_stm.h"
 #include "knd_text.h"
 #include "knd_mempool.h"
 #include "knd_output.h"
@@ -28,10 +29,10 @@ struct LocalContext {
     struct kndProcArg *proc_arg;
     struct kndProcArgVar *proc_arg_var;
     struct kndClass *class;
-    struct kndAttrVar *attr_var;
+    struct kndAttrStm *attr_stm;
 };
 
-static gsl_err_t import_nested_attr_var(void *obj,
+static gsl_err_t import_nested_attr_stm(void *obj,
                                         const char *name, size_t name_size,
                                         const char *rec, size_t *total_size);
 
@@ -285,9 +286,9 @@ static gsl_err_t parse_proc_call(void *obj,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static gsl_err_t set_attr_var_value(void *obj, const char *val, size_t val_size)
+static gsl_err_t set_attr_stm_value(void *obj, const char *val, size_t val_size)
 {
-    struct kndAttrVar *self = obj;
+    struct kndAttrStm *self = obj;
 
     if (DEBUG_PROC_ARG_LEVEL_2)
         knd_log(".. set attr var value: %.*s %.*s",
@@ -301,57 +302,57 @@ static gsl_err_t set_attr_var_value(void *obj, const char *val, size_t val_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t confirm_attr_var(void *obj,
+static gsl_err_t confirm_attr_stm(void *obj,
                                   const char *unused_var(name),
                                   size_t unused_var(name_size))
 {
-    struct kndAttrVar *attr_var = obj;
+    struct kndAttrStm *attr_stm = obj;
 
     // TODO empty values?
     if (DEBUG_PROC_ARG_LEVEL_2) {
-        if (!attr_var->val_size)
+        if (!attr_stm->val_size)
             knd_log("NB: attr var value not set in %.*s",
-                    attr_var->name_size, attr_var->name);
+                    attr_stm->name_size, attr_stm->name);
     }
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t import_nested_attr_var(void *obj,
+static gsl_err_t import_nested_attr_stm(void *obj,
                                         const char *name, size_t name_size,
                                         const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndAttrVar *self = ctx->attr_var;
+    struct kndAttrStm *self = ctx->attr_stm;
     struct kndTask    *task = ctx->task;
-    struct kndAttrVar *attr_var;
+    struct kndAttrStm *attr_stm;
     struct kndMemPool *mempool = task->mempool;
     gsl_err_t parser_err;
     int err;
 
-    err = knd_attr_var_new(mempool, &attr_var);
+    err = knd_attr_stm_new(&attr_stm, mempool);
     if (err) return *total_size = 0, make_gsl_err_external(err);
-    attr_var->parent = self;
-    attr_var->name = name;
-    attr_var->name_size = name_size;
+    attr_stm->parent = self;
+    attr_stm->name = name;
+    attr_stm->name_size = name_size;
 
-    ctx->attr_var = attr_var;
+    ctx->attr_stm = attr_stm;
 
     if (DEBUG_PROC_ARG_LEVEL_2)
         knd_log(".. import nested attr var: \"%.*s\" (parent item:%.*s)",
-                attr_var->name_size, attr_var->name,
+                attr_stm->name_size, attr_stm->name,
                 self->name_size, self->name);
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = set_attr_var_value,
-          .obj = attr_var
+          .run = set_attr_stm_value,
+          .obj = attr_stm
         },
-        { .validate = import_nested_attr_var,
+        { .validate = import_nested_attr_stm,
           .obj = ctx
         },
         { .is_default = true,
-          .run = confirm_attr_var,
-          .obj = attr_var
+          .run = confirm_attr_stm,
+          .obj = attr_stm
         }
     };
 
@@ -362,10 +363,10 @@ static gsl_err_t import_nested_attr_var(void *obj,
     }
 
     /* restore parent */
-    ctx->attr_var = self;
+    ctx->attr_stm = self;
 
-    attr_var->next = self->children;
-    self->children = attr_var;
+    attr_stm->next = self->children;
+    self->children = attr_stm;
     self->num_children++;
 
     return make_gsl_err(gsl_OK);
@@ -377,28 +378,28 @@ static gsl_err_t parse_proc_arg_defin(void *obj,
 {
     struct LocalContext *ctx = obj;
     struct kndProcArg *self = ctx->proc_arg;
-    struct kndAttrVar *attr_var;
+    struct kndAttrStm *attr_stm;
     int err;
 
     if (DEBUG_PROC_ARG_LEVEL_2)
         knd_log(".. proc call arg defin parsing: \"%.*s\"..",
                 32, rec);
 
-    err = knd_attr_var_new(ctx->task->mempool, &attr_var);
+    err = knd_attr_stm_new(&attr_stm, ctx->task->mempool);
     if (err) {
         return make_gsl_err(err);
     }
 
-    self->attr_var = attr_var;
-    ctx->attr_var = attr_var;
+    self->attr_stm = attr_stm;
+    ctx->attr_stm = attr_stm;
 
     struct gslTaskSpec specs[] = {
-        { .validate = import_nested_attr_var,
+        { .validate = import_nested_attr_stm,
           .obj = ctx
         },
         { .is_default = true,
-          .run = confirm_attr_var,
-          .obj = attr_var
+          .run = confirm_attr_stm,
+          .obj = attr_stm
         }
     };
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
