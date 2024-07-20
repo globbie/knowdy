@@ -41,11 +41,11 @@ void knd_attr_stm_str(struct kndAttrStm *var, size_t depth)
         switch (attr->type) {
         case KND_ATTR_INNER:
             knd_log("%*s* {inner-class %.*s}", depth * KND_OFFSET_SIZE, "",
-                    attr->ref_class_entry->name_size, attr->ref_class_entry->name);
+                    attr->class_entry->name_size, attr->class_entry->name);
             break;
         case KND_ATTR_REF:
             knd_log("%*s* {class-ref %.*s}", depth * KND_OFFSET_SIZE, "",
-                    attr->ref_class_entry->name_size, attr->ref_class_entry->name);
+                    attr->class_entry->name_size, attr->class_entry->name);
             break;
         default:
             knd_log("%*s* {%s %.*s}", depth * KND_OFFSET_SIZE, "",
@@ -76,22 +76,22 @@ void knd_attr_stm_str(struct kndAttrStm *var, size_t depth)
         case KND_ATTR_INNER:
             knd_log("%*s%.*s (inner \"%.*s\")", depth * KND_OFFSET_SIZE, "",
                     var->name_size, var->name,
-                    attr->ref_class_entry->name_size, attr->ref_class_entry->name);
+                    attr->class_entry->name_size, attr->class_entry->name);
             FOREACH (item, var->children) {
-                knd_log("var: %.*s %p", item->name_size, item->name, item->attr);
+                knd_log("var: %.*s", item->name_size, item->name);
                 knd_attr_stm_str(item, depth + 1);
             }
             break;
         case KND_ATTR_REF:
             knd_log("%*s%.*s (\"%.*s\" class ref) => %.*s", depth * KND_OFFSET_SIZE, "",
                     var->name_size, var->name,
-                    attr->ref_class_entry->name_size, attr->ref_class_entry->name,
+                    attr->class_entry->name_size, attr->class_entry->name,
                     var->class_entry->name_size, var->class_entry->name);
             return;
         case KND_ATTR_REL:
             knd_log("%*s%.*s (\"%.*s\" rel)", depth * KND_OFFSET_SIZE, "",
                     var->name_size, var->name,
-                    attr->ref_class_entry->name_size, attr->ref_class_entry->name);
+                    attr->class_entry->name_size, attr->class_entry->name);
             if (var->class_inst_entry) {
                 knd_log("%*s=> \"%.*s\"", depth * KND_OFFSET_SIZE, "",
                     var->class_inst_entry->name_size, var->class_inst_entry->name);

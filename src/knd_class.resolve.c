@@ -250,7 +250,7 @@ static int resolve_baseclasses(struct kndClass *self, struct kndTask *task)
     size_t classname_size;
     int err;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP) {
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
         knd_log(".. {class %.*s to resolve its bases", self->name_size, self->name);
     }
 
@@ -301,7 +301,7 @@ int knd_class_resolve(struct kndClass *self, struct kndTask *task)
     struct kndAttrRef *attr_ref, *ref;
     int err;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP) {
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
         knd_log(".. resolving {class %.*s} {num-attrs %zu} {phase %d}",
                 entry->name_size, entry->name, self->num_attrs, self->phase);
     }
@@ -355,7 +355,7 @@ int knd_class_resolve(struct kndClass *self, struct kndTask *task)
     entry->numid++;
     knd_uid_create(entry->numid, entry->id, &entry->id_size);
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP) {
+    if (DEBUG_CLASS_RESOLVE_LEVEL_3) {
         knd_log("++ {class %.*s} resolved!",
                 entry->name_size, entry->name);
     }
@@ -380,7 +380,7 @@ static int resolve_base(struct kndClass *self, struct kndTask *task)
     return knd_OK;
 }
 
-int knd_resolve_class_ref(struct kndClass *self, const char *name, size_t name_size,
+int knd_resolve_class_ref(struct kndRepo *repo, const char *name, size_t name_size,
                           struct kndClass *base, struct kndClass **result,
                           struct kndTask *task)
 {
@@ -391,7 +391,7 @@ int knd_resolve_class_ref(struct kndClass *self, const char *name, size_t name_s
 
     assert (name_size != 0 && name != NULL);
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_TMP) {
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
         knd_log(".. checking {class-ref %.*s}..", name_size, name);
         if (base) {
             knd_log(".. {base-template %.*s}..", base->name_size, base->name);
@@ -432,9 +432,9 @@ int knd_resolve_class_ref(struct kndClass *self, const char *name, size_t name_s
         return knd_OK;
     }
 
-    err = knd_get_class(self->entry->repo, name, name_size, &c, task);
+    err = knd_get_class(repo, name, name_size, &c, task);
     KND_TASK_ERR("{class %.*s} not found in {repo %.*s}", name_size, name,
-                 self->entry->repo->name_size, self->entry->repo->name);
+                 repo->name_size, repo->name);
 
     if (c->phase < KND_CLASS_BASE_RESOLVED) {
         err = resolve_base(c, task);

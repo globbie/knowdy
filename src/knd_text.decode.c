@@ -92,16 +92,16 @@ int knd_charseq_fetch(struct kndRepo *repo, const char *val, size_t val_size,
     seq->val = val;
     seq->val_size = val_size;
     seq->numid = atomic_fetch_add_explicit(&task->idxs->num_strs, 1, memory_order_relaxed);
+    knd_uid_create(seq->numid, seq->id, &seq->id_size);
  
     err = knd_shared_dict_set(task->idxs->str_dict, val, val_size, (void*)seq);
     KND_TASK_ERR("failed to register a charseq");
 
-    knd_uid_create(seq->numid, idbuf, &idbuf_size);
-    err = knd_shared_set_add(task->idxs->str_idx, idbuf, idbuf_size, (void*)seq);
+    err = knd_shared_set_add(task->idxs->str_idx, seq->id, seq->id_size, (void*)seq);
     KND_TASK_ERR("failed to register a charseq by numid");
 
     if (DEBUG_TEXT_DECODE_LEVEL_3) {
-        knd_log(">> {seq %.*s {id %.*s}} registered", val_size, val, idbuf_size, idbuf);
+        knd_log(">> {seq %.*s {id %.*s}} registered", val_size, val, seq->id_size, seq->id);
     }
     *result = seq;
     return knd_OK;

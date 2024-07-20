@@ -680,6 +680,15 @@ static gsl_err_t read_attr(void *obj, const char *name, size_t name_size,
 
     ref->attr = attr;
 
+    if (attr->is_implied) {
+        if (DEBUG_CLASS_READ_LEVEL_2) {
+            knd_log("++ implicit attr {class %.*s {attr %.*s {id %.*s}}}",
+                    self->name_size, self->name,
+                    attr->name_size, attr->name, attr->id_size, attr->id);
+        }
+        self->implied_attr = attr;
+    }
+
     if (DEBUG_CLASS_READ_LEVEL_2) {
         knd_log("++ assigned {class %.*s {attr %.*s {id %.*s}}}",
                 self->name_size, self->name,
@@ -708,7 +717,7 @@ static gsl_err_t read_glosses(void *obj, const char *rec, size_t *total_size)
 
 int knd_class_read(struct kndClass *self, const char *rec, size_t *total_size, struct kndTask *task)
 {
-    if (DEBUG_CLASS_READ_LEVEL_TMP) {
+    if (DEBUG_CLASS_READ_LEVEL_2) {
         knd_log(".. reading {class %.*s} GSP: \"%.*s\"",
                 self->name_size, self->name, 128, rec);
     }
@@ -718,8 +727,6 @@ int knd_class_read(struct kndClass *self, const char *rec, size_t *total_size, s
                 self->name_size, self->name);
         return knd_FAIL;
     }
-
-    task->type = KND_UNFREEZE_STATE;
 
     struct LocalContext ctx = {
         .task = task,
@@ -797,8 +804,9 @@ int knd_class_unmarshall(const char *unused_var(elem_id), size_t unused_var(elem
     size_t total_size = rec_size;
     int err;
 
-    if (DEBUG_CLASS_READ_LEVEL_3) {
-        knd_log(".. unmarshall {class %.*s}", entry->name_size, entry->name);
+    if (DEBUG_CLASS_READ_LEVEL_2) {
+        knd_log(".. unmarshall {class %.*s}",
+                entry->name_size, entry->name);
     }
 
     if (entry->cached_version) {
@@ -816,7 +824,14 @@ int knd_class_unmarshall(const char *unused_var(elem_id), size_t unused_var(elem
     err = knd_class_read(c, rec, &total_size, task);
     KND_TASK_ERR("failed to read GSP of %.*s", c->name_size, c->name);
 
-    entry->cached_version = c;
+    switch (task->type) {
+    case KND_SNAPSHOT_STATE:
+        entry->cached_version = c;
+        break;
+    default:
+        // TODO update task local cache?
+        break;
+    }
 
     *result = c;
     return knd_OK;

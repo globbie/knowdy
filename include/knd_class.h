@@ -352,7 +352,7 @@ int knd_class_get_inst_updates(struct kndClass *self, size_t gt, size_t lt, size
 
 // knd_class.resolve.c
 int knd_class_resolve(struct kndClass *self, struct kndTask *task);
-int knd_resolve_class_ref(struct kndClass *self, const char *name, size_t name_size,
+int knd_resolve_class_ref(struct kndRepo *repo, const char *name, size_t name_size,
                           struct kndClass *base, struct kndClass **result, struct kndTask *task);
 
 // knd_class.index.c

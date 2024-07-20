@@ -43,6 +43,9 @@ static gsl_err_t set_gloss_locale(void *obj, const char *name, size_t name_size)
     memcpy(t->locale_id, name, name_size);
     t->locale_id_size = name_size;
 
+    t->locale = t->locale_id;
+    t->locale_size = t->locale_id_size;
+    
     return make_gsl_err(gsl_OK);
 }
 

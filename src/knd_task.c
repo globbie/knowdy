@@ -63,9 +63,8 @@ void knd_task_reset(struct kndTask *self)
     self->out->reset(self->out);
     self->log->reset(self->log);
 
-    if (self->mempool)
-        knd_mempool_reset(self->mempool);
-
+    self->ctx_mempool->reset(self->ctx_mempool);
+    self->mempool = self->ctx_mempool;
     // NB self->cache_mempool stays intact
 
     if (self->class_name_idx)
@@ -167,6 +166,7 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
 
     assert (task->steward != NULL);
     assert (task->ctx != NULL);
+    assert (task->mempool != NULL);
 
     struct kndUser *user = task->steward->user;
     struct kndOutput *out = task->out;

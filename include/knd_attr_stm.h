@@ -84,7 +84,8 @@ int knd_read_attr_stm(struct kndClassBasePred *self, const char *name, size_t na
 int knd_read_attr_stm_list(struct kndClassBasePred *self, const char *name, size_t name_size,
                            const char *rec, size_t *total_size, struct kndTask *task);
 
-int knd_decode_attr_stms(struct kndClass *base, struct kndAttrStm *attr_stms, struct kndTask *task);
+int knd_decode_attr_stms(struct kndClass *base, struct kndAttrStm *parent,
+                         struct kndAttrStm *attr_stms, struct kndTask *task);
 
 // knd_attr.select.c
 int knd_attr_stm_match(struct kndAttrStm *self, struct kndAttrStm *template);

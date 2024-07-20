@@ -83,9 +83,9 @@ int knd_attr_export_GSL(struct kndAttr *self, struct kndTask *task, size_t depth
         OUT("}", 1);
     }
 
-    if (self->ref_classname_size) {
+    if (self->classname_size) {
         OUT(" {c ", strlen(" {c "));
-        OUT(self->ref_classname, self->ref_classname_size);
+        OUT(self->classname, self->classname_size);
         OUT("}", 1);
     }
 

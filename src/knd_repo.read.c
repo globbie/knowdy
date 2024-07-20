@@ -474,10 +474,6 @@ int knd_repo_snapshot_read(struct kndRepoSnapshot *snapshot, struct kndTask *tas
                  snapshot->numid, snapshot->path_size, snapshot->path);
 
     err = knd_repo_cache_update(snapshot, task);
-    if (err) {
-        knd_log("ERR: %.*s", task->log->buf_size, task->log->buf);
-    }
-
     KND_TASK_ERR("failed to update a repo cache");
 
     return knd_OK;

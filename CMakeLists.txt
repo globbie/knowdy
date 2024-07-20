@@ -87,9 +87,9 @@ set(HEADERS include/knd_attr.h include/knd_attr_stm.h include/knd_rel.h
         include/knd_state.h include/knd_commit.h
         include/knd_task.h include/knd_text.h
         include/knd_user.h include/knd_utils.h include/knd_version.h)
-set(SOURCES src/knd_attr.c src/knd_attr.import.c src/knd_attr.resolve.c
-        src/knd_attr.read.c src/knd_attr.decode.c src/knd_attr.select.c
-        src/knd_attr.json.c src/knd_attr.gsl.c src/knd_attr.gsp.c
+set(SOURCES src/attr/knd_attr.c src/attr/knd_attr.import.c src/attr/knd_attr.resolve.c
+        src/attr/knd_attr.read.c src/attr/knd_attr.decode.c src/attr/knd_attr.select.c
+        src/attr/knd_attr.json.c src/attr/knd_attr.gsl.c src/attr/knd_attr.gsp.c
         src/knd_attr_stm.c src/knd_attr_stm.import.c src/knd_attr_stm.index.c
         src/knd_attr_stm.resolve.c src/knd_attr_stm.read.c src/knd_attr_stm.decode.c
         src/knd_attr_stm.gsl.c src/knd_attr_stm.json.c src/knd_attr_stm.gsp.c

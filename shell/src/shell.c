@@ -154,6 +154,7 @@ static int knd_interact(struct kndSteward *steward)
 
         /* reader task is always the first to parse and validate the request */
         knd_task_reset(reader_task);
+        reader_task->ctx->max_depth = 3;
         // reader_task->mode = KND_TASK_TRACE_MODE;
 
         err = knd_task_run(reader_task, block, block_size);

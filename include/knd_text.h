@@ -241,10 +241,6 @@ struct kndPar
     struct kndSentence *last_sent;
     size_t num_sents;
 
-    //struct kndClassDeclar *class_declars;
-    //struct kndProcDeclar  *proc_declars;
-    //struct kndDict *name_idx;
-
     struct kndPar *next;
 };
 

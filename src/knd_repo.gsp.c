@@ -65,18 +65,19 @@ int knd_repo_snapshot_create(struct kndRepo *repo, struct kndTask *task)
                                    knd_attr_names_marshall, snapshot->idxs.attr_name_idx, task);
     KND_TASK_ERR("failed to build an attr name idx");
 
-    /* global string dict storage */
-    err = knd_shared_set_marshall(task->idxs->str_idx, snapshot->path, snapshot->path_size,
-                                  "strings", strlen("strings"),
-                                  knd_charseq_marshall, snapshot->idxs.str_idx, task);
-    KND_TASK_ERR("failed to build a string idx");
-
     /* save class content */
     err = knd_shared_set_marshall(task->idxs->class_idx, snapshot->path, snapshot->path_size,
                                   "classes", strlen("classes"),
                                   knd_class_marshall, snapshot->idxs.class_idx, task);
     KND_TASK_ERR("failed to build a class idx");
 
+    /* global string dict storage 
+       NB: shoud be exported last */
+    err = knd_shared_set_marshall(task->idxs->str_idx, snapshot->path, snapshot->path_size,
+                                  "strings", strlen("strings"),
+                                  knd_charseq_marshall, snapshot->idxs.str_idx, task);
+    KND_TASK_ERR("failed to build a string idx");
+    
     repo->snapshot_temp = snapshot;
     return knd_OK;
 }

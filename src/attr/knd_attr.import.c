@@ -51,10 +51,8 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
     struct kndAttr *self = ctx->attr;
-
     self->name = name;
     self->name_size = name_size;
-
     return make_gsl_err(gsl_OK);
 }
 
@@ -71,7 +69,7 @@ static gsl_err_t set_format(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t set_ref_class(void *obj, const char *name, size_t name_size)
+static gsl_err_t set_class(void *obj, const char *name, size_t name_size)
 {
     struct kndAttr *self = obj;
     if (!name_size) return make_gsl_err(gsl_FAIL);
@@ -82,8 +80,8 @@ static gsl_err_t set_ref_class(void *obj, const char *name, size_t name_size)
     self->classname = name;
     self->classname_size = name_size;
 
-    self->ref_classname = name;
-    self->ref_classname_size = name_size;
+    self->classname = name;
+    self->classname_size = name_size;
     return make_gsl_err(gsl_OK);
 }
 
@@ -202,6 +200,15 @@ gsl_err_t knd_attr_idx(void *obj, const char *unused_var(name), size_t unused_va
 gsl_err_t knd_attr_implied(void *obj, const char *unused_var(name), size_t unused_var(name_size))
 {
     struct kndAttr *self = obj;
+    switch (self->type) {
+    case KND_ATTR_INNER:
+    case KND_ATTR_REL:
+        knd_log("implicit representation not allowed for complex attr types {attr %.*s}",
+                self->name_size, self->name);
+        return make_gsl_err(gsl_FAIL);
+    default:
+        break;
+    }
     self->is_implied = true;
     return make_gsl_err(gsl_OK);
 }
@@ -251,7 +258,7 @@ gsl_err_t knd_attr_import(struct kndAttr *self, struct kndTask *task,
         },
         { .name = "cls",
           .name_size = strlen("cls"),
-          .run = set_ref_class,
+          .run = set_class,
           .obj = self
         },
         { .name = "proc",
@@ -318,7 +325,7 @@ gsl_err_t knd_attr_import(struct kndAttr *self, struct kndTask *task,
 
     switch (self->type) {
     case KND_ATTR_INNER:
-        if (!self->ref_classname_size) {
+        if (!self->classname_size) {
             KND_TASK_LOG("ref class not specified in %.*s", self->name_size, self->name);
             return make_gsl_err_external(knd_FORMAT);
         }

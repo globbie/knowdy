@@ -46,35 +46,26 @@ static int build_cache_item(void *obj, const char *unused_var(elem_id),
 {
     struct kndTask *task = obj;
     struct kndClassEntry *entry = elem;
-    struct kndRepoSnapshot *snapshot = task->snapshot;
     struct kndClass *c;
-    struct kndSharedSet *class_idx = snapshot->idxs.class_idx;
-    struct kndStorageLeaf *leaf = NULL;
     int err;
 
     if (!detect_if_cacheable(entry)) return knd_OK;
 
-    if (DEBUG_REPO_CACHE_LEVEL_TMP) {
+    if (DEBUG_REPO_CACHE_LEVEL_3) {
         knd_log("\n.. making a cache copy of {class %.*s {id %.*s}}",
                 entry->name_size, entry->name, entry->id_size, entry->id);
     }
 
     err = knd_class_acquire(entry, &c, task);
     KND_TASK_ERR("failed to acquire {class %.*s}", entry->name_size, entry->name);
-    
-    /*    err = knd_shared_set_find_leaf(class_idx, entry->id, entry->id_size, &leaf, task);
-    KND_TASK_ERR("no storage leaf found for unmarshalling {class %.*s {id %.*s}}",
-                 entry->name_size, entry->name, entry->id_size, entry->id);
 
-    err = knd_storage_leaf_read_elem(leaf, entry->id, entry->id_size,
-                                     knd_class_unmarshall, entry, (void**)&c, task);
-    KND_TASK_ERR("failed to unmarshall {class %.*s}", entry->name_size, entry->name);
-
-    if (c->phase < KND_CLASS_DECODED) {
-        err = knd_class_decode(c, task);
-        KND_TASK_ERR("failed to decode {class %.*s}", c->name_size, c->name);
+    if (DEBUG_REPO_CACHE_LEVEL_3) {
+        task->out->reset(task->out);
+        task->max_depth = 5;
+        task->ctx->format_indent = 4;
+        knd_class_export_GSL(c, task, false, 0);
+        knd_log("%.*s", task->out->buf_size, task->out->buf);
     }
-    */
 
     return knd_OK;
 }

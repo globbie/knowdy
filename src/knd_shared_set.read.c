@@ -688,8 +688,6 @@ int knd_storage_leaf_read_elem(struct kndStorageLeaf *leaf, const char *id, size
         knd_log(".. unmarshall {elem %.*s} from {file %.*s}",
                 id_size, id, leaf->filepath_size, leaf->filepath);
     }
-
-    task->type = KND_UNFREEZE_STATE;
     err = read_elem(leaf, leaf->dir, id, id_size, cb, ctx, result, task);
     if (err) {
         KND_TASK_LOG("failed to read GSP elem %.*s", id_size, id);

@@ -296,7 +296,7 @@ static gsl_err_t select_by_attr(void *obj, const char *val, size_t val_size)
     if (!val_size) return make_gsl_err(gsl_FORMAT);
     if (val_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    entry = attr->ref_class_entry;
+    entry = attr->class_entry;
     err = knd_class_acquire(entry, &c, task);
     if (err) return make_gsl_err_external(err);
 

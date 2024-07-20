@@ -50,16 +50,16 @@ static int inner_var_export_GSL(struct kndAttrStm *var, struct kndTask *task, si
     struct kndClass *c;
     int err;
 
-    if (DEBUG_ATTR_STM_GSL_LEVEL_2)
+    if (DEBUG_ATTR_STM_GSL_LEVEL_2) {
         knd_log(".. GSL export inner var \"%.*s\" val:%.*s  list item:%d",
                 var->name_size, var->name, var->val_size, var->val, var->is_list_item);
-
+    }
     if (var->implied_attr) {
         attr = var->implied_attr;
 
-        if (DEBUG_ATTR_STM_GSL_LEVEL_2)
+        if (DEBUG_ATTR_STM_GSL_LEVEL_TMP) {
             knd_log(">> implied inner var attr \"%.*s\"", attr->name_size, attr->name);
-
+        }
         switch (attr->type) {
         case KND_ATTR_REL:
             // fall through
@@ -279,15 +279,23 @@ int knd_attr_stms_export_GSL(struct kndAttrStm *vars, struct kndTask *task,
     int err;
 
     FOREACH (var, vars) {
-        assert(var->attr != NULL);
         attr = var->attr;
-        if (DEBUG_ATTR_STM_GSL_LEVEL_3)
-            knd_log(">> attr var GSL export: %.*s", attr->name_size, attr->name);
+        if (var->implied_attr) attr = var->implied_attr;
 
+        if (!attr) {
+            knd_log("-- no attr found for {attr-stm %.*s}",
+                    var->name_size, var->name);
+            continue;
+        }
+
+        if (DEBUG_ATTR_STM_GSL_LEVEL_TMP) {
+            knd_log(">> attr var GSL export: %.*s",
+                    attr->name_size, attr->name);
+        }
         if (is_concise && !attr->concise_level) {
             //knd_log(".. concise level: %d", attr->concise_level);
-            if (var->attr->type != KND_ATTR_INNER) 
-                continue;
+            //if (var->attr->type != KND_ATTR_INNER) 
+            //    continue;
         }
         task->ctx->depth = curr_depth;
 
@@ -317,13 +325,22 @@ int knd_attr_stm_export_GSL(struct kndAttrStm *var, struct kndTask *task, size_t
     size_t indent_size = task->ctx->format_indent;
     int err;
 
-    assert(attr != NULL);
+    if (var->implied_attr) {
+        attr = var->implied_attr;
+    }
+
+    if (!attr) {
+        knd_log("no attr for {attr-stm %.*s}", var->name_size, var->name);
+        return knd_FAIL;
+    }
 
     if (task->ctx->depth >= task->ctx->max_depth) {
-        if (DEBUG_ATTR_STM_GSL_LEVEL_3)
+        if (DEBUG_ATTR_STM_GSL_LEVEL_3) {
             knd_log("NB: max depth reached: %zu", task->ctx->depth);
+        }
         return knd_OK;
     }
+
     if (indent_size) {
         OUT("\n", 1);
         err = knd_print_offset(out, depth * indent_size);
@@ -341,6 +358,7 @@ int knd_attr_stm_export_GSL(struct kndAttrStm *var, struct kndTask *task, size_t
     }
 
     switch (var->attr->type) {
+    case KND_ATTR_FLOAT:
     case KND_ATTR_NUM:
         OUT(var->val, var->val_size);
         break;
@@ -357,13 +375,14 @@ int knd_attr_stm_export_GSL(struct kndAttrStm *var, struct kndTask *task, size_t
             err = knd_text_gloss_export_GSL(c->tr, true, task, depth + 1);
             KND_TASK_ERR("failed to export gloss GSL");
         }
-        
         break;
     case KND_ATTR_ATTR_REF:
         if (var->ref_attr) {
-	    err = knd_attr_export_GSL(var->ref_attr, task, depth + 1);           RET_ERR();
+	    err = knd_attr_export_GSL(var->ref_attr, task, depth + 1);
+            RET_ERR();
         } else {
-            err = out->write(out, "_null", strlen("_null"));                      RET_ERR();
+            err = out->write(out, "_null", strlen("_null"));
+            RET_ERR();
         }
         break;
     case KND_ATTR_PROC_REF:
@@ -374,7 +393,7 @@ int knd_attr_stm_export_GSL(struct kndAttrStm *var, struct kndTask *task, size_t
         OUT(var->val, var->val_size);
         break;
     case KND_ATTR_INNER:
-        err = inner_var_export_GSL(var, task, depth + 1);
+        err = inner_var_export_GSL(var, task, depth);
         KND_TASK_ERR("GSL inner var output failed");
         break;
     case KND_ATTR_TEXT:

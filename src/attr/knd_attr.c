@@ -60,10 +60,10 @@ void knd_attr_str(struct kndAttr *self, size_t depth)
         tr = tr->next;
     }
 
-    if (self->ref_classname_size) {
+    if (self->classname_size) {
         knd_log("%*s  REF class template: %.*s",
                 depth * KND_OFFSET_SIZE, "",
-                self->ref_classname_size, self->ref_classname);
+                self->classname_size, self->classname);
     }
 
     /*if (self->proc) {
@@ -124,13 +124,13 @@ int knd_get_arg_value(struct kndAttrStm *src, struct kndAttrStm *query,
                 src->attr->is_a_set,
                 query->name_size, query->name);
         knd_log("ref class: %.*s",
-                src->attr->ref_class_entry->name_size,
-                src->attr->ref_class_entry->name);
+                src->attr->class_entry->name_size,
+                src->attr->class_entry->name);
         knd_attr_stm_str(src, 1);
     }
 
-    if (src->attr->ref_class_entry) {
-        entry = src->attr->ref_class_entry;
+    if (src->attr->class_entry) {
+        entry = src->attr->class_entry;
         err = knd_class_acquire(entry, &c, task);
         KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
         

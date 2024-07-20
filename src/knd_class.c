@@ -133,8 +133,9 @@ void knd_class_str(struct kndClass *self, size_t depth)
             }
 
             if (item->attr_stms) {
-                FOREACH (var, item->attr_stms)
+                FOREACH (var, item->attr_stms) {
                     knd_attr_stm_str(var, depth + 1);
+                }
             }
         }
     }
@@ -540,7 +541,7 @@ int knd_class_acquire(struct kndClassEntry *entry, struct kndClass **result, str
     struct kndStorageLeaf *leaf;
     int err;
 
-    if (DEBUG_CLASS_LEVEL_TMP) {
+    if (DEBUG_CLASS_LEVEL_3) {
         knd_log(">> acquire {class %.*s {id %.*s}}",
                 entry->name_size, entry->name, entry->id_size, entry->id);
     }

@@ -29,7 +29,8 @@ int knd_charseq_marshall(void *elem, size_t *output_size, struct kndTask *task)
     OUT(seq->val, seq->val_size);
 
     if (DEBUG_TEXT_GSP_LEVEL_2) {
-        knd_log("** %zu => \"%.*s\" (size:%zu)",  seq->numid,
+        knd_log("** {seq %.*s {numid %zu}} => \"%.*s\" {size %zu}",
+                seq->id_size, seq->id, seq->numid,
                 seq->val_size, seq->val, out->buf_size - orig_size);
     }
     *output_size = out->buf_size - orig_size;

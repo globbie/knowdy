@@ -113,12 +113,12 @@ int knd_class_decode(struct kndClass *c, struct kndTask *task)
     struct kndText *t;
     struct kndAttr *attr;
     struct kndClass *base;
-    size_t count = 0;
     int err;
 
-    if (DEBUG_CLASS_DECODE_LEVEL_TMP) {
+    if (DEBUG_CLASS_DECODE_LEVEL_2) {
         knd_log("\n.. decoding {class %.*s {num-bases %zu}}",
                 c->name_size, c->name, c->num_base_preds);
+        size_t count = 0;
         FOREACH (bp, c->base_preds) {
             knd_log("  %zu) {base %.*s {id %.*s}}", count,
                     bp->entry->name_size, bp->entry->name,
@@ -140,21 +140,14 @@ int knd_class_decode(struct kndClass *c, struct kndTask *task)
         }
     }
 
-    count = 0;
     FOREACH (bp, c->base_preds) {
-        knd_log("  %zu)  >> {base %.*s {id %.*s}}",
-                count,
-                bp->entry->name_size, bp->entry->name,
-                bp->entry->id_size, bp->entry->id);
-
-        count++;
         err = knd_class_acquire(bp->entry, &base, task);
         KND_TASK_ERR("failed to acquire {base %.*s} of {class %.*s}",
                      bp->entry->name_size, bp->entry->name,
                      c->name_size, c->name);
 
         if (bp->attr_stms) {
-            err = knd_decode_attr_stms(base, bp->attr_stms, task);
+            err = knd_decode_attr_stms(base, NULL, bp->attr_stms, task);
             KND_TASK_ERR("failed to decode attr stms of {class %.*s}",
                          base->name_size, base->name);
         }

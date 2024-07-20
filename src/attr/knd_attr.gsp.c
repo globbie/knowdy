@@ -154,9 +154,9 @@ int knd_attr_export_GSP(struct kndAttr *self, struct kndTask *task)
         OUT("}", 1);
     }
 
-    if (self->ref_class_entry) {
+    if (self->class_entry) {
         OUT("{rc ", strlen("{rc "));
-        OUT(self->ref_class_entry->id, self->ref_class_entry->id_size);
+        OUT(self->class_entry->id, self->class_entry->id_size);
         OUT("}", 1);
     }
 

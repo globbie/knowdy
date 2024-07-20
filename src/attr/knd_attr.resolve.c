@@ -200,19 +200,19 @@ int knd_attr_resolve(struct kndAttr *attr, struct kndTask *task)
         attr->class_entry = entry;
         break;
     case KND_ATTR_REF:
-        if (!attr->ref_classname_size) {
+        if (!attr->classname_size) {
             err = knd_FAIL;
             KND_TASK_ERR("no template class specified for attr \"%.*s\"",
                          attr->name_size, attr->name);
         }
         entry = knd_shared_dict_get(class_name_idx,
-                                    attr->ref_classname, attr->ref_classname_size);
+                                    attr->classname, attr->classname_size);
         if (!entry) {
             err = knd_NO_MATCH;
             KND_TASK_ERR("class not found: \"%.*s\"",
-                         attr->ref_classname_size, attr->ref_classname);
+                         attr->classname_size, attr->classname);
         }
-        attr->ref_class_entry = entry;
+        attr->class_entry = entry;
         break;
     case KND_ATTR_PROC_REF:
         if (!attr->ref_proc_name_size) {

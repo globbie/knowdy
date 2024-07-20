@@ -215,17 +215,15 @@ static gsl_err_t parse_proc_select(void *obj, const char *rec, size_t *total_siz
 {
     struct kndTask *task = obj;
 
-    if (DEBUG_TASK_LEVEL_2)
+    if (DEBUG_TASK_LEVEL_2) {
         knd_log(".. parsing the system proc select: \"%.*s\"", 64, rec);
-
+    }
     return knd_proc_select(task->repo, rec, total_size, task);
 }
 
 static gsl_err_t parse_update(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *self = obj;
-
-    self->type = KND_LIQUID_STATE;
 
     struct gslTaskSpec specs[] = {
         { .name = "user",
@@ -234,7 +232,6 @@ static gsl_err_t parse_update(void *obj, const char *rec, size_t *total_size)
           .obj = self
         }
     };
-    self->type = KND_LIQUID_STATE;
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 

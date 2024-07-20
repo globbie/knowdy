@@ -157,8 +157,6 @@ struct kndAttr
 
     const char *name;
     size_t name_size;
-    struct kndClassEntry *cls;
-    //struct kndCharSeq *seq;
 
     struct kndClass *parent;
 
@@ -173,15 +171,11 @@ struct kndAttr
     const char *classname;
     size_t classname_size;
     struct kndClassEntry *class_entry;
+    struct kndClass *cls;
 
     const char *format_classname;
     size_t format_classname_size;
     struct kndClassEntry *format_class_entry;
-
-    const char *ref_classname;
-    size_t ref_classname_size;
-    struct kndClassEntry *ref_class_entry;
-    struct kndClass *ref_class;
 
     const char *ref_proc_name;
     size_t ref_proc_name_size;

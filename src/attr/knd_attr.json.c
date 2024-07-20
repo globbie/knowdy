@@ -62,10 +62,10 @@ int knd_attr_export_JSON(struct kndAttr *self, struct kndTask *task, size_t dept
         OUT(",\"is_a_set\":true", strlen(",\"is_a_set\":true"));
     }
 
-    if (self->ref_classname_size) {
-        err = out->write(out, ",\"refclass\":\"", strlen(",\"refclass\":\""));
+    if (self->classname_size) {
+        err = out->write(out, ",\"class\":\"", strlen(",\"class\":\""));
         if (err) return err;
-        err = out->write(out, self->ref_classname, self->ref_classname_size);
+        err = out->write(out, self->classname, self->classname_size);
         if (err) return err;
         err = out->write(out, "\"", 1);
         if (err) return err;

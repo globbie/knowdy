@@ -486,10 +486,10 @@ static int export_base_preds(struct kndClass *self, struct kndTask *task, size_t
             }*/
        
         if (bp->attr_stms) {
-            curr_depth = task->ctx->depth;
+            //curr_depth = task->ctx->depth;
             err = knd_attr_stms_export_GSL(bp->attr_stms, task, false, depth + 1);
             KND_TASK_ERR("failed to export attr vars GSL");
-            task->ctx->depth = curr_depth;   
+            //task->ctx->depth = curr_depth;   
         }
         OUT("}", 1);
         bp_count++;
@@ -625,7 +625,7 @@ int knd_class_export_GSL(struct kndClass *self, struct kndTask *task,
                          bool is_list_item, size_t depth)
 {
     struct kndClass *c;
-    struct kndClassEntry *orig_entry = self->entry->orig;
+    // struct kndClassEntry *orig_entry = self->entry->orig;
     struct kndOutput *out = task->out;
     struct kndState *state = self->states;
     size_t indent_size = task->ctx->format_indent;
@@ -717,11 +717,11 @@ int knd_class_export_GSL(struct kndClass *self, struct kndTask *task,
             num_children = state->val->val_size;
     }
 
-    if (orig_entry) {
+    /*if (orig_entry) {
         err = knd_class_acquire(orig_entry, &c, task);
         KND_TASK_ERR("failed to acquire class %.*s", orig_entry->name_size, orig_entry->name);
         num_children += c->num_children;
-    }
+        }*/
 
     if (num_children) {
         if (indent_size) {

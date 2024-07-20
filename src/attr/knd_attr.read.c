@@ -90,7 +90,7 @@ static gsl_err_t set_attr_ref_id(void *obj, const char *id, size_t id_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t set_ref_class(void *obj, const char *id, size_t id_size)
+static gsl_err_t set_class(void *obj, const char *id, size_t id_size)
 {
     struct LocalContext *ctx = obj;
     struct kndAttr *attr = ctx->attr;
@@ -106,9 +106,9 @@ static gsl_err_t set_ref_class(void *obj, const char *id, size_t id_size)
         return make_gsl_err_external(err);
     }
 
-    attr->ref_classname = entry->name;
-    attr->ref_classname_size = entry->name_size;
-    attr->ref_class_entry = entry;
+    attr->classname = entry->name;
+    attr->classname_size = entry->name_size;
+    attr->class_entry = entry;
     return make_gsl_err(gsl_OK);
 }
 
@@ -244,12 +244,12 @@ gsl_err_t knd_attr_read(struct kndAttr *attr, struct kndTask *task,
         },
         { .name = "c",
           .name_size = strlen("c"),
-          .run = set_ref_class,
+          .run = set_class,
           .obj = &ctx
         },
         { .name = "rc",
           .name_size = strlen("rc"),
-          .run = set_ref_class,
+          .run = set_class,
           .obj = &ctx
         },
         { .name = "t",
@@ -292,7 +292,7 @@ gsl_err_t knd_attr_read(struct kndAttr *attr, struct kndTask *task,
     if (err.code) return err;
 
     if (attr->type == KND_ATTR_INNER) {
-        if (!attr->ref_classname_size) {
+        if (!attr->classname_size) {
             knd_log("-- ref class not specified in %.*s",
                     attr->name_size, attr->name);
             return make_gsl_err_external(knd_FAIL);
