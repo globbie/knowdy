@@ -1,3 +1,23 @@
+/**
+ *   Copyright (c) 2011-present by Dmitri Dmitriev
+ *   All rights reserved.
+ *
+ *   This file is part of the Knowdy Graph DB, 
+ *   and as such it is subject to the license stated
+ *   in the LICENSE file which you have received 
+ *   as part of this distribution.
+ *
+ *   Project homepage:
+ *   <http://www.knowdy.net>
+ *
+ *   Initial author and maintainer:
+ *         Dmitri Dmitriev aka M0nsteR <dmitri@globbie.net>
+ *
+ *   ----------
+ *   knd_attr_stm.h
+ *   Knowdy Concept Attr Statement
+ */
+
 struct kndAttrStmCtx
 {
     struct kndAttrStm *parent_stm;
@@ -7,9 +27,8 @@ struct kndAttrStmCtx
 
 struct kndAttrStmRef
 {
-    struct kndAttr *attr;
+    struct kndAttrStm *stm;
     struct kndState *states;
-    struct kndAttrStmRef *children;
 
     struct kndAttrStmRef *next;
     struct kndAttrStmRef *tail;
@@ -28,11 +47,10 @@ struct kndAttrStm
     size_t val_size;
     char val_id[KND_ID_SIZE];
     size_t val_id_size;
+    void *val_subtype;
 
     struct kndCharSeq *seq;
 
-    long numval;
-    bool is_cached; // for computed fields
     knd_logic_t logic;
 
     struct kndAttr *implied_attr;
@@ -58,6 +76,9 @@ struct kndAttrStm
     struct kndAttrStm *list_tail;
     size_t num_list_elems;
 
+    /* specify a subclass */
+    const char *class_name;
+    size_t class_name_size;
     struct kndClassEntry *class_entry;
 
     const char *class_inst_name;
@@ -84,8 +105,7 @@ int knd_read_attr_stm(struct kndClassBasePred *self, const char *name, size_t na
 int knd_read_attr_stm_list(struct kndClassBasePred *self, const char *name, size_t name_size,
                            const char *rec, size_t *total_size, struct kndTask *task);
 
-int knd_decode_attr_stms(struct kndClass *base, struct kndAttrStm *parent,
-                         struct kndAttrStm *attr_stms, struct kndTask *task);
+int knd_decode_attr_stms(struct kndClass *base, struct kndAttrStm *attr_stms, struct kndTask *task);
 
 // knd_attr.select.c
 int knd_attr_stm_match(struct kndAttrStm *self, struct kndAttrStm *template);

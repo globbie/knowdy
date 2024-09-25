@@ -98,11 +98,11 @@ int knd_class_entry_unmarshall(const char *elem_id, size_t elem_id_size,
     err = knd_shared_set_add(task->idxs->class_idx, entry->id, entry->id_size, (void*)entry);
     KND_TASK_ERR("failed to register class entry \"%.*s\"", entry->id_size, entry->id);
 
-    if (DEBUG_CLASS_DECODE_LEVEL_3)
+    if (DEBUG_CLASS_DECODE_LEVEL_3) {
         knd_log("== class name decoded \"%.*s\" => \"%.*s\" {repo %.*s}",
                 entry->id_size, entry->id, entry->name_size, entry->name,
                 repo->name_size, repo->name);
-
+    }
     *result = entry;
     return knd_OK;
 }
@@ -147,7 +147,7 @@ int knd_class_decode(struct kndClass *c, struct kndTask *task)
                      c->name_size, c->name);
 
         if (bp->attr_stms) {
-            err = knd_decode_attr_stms(base, NULL, bp->attr_stms, task);
+            err = knd_decode_attr_stms(base, bp->attr_stms, task);
             KND_TASK_ERR("failed to decode attr stms of {class %.*s}",
                          base->name_size, base->name);
         }

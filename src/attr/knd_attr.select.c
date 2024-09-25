@@ -79,12 +79,10 @@ static gsl_err_t set_logic_OR_val(void *obj, const char *val, size_t val_size)
     attr_stm->val = val;
     attr_stm->val_size = val_size;
 
-    if (ctx->attr->type == KND_ATTR_NUM) {
+    if (ctx->attr->type == KND_ATTR_UINT) {
         memcpy(buf, val, val_size);
         buf_size = val_size;
         buf[buf_size] = '\0';
-        // TODO
-        err = knd_parse_num(buf, &attr_stm->numval);
     }
     
     attr_stm->next = ctx->attr_stm;
@@ -288,7 +286,7 @@ static gsl_err_t select_by_attr(void *obj, const char *val, size_t val_size)
     struct kndClassEntry *entry;
     struct kndClass *c;
     struct kndAttrStm *attr_stm;
-    struct kndAttrFacet *facet;
+    //struct kndAttrFacet *facet;
     struct kndOutput *log = task->log;
     struct kndAttr *attr = ctx->attr;
     int err;
@@ -332,6 +330,7 @@ static gsl_err_t select_by_attr(void *obj, const char *val, size_t val_size)
         return make_gsl_err_external(err);
     }
     
+#if 0
     if (!attr->facet_idx) {
         knd_log("-- no facet idx found in %.*s", attr->name_size, attr->name);
         // TODO: add plain clause
@@ -349,12 +348,13 @@ static gsl_err_t select_by_attr(void *obj, const char *val, size_t val_size)
         task->ctx->http_code = HTTP_NOT_FOUND;
         return make_gsl_err_external(knd_NO_MATCH);
     }
+#endif
 
     if (task->num_sets + 1 > KND_MAX_CLAUSES)
         return make_gsl_err(gsl_LIMIT);
 
-    task->sets[task->num_sets] = facet->topics;
-    task->num_sets++;
+    //task->sets[task->num_sets] = facet->topics;
+    //task->num_sets++;
 
     return make_gsl_err(gsl_OK);
 }
@@ -635,7 +635,7 @@ int knd_attr_select_clause(struct kndAttr *attr, struct kndClass *c, struct kndR
         parser_err = parse_classref_clause(attr, &ctx, rec, total_size);
         if (parser_err.code) return parser_err.code;
         break;
-    case KND_ATTR_NUM:
+    case KND_ATTR_UINT:
         parser_err = parse_num_clause(attr, &ctx, rec, total_size);
         if (parser_err.code) return parser_err.code;
         break;
@@ -665,16 +665,6 @@ int knd_attr_select_clause(struct kndAttr *attr, struct kndClass *c, struct kndR
             // task->attr_stm = attr_stm;
         }
     }
-    return knd_OK;
-}
-
-extern int knd_attr_stm_match(struct kndAttrStm *self,
-                              struct kndAttrStm *query)
-{
-    // TODO not just numeric types
-
-    if (self->numval != query->numval) return knd_NO_MATCH; 
-
     return knd_OK;
 }
 

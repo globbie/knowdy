@@ -145,10 +145,12 @@ static int save_elem(struct kndSharedSet *self, struct kndSharedSetElemIdx *pare
                 idx = orig_idx;
                 break;
             }
-            err = knd_shared_set_elem_idx_new(&idx, self->mempool);
-            if (err) {
-                knd_log("-- set elem idx mempool limit reached");
-                return err;
+            if (!idx) {
+                err = knd_shared_set_elem_idx_new(&idx, self->mempool);
+                if (err) {
+                    knd_log("-- set elem idx mempool limit reached");
+                    return err;
+                }
             }
         } while (!atomic_compare_exchange_weak(&parent_idx->idxs[idx_pos], &orig_idx, idx));
 

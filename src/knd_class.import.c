@@ -27,6 +27,7 @@
 #include "knd_dict.h"
 #include "knd_text.h"
 #include "knd_rel.h"
+#include "knd_quant.h"
 #include "knd_proc.h"
 #include "knd_proc_arg.h"
 #include "knd_set.h"
@@ -199,6 +200,8 @@ static gsl_err_t parse_attr(void *obj, const char *name, size_t name_size,
     struct kndClass *self = ctx->class;
     struct kndTask *task = ctx->task;
     struct kndAttr *attr;
+    struct kndQuantAttr *quant_attr;
+    struct kndRefAttr *ref_attr;
     struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndText *tr = task->ctx->tr;
     size_t num_attr_types = sizeof(knd_attr_names) / sizeof(knd_attr_names[0]);
@@ -208,9 +211,9 @@ static gsl_err_t parse_attr(void *obj, const char *name, size_t name_size,
 
     task->ctx->tr = NULL;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_3)
+    if (DEBUG_CLASS_IMPORT_LEVEL_3) {
         knd_log(".. parsing {attr %.*s} rec:\"%.*s\"", name_size, name, 32, rec);
-
+    }
     err = knd_attr_new(&attr, mempool);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     attr->parent = self;
@@ -218,8 +221,10 @@ static gsl_err_t parse_attr(void *obj, const char *name, size_t name_size,
     for (size_t i = 0; i < num_attr_types; i++) {
         c = knd_attr_names[i];
         if (name_size != strlen(c)) continue;
-        if (!memcmp(c, name, name_size)) 
+        if (!memcmp(c, name, name_size)) {
             attr->type = (knd_attr_type)i;
+            break;
+        }
     }
 
     switch (attr->type) {
@@ -227,6 +232,27 @@ static gsl_err_t parse_attr(void *obj, const char *name, size_t name_size,
         knd_log("{attr-type %.*s} is not supported for {class %.*s}",
                 name_size, name, self->name_size, self->name);
         return make_gsl_err_external(knd_NO_MATCH);
+    case KND_ATTR_UINT:
+        err = knd_quant_attr_new(&quant_attr, KND_QUANT_UINT, name, name_size, task->mempool);
+        if (err) {
+            return make_gsl_err_external(err);
+        }
+        attr->impl = quant_attr;
+        break;
+    case KND_ATTR_UREAL:
+        err = knd_quant_attr_new(&quant_attr, KND_QUANT_UREAL, name, name_size, task->mempool);
+        if (err) {
+            return make_gsl_err_external(err);
+        }
+        attr->impl = quant_attr;
+        break;
+    case KND_ATTR_REF:
+        err = knd_ref_attr_new(&ref_attr, name, name_size, task->mempool);
+        if (err) {
+            return make_gsl_err_external(err);
+        }
+        attr->impl = ref_attr;
+        break;
     case KND_ATTR_REL:
         parser_err = knd_rel_import(attr, task, rec, total_size);
         if (parser_err.code) {
@@ -234,13 +260,14 @@ static gsl_err_t parse_attr(void *obj, const char *name, size_t name_size,
                 knd_log("-- failed to parse the rel field: %d", parser_err.code);
             return parser_err;
         }
-        break;
+        return make_gsl_err(gsl_OK);
     default:
-        parser_err = knd_attr_import(attr, task, rec, total_size);
-        if (parser_err.code) {
-            return parser_err;
-        }
         break;
+    }
+
+    parser_err = knd_attr_import(attr, task, rec, total_size);
+    if (parser_err.code) {
+        return parser_err;
     }
  
     if (!self->attr_tail) {
@@ -251,9 +278,6 @@ static gsl_err_t parse_attr(void *obj, const char *name, size_t name_size,
         self->attr_tail = attr;
     }
     self->num_attrs++;
-
-    if (DEBUG_CLASS_IMPORT_LEVEL_2)
-        knd_attr_str(attr, 1);
 
     if (attr->is_implied)
         self->implied_attr = attr;

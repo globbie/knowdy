@@ -56,31 +56,22 @@ static gsl_err_t set_attr_stm_name(void *obj, const char *name, size_t name_size
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t set_class_inst_ref(void *obj, const char *name, size_t name_size)
+static gsl_err_t set_subclass_name(void *obj, const char *name, size_t name_size)
 {
     struct kndAttrStm *self = obj;
-
-    if (DEBUG_ATTR_STM_LEVEL_2)
-        knd_log(">> attr var {%.*s} to set {class %.*s {inst  %.*s}}",
-                self->name_size, self->name, self->val_size, self->val,
-                name_size, name);
-
     if (!name_size) return make_gsl_err(gsl_FORMAT);
-    self->class_inst_name = name;
-    self->class_inst_name_size = name_size;
+    self->class_name = name;
+    self->class_name_size = name_size;
     return make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t set_attr_stm_value(void *obj, const char *val, size_t val_size)
 {
-    struct kndAttrStm *self = obj;
-    if (DEBUG_ATTR_STM_LEVEL_3)
-        knd_log(".. set attr var value: \"%.*s\" => \"%.*s\"",
-                self->name_size, self->name, val_size, val);
+    struct kndAttrStm *stm = obj;
 
     if (!val_size) return make_gsl_err(gsl_FORMAT);
-    self->val = val;
-    self->val_size = val_size;
+    stm->val = val;
+    stm->val_size = val_size;
 
     return make_gsl_err(gsl_OK);
 }
@@ -145,9 +136,9 @@ int knd_import_attr_stm(struct kndClassBasePred *self, const char *name, size_t 
     gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_ATTR_STM_LEVEL_2)
-        knd_log(".. import attr var: \"%.*s\" REC: %.*s", name_size, name, 32, rec);
-
+    if (DEBUG_ATTR_STM_LEVEL_2) {
+        knd_log(".. import attr stm \"%.*s\" REC: %.*s", name_size, name, 32, rec);
+    }
     err = knd_attr_stm_new(&attr_stm, mempool);
     if (err) return err;
     attr_stm->base_pred = self;
@@ -163,12 +154,12 @@ int knd_import_attr_stm(struct kndClassBasePred *self, const char *name, size_t 
         { .is_implied = true,
           .run = set_attr_stm_value,
           .obj = attr_stm
-        },
+        }/*,
         { .name = "_inst",
           .name_size = strlen("_inst"),
           .run = set_class_inst_ref,
           .obj = attr_stm
-        },
+          }*/,
         { .type = GSL_SET_STATE,
           .validate = import_nested_attr_stm,
           .obj = &ctx
@@ -231,6 +222,44 @@ static gsl_err_t append_attr_stm_list_item(void *accu, void *obj)
     return make_gsl_err(gsl_OK);
 }
 
+static gsl_err_t parse_subclass_inst(void *obj, const char *rec, size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = set_attr_stm_value,
+          .obj = ctx->attr_stm
+        },
+        { .validate = import_nested_attr_stm,
+          .obj = ctx
+        },
+        { .type = GSL_GET_ARRAY_STATE,
+          .validate = import_nested_attr_stm_list,
+          .obj = ctx
+        }
+    };
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
+static gsl_err_t parse_subclass(void *obj, const char *rec, size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = set_subclass_name,
+          .obj = ctx->attr_stm
+        },
+        { .name = "inst",
+          .name_size = strlen("inst"),
+          .parse = parse_subclass_inst,
+          .obj = ctx
+        }
+    };
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
 static gsl_err_t import_attr_stm_list_item(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
@@ -255,6 +284,11 @@ static gsl_err_t import_attr_stm_list_item(void *obj, const char *rec, size_t *t
         { .is_implied = true,
           .run = set_attr_stm_name,
           .obj = attr_stm
+        },
+        { .name = "_cls",
+          .name_size = strlen("_cls"),
+          .parse = parse_subclass,
+          .obj = ctx
         },
         { .validate = import_nested_attr_stm,
           .obj = ctx
@@ -337,21 +371,21 @@ static gsl_err_t import_nested_attr_stm(void *obj, const char *name, size_t name
 
     ctx->attr_stm = attr_stm;
 
-    if (DEBUG_ATTR_STM_LEVEL_2)
-        knd_log(".. import nested attr var: \"%.*s\" (parent item:%.*s)",
+    if (DEBUG_ATTR_STM_LEVEL_2) {
+        knd_log(".. import nested attr stm \"%.*s\" (parent item:%.*s)",
                 attr_stm->name_size, attr_stm->name, self->name_size, self->name);
-
+    }
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_attr_stm_value,
           .obj = attr_stm
-        },
+        }, /*
         { .name = "_inst",
           .name_size = strlen("_inst"),
           .run = set_class_inst_ref,
           .obj = attr_stm
         },
-        /*{ .name = "_t",
+        { .name = "_t",
           .name_size = strlen("_t"),
           .parse = parse_text,
           .obj = ctx
@@ -383,12 +417,12 @@ static gsl_err_t import_nested_attr_stm(void *obj, const char *name, size_t name
     /* restore parent */
     ctx->attr_stm = self;
 
-    if (DEBUG_ATTR_STM_LEVEL_3)
+    if (DEBUG_ATTR_STM_LEVEL_3) {
         knd_log("++ attr var: \"%.*s\" val:%.*s (parent item: %.*s)",
                 attr_stm->name_size, attr_stm->name,
                 attr_stm->val_size, attr_stm->val,
                 self->name_size, self->name);
-
+    }
     attr_stm->next = self->children;
     self->children = attr_stm;
     self->num_children++;
@@ -396,33 +430,33 @@ static gsl_err_t import_nested_attr_stm(void *obj, const char *name, size_t name
     return make_gsl_err(gsl_OK);
 }
 
-static void append_attr_stm(struct kndClassBasePred *ci, struct kndAttrStm *attr_stm)
+static void append_attr_stm(struct kndClassBasePred *bp, struct kndAttrStm *stm)
 {
-    struct kndAttrStm *curr_var;
+    struct kndAttrStm *curr_stm;
 
-    FOREACH (curr_var, ci->attr_stms) {
-        if (curr_var->name_size != attr_stm->name_size) continue;
-        if (!memcmp(curr_var->name, attr_stm->name, attr_stm->name_size)) {
-            if (!curr_var->list_tail) {
-                curr_var->list_tail = attr_stm;
-                curr_var->list = attr_stm;
+    FOREACH (curr_stm, bp->attr_stms) {
+        if (curr_stm->name_size != stm->name_size) continue;
+        if (!memcmp(curr_stm->name, stm->name, stm->name_size)) {
+            if (!curr_stm->list_tail) {
+                curr_stm->list_tail = stm;
+                curr_stm->list = stm;
             }
             else {
-                curr_var->list_tail->next = attr_stm;
-                curr_var->list_tail = attr_stm;
+                curr_stm->list_tail->next = stm;
+                curr_stm->list_tail = stm;
             }
-            curr_var->num_list_elems++;
+            curr_stm->num_list_elems++;
             return;
         }
     }
 
-    if (!ci->tail) {
-        ci->tail  = attr_stm;
-        ci->attr_stms = attr_stm;
+    if (!bp->attr_stms_tail) {
+        bp->attr_stms_tail  = stm;
+        bp->attr_stms = stm;
     }
     else {
-        ci->tail->next = attr_stm;
-        ci->tail = attr_stm;
+        bp->attr_stms_tail->next = stm;
+        bp->attr_stms_tail = stm;
     }
-    ci->num_attrs++;
+    bp->num_attr_stms++;
 }

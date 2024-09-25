@@ -329,7 +329,7 @@ static gsl_err_t parse_snapshot_task(void *obj, const char *unused_var(rec), siz
     struct kndRepo *repo = task->user_ctx ? task->user_ctx->repo : task->steward->user->repo;
     int err;
 
-    task->type = KND_SNAPSHOT_STATE;
+    task->type = KND_BUILD_SNAPSHOT_STATE;
     err = knd_repo_snapshot_create(repo, task);
     if (err) {
         KND_TASK_LOG("failed to build a snapshot of user repo");

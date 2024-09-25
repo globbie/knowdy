@@ -468,7 +468,7 @@ static int steward_init(struct kndSteward *steward)
     steward->task = task;
 
     err = knd_repo_read(repo, task);
-    //knd_log("ERR: %.*s", task->log->buf_size, task->log->buf);
+    knd_log("ERR: %.*s", task->log->buf_size, task->log->buf);
     KND_STEWARD_ERR("failed to open a repo");
 
     /* depends on {class User} from the system repo */
@@ -552,7 +552,7 @@ int knd_steward_snapshot_create(struct kndSteward *steward)
     err = knd_mempool_create(&steward->mempool_write_temp, &steward->mem_main_config, 1);
     KND_STEWARD_ERR("failed to init a write mempool");
 
-    task->type = KND_SNAPSHOT_STATE;
+    task->type = KND_BUILD_SNAPSHOT_STATE;
     task->mempool = steward->mempool_write_temp;
     repo = steward->repo;
 

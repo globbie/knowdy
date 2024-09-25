@@ -321,8 +321,9 @@ int knd_text_gloss_export_GSL(struct kndText *trs, bool use_locale,
             err = knd_print_offset(out, depth * task->ctx->format_offset);
             RET_ERR();
         }
-        OUT("{", 1);
+        OUT("{ ", strlen("{ "));
         OUT(tr->locale, tr->locale_size);
+        OUT(" ", strlen(" "));
         OUT("{t ", strlen("{t "));
         err = out->write_escaped(out, tr->seq->val,  tr->seq->val_size);
         RET_ERR();

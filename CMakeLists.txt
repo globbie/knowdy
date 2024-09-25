@@ -76,10 +76,9 @@ include_directories("include")
 set(HEADERS include/knd_attr.h include/knd_attr_stm.h include/knd_rel.h
         include/knd_class.h include/knd_class_inst.h include/knd_config.h
         include/knd_dict.h include/knd_shared_dict.h
-        include/knd_err.h
-        include/knd_facet.h include/knd_http_codes.h
+        include/knd_err.h include/knd_http_codes.h
         include/knd_logic.h include/knd_ignore.h
-        include/knd_memblock.h include/knd_mempool.h include/knd_num.h
+        include/knd_memblock.h include/knd_mempool.h include/knd_quant.h
         include/knd_proc.h include/knd_proc_arg.h include/knd_proc_call.h
         include/knd_queue.h include/knd_query.h
         include/knd_repo.h
@@ -105,13 +104,14 @@ set(SOURCES src/attr/knd_attr.c src/attr/knd_attr.import.c src/attr/knd_attr.res
         src/knd_class_inst.resolve.c src/knd_class_inst.index.c
         src/knd_logic.c src/knd_logic.import.c
         src/knd_dict.c src/knd_shared_dict.c src/knd_shared_dict.gsp.c src/knd_ignore.c
-        src/knd_memblock.c src/knd_mempool.c src/knd_num.c src/knd_output.c
+        src/knd_memblock.c src/knd_mempool.c src/knd_output.c
         src/knd_proc.c src/knd_proc.import.c  src/knd_proc.resolve.c src/knd_proc.select.c 
         src/knd_proc.gsl.c src/knd_proc.json.c
         src/knd_proc_inst.c src/knd_proc_inst.import.c
         src/knd_proc_inst.gsl.c src/knd_proc_inst.json.c
         src/knd_proc.svg.c src/knd_proc_arg.c
         src/knd_proc_arg.gsl.c src/knd_proc_arg.json.c src/knd_proc_call.c
+        src/knd_quant.c src/knd_quant.index.c
         src/knd_repo.c src/knd_repo.gsl.c src/knd_repo.gsp.c
         src/knd_repo.commit.c src/knd_repo.read.c src/knd_repo.cache.c
         src/knd_set.c src/knd_shared_set.c src/knd_shared_set.gsp.c
@@ -119,7 +119,7 @@ set(SOURCES src/attr/knd_attr.c src/attr/knd_attr.import.c src/attr/knd_attr.res
         src/knd_steward.c
         src/knd_state.c src/knd_commit.c
         src/knd_task.c src/knd_task.select.c
-        src/knd_text.c src/knd_text.import.c src/knd_text.resolve.c src/knd_text.index.c
+        src/knd_text.c src/knd_text.import.c src/knd_text.resolve.c
         src/knd_text.read.c src/knd_text.decode.c src/knd_text.search.c src/knd_text.select.c
         src/knd_text.gsl.c src/knd_text.gsp.c src/knd_text.json.c
         src/knd_user.c src/knd_utils.c)

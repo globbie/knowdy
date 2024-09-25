@@ -27,7 +27,6 @@ run_check_schema(void *unused_var(obj), const char *val, size_t val_size)
     return make_gsl_err(gsl_OK);
 }
 
-
 static gsl_err_t
 parse_base_repo(void *obj, const char *rec, size_t *total_size)
 {

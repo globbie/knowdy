@@ -42,7 +42,7 @@
 
 static int attr_stm_list_export_GSL(struct kndAttrStm *parent_item, struct kndTask *task, size_t depth);
 
-static int inner_var_export_GSL(struct kndAttrStm *var, struct kndTask *task, size_t depth)
+static int inner_stm_export_GSL(struct kndAttrStm *var, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     struct kndAttr *attr = var->attr;
@@ -57,7 +57,7 @@ static int inner_var_export_GSL(struct kndAttrStm *var, struct kndTask *task, si
     if (var->implied_attr) {
         attr = var->implied_attr;
 
-        if (DEBUG_ATTR_STM_GSL_LEVEL_TMP) {
+        if (DEBUG_ATTR_STM_GSL_LEVEL_3) {
             knd_log(">> implied inner var attr \"%.*s\"", attr->name_size, attr->name);
         }
         switch (attr->type) {
@@ -138,16 +138,16 @@ extern int knd_export_inherited_attr_GSL(void *obj,
         }
 
         switch (attr->type) {
-        case KND_ATTR_NUM:
-            numval = attr_stm->numval;
+        case KND_ATTR_UINT:
+            //numval = attr_stm->numval;
 
-            if (!attr_stm->is_cached) {
+            //if (!attr_stm->is_cached) {
                 //err = knd_compute_class_attr_num_value(self, attr_stm);
                 //if (err) return err;
-                numval = attr_stm->numval;
-                attr_stm->numval = numval;
-                attr_stm->is_cached = true;
-            }
+                //numval = attr_stm->numval;
+                //attr_stm->numval = numval;
+                //attr_stm->is_cached = true;
+            //}
 
             err = out->writec(out, ',');
             if (err) return err;
@@ -183,12 +183,12 @@ extern int knd_export_inherited_attr_GSL(void *obj,
     err = out->write(out, attr_stm->name, attr_stm->name_size);           RET_ERR();
 
     switch (attr->type) {
-    case KND_ATTR_NUM:
+    case KND_ATTR_UINT:
         err = out->writec(out, ' ');                            RET_ERR();
         err = out->write(out, attr_stm->val, attr_stm->val_size);             RET_ERR();
         break;
     case KND_ATTR_INNER:
-        err = inner_var_export_GSL(attr_stm, task, depth + 1);
+        err = inner_stm_export_GSL(attr_stm, task, depth + 1);
         if (err) return err;
         break;
     case KND_ATTR_STR:
@@ -237,7 +237,7 @@ static int attr_stm_list_export_GSL(struct kndAttrStm *var, struct kndTask *task
         case KND_ATTR_INNER:
             item->id_size = sprintf(item->id, "%lu", (unsigned long)count);
             count++;
-            err = inner_var_export_GSL(item, task, depth + 2);
+            err = inner_stm_export_GSL(item, task, depth + 2);
             if (err) return err;
             break;
         case KND_ATTR_REL:
@@ -267,34 +267,34 @@ static int attr_stm_list_export_GSL(struct kndAttrStm *var, struct kndTask *task
     return knd_OK;
 }
 
-int knd_attr_stms_export_GSL(struct kndAttrStm *vars, struct kndTask *task,
+int knd_attr_stms_export_GSL(struct kndAttrStm *stms, struct kndTask *task,
                              bool is_concise, size_t depth)
 {
     struct kndOutput *out = task->out;
-    struct kndAttrStm *var;
+    struct kndAttrStm *stm;
     struct kndAttr *attr;
     size_t curr_depth = task->ctx->depth;
     size_t indent_size = task->ctx->format_indent;
     size_t count = 0;
     int err;
 
-    FOREACH (var, vars) {
-        attr = var->attr;
-        if (var->implied_attr) attr = var->implied_attr;
+    FOREACH (stm, stms) {
+        attr = stm->attr;
+        if (stm->implied_attr) attr = stm->implied_attr;
 
         if (!attr) {
             knd_log("-- no attr found for {attr-stm %.*s}",
-                    var->name_size, var->name);
+                    stm->name_size, stm->name);
             continue;
         }
 
-        if (DEBUG_ATTR_STM_GSL_LEVEL_TMP) {
-            knd_log(">> attr var GSL export: %.*s",
+        if (DEBUG_ATTR_STM_GSL_LEVEL_3) {
+            knd_log(">> attr stm GSL export: %.*s",
                     attr->name_size, attr->name);
         }
         if (is_concise && !attr->concise_level) {
             //knd_log(".. concise level: %d", attr->concise_level);
-            //if (var->attr->type != KND_ATTR_INNER) 
+            //if (stm->attr->type != KND_ATTR_INNER) 
             //    continue;
         }
         task->ctx->depth = curr_depth;
@@ -307,30 +307,30 @@ int knd_attr_stms_export_GSL(struct kndAttrStm *vars, struct kndTask *task,
         count++;
 
         if (attr->is_a_set) {
-            err = attr_stm_list_export_GSL(var, task, depth);
-            KND_TASK_ERR("attr var list GSL export failed");
+            err = attr_stm_list_export_GSL(stm, task, depth);
+            KND_TASK_ERR("attr stm list GSL export failed");
             continue;
         }
-        err = knd_attr_stm_export_GSL(var, task, depth + 1);
-        KND_TASK_ERR("attr var GSL export failed");
+        err = knd_attr_stm_export_GSL(stm, task, depth + 1);
+        KND_TASK_ERR("attr stm GSL export failed");
     }
     return knd_OK;
 }
 
-int knd_attr_stm_export_GSL(struct kndAttrStm *var, struct kndTask *task, size_t depth)
+int knd_attr_stm_export_GSL(struct kndAttrStm *stm, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
-    struct kndAttr *attr = var->attr;
+    struct kndAttr *attr = stm->attr;
     struct kndClass *c;
     size_t indent_size = task->ctx->format_indent;
     int err;
 
-    if (var->implied_attr) {
-        attr = var->implied_attr;
+    if (stm->implied_attr) {
+        attr = stm->implied_attr;
     }
 
     if (!attr) {
-        knd_log("no attr for {attr-stm %.*s}", var->name_size, var->name);
+        knd_log("no attr for {attr-stm %.*s}", stm->name_size, stm->name);
         return knd_FAIL;
     }
 
@@ -347,38 +347,39 @@ int knd_attr_stm_export_GSL(struct kndAttrStm *var, struct kndTask *task, size_t
         KND_TASK_ERR("GSL offset output failed");
     }
 
-    if (var->is_list_item) {
+    if (stm->is_list_item) {
         OUT("{", 1);
     } else {
         if (!attr->is_a_set) {
             OUT("{", 1);
-            OUT(var->name, var->name_size);
+            OUT(stm->name, stm->name_size);
             OUT(" ", 1);
         }
     }
 
-    switch (var->attr->type) {
-    case KND_ATTR_FLOAT:
-    case KND_ATTR_NUM:
-        OUT(var->val, var->val_size);
+    switch (stm->attr->type) {
+    case KND_ATTR_UINT:
+        // fall through
+    case KND_ATTR_UREAL:
+        OUT(stm->val, stm->val_size);
         break;
     case KND_ATTR_REL:
         break;
     case KND_ATTR_REF:
-        assert(var->class_entry != NULL);
-        OUT(var->class_entry->name, var->class_entry->name_size);
+        assert(stm->class_entry != NULL);
+        OUT(stm->class_entry->name, stm->class_entry->name_size);
 
-        err = knd_class_acquire(var->class_entry, &c, task);
+        err = knd_class_acquire(stm->class_entry, &c, task);
         KND_TASK_ERR("failed to acquire class %.*s",
-                     var->class_entry->name_size, var->class_entry->name);
+                     stm->class_entry->name_size, stm->class_entry->name);
         if (c->tr) {
             err = knd_text_gloss_export_GSL(c->tr, true, task, depth + 1);
             KND_TASK_ERR("failed to export gloss GSL");
         }
         break;
     case KND_ATTR_ATTR_REF:
-        if (var->ref_attr) {
-	    err = knd_attr_export_GSL(var->ref_attr, task, depth + 1);
+        if (stm->ref_attr) {
+	    err = knd_attr_export_GSL(stm->ref_attr, task, depth + 1);
             RET_ERR();
         } else {
             err = out->write(out, "_null", strlen("_null"));
@@ -386,30 +387,30 @@ int knd_attr_stm_export_GSL(struct kndAttrStm *var, struct kndTask *task, size_t
         }
         break;
     case KND_ATTR_PROC_REF:
-        /*if (var->proc) {
-            err = proc_var_export_GSL(var, task);
-            KND_TASK_ERR("proc var GSL export failed");
+        /*if (stm->proc) {
+            err = proc_stm_export_GSL(stm, task);
+            KND_TASK_ERR("proc stm GSL export failed");
             } else { */
-        OUT(var->val, var->val_size);
+        OUT(stm->val, stm->val_size);
         break;
     case KND_ATTR_INNER:
-        err = inner_var_export_GSL(var, task, depth);
-        KND_TASK_ERR("GSL inner var output failed");
+        err = inner_stm_export_GSL(stm, task, depth);
+        KND_TASK_ERR("GSL inner stm output failed");
         break;
     case KND_ATTR_TEXT:
-        assert(var->text != NULL);
-        err = knd_text_export(var->text, KND_FORMAT_GSL, task, depth + 1);
+        assert(stm->text != NULL);
+        err = knd_text_export(stm->text, KND_FORMAT_GSL, task, depth + 1);
         KND_TASK_ERR("GSL text export failed");
         break;
     case KND_ATTR_BOOL:
         OUT("t", 1);
         break;
     default:
-        OUT(var->val, var->val_size);
+        OUT(stm->val, stm->val_size);
         break;
     }
 
-    if (var->is_list_item || !attr->is_a_set) {
+    if (stm->is_list_item || !attr->is_a_set) {
         OUT("}", 1);
     } 
     return knd_OK;

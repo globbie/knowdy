@@ -68,8 +68,7 @@ size_t knd_generate_random_id(char *buf, size_t chunk_size, size_t num_chunks, c
     return buf_size;
 }
 
-extern gsl_err_t knd_set_curr_state(void *obj,
-                                    const char *val, size_t val_size)
+extern gsl_err_t knd_set_curr_state(void *obj, const char *val, size_t val_size)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size;
@@ -84,7 +83,7 @@ extern gsl_err_t knd_set_curr_state(void *obj,
     buf_size = val_size;
     buf[buf_size] = '\0';
 
-    err = knd_parse_num(buf, &numval);
+    err = knd_parse_int(buf, &numval);
     if (err) return make_gsl_err_external(err);
 
     // TODO: check integer
@@ -93,15 +92,14 @@ extern gsl_err_t knd_set_curr_state(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-extern int knd_print_offset(struct kndOutput *out,
-                            size_t num_spaces)
+extern int knd_print_offset(struct kndOutput *out, size_t num_spaces)
 {
     char buf[KND_PATH_SIZE];
     memset(buf, ' ', num_spaces); 
     return out->write(out, buf, num_spaces);
 }
 
-/* big-endian order: Y1 (62 alphanum base) => 96 (decimal) */
+/* right-to-left order: eg. Y1 (62 alphanum base) => 96 (decimal) */
 extern void knd_calc_num_id(const char *id, size_t id_size, size_t *numval)
 {
     const char *c = id;
@@ -112,7 +110,7 @@ extern void knd_calc_num_id(const char *id, size_t id_size, size_t *numval)
     for (size_t i = 0; i < id_size; i++) {
         num = obj_id_base[(unsigned char)*c];
         if (num == -1) return;
-        aggr = aggr + (num * base);
+        aggr += (num * base);
         base = base * KND_RADIX_BASE;
         c++;
     }
@@ -155,7 +153,7 @@ extern void knd_num_to_str(size_t numval, char *buf, size_t *buf_size, size_t ba
         result = ldiv(curr_val, base);
 
         //knd_log("Q:%lu R:%lu CURR:%zu buf_size:%zu",
-        //      result.quot, result.rem, curr_base, *buf_size);
+        //      result.quot, result.rem, curr_val, *buf_size);
 
         curr_val = result.quot;
         *buf++ = obj_id_seq[result.rem];
@@ -334,7 +332,7 @@ knd_mkpath(const char *path, size_t path_size, mode_t mode, bool has_filename)
     return knd_OK;
 }
 
-extern int knd_write_file(const char *filename, void *buf, size_t buf_size)
+extern int knd_write_file(const char *filename, const void *buf, size_t buf_size)
 {
     int fd;
 
@@ -348,8 +346,7 @@ extern int knd_write_file(const char *filename, void *buf, size_t buf_size)
     return written == -1 || (size_t)written != buf_size ? knd_IO_FAIL : knd_OK;
 }
 
-extern int 
-knd_append_file(const char *filename, const void *buf, size_t buf_size)
+extern int knd_append_file(const char *filename, const void *buf, size_t buf_size)
 {
     int fd;
 
@@ -501,7 +498,7 @@ int knd_read_UTF8_char(const char *rec, size_t rec_size, size_t *val, size_t *le
     return knd_FAIL;
 }
 
-extern int knd_parse_num(const char *val, long *result)
+extern int knd_parse_int(const char *val, long *result)
 /*int *warning)*/
 {
     long numval;
@@ -524,7 +521,7 @@ extern int knd_parse_num(const char *val, long *result)
     }
 
     if (invalid_num_char == val) {
-        fprintf(stderr, "  -- No digits were found in \"%s\"\n", val);
+        fprintf(stderr, "-- no digits were found in \"%s\"\n", val);
         err = knd_FAIL;
         goto final;
     }
@@ -533,6 +530,39 @@ extern int knd_parse_num(const char *val, long *result)
 
 final:
 
+    return err;
+}
+
+extern int knd_parse_real(const char *input, long double *result)
+/*int *warning)*/
+{
+    long double val;
+    char *invalid_num_char = NULL;
+    int err = knd_OK;
+
+    errno = 0;
+
+    val = strtold(input, &invalid_num_char);
+
+    /* check for various numeric decoding errors */
+    if ((errno == ERANGE && (val == LONG_MAX || val == LONG_MIN)) ||
+            (errno != 0 && val == 0))
+    {
+        knd_log("input str: \"%s\"", input);
+        perror("strtold");
+        err = knd_FAIL;
+        goto final;
+    }
+
+    if (invalid_num_char == input) {
+        fprintf(stderr, "-- no digits were found in \"%s\"\n", input);
+        err = knd_FAIL;
+        goto final;
+    }
+
+    *result = val;
+
+final:
     return err;
 }
 

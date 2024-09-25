@@ -50,11 +50,11 @@ typedef int (*task_cb_func)(void *obj, const char *msg, size_t msg_size, void *c
 typedef enum knd_task_spec_type {
     KND_GET_STATE,
     KND_SELECT_STATE,
-    KND_READ_STATE,
+    KND_READ_SNAPSHOT_STATE,
+    KND_BUILD_SNAPSHOT_STATE,
     KND_COMMIT_STATE,
     KND_INNER_STATE,
     KND_INNER_COMMIT_STATE,
-    KND_SNAPSHOT_STATE,
     KND_DELTA_STATE,
     KND_BULK_LOAD_STATE,
     KND_CACHE_UPDATE_STATE,

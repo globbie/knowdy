@@ -11,6 +11,7 @@
 #define DEBUG_CLASS_INST_GSL_LEVEL_TMP 0
 #define DEBUG_CLASS_INST_GSL_LEVEL_1 0
 
+#if 0
 static int export_class_inst(void *obj, const char *unused_var(elem_id),
                              size_t unused_var(elem_id_size),
                              size_t unused_var(count), void *elem)
@@ -151,6 +152,7 @@ static int export_inverse_rels(struct kndClassInst *self, struct kndTask *task, 
     OUT("]", 1);
     return knd_OK;
 }
+#endif
 
 int knd_class_inst_export_GSL(struct kndClassInst *self, bool is_list_item,
                               knd_state_phase phase, struct kndTask *task, size_t depth)
@@ -225,10 +227,10 @@ int knd_class_inst_export_GSL(struct kndClassInst *self, bool is_list_item,
     switch (phase) {
     case KND_SELECTED:
         /* display inverse relations */
-        if (self->attr_hubs) {
+        /*if (self->attr_hubs) {
             err = export_inverse_rels(self, task, depth + 1);
             KND_TASK_ERR("failed to export GSL inverse rels");
-        }
+            }*/
         break;
     default:
         break;

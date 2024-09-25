@@ -10,7 +10,7 @@
 #include "knd_repo.h"
 
 #include "knd_text.h"
-#include "knd_num.h"
+#include "knd_quant.h"
 #include "knd_shared_dict.h"
 
 #include "knd_user.h"

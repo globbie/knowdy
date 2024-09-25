@@ -637,7 +637,7 @@ static gsl_err_t set_par_numid(void *obj, const char *val, size_t val_size)
     memcpy(buf, val, val_size);
     buf[val_size] = '\0';
             
-    err = knd_parse_num(buf, &numval);
+    err = knd_parse_int(buf, &numval);
     if (err) return make_gsl_err_external(err);
     self->numid = (size_t)numval;
     return make_gsl_err(gsl_OK);

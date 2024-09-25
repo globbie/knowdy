@@ -50,7 +50,6 @@ struct LocalContext {
     struct kndTask *task;
     struct kndRepo *repo;
     struct kndAttrStm *attr_stm;
-    struct kndAttrHub *attr_hub;
     struct kndClassEntry *entry;
     struct kndClass *class;
     struct kndClass *baseclass;
@@ -371,6 +370,8 @@ static gsl_err_t parse_children_array(void *obj, const char *rec, size_t *total_
     return gsl_parse_array(&bp_spec, rec, total_size);
 }
 
+#if 0
+
 static gsl_err_t set_topic_inst_ref(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
@@ -556,6 +557,7 @@ static gsl_err_t set_rel_attr(void *obj, const char *id, size_t id_size)
     return make_gsl_err(gsl_OK);
 }
 
+
 static gsl_err_t parse_rel_item(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
@@ -607,6 +609,7 @@ static gsl_err_t parse_inverse_rel_array(void *obj, const char *rec, size_t *tot
     };
     return gsl_parse_array(&bp_spec, rec, total_size);
 }
+#endif
 
 static gsl_err_t read_attr(void *obj, const char *name, size_t name_size,
                            const char *rec, size_t *total_size)
@@ -715,7 +718,8 @@ static gsl_err_t read_glosses(void *obj, const char *rec, size_t *total_size)
     return make_gsl_err(gsl_OK);
 }
 
-int knd_class_read(struct kndClass *self, const char *rec, size_t *total_size, struct kndTask *task)
+int knd_class_read(struct kndClass *self, const char *rec, size_t *total_size,
+                   struct kndTask *task)
 {
     if (DEBUG_CLASS_READ_LEVEL_2) {
         knd_log(".. reading {class %.*s} GSP: \"%.*s\"",
@@ -762,13 +766,13 @@ int knd_class_read(struct kndClass *self, const char *rec, size_t *total_size, s
           .name_size = strlen("c"),
           .parse = parse_children_array,
           .obj = &ctx
-        },
+        }/*,
         { .type = GSL_GET_ARRAY_STATE,
           .name = "rel",
           .name_size = strlen("rel"),
           .parse = parse_inverse_rel_array,
           .obj = &ctx
-        },
+          }*/,
         { .validate = read_attr,
           .obj = &ctx
         },
@@ -805,12 +809,11 @@ int knd_class_unmarshall(const char *unused_var(elem_id), size_t unused_var(elem
     int err;
 
     if (DEBUG_CLASS_READ_LEVEL_2) {
-        knd_log(".. unmarshall {class %.*s}",
-                entry->name_size, entry->name);
+        knd_log(".. unmarshall {class %.*s} {task {type %d}}",
+                entry->name_size, entry->name, task->type);
     }
 
     if (entry->cached_version) {
-        //knd_log(">> {class %.*s} already cached", entry->name_size, entry->name);
         *result = entry->cached_version;
         return knd_OK;
     }
@@ -825,11 +828,15 @@ int knd_class_unmarshall(const char *unused_var(elem_id), size_t unused_var(elem
     KND_TASK_ERR("failed to read GSP of %.*s", c->name_size, c->name);
 
     switch (task->type) {
-    case KND_SNAPSHOT_STATE:
+    case KND_READ_SNAPSHOT_STATE:
+        // fall through
+    case KND_BUILD_SNAPSHOT_STATE:
         entry->cached_version = c;
         break;
     default:
         // TODO update task local cache?
+
+
         break;
     }
 

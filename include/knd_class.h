@@ -119,8 +119,8 @@ struct kndClassBasePred
     struct kndClassEntry *entry;
 
     struct kndAttrStm *attr_stms;
-    struct kndAttrStm *tail;
-    size_t num_attrs;
+    struct kndAttrStm *attr_stms_tail;
+    size_t num_attr_stms;
 
     struct kndState *states;
     size_t init_state;

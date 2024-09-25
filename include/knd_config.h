@@ -212,6 +212,10 @@ static const char *const knd_format_names[] = {
 #define KND_SNAPSHOT_LEAF_MIN_THRESHOLD 1024
 #define KND_SNAPSHOT_MEM_THRESHOLD_RATIO 0.65
 
+#define KND_MAX_FACETS 64
+#define KND_FACET_MAX_THRESHOLD 4
+#define KND_FACET_MIN_THRESHOLD 32
+
 #define KND_RESULT_BATCH_SIZE 10
 #define KND_RESULT_MAX_BATCH_SIZE 500
 
@@ -302,6 +306,12 @@ static const char *const knd_format_names[] = {
 /* alphanumeric symbols:
    0-9, A-Z, a-z */
 #define KND_RADIX_BASE 62
+
+#define KND_UINT_MAX_SEQ_SIZE 64
+#define KND_UINT_DEC_SEQ_SIZE 128
+
+#define KND_UREAL_MAX_SEQ_SIZE 128
+#define KND_UREAL_DEC_SEQ_SIZE 256
 
 #define UCHAR_NUMVAL_RANGE (unsigned char)-1 + 1
 

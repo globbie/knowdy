@@ -66,8 +66,6 @@ int knd_charseq_decode(const char *id, size_t id_size,
 int knd_charseq_fetch(struct kndRepo *repo, const char *val, size_t val_size,
                       struct kndCharSeq **result, struct kndTask *task)
 {
-    char idbuf[KND_ID_SIZE];
-    size_t idbuf_size;
     struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndCharSeq *seq;
     int err;

@@ -15,6 +15,7 @@
 
 #include "knd_task.h"
 #include "knd_class.h"
+#include "knd_quant.h"
 #include "knd_proc.h"
 #include "knd_text.h"
 #include "knd_output.h"
@@ -227,14 +228,51 @@ gsl_err_t knd_attr_unique(void *obj, const char *unused_var(name), size_t unused
     return make_gsl_err(gsl_OK);
 }
 
+static gsl_err_t parse_subtypes(void *obj, const char *name, size_t name_size,
+                                const char *rec, size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+    struct kndAttr *attr = ctx->attr;
+    struct kndTask *task = ctx->task;
+    int err;
+
+    if (DEBUG_ATTR_LEVEL_TMP) {
+        knd_log(".. {attr-type %.*s {spec %.*s}}",
+                strlen(knd_attr_names[attr->type]), knd_attr_names[attr->type],
+                name_size, name);
+    }
+
+    switch (attr->type) {
+    case KND_ATTR_UINT:
+        // fall through
+    case KND_ATTR_UREAL:
+        err = knd_quant_attr_setting_import(attr->impl, name, name_size, rec, total_size, ctx->task);
+        if (err) return *total_size = 0, make_gsl_err_external(err);    
+        return make_gsl_err(gsl_OK);
+    case KND_ATTR_REF:
+        err = knd_quant_attr_setting_import(attr->impl, name, name_size, rec, total_size, ctx->task);
+        if (err) return *total_size = 0, make_gsl_err_external(err);    
+        return make_gsl_err(gsl_OK);
+    default:
+        break;
+    }
+
+    KND_TASK_LOG("unknown {tag %.*s} tag in {attr %.*s}",
+                 name_size, name, attr->name_size, attr->name);
+    return make_gsl_err(gsl_FORMAT);
+ }
+
 gsl_err_t knd_attr_import(struct kndAttr *self, struct kndTask *task,
                           const char *rec, size_t *total_size)
 {
+    gsl_err_t err;
+
     if (DEBUG_ATTR_LEVEL_1) {
         knd_log(".. {class %.*s} to import {attr-type %.*s}",
                 self->parent->name_size, self->parent->name,
                 strlen(knd_attr_names[self->type]), knd_attr_names[self->type]);
     }
+
     struct LocalContext ctx = {
         .attr = self,
         .task = task
@@ -295,9 +333,11 @@ gsl_err_t knd_attr_import(struct kndAttr *self, struct kndTask *task,
           .name_size = strlen("concise"),
           .parse = gsl_parse_size_t,
           .obj = &self->concise_level
+        },
+        { .validate = parse_subtypes,
+          .obj = &ctx
         }
     };
-    gsl_err_t err;
 
     if (DEBUG_ATTR_LEVEL_2)
         knd_log(".. attr parsing: \"%.*s\"..", 32, rec);

@@ -205,6 +205,7 @@ static int export_children(struct kndClass *self, struct kndTask *task)
     return knd_OK;
 }
 
+#if 0
 static int export_class_ref(void *obj, const char *unused_var(elem_id), size_t unused_var(elem_id_size),
                             size_t unused_var(count), void *elem)
 {
@@ -226,65 +227,6 @@ static int export_class_ref(void *obj, const char *unused_var(elem_id), size_t u
         OUT("]", 1);
     }
     OUT("}", 1);
-    return knd_OK;
-}
-
-static int export_inverse_rels(struct kndClass *self, struct kndTask *task)
-{
-    struct kndAttrHub *attr_hub;
-    struct kndAttr *attr;
-    struct kndOutput *out = task->out;
-    int err;
-    OUT("[rel", strlen("[rel"));
-    FOREACH (attr_hub, self->attr_hubs) {
-        attr = attr_hub->attr;
-        if (!attr) {
-            err = knd_attr_hub_resolve(attr_hub, task);
-            KND_TASK_ERR("failed to resolve attr hub");
-        }
-        OUT("{", 1);
-        OUT(attr->parent->entry->id, attr->parent->entry->id_size);
-        OUT("{a ", strlen("{a "));
-        OUT(attr->id, attr->id_size);
-        OUT("}", 1);
-        if (attr_hub->topics) {
-            OUT("[tp", strlen("[tp"));
-            err = knd_set_map(attr_hub->topics, export_class_ref, (void*)task);
-            if (err && err != knd_RANGE) return err;
-            OUT("]", 1);
-        }
-        OUT("}", 1);
-    }
-    OUT("]", 1);
-    return knd_OK;
-}
-
-#if 0
-static int export_descendants_GSP(struct kndClass *self, struct kndTask *task)
-{
-    char buf[KND_NAME_SIZE];
-    size_t buf_size;
-    struct kndOutput *out = task->out;
-    struct kndSet *set;
-    int err;
-
-    set = self->entry->descendants;
-
-    err = out->write(out, "{_desc", strlen("{_desc"));                            RET_ERR();
-    buf_size = sprintf(buf, "{tot %zu}", set->num_elems);
-    err = out->write(out, buf, buf_size);                                         RET_ERR();
-
-    err = out->write(out, "[c", strlen("[c"));                                    RET_ERR();
-    err = set->map(set, export_conc_id_GSP, (void*)out);
-    if (err) return err;
-    err = out->writec(out, ']');                                                  RET_ERR();
-
-    /*    if (set->facets) {
-        err = export_facets_GSP(set, task);                                       RET_ERR();
-        } */
-
-    err = out->writec(out, '}');                                                  RET_ERR();
-
     return knd_OK;
 }
 #endif
@@ -432,10 +374,10 @@ int knd_class_export_GSP(struct kndClass *self, struct kndTask *task)
         KND_TASK_ERR("failed to export children GSP");
     }
 
-    if (self->attr_hubs) {
+    /*if (self->attr_hubs) {
         err = export_inverse_rels(self, task);
         KND_TASK_ERR("failed to export inverse rels GSP");
-    }
+        }*/
     // insts
     if (self->inst_idx) {
         err = out->writef(out, "{insts %zu}", self->inst_idx->num_elems);

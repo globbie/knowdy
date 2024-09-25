@@ -62,6 +62,9 @@ struct kndStorageLeaf
     size_t range_to_id_size;
     size_t range_to;
 
+    char name[KND_SHORT_NAME_SIZE + 1];
+    size_t name_size;
+
     char filepath[KND_PATH_SIZE + 1];
     size_t filepath_size;
     size_t file_size;
@@ -125,6 +128,7 @@ struct kndSharedSet
     size_t path_size;
 
     struct kndStorageLeaf *leaves;
+    struct kndStorageLeaf *tail;
     size_t num_leaves;
 
     bool allow_overwrite;
@@ -143,6 +147,10 @@ int knd_shared_set_marshall(struct kndSharedSet *idx, const char *path, size_t p
                             const char *pref, size_t pref_size,
                             elem_marshall_cb cb, struct kndSharedSet *result_idx,
                             struct kndTask *task);
+
+int knd_idx_build_path(struct kndSharedSet *idx,
+                       const char *snapshot_path, size_t snapshot_path_size,
+                       const char *pref, size_t pref_size, struct kndTask *task);
 
 int knd_shared_set_find_leaf(struct kndSharedSet *class_idx, const char *id, size_t id_size,
                              struct kndStorageLeaf **result, struct kndTask *task);

@@ -42,10 +42,10 @@
 
 static int attr_stm_list_export_JSON(struct kndAttrStm *parent_var, struct kndTask *task, size_t depth);
 
-static int inner_var_export_JSON(struct kndAttrStm *var, struct kndTask *task, size_t depth)
+static int inner_stm_export_JSON(struct kndAttrStm *stm, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
-    struct kndAttr *attr = var->attr;
+    struct kndAttr *attr = stm->attr;
     struct kndClass *c;
     struct kndAttrStm *item;
     size_t count = 0;
@@ -53,10 +53,10 @@ static int inner_var_export_JSON(struct kndAttrStm *var, struct kndTask *task, s
     int err;
 
     if (DEBUG_ATTR_STM_JSON_LEVEL_2)
-        knd_log(".. JSON export inner var \"%.*s\"", var->name_size, var->name);
+        knd_log(".. JSON export inner stm \"%.*s\"", stm->name_size, stm->name);
 
-    if (var->implied_attr) {
-        attr = var->implied_attr;
+    if (stm->implied_attr) {
+        attr = stm->implied_attr;
         count++;
         OUT("\"", 1);
         OUT(attr->name, attr->name_size);
@@ -69,13 +69,13 @@ static int inner_var_export_JSON(struct kndAttrStm *var, struct kndTask *task, s
         case KND_ATTR_REL:
             // fall through
         case KND_ATTR_REF:
-            assert(var->class_entry != NULL);
+            assert(stm->class_entry != NULL);
             OUT("\"", 1);
-            OUT(var->class_entry->name, var->class_entry->name_size);
+            OUT(stm->class_entry->name, stm->class_entry->name_size);
             OUT("\"", 1);
-            err = knd_class_acquire(var->class_entry, &c, task);
+            err = knd_class_acquire(stm->class_entry, &c, task);
             KND_TASK_ERR("failed to acquire class %.*s",
-                         var->class_entry->name_size, var->class_entry->name);
+                         stm->class_entry->name_size, stm->class_entry->name);
             if (c->tr) {
                 err = knd_text_gloss_export_JSON(c->tr, task, depth);
                 KND_TASK_ERR("failed to export gloss GSL");
@@ -83,7 +83,7 @@ static int inner_var_export_JSON(struct kndAttrStm *var, struct kndTask *task, s
             break;
         case KND_ATTR_STR:
             OUT("\"", 1);
-            OUT(var->name, var->name_size);
+            OUT(stm->name, stm->name_size);
             OUT("\"", 1);
             break;
         default:
@@ -91,9 +91,9 @@ static int inner_var_export_JSON(struct kndAttrStm *var, struct kndTask *task, s
         }
     }
 
-    FOREACH (item, var->children) {
+    FOREACH (item, stm->children) {
         if (DEBUG_ATTR_STM_JSON_LEVEL_2)
-            knd_log("* inner var child %.*s => %.*s",
+            knd_log("* inner stm child %.*s => %.*s",
                     item->name_size, item->name, item->val_size, item->val);
         if (count) {
             OUT(",", 1);
@@ -106,36 +106,36 @@ static int inner_var_export_JSON(struct kndAttrStm *var, struct kndTask *task, s
 
         if (item->attr->is_a_set) {
             err = attr_stm_list_export_JSON(item, task, depth);
-            KND_TASK_ERR("failed to export inner var list JSON");
+            KND_TASK_ERR("failed to export inner stm list JSON");
             continue;
         }
 
         err = knd_attr_stm_export_JSON(item, task, depth + 1);
-        KND_TASK_ERR("failed to export JSON inner attr var");
+        KND_TASK_ERR("failed to export JSON inner attr stm");
         count++;
     }    
     return knd_OK;
 }
 
-static int ref_var_export_JSON(struct kndAttrStm *var, struct kndTask *task, size_t depth)
+static int ref_stm_export_JSON(struct kndAttrStm *stm, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     size_t indent_size = task->ctx->format_indent;
     struct kndClass *c;
     int err;
 
-    assert(var->class_entry != NULL);
+    assert(stm->class_entry != NULL);
 
     OUT("\"class\":", strlen("\"class\":"));
     if (indent_size) {
         OUT(" ", 1);
     }
     OUT("\"", 1);
-    OUT(var->class_entry->name, var->class_entry->name_size);
+    OUT(stm->class_entry->name, stm->class_entry->name_size);
     OUT("\"", 1);
 
-    err = knd_class_acquire(var->class_entry, &c, task);
-    KND_TASK_ERR("failed to acquire class %.*s", var->class_entry->name_size, var->class_entry->name);
+    err = knd_class_acquire(stm->class_entry, &c, task);
+    KND_TASK_ERR("failed to acquire class %.*s", stm->class_entry->name_size, stm->class_entry->name);
     if (c->tr) {
         err = knd_text_gloss_export_JSON(c->tr, task, depth);
         KND_TASK_ERR("failed to export gloss GSL");
@@ -144,25 +144,25 @@ static int ref_var_export_JSON(struct kndAttrStm *var, struct kndTask *task, siz
 }
 
 #if 0
-static int proc_var_export_JSON(struct kndAttrStm *var, struct kndTask *task)
+static int proc_stm_export_JSON(struct kndAttrStm *stm, struct kndTask *task)
 {
-    assert(var->proc_entry != NULL);
-    // int err = knd_proc_export_JSON(var->proc, task, false, 0);                   RET_ERR();
+    assert(stm->proc_entry != NULL);
+    // int err = knd_proc_export_JSON(stm->proc, task, false, 0);                   RET_ERR();
     return knd_OK;
 }
 #endif
 
-static int attr_stm_list_export_JSON(struct kndAttrStm *parent_var, struct kndTask *task, size_t depth)
+static int attr_stm_list_export_JSON(struct kndAttrStm *parent_stm, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
-    struct kndAttrStm *var;
+    struct kndAttrStm *stm;
     bool in_list = false;
     size_t count = 0;
     size_t indent_size = task->ctx->format_indent;
     int err;
 
     if (DEBUG_ATTR_STM_JSON_LEVEL_2)
-        knd_log(".. export JSON list: %.*s\n\n", parent_var->name_size, parent_var->name);
+        knd_log(".. export JSON list: %.*s\n\n", parent_stm->name_size, parent_stm->name);
 
     if (indent_size) {
         OUT("\n", 1);
@@ -170,14 +170,14 @@ static int attr_stm_list_export_JSON(struct kndAttrStm *parent_var, struct kndTa
         RET_ERR();
     }
     OUT("\"", 1);
-    OUT(parent_var->name, parent_var->name_size);
+    OUT(parent_stm->name, parent_stm->name_size);
     OUT("\":", strlen("\":"));
     if (indent_size) {
         OUT(" ", 1);
     }
     OUT("[", 1);
 
-    FOREACH (var, parent_var->list) {
+    FOREACH (stm, parent_stm->list) {
         if (in_list) {
             err = out->writec(out, ',');
             if (err) return err;
@@ -193,22 +193,22 @@ static int attr_stm_list_export_JSON(struct kndAttrStm *parent_var, struct kndTa
             err = knd_print_offset(out, (depth + 2) * indent_size);
             RET_ERR();
         }
-        switch (parent_var->attr->type) {
+        switch (parent_stm->attr->type) {
         case KND_ATTR_INNER:
-            var->id_size = sprintf(var->id, "%lu", (unsigned long)count);
+            stm->id_size = sprintf(stm->id, "%lu", (unsigned long)count);
             count++;
-            err = inner_var_export_JSON(var, task, depth + 2);
+            err = inner_stm_export_JSON(stm, task, depth + 2);
             if (err) return err;
             break;
         case KND_ATTR_REL:
             // fall through
         case KND_ATTR_REF:
-            err = ref_var_export_JSON(var, task, depth + 1);
+            err = ref_stm_export_JSON(stm, task, depth + 1);
             if (err) return err;
             break;
         case KND_ATTR_PROC_REF:
-            if (var->proc_entry) {
-                //err = proc_var_export_JSON(var, task);
+            if (stm->proc_entry) {
+                //err = proc_stm_export_JSON(stm, task);
                 //if (err) return err;
             }
             break;
@@ -218,13 +218,13 @@ static int attr_stm_list_export_JSON(struct kndAttrStm *parent_var, struct kndTa
                 OUT(" ", 1);
             }
             OUT("\"", 1);
-            OUT(var->name, var->name_size);
+            OUT(stm->name, stm->name_size);
             OUT("\"", 1);
             break;
         default:
             OUT("\"", 1);
-            if (var->val_size) {
-                OUT(var->val, var->val_size);
+            if (stm->val_size) {
+                OUT(stm->val, stm->val_size);
             }
             OUT("\"", 1);
             break;
@@ -247,24 +247,24 @@ static int attr_stm_list_export_JSON(struct kndAttrStm *parent_var, struct kndTa
     return knd_OK;
 }
 
-int knd_attr_stms_export_JSON(struct kndAttrStm *vars, struct kndTask *task,
+int knd_attr_stms_export_JSON(struct kndAttrStm *stms, struct kndTask *task,
                               bool is_concise, size_t depth)
 {
     struct kndOutput *out = task->out;
-    struct kndAttrStm *var;
+    struct kndAttrStm *stm;
     struct kndAttr *attr;
     struct kndClass *c;
     size_t indent_size = task->ctx->format_indent;
     int err;
 
-    FOREACH (var, vars) {
-        assert(var->attr != NULL);
-        attr = var->attr;
+    FOREACH (stm, stms) {
+        assert(stm->attr != NULL);
+        attr = stm->attr;
         if (is_concise && !attr->concise_level) continue;
 
         OUT(",", 1);
         if (attr->is_a_set) {
-            err = attr_stm_list_export_JSON(var, task, depth);
+            err = attr_stm_list_export_JSON(stm, task, depth);
             if (err) return err;
             continue;
         }
@@ -274,20 +274,21 @@ int knd_attr_stms_export_JSON(struct kndAttrStm *vars, struct kndTask *task,
             RET_ERR();
         }
         OUT("\"", 1);
-        OUT(var->name, var->name_size);
+        OUT(stm->name, stm->name_size);
         OUT("\":", strlen("\":"));
         if (indent_size) {
             OUT(" ", 1);
         }
-        switch (var->attr->type) {
-        case KND_ATTR_NUM:
-        case KND_ATTR_FLOAT:
-            OUT(var->val, var->val_size);
+        switch (stm->attr->type) {
+        case KND_ATTR_UINT:
+            // fall through
+        case KND_ATTR_UREAL:
+            OUT(stm->val, stm->val_size);
             break;
         case KND_ATTR_REL:
             // fall through
         case KND_ATTR_REF:
-            assert(var->class_entry != NULL);
+            assert(stm->class_entry != NULL);
             if (indent_size) {
                 OUT("\n", 1);
                 err = knd_print_offset(out, (depth + 1) * indent_size);
@@ -304,11 +305,11 @@ int knd_attr_stms_export_JSON(struct kndAttrStm *vars, struct kndTask *task,
                 OUT(" ", 1);
             }
             OUT("\"", 1);
-            OUT(var->class_entry->name, var->class_entry->name_size);
+            OUT(stm->class_entry->name, stm->class_entry->name_size);
             OUT("\"", 1);
-            err = knd_class_acquire(var->class_entry, &c, task);
+            err = knd_class_acquire(stm->class_entry, &c, task);
             KND_TASK_ERR("failed to acquire class %.*s",
-                         var->class_entry->name_size, var->class_entry->name);
+                         stm->class_entry->name_size, stm->class_entry->name);
             if (c->tr) {
                 err = knd_text_gloss_export_JSON(c->tr, task, depth + 2);
                 KND_TASK_ERR("failed to export gloss JSON");
@@ -321,17 +322,17 @@ int knd_attr_stms_export_JSON(struct kndAttrStm *vars, struct kndTask *task,
             OUT("}", 1);
             break;
         case KND_ATTR_TEXT:
-            err = knd_text_export(var->text, KND_FORMAT_JSON, task, depth);
+            err = knd_text_export(stm->text, KND_FORMAT_JSON, task, depth);
             KND_TASK_ERR("failed to export text JSON");
             break;
         case KND_ATTR_PROC_REF:
-            if (var->proc_entry) {
-                //err = proc_var_export_JSON(var, task);
+            if (stm->proc_entry) {
+                //err = proc_stm_export_JSON(stm, task);
                 //if (err) return err;
             } else {
                 err = out->write(out, "\"", strlen("\""));
                 if (err) return err;
-                err = out->write(out, var->val, var->val_size);
+                err = out->write(out, stm->val, stm->val_size);
                 if (err) return err;
                 err = out->write(out, "\"", strlen("\""));
                 if (err) return err;
@@ -344,11 +345,11 @@ int knd_attr_stms_export_JSON(struct kndAttrStm *vars, struct kndTask *task,
                 err = knd_print_offset(out, (depth + 2) * indent_size);
                 RET_ERR();
             }
-            /*if (!var->class) {
-                err = inner_var_export_JSON(var, task, depth + 2);
+            /*if (!stm->class) {
+                err = inner_stm_export_JSON(stm, task, depth + 2);
                 if (err) return err;
             } else {
-                c = var->class;
+                c = stm->class;
                 curr_depth = task->depth;
                 task->depth++;
                 err = knd_class_export_JSON(c, task, false, depth + 2);
@@ -364,7 +365,7 @@ int knd_attr_stms_export_JSON(struct kndAttrStm *vars, struct kndTask *task,
             break;
         default:
             OUT("\"", 1);
-            OUT(var->val, var->val_size);
+            OUT(stm->val, stm->val_size);
             OUT("\"", 1);
         }
     }
@@ -372,7 +373,7 @@ int knd_attr_stms_export_JSON(struct kndAttrStm *vars, struct kndTask *task,
     return knd_OK;
 }
 
-int knd_attr_stm_export_JSON(struct kndAttrStm *var, struct kndTask *task, size_t depth)
+int knd_attr_stm_export_JSON(struct kndAttrStm *stm, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     size_t indent_size = task->ctx->format_indent;
@@ -382,38 +383,39 @@ int knd_attr_stm_export_JSON(struct kndAttrStm *var, struct kndTask *task, size_
     // if (task->ctx->depth > task->ctx->max_depth) return knd_OK;
 
     OUT("\"", 1);
-    OUT(var->name, var->name_size);
+    OUT(stm->name, stm->name_size);
     OUT("\":", strlen("\":"));
     if (indent_size) {
         OUT(" ", 1);
     }
     
-    switch (var->attr->type) {
-    case KND_ATTR_NUM:
-    case KND_ATTR_FLOAT:
-        OUT(var->val, var->val_size);
+    switch (stm->attr->type) {
+    case KND_ATTR_UINT:
+        // fall through
+    case KND_ATTR_UREAL:
+        OUT(stm->val, stm->val_size);
         break;
     case KND_ATTR_REF:
-        // knd_log("REF:%.*s", var->name_size, var->name);
-        assert(var->class_entry != NULL);
+        assert(stm->class_entry != NULL);
         OUT("\"", 1);
-        OUT(var->class_entry->name, var->class_entry->name_size);
+        OUT(stm->class_entry->name, stm->class_entry->name_size);
         OUT("\"", 1);
 
-        err = knd_class_acquire(var->class_entry, &c, task);
-        KND_TASK_ERR("failed to acquire class %.*s", var->class_entry->name_size, var->class_entry->name);
+        err = knd_class_acquire(stm->class_entry, &c, task);
+        KND_TASK_ERR("failed to acquire class %.*s",
+                     stm->class_entry->name_size, stm->class_entry->name);
         if (c->tr) {
             //err = knd_text_gloss_export_GSL(c->tr, task, depth);
             //KND_TASK_ERR("failed to export gloss GSL");
         }
         break;
     case KND_ATTR_PROC_REF:
-        if (var->proc_entry) {
-            //err = proc_var_export_JSON(var, task);
+        if (stm->proc_entry) {
+            //err = proc_stm_export_JSON(stm, task);
             //if (err) return err;
         } else {
             OUT("\"", 1);
-            OUT(var->val, var->val_size);
+            OUT(stm->val, stm->val_size);
             OUT("\"", 1);
         }
         break;
@@ -430,13 +432,13 @@ int knd_attr_stm_export_JSON(struct kndAttrStm *var, struct kndTask *task, size_
             RET_ERR();
         }
 
-        /*if (var->class) {
-            err = knd_class_export_JSON(var->class, task, false, depth + 2);
+        /*if (stm->class) {
+            err = knd_class_export_JSON(stm->class, task, false, depth + 2);
             if (err) return err;
             break;
             }*/
-        err = inner_var_export_JSON(var, task, depth + 1);
-        KND_TASK_ERR("failed to export inner var JSON");
+        err = inner_stm_export_JSON(stm, task, depth + 1);
+        KND_TASK_ERR("failed to export inner stm JSON");
         if (indent_size) {
             OUT("\n", 1);
             err = knd_print_offset(out, (depth) * indent_size);
@@ -445,15 +447,15 @@ int knd_attr_stm_export_JSON(struct kndAttrStm *var, struct kndTask *task, size_
         OUT("}", 1);
         break;
     case KND_ATTR_TEXT:
-        assert(var->text != NULL);
+        assert(stm->text != NULL);
         // OUT("\"_t\":{", strlen("\"_t\":"));
-        err = knd_text_export(var->text, KND_FORMAT_JSON, task, depth + 1);
+        err = knd_text_export(stm->text, KND_FORMAT_JSON, task, depth + 1);
         KND_TASK_ERR("GSL text export failed");
         // OUT("}", strlen("}"));
         break;
     default:
         OUT("\"", 1);
-        OUT(var->val, var->val_size);
+        OUT(stm->val, stm->val_size);
         OUT("\"", 1);
     }
     return knd_OK;

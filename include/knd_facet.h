@@ -17,7 +17,6 @@
  *   knd_facet.h
  *   Knowdy Facet
  */
-
 #pragma once
 
 #include "knd_utils.h"

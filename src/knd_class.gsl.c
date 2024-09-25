@@ -138,6 +138,7 @@ static int export_conc_elem_GSL(void *obj, const char *elem_id, size_t elem_id_s
     return knd_OK;
 }
 
+#if 0
 static int export_class_ref(void *obj, const char *unused_var(elem_id),
                             size_t unused_var(elem_id_size),
                             size_t unused_var(count), void *elem)
@@ -222,10 +223,9 @@ static int export_class_ref(void *obj, const char *unused_var(elem_id),
     task->batch_size++;
     return knd_OK;
 }
+#endif
 
-static int export_concise_GSL(struct kndClass *self,
-                              struct kndTask *task,
-                              size_t depth)
+static int export_concise_GSL(struct kndClass *self, struct kndTask *task, size_t depth)
 {
     struct kndClassBasePred *item;
     int err;
@@ -456,7 +456,6 @@ static int export_base_preds(struct kndClass *self, struct kndTask *task, size_t
     struct kndClassBasePred *bp;
     size_t bp_count = 0;
     size_t indent_size = task->ctx->format_indent;
-    size_t curr_depth;
     int err;
 
     if (indent_size) {
@@ -472,7 +471,7 @@ static int export_base_preds(struct kndClass *self, struct kndTask *task, size_t
             err = knd_print_offset(out, (depth + 1) * indent_size);
             RET_ERR();
         }
-        OUT("{", 1);
+        OUT("{ ", strlen("{ "));
         OUT(bp->entry->name, bp->entry->name_size);
 
         // TODO
@@ -498,6 +497,7 @@ static int export_base_preds(struct kndClass *self, struct kndTask *task, size_t
     return knd_OK;
 }
 
+#if 0
 static int export_inverse_rels(struct kndClass *self, struct kndTask *task, size_t depth)
 {
     struct kndAttrHub *attr_hub;
@@ -620,12 +620,11 @@ static int export_inverse_rels(struct kndClass *self, struct kndTask *task, size
     OUT("]", 1);
     return knd_OK;
 }
+#endif
 
 int knd_class_export_GSL(struct kndClass *self, struct kndTask *task,
                          bool is_list_item, size_t depth)
 {
-    struct kndClass *c;
-    // struct kndClassEntry *orig_entry = self->entry->orig;
     struct kndOutput *out = task->out;
     struct kndState *state = self->states;
     size_t indent_size = task->ctx->format_indent;
@@ -747,10 +746,10 @@ int knd_class_export_GSL(struct kndClass *self, struct kndTask *task,
     }
 
     /* inverse relations */
-    if (self->attr_hubs) {
+    /*if (self->attr_hubs) {
         err = export_inverse_rels(self, task, depth + 1);
         KND_TASK_ERR("failed to export GSL inverse rels");
-    }
+        }*/
 
  final:
     err = out->writec(out, '}');                                                  RET_ERR();

@@ -9,7 +9,7 @@
 #include "knd_repo.h"
 
 #include "knd_text.h"
-#include "knd_num.h"
+#include "knd_quant.h"
 #include "knd_rel.h"
 #include "knd_shared_set.h"
 #include "knd_set.h"
@@ -110,7 +110,7 @@ static gsl_err_t set_curr_state(void *obj, const char *val, size_t val_size)
     buf_size = val_size;
     buf[buf_size] = '\0';
 
-    err = knd_parse_num(buf, &numval);
+    err = knd_parse_int(buf, &numval);
     if (err) return make_gsl_err_external(err);
 
     // TODO: check integer

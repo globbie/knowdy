@@ -148,6 +148,7 @@ int knd_export_class_inst_state_JSON(struct kndClass *self, struct kndTask *task
     return knd_OK;
 }
 
+#if 0
 static int export_class_ref(void *obj, const char *unused_var(elem_id), size_t unused_var(elem_id_size),
                             size_t unused_var(count), void *elem)
 {
@@ -231,6 +232,7 @@ static int export_class_ref(void *obj, const char *unused_var(elem_id), size_t u
     task->batch_size++;
     return knd_OK;
 }
+#endif
 
 static int export_concise_JSON(struct kndClass *self, struct kndTask *task)
 {
@@ -533,6 +535,7 @@ static int export_attrs(struct kndClass *self, struct kndTask *task)
     return knd_OK;
 }
 
+#if 0
 static int export_inverse_rels(struct kndClass *self, struct kndTask *task, size_t depth)
 {
     struct kndAttrHub *attr_hub;
@@ -655,6 +658,7 @@ static int export_inverse_rels(struct kndClass *self, struct kndTask *task, size
     OUT("]", 1);
     return knd_OK;
 }
+#endif
 
 static int export_baseclasses(struct kndClass *self, struct kndTask *task, size_t depth)
 {
@@ -860,10 +864,10 @@ int knd_class_export_JSON(struct kndClass *self, struct kndTask *task,
     }
 
     /* inverse relations */
-    if (self->attr_hubs) {
+    /*if (self->attr_hubs) {
         err = export_inverse_rels(self, task, depth + 1);
         KND_TASK_ERR("failed to export JSON inverse rels");
-    }
+        }*/
     
  final:
     if (indent_size) {

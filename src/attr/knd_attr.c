@@ -144,24 +144,24 @@ int knd_get_arg_value(struct kndAttrStm *src, struct kndAttrStm *query,
         attr = src->implied_attr;
 
         if (!memcmp(attr->name, query->name, query->name_size)) {
-            switch (attr->type) {
-            case KND_ATTR_NUM:
+            /*switch (attr->type) {
+            case KND_ATTR_UINT:
                 if (DEBUG_ATTR_LEVEL_2) {
-                    knd_log("== implied NUM attr: %.*s value: %.*s numval:%lu",
+                    knd_log("== implied uint attr: %.*s value: %.*s",
                             src->name_size, src->name,
-                            src->val_size, src->val, src->numval);
+                            src->val_size, src->val);
                 }
                 result_arg->numval = src->numval;
                 return knd_OK;
             case KND_ATTR_REF:
-                // knd_log("++ match ref: %.*s",
-                //        src->class->name_size, src->class->name);
-                //return knd_get_class_attr_value(src->class_entry->class,
-                //                                query->children, result_arg);
+                knd_log("++ match ref: %.*s",
+                       src->class->name_size, src->class->name);
+                return knd_get_class_attr_value(src->class_entry->class,
+                                                query->children, result_arg);
                 break;
             default:
                 break;
-            }
+                }*/
         }
     }
 
@@ -177,21 +177,17 @@ int knd_get_arg_value(struct kndAttrStm *src, struct kndAttrStm *query,
 
         if (!strncmp(curr_var->name, query->name, query->name_size)) {
 
-            if (DEBUG_ATTR_LEVEL_2)
-                knd_log("++ match: %.*s numval:%zu!\n",
-                        curr_var->val_size, curr_var->val, curr_var->numval);
-
             /* set the implied value */
-            if (curr_var->implied_attr) {
+            /*if (curr_var->implied_attr) {
                 attr = curr_var->implied_attr;
-                //knd_log("!! implied attr found in \"%.*s\"!\n\n",
-                //        curr_var->name_size, curr_var->name);
+                knd_log("!! implied attr found in \"%.*s\"!\n\n",
+                        curr_var->name_size, curr_var->name);
                 result_arg->numval = curr_var->numval;
 
                 return knd_OK;
-            }
+                }*/
             
-            result_arg->numval = curr_var->numval;
+            //result_arg->numval = curr_var->numval;
             if (!query->num_children) return knd_OK;
 
             //knd_log(".. continue to look up the \"%.*s\" attr..",
@@ -217,39 +213,34 @@ int knd_attr_stm_new(struct kndAttrStm **result, struct kndMemPool *mempool)
     return knd_OK;
 }
 
-int knd_attr_idx_new(struct kndMemPool *mempool, struct kndAttrIdx **result)
+int knd_attr_facet_elems_new(struct kndAttrFacetElems **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndAttrIdx));
-    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
+    assert(mempool->small_x4_page_size >= sizeof(struct kndAttrFacetElems));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL_X4, &page);
     if (err) return err;
-    memset(page, 0,  sizeof(struct kndAttrIdx));
+    memset(page, 0,  sizeof(struct kndAttrFacetElems));
     *result = page;
     return knd_OK;
 }
 
-int knd_attr_facet_new(struct kndMemPool *mempool, struct kndAttrFacet **result)
+int knd_attr_facet_new(struct kndAttrFacet **result, struct kndMemPool *mempool)
 {
+    struct kndAttrFacetElems *elems;
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndAttrFacet));
-    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
+
+    err = knd_attr_facet_elems_new(&elems, mempool);
+    if (err) return err;
+
+    assert(mempool->page_size >= sizeof(struct kndAttrFacet));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_BASE, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndAttrFacet));
-    *result = page;
-    return knd_OK;
-}
 
-int knd_attr_hub_new(struct kndMemPool *mempool, struct kndAttrHub **result)
-{
-    void *page;
-    int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndAttrHub));
-    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
-    if (err) return err;
-    memset(page, 0,  sizeof(struct kndAttrHub));
     *result = page;
+    (*result)->elems = elems;
     return knd_OK;
 }
 
@@ -262,6 +253,21 @@ int knd_attr_ref_new(struct kndAttrRef **result, struct kndMemPool *mempool)
     if (err) return err;
     memset(page, 0,  sizeof(struct kndAttrRef));
     *result = page;
+    return knd_OK;
+}
+
+int knd_ref_attr_new(struct kndRefAttr **result,
+                     const char *name, size_t name_size, struct kndMemPool *mempool)
+{
+    void *page;
+    int err;
+    assert(mempool->tiny_page_size >= sizeof(struct kndRefAttr));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
+    if (err) return err;
+    memset(page, 0,  sizeof(struct kndRefAttr));
+    *result = page;
+    (*result)->name = name;
+    (*result)->name_size = name_size;
     return knd_OK;
 }
 

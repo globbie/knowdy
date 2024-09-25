@@ -541,7 +541,7 @@ int knd_class_acquire(struct kndClassEntry *entry, struct kndClass **result, str
     struct kndStorageLeaf *leaf;
     int err;
 
-    if (DEBUG_CLASS_LEVEL_3) {
+    if (DEBUG_CLASS_LEVEL_2) {
         knd_log(">> acquire {class %.*s {id %.*s}}",
                 entry->name_size, entry->name, entry->id_size, entry->id);
     }

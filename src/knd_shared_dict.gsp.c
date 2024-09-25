@@ -31,7 +31,7 @@ int knd_shared_dict_marshall(struct kndSharedDict *self, const char *path, size_
 
     err = knd_shared_set_new(&idx, task->mempool);
     KND_TASK_ERR("failed to alloc a shared set");
-    
+
     for (size_t i = 0; i < self->size; i++) {
         item = atomic_load_explicit(&self->hash_array[i], memory_order_acquire);
         if (!item) continue;

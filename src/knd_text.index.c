@@ -360,7 +360,6 @@ static int index_proc_declar(struct kndProcDeclar *decl, struct kndSentence *sen
     }
     return knd_OK;
 }
-#endif
 
 int knd_text_index(struct kndText *self, struct kndRepo *repo, struct kndTask *task)
 {
@@ -370,7 +369,7 @@ int knd_text_index(struct kndText *self, struct kndRepo *repo, struct kndTask *t
     struct kndPar *par;
     struct kndSentence *sent;
     //struct kndClassDeclar *decl;
-    struct kndAttrIdx *idx;
+    //struct kndAttrIdx *idx;
     int err;
 
     // max threshold
@@ -406,3 +405,5 @@ int knd_text_index(struct kndText *self, struct kndRepo *repo, struct kndTask *t
     }
     return knd_OK;
 }
+
+#endif

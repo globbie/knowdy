@@ -59,17 +59,17 @@ static gsl_err_t read_nested_attr_stm(void *obj, const char *name, size_t name_s
 static gsl_err_t set_attr_stm_val_id(void *obj, const char *val, size_t val_size);
 static gsl_err_t confirm_attr_stm(void *obj, const char *unused_var(name), size_t unused_var(name_size));
 
-static void append_attr_stm(struct kndClassBasePred *ci, struct kndAttrStm *attr_stm)
+static void append_attr_stm(struct kndClassBasePred *bp, struct kndAttrStm *attr_stm)
 {
-    if (!ci->tail) {
-        ci->tail  = attr_stm;
-        ci->attr_stms = attr_stm;
+    if (!bp->attr_stms_tail) {
+        bp->attr_stms_tail  = attr_stm;
+        bp->attr_stms = attr_stm;
     }
     else {
-        ci->tail->next = attr_stm;
-        ci->tail = attr_stm;
+        bp->attr_stms_tail->next = attr_stm;
+        bp->attr_stms_tail = attr_stm;
     }
-    ci->num_attrs++;
+    bp->num_attr_stms++;
 }
 
 static gsl_err_t parse_text(void *obj, const char *rec, size_t *total_size)

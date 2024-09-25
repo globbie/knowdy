@@ -219,7 +219,7 @@ static gsl_err_t parse_snapshot_task(void *obj, const char *unused_var(rec), siz
     struct kndTask *task = obj;
     int err;
 
-    task->type = KND_SNAPSHOT_STATE;
+    task->type = KND_BUILD_SNAPSHOT_STATE;
     err = knd_repo_snapshot_create(task->repo, task);
     if (err) {
         KND_TASK_LOG("failed to build a snapshot of {repo %.*s}",
@@ -240,8 +240,9 @@ static gsl_err_t decode_seq(void *obj, const char *val, size_t val_size)
         KND_TASK_LOG("failed to decode a text charseq %.*s", val_size, val);
         return make_gsl_err_external(err);
     }
-    if (DEBUG_REPO_LEVEL_3)
+    if (DEBUG_REPO_LEVEL_3) {
         knd_log(">> text seq:%.*s", seq->val_size, seq->val);
+    }
     return make_gsl_err(gsl_OK);
 }
 
@@ -401,7 +402,7 @@ int knd_conc_folder_new(struct kndMemPool *mempool, struct kndConcFolder **resul
     return knd_OK;
 }
 
-static int build_snapshot_path(struct kndRepoSnapshot *s, struct kndTask *task)
+int knd_snapshot_build_path(struct kndRepoSnapshot *s, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndRepo *repo = s->repo;
@@ -418,13 +419,11 @@ static int build_snapshot_path(struct kndRepoSnapshot *s, struct kndTask *task)
     s->path_size = out->buf_size;
     s->path[out->buf_size] = '\0';
 
-    err = knd_mkpath((const char*)s->path, s->path_size, 0755, false);
-    KND_TASK_ERR("mkpath %.*s failed", s->path_size, s->path);
-
     return knd_OK;
 }
 
-int knd_repo_snapshot_new(struct kndRepoSnapshot **result, size_t numid, size_t latest_commit_id,
+int knd_repo_snapshot_new(struct kndRepoSnapshot **result, size_t numid,
+                          size_t latest_commit_id,
                           struct kndRepo *repo, struct kndTask *task)
 {
     struct kndRepoSnapshot *s;
@@ -437,8 +436,8 @@ int knd_repo_snapshot_new(struct kndRepoSnapshot **result, size_t numid, size_t 
     s->repo = repo;
     s->start_from_commit_id = latest_commit_id;
 
-    err = build_snapshot_path(s, task);
-    KND_TASK_ERR("failed to build a snapshot path");
+    err = knd_snapshot_build_path(s, task);
+    KND_TASK_ERR("failed to build a default snapshot path");
 
     err = knd_set_new(&s->commit_idx, mempool);
     if (err) return err;
@@ -480,12 +479,15 @@ int knd_repo_snapshot_activate(struct kndRepo *repo, struct kndTask *task)
     err = knd_repo_transfer_commits(repo, task);
     KND_TASK_ERR("failed to transfer sys repo commits");
 
-    /* time to switch snapshots */
+    err = knd_repo_save_meta(repo->snapshot_temp, task);
+    KND_TASK_ERR("failed to update persistent repo meta");
+
+    /* switching the snapshots */
     snapshot = atomic_load_explicit(&repo->snapshot, memory_order_relaxed);    
     atomic_store_explicit(&repo->snapshot, repo->snapshot_temp, memory_order_relaxed);
     repo->snapshot_temp = NULL;
 
-    /* release prev resources */
+    /* releasing resources */
     knd_repo_snapshot_del(snapshot);
 
     return knd_OK;

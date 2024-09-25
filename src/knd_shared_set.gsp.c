@@ -526,7 +526,6 @@ static int finalize_leaf(struct kndStorageLeaf *leaf, const char *path, size_t p
     }
 
     out->reset(out);
-    OUT(path, path_size);
 
     /* root dir special name */
     if (*leaf->range_from_id == '/') {
@@ -545,6 +544,18 @@ static int finalize_leaf(struct kndStorageLeaf *leaf, const char *path, size_t p
         OUT(leaf->range_to_id, leaf->range_to_id_size);
         knd_calc_num_id(leaf->range_to_id, leaf->range_to_id_size, &leaf->range_to);
     }
+
+    if (out->buf_size >= KND_SHORT_NAME_SIZE) {
+        err = knd_LIMIT;
+        KND_TASK_ERR("GSP filename too long");
+    }
+    memcpy(leaf->name, out->buf, out->buf_size);
+    leaf->name[out->buf_size] = '\0';
+    leaf->name_size = out->buf_size;
+
+    out->reset(out);
+    OUT(path, path_size);
+    OUT(leaf->name, leaf->name_size);
     OUT(KND_GSP_FILE_EXT_NAME, strlen(KND_GSP_FILE_EXT_NAME));
 
     if (out->buf_size >= KND_PATH_SIZE) {
@@ -568,7 +579,6 @@ static int finalize_leaf(struct kndStorageLeaf *leaf, const char *path, size_t p
                      leaf->filepath_size, leaf->filepath, out->buf_size, out->buf);
         break;
     }
-
     memcpy(leaf->filepath, buf, buf_size);
     leaf->filepath[buf_size] = '\0';
     leaf->filepath_size = buf_size;
@@ -600,9 +610,9 @@ static int marshall_leaf(struct kndSharedSet *self, struct kndStorageLeaf *leaf,
     return knd_OK;
 }
 
-static int build_idx_path(struct kndSharedSet *idx,
-                          const char *snapshot_path, size_t snapshot_path_size,
-                          const char *pref, size_t pref_size, struct kndTask *task)
+int knd_idx_build_path(struct kndSharedSet *idx,
+                       const char *snapshot_path, size_t snapshot_path_size,
+                       const char *pref, size_t pref_size, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     int err;
@@ -619,8 +629,6 @@ static int build_idx_path(struct kndSharedSet *idx,
     idx->path_size = out->buf_size;
     idx->path[out->buf_size] = '\0';
 
-    err = knd_mkpath((const char*)idx->path, idx->path_size, 0755, false);
-    KND_TASK_ERR("mkpath %.*s failed", idx->path_size, idx->path);
 
     return knd_OK;
 }
@@ -641,10 +649,15 @@ int knd_shared_set_marshall(struct kndSharedSet *idx,
     size_t total_elems = 0;
     int err;
 
-    err = build_idx_path(idx, snapshot_path, snapshot_path_size, pref, pref_size, task);
+    err = knd_idx_build_path(idx, snapshot_path, snapshot_path_size, pref, pref_size, task);
     KND_TASK_ERR("failed to build a path for %.*s idx", pref_size, pref);
 
-    knd_log(".. saving {idx {path %.*s}}", idx->path_size, idx->path);
+    err = knd_mkpath((const char*)idx->path, idx->path_size, 0755, false);
+    KND_TASK_ERR("mkpath %.*s failed", idx->path_size, idx->path);
+
+    if (DEBUG_SHARED_SET_GSP_LEVEL_TMP) {
+        knd_log(".. saving {idx {path %.*s}}", idx->path_size, idx->path);
+    }
 
     /* split a set into a batch of leaves of max size */
     while (1) {
@@ -669,8 +682,7 @@ int knd_shared_set_marshall(struct kndSharedSet *idx,
             knd_log("++ {leaf {from %.*s} {to %.*s} {num-elems %zu {size %zu}} {total-elems %zu}",
                     leaf->range_from_id_size, leaf->range_from_id,
                     leaf->range_to_id_size, leaf->range_to_id,
-                    leaf->num_elems,
-                    leaf->file_size, total_elems);
+                    leaf->num_elems, leaf->file_size, total_elems);
         }
 
         /* more leafs needed?

@@ -51,7 +51,7 @@ static int build_cache_item(void *obj, const char *unused_var(elem_id),
 
     if (!detect_if_cacheable(entry)) return knd_OK;
 
-    if (DEBUG_REPO_CACHE_LEVEL_3) {
+    if (DEBUG_REPO_CACHE_LEVEL_2) {
         knd_log("\n.. making a cache copy of {class %.*s {id %.*s}}",
                 entry->name_size, entry->name, entry->id_size, entry->id);
     }
@@ -66,7 +66,6 @@ static int build_cache_item(void *obj, const char *unused_var(elem_id),
         knd_class_export_GSL(c, task, false, 0);
         knd_log("%.*s", task->out->buf_size, task->out->buf);
     }
-
     return knd_OK;
 }
 

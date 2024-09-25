@@ -49,9 +49,12 @@ typedef enum knd_attr_type {
     KND_ATTR_CDATA,
     KND_ATTR_INNER,
     KND_ATTR_TEXT,
-    KND_ATTR_CG,
-    KND_ATTR_NUM,
-    KND_ATTR_FLOAT,
+    KND_ATTR_INT,
+    KND_ATTR_UINT,
+    KND_ATTR_RATIO,
+    KND_ATTR_URATIO,
+    KND_ATTR_REAL,
+    KND_ATTR_UREAL,
     KND_ATTR_TIME,
     KND_ATTR_DATE,
     KND_ATTR_BOOL,
@@ -72,9 +75,12 @@ static const char* const knd_attr_names[] = {
     "cdata",
     "inner",
     "text",
-    "CG",
-    "num",
-    "float",
+    "int",
+    "uint",
+    "ratio",
+    "uratio",
+    "real",
+    "ureal",
     "time",
     "date",
     "bool",
@@ -93,26 +99,11 @@ typedef enum knd_attr_quant_type {
     KND_ATTR_LIST
 } knd_attr_quant_type;
 
-/* index of direct attr values */
-struct kndAttrFacet
-{
-    struct kndSet *topics;
-};
-
-/* index of reverse attr var paths */
-struct kndAttrHub
-{
-    struct kndClassEntry *topic_template;
-    const char           *attr_id;
-    size_t                attr_id_size;
-    struct kndAttr       *attr;
-
-    struct kndSet      *topics;
-    struct kndSet      *specs;
-
-    struct kndAttrHub  *children;
-    struct kndAttrHub  *next;
-};
+typedef enum knd_attr_facet_type {
+    KND_ATTR_FACET_SUBCLASS,
+    KND_ATTR_FACET_SEQ_SIZE,
+    KND_ATTR_FACET_ACCUM
+} knd_attr_facet_type;
 
 struct kndAttrRef
 {
@@ -132,17 +123,31 @@ struct kndAttrRef
     struct kndAttrRef *tail;
 };
 
-struct kndAttrIdx
+struct kndAttrFacetElems
 {
-    struct kndAttr *attr;
+    void *cache[KND_FACET_MAX_THRESHOLD];
+    struct kndSet *idx;
+};
 
-    /* text indices */
-    struct kndSet *class_idx;
-    struct kndSet *proc_idx;
-    struct kndTextLoc *locs;
-    size_t num_locs;
+struct kndAttrFacet
+{
+    knd_attr_facet_type type;
+    void *val;
 
-    struct kndAttrIdx *next;
+    struct kndAttrFacetElems *elems;
+    size_t num_elems;
+
+    struct kndAttrFacet *children[KND_MAX_FACETS];
+    size_t num_children;
+
+    struct kndAttrFacet *next;
+};
+
+struct kndRefAttr
+{
+    const char *name;
+    size_t name_size;
+
 };
 
 struct kndAttr
@@ -184,8 +189,8 @@ struct kndAttr
     /* concise representation */
     size_t concise_level;
 
-    /* facet values indexing */
-    struct kndSet *facet_idx;
+    struct kndAttrFacet *facets;
+    size_t num_facets;
 
     struct kndState *states;
     size_t init_state;
@@ -196,13 +201,15 @@ struct kndAttr
     struct kndAttr *next;
 };
 
-int knd_export_inherited_attr(void *obj, const char *elem_id, size_t elem_id_size, size_t count, void *elem);
+int knd_export_inherited_attr(void *obj, const char *elem_id, size_t elem_id_size,
+                              size_t count, void *elem);
 
 int knd_apply_attr_stm_updates(struct kndClass *self, struct kndClassUpdate *update, struct kndTask *task);
 
-int knd_register_attr_ref(void *obj, const char *elem_id, size_t elem_id_size, size_t count, void *elem);
-
-int knd_get_arg_value(struct kndAttrStm *src, struct kndAttrStm *query, struct kndProcCallArg *arg, struct kndTask *task);
+int knd_register_attr_ref(void *obj, const char *elem_id, size_t elem_id_size,
+                          size_t count, void *elem);
+int knd_get_arg_value(struct kndAttrStm *src, struct kndAttrStm *query,
+                      struct kndProcCallArg *arg, struct kndTask *task);
 
 int knd_attr_export_GSL(struct kndAttr *self, struct kndTask *task, size_t depth);
 int knd_attr_export_JSON(struct kndAttr *self, struct kndTask *task, size_t depth);
@@ -214,30 +221,22 @@ void knd_attr_str(struct kndAttr *attr, size_t depth);
 int knd_attr_new(struct kndAttr **result, struct kndMemPool *mempool);
 int knd_attr_ref_new(struct kndAttrRef **result, struct kndMemPool *mempool);
 
-int knd_attr_idx_new(struct kndMemPool *mempool, struct kndAttrIdx **result);
-int knd_attr_facet_new(struct kndMemPool *mempool, struct kndAttrFacet **result);
-int knd_attr_hub_new(struct kndMemPool *mempool, struct kndAttrHub **result);
+int knd_attr_facet_new(struct kndAttrFacet **result, struct kndMemPool *mempool);
 
 // knd_attr.import.c
 gsl_err_t knd_attr_import(struct kndAttr *attr, struct kndTask *task, const char *rec, size_t *total_size);
 
 // knd_attr.gsp.c
-gsl_err_t knd_attr_read(struct kndAttr *self, struct kndTask *task, const char *rec, size_t *total_size);
+gsl_err_t knd_attr_read(struct kndAttr *self, struct kndTask *task,
+                        const char *rec, size_t *total_size);
 
-int knd_attr_select_clause(struct kndAttr *attr,
-                           struct kndClass *c,
-                           struct kndRepo *repo,
-                           struct kndTask *task,
+int knd_attr_select_clause(struct kndAttr *attr, struct kndClass *c,
+                           struct kndRepo *repo, struct kndTask *task,
                            const char *rec, size_t *total_size);
 
 // knd_attr.resolve.c
 int knd_attr_resolve(struct kndAttr *attr, struct kndTask *task);
 int knd_resolve_primary_attrs(struct kndClass *self, struct kndTask *task);
-
-int knd_attr_hub_resolve(struct kndAttrHub *hub, struct kndTask *task);
-
-// knd_attr.index.c
-// int knd_attr_index(struct kndClass *self, struct kndAttr *attr, struct kndTask *task);
 
 gsl_err_t knd_attr_idx(void *obj, const char *name, size_t name_size);
 gsl_err_t knd_attr_implied(void *obj, const char *name, size_t name_size);
@@ -250,3 +249,6 @@ int knd_attr_names_unmarshall(const char *elem_id, size_t elem_id_size,
                               const char *rec, size_t rec_size, struct kndTask *task);
 
 int knd_attr_decode(struct kndAttr *attr, struct kndTask *task);
+
+int knd_ref_attr_new(struct kndRefAttr **result, const char *name, size_t name_size,
+                     struct kndMemPool *mempool);
