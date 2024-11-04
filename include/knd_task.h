@@ -48,6 +48,7 @@ struct kndRepoCache;
 typedef int (*task_cb_func)(void *obj, const char *msg, size_t msg_size, void *ctx);
 
 typedef enum knd_task_spec_type {
+    KND_DEFAULT_STATE,
     KND_GET_STATE,
     KND_SELECT_STATE,
     KND_READ_SNAPSHOT_STATE,
@@ -121,10 +122,10 @@ struct kndTaskContext {
 
     struct kndText *tr;
 
-    size_t batch_max;
-    size_t batch_from;
-    size_t batch_size;
-    size_t start_from;
+    //size_t batch_max;
+    //size_t batch_from;
+    //size_t batch_size;
+    //size_t start_from;
 
     size_t depth;
     size_t max_depth;
@@ -149,12 +150,14 @@ struct kndTaskContext {
     struct kndCommit *commit;
     bool commit_confirmed;
 
+    struct kndQuery *query;
+
     /* inner statement declarations */
     struct kndClassDeclar *declars;
     size_t num_declars;
 
     /* text search query & results */
-    struct kndStatement *query;
+    //struct kndStatement *query;
     struct kndTextSearchReport *reports;
 
     struct kndTaskContext *next;
@@ -169,6 +172,8 @@ struct kndTask
     knd_task_mode_t mode;
 
     struct kndSteward *steward;
+
+    /* ctx can be persisted and continued by another task */
     struct kndTaskContext *ctx;
 
     const char *input;
@@ -190,18 +195,6 @@ struct kndTask
     int fd;
 
     knd_http_code_t http_code;
-
-    size_t batch_max;
-    size_t batch_from;
-    size_t batch_size;
-    size_t start_from;
-
-    size_t state_eq;
-    size_t state_gt;
-    size_t state_lt;
-    size_t state_gte;
-    size_t state_lte;
-    bool show_removed_objs;
 
     size_t depth;
     size_t max_depth;

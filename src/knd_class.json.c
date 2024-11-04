@@ -349,11 +349,14 @@ int knd_class_facets_export_JSON(struct kndTask *task)
     return knd_OK;
 }
 
+#if 0
 extern int knd_class_set_export_JSON(struct kndSet *set, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
+    struct kndQueryView *view = task->ctx->query->view;
     size_t curr_depth = 0;
     int err;
+
     err = out->write(out, "{\"_set\":{",
                      strlen("{\"_set\":{"));                                      RET_ERR();
 
@@ -366,7 +369,7 @@ extern int knd_class_set_export_JSON(struct kndSet *set, struct kndTask *task)
     }
     err = out->writec(out, '}');                                                  RET_ERR();
 
-    if (task->show_removed_objs) {
+    if (view->show_removed_objs) {
         err = out->writef(out, ",\"total\":%lu",
                           (unsigned long)set->num_elems);                         RET_ERR();
     } else {
@@ -410,6 +413,7 @@ extern int knd_class_set_export_JSON(struct kndSet *set, struct kndTask *task)
     err = out->writec(out, '}');                                                  RET_ERR();
     return knd_OK;
 }
+#endif
 
 static int present_subclass(struct kndClassRef *ref, struct kndTask *task, size_t depth)
 {
@@ -439,10 +443,10 @@ static int present_subclass(struct kndClassRef *ref, struct kndTask *task, size_
     OUT(entry->name, entry->name_size);
     OUT("\"", 1);
 
-    /*if (ref->entry->class->num_terminals) {
-        err = out->write(out, ",\"_num_terminals\":",
-                         strlen(",\"_num_terminals\":"));                         RET_ERR();
-        err = out->writef(out, "%zu", ref->entry->class->num_terminals);                      RET_ERR();
+    /*if (ref->entry->class->num_descendants) {
+        err = out->write(out, ",\"_num_descendants\":",
+                         strlen(",\"_num_descendants\":"));                         RET_ERR();
+        err = out->writef(out, "%zu", ref->entry->class->num_descendants);                      RET_ERR();
         }*/
 
     /* get localized gloss */
@@ -482,9 +486,9 @@ static int present_subclasses(struct kndClass *self, struct kndTask *task, size_
     OUTF("%zu", self->num_children);
     OUT(",", 1);
 
-    /*if (self->num_terminals) {
+    /*if (self->num_descendants) {
         OUT("\"num-terminals\":", strlen("\"num-terminals\":"));
-        OUT("%zu,", self->num_terminals);
+        OUT("%zu,", self->num_descendants);
         }*/
 
     if (indent_size) {

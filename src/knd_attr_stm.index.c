@@ -42,6 +42,27 @@
 #define DEBUG_ATTR_STM_IDX_LEVEL_5 0
 #define DEBUG_ATTR_STM_IDX_LEVEL_TMP 1
 
+void knd_attr_index_str(struct kndAttrFacet *parent, const char *seq, size_t seq_size, size_t depth)
+{
+    struct kndAttrFacet *f;
+
+    if (parent->num_children) {
+        knd_log("%*s{facet %.*s {num-subfacets %zu} {num-elems %zu}}",
+                depth * KND_OFFSET_SIZE, "", seq_size, seq, parent->num_children,
+                parent->num_elems);
+    } else {
+        knd_log("%*s{facet %.*s {num-elems %zu}}",
+                depth * KND_OFFSET_SIZE, "", seq_size, seq, parent->num_elems);
+    }
+
+    for (size_t i = 0; i < KND_MAX_FACETS; i++) {
+        f = parent->children[i];
+        if (!f) continue;
+
+        knd_attr_index_str(f, &obj_id_seq[i], 1, depth + 1);
+    }
+}
+
 int knd_attr_stm_inner_idx(struct kndClassEntry *topic, struct kndAttr *attr,
                            struct kndAttrStm *var, struct kndTask *task)
 {
@@ -91,7 +112,7 @@ int knd_index_attr_stm(struct kndClassEntry *topic, struct kndAttr *attr,
     }
 
     if (!facet) {
-        err = knd_attr_facet_new(&facet, task->mempool);
+        err = knd_attr_facet_new(&facet, KND_ATTR_FACET_SEQ_SIZE, task->mempool);
         KND_TASK_ERR("failed to alloc attr facet");
         attr->facets = facet;
         attr->num_facets = 1;
@@ -99,18 +120,14 @@ int knd_index_attr_stm(struct kndClassEntry *topic, struct kndAttr *attr,
 
     switch (attr->type) {
     case KND_ATTR_UINT:
-        facet->type = KND_ATTR_FACET_SEQ_SIZE;
-
         err = knd_quant_uint_index(facet, topic, stm, task);
         KND_TASK_ERR("failed to index natural number attr stm");
         break;
     case KND_ATTR_URATIO:
-        facet->type = KND_ATTR_FACET_SEQ_SIZE;
         //err = knd_quant_uint_index(attr->impl, topic, stm, task);
         //KND_TASK_ERR("failed to index natural number attr stm");
         break;
     case KND_ATTR_UREAL:
-        facet->type = KND_ATTR_FACET_SEQ_SIZE;
         err = knd_quant_ureal_index(facet, topic, stm, task);
         KND_TASK_ERR("failed to index real number attr stm");
         break;

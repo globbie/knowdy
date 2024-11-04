@@ -26,14 +26,13 @@
 #include "knd_class.h"
 
 struct kndState;
-struct kndSortTag;
-struct kndAttrHub;
 struct kndTask;
 struct kndRepo;
 struct kndClassEntry;
 struct kndOutput;
 struct kndMemPool;
 struct kndText;
+struct kndAttrStm;
 
 typedef enum knd_obj_type {
     KND_OBJ_ADDR,
@@ -93,7 +92,10 @@ struct kndClassInst
     struct kndClassInstEntry *entry;
     struct kndClassInst *root;
 
-    struct kndClassBasePred *base_pred;
+    struct kndAttrStm *attr_stms;
+    struct kndAttrStm *attr_stms_tail;
+    size_t num_attr_stms;
+
     struct kndAttrHub *attr_hubs;
 
     size_t linear_pos;
@@ -159,3 +161,5 @@ int knd_class_inst_resolve(struct kndClassInst *self, struct kndTask *task);
 int knd_class_inst_index(struct kndClassInst *self, struct kndTask *task);
 
 int knd_class_inst_iterate_export_JSON(void *obj, const char *id, size_t id_size, size_t count, void *elem);
+
+void knd_class_inst_append_attr_stm(struct kndClassInst *ci, struct kndAttrStm *attr_stm);

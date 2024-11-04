@@ -8,6 +8,7 @@
 #include "knd_class.h"
 #include "knd_attr.h"
 #include "knd_attr_stm.h"
+#include "knd_set.h"
 #include "knd_task.h"
 #include "knd_utils.h"
 
@@ -17,143 +18,123 @@
 #define DEBUG_QUANT_INDEX_LEVEL_3 0
 #define DEBUG_QUANT_INDEX_LEVEL_TMP 1
 
-static int fetch_maxpos_facet(struct kndAttrFacet *parent, size_t max_pos,
-                              struct kndAttrFacet **result, struct kndTask *task)
+static int create_subfacets(struct kndAttrFacet *parent, const char *seq, size_t seq_size,
+                            struct kndTask *task);
+
+static int add_elem(struct kndAttrFacet *parent, const char *seq, size_t seq_size,
+                    struct kndAttrFacetElem *elem, struct kndTask *task)
 {
     struct kndAttrFacet *f;
+    int pos = 0;
+    char c = '/';
+    size_t depth = 0;
+    struct kndSet *idx;
     int err;
 
-    if (max_pos >= KND_MAX_FACETS) {
-        err = knd_LIMIT;
-        KND_TASK_ERR("uint seq limit exceeded");
+    assert (seq_size >= 1);
+    if (DEBUG_QUANT_INDEX_LEVEL_2) {
+        knd_log(".. add elem {seq %.*s} to {facet {type %d} {depth %zu}}",
+                seq_size, seq, parent->type, parent->depth);
     }
 
-    f = parent->children[max_pos];
+    switch (parent->type) {
+    case KND_ATTR_FACET_SEQ_SIZE:
+        pos = seq_size - 1;
+        if (pos >= KND_MAX_FACETS) {
+            err = knd_LIMIT;
+            KND_TASK_ERR("uint seq limit exceeded");
+        }
+        
+        break;
+    case KND_ATTR_FACET_ACCUM:
+        c = seq[seq_size - 1];
+        pos = obj_id_base[(size_t)c];
+        if (pos < 0) {
+            err = knd_FORMAT;
+            KND_TASK_ERR("invalid seq char");
+        }
+        depth = parent->depth + 1;
+        seq_size--;
+        break;
+    default:
+        err = knd_FORMAT;
+        KND_TASK_ERR("unrecognized facet type %d", parent->type);
+        break;
+    }
+
+    f = parent->children[pos];
     if (!f) {
-        err = knd_attr_facet_new(&f, task->mempool);
+        err = knd_attr_facet_new(&f, KND_ATTR_FACET_ACCUM, task->mempool);
         KND_TASK_ERR("failed to alloc attr facet value");
-        parent->children[max_pos] = f;
+        f->depth = depth;
+        parent->children[pos] = f;
         parent->num_children++;
     }
-    return knd_OK;
-}
 
-static int fetch_accum_facet(struct kndAttrFacet *facet, const char *seq, size_t seq_size,
-                             struct kndAttrFacet **result, struct kndTask *task)
-{
-    struct kndAttrFacet *f;
-    struct kndQuantUIntFacet *uint_facet;
+    parent->num_elems++;
 
-    assert (seq_size > 0);
-    const unsigned char c = seq[seq_size - 1];
-    int err;
-
-    size_t idx_pos = obj_id_base[c];
-
-    knd_log(".. fetch a facet for {seq %.*s} {curr-pos %zu}", seq_size, seq, idx_pos);
-
-#if 0
-    FOREACH (f, facet->children) {
-        assert (f->val != NULL);
-        uint_facet = f->val;
-
-        if (uint_facet->code != c) continue;
-
-        knd_log("++ got a facet with {num-elems %zu}", f->num_elems);
-
-        if (!f->children) {
-            *result = f;
-            return knd_OK;
-        }
-
-        /* more symbols to facetize */
-        if (seq_size > 1) {
-            return fetch_accum_facet(f, seq, seq_size - 1, result, task);
-        }
-        *result = f;
+    if (f->num_elems < KND_FACET_MAX_THRESHOLD) {
+        f->elems->cache[f->num_elems] = elem;
+        f->num_elems++;
         return knd_OK;
     }
 
-    err = knd_quant_uint_facet_new(&uint_facet, task->mempool);
-    KND_TASK_ERR("failed to alloc a uint facet");
-    uint_facet->code = c;
-    uint_facet->pos = seq_size;
-
-    err = knd_attr_facet_new(&f, task->mempool);
-    KND_TASK_ERR("failed to alloc attr facet value");
-    f->val = uint_facet;
-
-    f->next = facet->children;
-    facet->children = f;
-    facet->num_children++;
-
-    *result = f;
-#endif
-    return knd_OK;
-}
-
-static int add_uint_stm(struct kndAttrFacet *facet,
-                        const char *seq, size_t seq_size,
-                        struct kndAttrStm *stm, struct kndTask *unused_var(task))
-{
-    struct kndQuantUIntFacet *uint_facet = facet->val;
-    //int err;
-
-    if (DEBUG_QUANT_INDEX_LEVEL_TMP) {
-        knd_log("== {facet {code %c} {pos %zu} {num-elems %zu}} {seq %.*s}",
-                uint_facet->code, uint_facet->pos,
-                facet->num_elems, seq_size, seq);
-    }
-
-    if (facet->num_elems < KND_FACET_MAX_THRESHOLD) {
-        facet->elems->cache[facet->num_elems] = stm;
-        facet->num_elems++;
-        return knd_OK;
-    }
-
-    /*if (!facet->children) {
-        err = create_subfacets(facet, task);
+    if (!f->num_children) {
+        err = create_subfacets(f, &c, 1, task);
         KND_TASK_ERR("failed to create subfacets");
     }
 
-    err = fetch_facet(facet, uint->seq, uint->seq_size, &f, task);
-    KND_TASK_ERR("failed to fetch a facet");
+    if (seq_size) {
+        err = add_elem(f, seq, seq_size, elem, task);
+        KND_TASK_ERR("failed to fetch a facet");
+        return knd_OK;
+    }
 
-    err = add_uint_stm(f, uint->seq, uint->seq_size, stm, task);
-    KND_TASK_ERR("failed to update a facet");
-    */
+    idx = f->elems->idx;
+    if (!f->elems->idx) {
+        err = knd_set_new(&idx, task->mempool);
+        KND_TASK_ERR("failed to alloc a set");
+        f->elems->idx = idx;
+    }
+
+    err = knd_set_add(idx, elem->entry->id, elem->entry->id_size, (void*)elem);
+    KND_TASK_ERR("failed to add elem to a set");
+    f->num_elems++;
+
     return knd_OK;
 }
 
-static int create_subfacets(struct kndAttrFacet *facet, struct kndTask *task)
+static int create_subfacets(struct kndAttrFacet *parent, const char *id, size_t id_size,
+                            struct kndTask *task)
 {
-    struct kndAttrStm *stm;
-    struct kndAttrFacet *mpf, *f;
     struct kndQuantUInt *uint;
+    struct kndAttrFacetElem *elem;
+    size_t seq_size = 0;
     int err;
 
+    if (DEBUG_QUANT_INDEX_LEVEL_2) {
+        knd_log(".. creating subfacets of {curr-facet %.*s {type %d} {num-elems %zu}}",
+                id_size, id, parent->type, parent->num_elems);
+    }
+
     for (size_t i = 0; i < KND_FACET_MAX_THRESHOLD; i++) {
-        stm = facet->elems->cache[i];
-        if (!stm) break;
+        elem = parent->elems->cache[i];
+        if (!elem) break;
 
-        uint = stm->val_subtype;
+        uint = elem->stm->subtype;
 
-        switch (facet->type) {
-        case KND_ATTR_FACET_SEQ_SIZE:
-            err = fetch_maxpos_facet(facet, uint->seq_size, &mpf, task);
-            KND_TASK_ERR("failed to fetch a maxpos facet");
-            break;
-        case KND_ATTR_FACET_ACCUM:
-            err = fetch_accum_facet(facet, uint->seq, uint->seq_size, &f, task);
-            KND_TASK_ERR("failed to fetch an accum facet");
-            break;
-        default:
-            err = knd_FORMAT;
-            KND_TASK_ERR("unrecognized facet type %d", facet->type);
+        assert (uint != NULL);
+
+        if (uint->seq_size > parent->depth) {
+            seq_size = uint->seq_size - parent->depth;
+
+            err = add_elem(parent, uint->seq, seq_size, elem, task);
+            KND_TASK_ERR("failed to add an elem");
+            parent->num_elems--;
+            continue;
         }
-
-        err = add_uint_stm(f, uint->seq, uint->seq_size, stm, task);
-        KND_TASK_ERR("failed to update a facet");
+        
+        knd_log("?? {elem %.*s} stays in the facet", uint->seq_size, uint->seq);
     }
     return knd_OK;
 }
@@ -161,37 +142,44 @@ static int create_subfacets(struct kndAttrFacet *facet, struct kndTask *task)
 int knd_quant_uint_index(struct kndAttrFacet *facet, struct kndClassEntry *topic,
                          struct kndAttrStm *stm, struct kndTask *task)
 {
-    struct kndAttrFacet *f;
-    struct kndQuantUInt *uint = stm->val_subtype;
+    struct kndAttrFacetElem *elem;
+    struct kndQuantUInt *uint = stm->subtype;
     int err;
 
-    if (DEBUG_QUANT_INDEX_LEVEL_TMP) {
+    if (DEBUG_QUANT_INDEX_LEVEL_2) {
         knd_log(".. {class %.*s} to index uint attr {%.*s %.*s {numval %lu {seq %.*s}}}",
                 topic->name_size, topic->name,
                 stm->name_size, stm->name, stm->val_size, stm->val, uint->numval,
                 uint->seq_size, uint->seq);
+
+        knd_attr_index_str(facet, "/", 1, 0);
     }
+
+    err = knd_attr_facet_elem_new(&elem, task->mempool);
+    KND_TASK_ERR("failed to alloc attr facet elem");
+    elem->entry = topic;
+    elem->stm = stm;
 
     /* no need to apply a hash func for a small set */
     if (facet->num_elems < KND_FACET_MAX_THRESHOLD) {
-        facet->elems->cache[facet->num_elems] = stm;
+        facet->elems->cache[facet->num_elems] = elem;
         facet->num_elems++;
         return knd_OK;
     }
 
     if (!facet->num_children) {
-        knd_log("-- NB: root facet buf is full, creating subfacets");
+        if (DEBUG_QUANT_INDEX_LEVEL_3) {
+            knd_log("-- NB: root facet buf capacity exceeded (%zu elems), creating subfacets",
+                    KND_FACET_MAX_THRESHOLD);
+        }
 
-        err = create_subfacets(facet, task);
-        KND_TASK_ERR("failed to create maxpos subfacets");
+        err = create_subfacets(facet, "/", 1, task);
+        KND_TASK_ERR("failed to create subfacets");
     }
 
-    err = fetch_maxpos_facet(facet, uint->seq_size, &f, task);
-    KND_TASK_ERR("failed to fetch a positional facet");
+    err = add_elem(facet, uint->seq, uint->seq_size, elem, task);
+    KND_TASK_ERR("failed to fetch a facet");
 
-    err = add_uint_stm(f, uint->seq, uint->seq_size, stm, task);
-    KND_TASK_ERR("failed to update a facet");
- 
     return knd_OK;
 }
 
@@ -199,10 +187,10 @@ int knd_quant_ureal_index(struct kndAttrFacet *unused_var(facet), struct kndClas
                           struct kndAttrStm *stm, struct kndTask *unused_var(task))
 {
     //struct kndAttrStm *stm;
-    struct kndQuantUReal *ureal = stm->val_subtype;
+    struct kndQuantUReal *ureal = stm->subtype;
     //int err;
 
-    if (DEBUG_QUANT_INDEX_LEVEL_TMP) {
+    if (DEBUG_QUANT_INDEX_LEVEL_2) {
         knd_log(".. {class %.*s} to index ureal attr {%.*s %.*s {real %.2Lf}}}",
                 topic->name_size, topic->name,
                 stm->name_size, stm->name, stm->val_size, stm->val, ureal->numval);

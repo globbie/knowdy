@@ -40,7 +40,7 @@ int knd_statement_resolve(struct kndStatement *stm, struct kndTask *task)
     FOREACH (cd, stm->declars) {
         FOREACH (ci, cd->insts) {
             if (!ci->inst) continue;
-            if (!ci->inst->base_pred) continue;
+            if (!ci->inst->num_attr_stms) continue;
             err = resolve_class_inst(stm, ci, task);
             KND_TASK_ERR("failed to resolve class inst \"%.*s\"", ci->name_size, ci->name);
         }
@@ -80,10 +80,10 @@ int knd_text_resolve(struct kndAttrStm *attr_stm, struct kndTask *task)
     int err;
 
     if (DEBUG_TEXT_RESOLVE_LEVEL_2)
-        knd_log(".. resolving text attr var: %.*s  class:%.*s",
+        knd_log(".. resolving text attr var: %.*s  {class %.*s}",
                 attr_stm->name_size, attr_stm->name,
-                attr_stm->base_pred->parent->name_size,
-                attr_stm->base_pred->parent->name);
+                attr_stm->attr->owner->name_size,
+                attr_stm->attr->owner->name);
 
     err = knd_text_new(mempool, &text);
     KND_TASK_ERR("failed to alloc a text field %.*s", attr_stm->name_size, attr_stm->name);

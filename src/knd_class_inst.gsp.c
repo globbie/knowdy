@@ -131,9 +131,9 @@ int knd_class_inst_export_GSP(struct kndClassInst *self, struct kndTask *task)
         err = out->writef(out, "%zu", self->linear_len);                   RET_ERR();
         err = out->writec(out, '}');                                 RET_ERR();
     }
-    if (self->base_pred->attr_stms) {
+    if (self->attr_stms) {
         curr_depth = task->ctx->depth;
-        err = knd_attr_stms_export_GSP(self->base_pred->attr_stms, out, task, 0, false);
+        err = knd_attr_stms_export_GSP(self->attr_stms, out, task, 0, false);
         KND_TASK_ERR("failed to export attr vars GSP");
         task->ctx->depth = curr_depth;
     }

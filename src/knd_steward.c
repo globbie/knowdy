@@ -473,6 +473,7 @@ static int steward_init(struct kndSteward *steward)
 
     /* depends on {class User} from the system repo */
     err = init_user_space(steward, task);
+    knd_log("ERR: %.*s", task->log->buf_size, task->log->buf);
     KND_STEWARD_ERR("failed to init user space");
 
     return knd_OK;

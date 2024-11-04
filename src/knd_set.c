@@ -132,7 +132,8 @@ int knd_set_intersect(struct kndSet *self, struct kndSet **sets, size_t num_sets
     return knd_OK;
 }
 
-static int save_elem(struct kndSet *self, struct kndSetElemIdx *parent_idx, void *elem, const char *id, size_t id_size)
+static int save_elem(struct kndSet *self, struct kndSetElemIdx *parent_idx,
+                     void *elem, const char *id, size_t id_size)
 {
     struct kndSetElemIdx *idx;
     int idx_pos;

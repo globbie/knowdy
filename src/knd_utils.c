@@ -68,30 +68,6 @@ size_t knd_generate_random_id(char *buf, size_t chunk_size, size_t num_chunks, c
     return buf_size;
 }
 
-extern gsl_err_t knd_set_curr_state(void *obj, const char *val, size_t val_size)
-{
-    char buf[KND_NAME_SIZE];
-    size_t buf_size;
-    struct kndTask *task = obj;
-    long numval;
-    int err;
-
-    if (!val_size) return make_gsl_err_external(knd_FAIL);
-    if (val_size >= KND_NAME_SIZE) return make_gsl_err_external(knd_LIMIT);
-
-    memcpy(buf, val, val_size);
-    buf_size = val_size;
-    buf[buf_size] = '\0';
-
-    err = knd_parse_int(buf, &numval);
-    if (err) return make_gsl_err_external(err);
-
-    // TODO: check integer
-    task->state_eq = (size_t)numval;
-
-    return make_gsl_err(gsl_OK);
-}
-
 extern int knd_print_offset(struct kndOutput *out, size_t num_spaces)
 {
     char buf[KND_PATH_SIZE];

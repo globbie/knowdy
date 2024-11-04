@@ -20,6 +20,7 @@
 #pragma once
 
 #include "knd_utils.h"
+#include "knd_attr.h"
 #include "knd_class_inst.h"
 #include "knd_text.h"
 #include "knd_config.h"
@@ -40,11 +41,6 @@ struct kndClassCommitRef;
 struct glbOutput;
 struct kndClassInstEntry;
 struct kndAttrRef;
-
-typedef enum knd_classvar_t {
-    KND_BASE_CLASS,
-    KND_INSTANCE_BLUEPRINT
-} knd_classvar_t;
 
 typedef enum knd_class_phase_t {
      KND_CLASS_CREATED,
@@ -107,8 +103,6 @@ struct kndClassRef
 
 struct kndClassBasePred
 {
-    knd_classvar_t type;
-
     const char *name;
     size_t name_size;
 
@@ -116,6 +110,7 @@ struct kndClassBasePred
     size_t id_size;
     size_t numid;
 
+    struct kndClass *owner;
     struct kndClassEntry *entry;
 
     struct kndAttrStm *attr_stms;
@@ -125,9 +120,6 @@ struct kndClassBasePred
     struct kndState *states;
     size_t init_state;
     size_t num_states;
-
-    struct kndClass *parent;
-    struct kndClassInst *parent_inst;
 
     struct kndClassBasePred *next;
 };
@@ -189,11 +181,11 @@ struct kndClass
     /* immediate children */
     struct kndClassRef *children;
     size_t num_children;
-    size_t num_terminals;
 
     struct kndClassRef *ancestors;
     size_t num_ancestors;
     struct kndSet *descendants;
+    size_t num_descendants;
 
     struct kndState * _Atomic desc_states;
     size_t init_desc_state;
@@ -327,7 +319,9 @@ int knd_class_new(struct kndClass **result, struct kndMemPool *mempool);
 int knd_class_idx_new(struct kndClassIdx **result, struct kndMemPool *mempool);
 
 int knd_inner_class_new(struct kndClass **self, struct kndMemPool *mempool);
+
 int knd_class_base_pred_new(struct kndClassBasePred **result, struct kndMemPool *mempool);
+
 int knd_class_ref_new(struct kndClassRef **result, struct kndMemPool *mempool);
 
 int knd_class_facet_new(struct kndClassFacet **result, struct kndMemPool *mempool);
@@ -360,3 +354,31 @@ int knd_class_update_indices(struct kndRepo *repo, struct kndClassEntry *self, s
 int knd_class_index(struct kndClass *self, struct kndTask *task);
 
 void knd_class_str(struct kndClass *self, size_t depth);
+
+static inline void knd_class_append_attr(struct kndClass *self, struct kndAttr *attr)
+{
+    if (!self->attr_tail) {
+        self->attr_tail = attr;
+        self->attrs = attr;
+    } else {
+        self->attr_tail->next = attr;
+        self->attr_tail = attr;
+    }
+    self->num_attrs++;
+
+    if (attr->is_implied)
+        self->implied_attr = attr;
+}
+
+static inline void knd_class_append_base_pred(struct kndClass *self, struct kndClassBasePred *base_pred)
+{
+    if (!self->base_preds) {
+        self->base_preds_tail = base_pred;
+        self->base_preds = base_pred;
+    } else {
+        self->base_preds_tail->next = base_pred;
+        self->base_preds_tail = base_pred;
+    }
+    self->num_base_preds++;
+}
+   

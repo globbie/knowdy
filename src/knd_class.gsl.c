@@ -22,6 +22,7 @@
 #include "knd_task.h"
 #include "knd_state.h"
 #include "knd_commit.h"
+#include "knd_query.h"
 #include "knd_user.h"
 #include "knd_repo.h"
 #include "knd_mempool.h"
@@ -102,8 +103,10 @@ static int export_conc_elem_GSL(void *obj, const char *elem_id, size_t elem_id_s
                                 size_t count, void *elem)
 {
     struct kndTask *task = obj;
-    if (count < task->start_from) return knd_OK;
-    if (task->batch_size >= task->batch_max) return knd_RANGE;
+    struct kndQueryView *view = task->ctx->query->view;
+    struct kndBatchLimits *batch = view->batch;
+    if (count < batch->from) return knd_OK;
+    if (batch->size >= batch->max_items) return knd_RANGE;
     struct kndOutput *out = task->out;
     struct kndClassEntry *entry = elem;
     struct kndClass *c;
@@ -111,14 +114,15 @@ static int export_conc_elem_GSL(void *obj, const char *elem_id, size_t elem_id_s
     size_t curr_depth = 0;
     int err;
 
-    if (DEBUG_GSL_LEVEL_2)
+    if (DEBUG_GSL_LEVEL_2) {
         knd_log(".. GSL export class set elem: %.*s",
                 elem_id_size, elem_id);
+    }
 
     err = knd_class_acquire(entry, &c, task);
     KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
 
-    if (!task->show_removed_objs) {
+    if (!view->show_removed_objs) {
         state = c->states;
         if (state && state->phase == KND_REMOVED) return knd_OK;
     }
@@ -134,106 +138,19 @@ static int export_conc_elem_GSL(void *obj, const char *elem_id, size_t elem_id_s
     KND_TASK_ERR("failed to export GSL {class %.*s}", entry->name_size, entry->name);
 
     task->depth = curr_depth;
-    task->ctx->batch_size++;
+    batch->size++;
     return knd_OK;
 }
-
-#if 0
-static int export_class_ref(void *obj, const char *unused_var(elem_id),
-                            size_t unused_var(elem_id_size),
-                            size_t unused_var(count), void *elem)
-{
-    struct kndTask *task = obj;
-    size_t indent_size = task->ctx->format_indent;
-    size_t depth = task->depth;
-    // if (count < task->start_from) return knd_OK;
-    // if (task->batch_size >= task->batch_max) return knd_RANGE;
-
-    struct kndOutput *out = task->out;
-    struct kndClassRef *ref = elem;
-    struct kndClassEntry *entry = ref->entry;
-    struct kndClassInstRef *inst_ref;
-    size_t inst_ref_count = 0;
-    int err;
-
-    if (task->batch_size) {
-        OUT(",", 1);
-    }
-    if (indent_size) {
-        OUT("\n", 1);
-        err = knd_print_offset(out, (depth) * indent_size);
-        RET_ERR();
-    }
-    OUT("{", 1);
-    if (indent_size) {
-        OUT("\n", 1);
-        err = knd_print_offset(out, (depth + 1) * indent_size);
-        RET_ERR();
-    }
-    OUT("\"class\":", strlen("\"class\":"));
-    if (indent_size) {
-        OUT(" ", 1);
-    }
-    OUT("\"", 1);
-    OUT(entry->name, entry->name_size);
-    OUT("\"", 1);
-
-    if (ref->insts) {
-        OUT(",", 1);
-        if (indent_size) {
-            OUT("\n", 1);
-            err = knd_print_offset(out, (depth + 1) * indent_size);
-            RET_ERR();
-        }
-        OUT("\"insts\":", strlen("\"insts\":"));
-        if (indent_size) {
-            OUT(" ", 1);
-        }
-        OUT("[", 1);
-        
-        FOREACH (inst_ref, ref->insts) {
-            if (inst_ref_count) {
-                OUT(",", 1);
-            }
-            OUT("{", 1);
-            OUT("\"name\":", strlen("\"name\":"));
-            if (indent_size) {
-                OUT(" ", 1);
-            }
-            OUT("\"", 1);
-            if (inst_ref->entry) {
-                OUT(inst_ref->entry->name, inst_ref->entry->name_size);
-            } else {
-                OUT(inst_ref->name, inst_ref->name_size);
-            }
-            OUT("\"", 1);
-            OUT("}", 1);
-            inst_ref_count++;
-        }
-        OUT("]", 1);
-    }
-    
-    if (indent_size) {
-        OUT("\n", 1);
-        err = knd_print_offset(out, (depth) * indent_size);
-        RET_ERR();
-    }
-    OUT("}", 1);
-
-    task->batch_size++;
-    return knd_OK;
-}
-#endif
 
 static int export_concise_GSL(struct kndClass *self, struct kndTask *task, size_t depth)
 {
     struct kndClassBasePred *item;
     int err;
 
-    if (DEBUG_GSL_LEVEL_2)
+    if (DEBUG_GSL_LEVEL_2) {
         knd_log(".. export concise GSL for %.*s..",
                 self->entry->name_size, self->entry->name);
-
+    }
     FOREACH (item, self->base_preds) {
         if (!item->attr_stms) continue;
 
@@ -267,11 +184,13 @@ extern int knd_empty_set_export_GSL(struct kndClass *self,
     return knd_OK;
 }
 
-int knd_class_set_export_GSL(struct kndSet *set,
-                             struct kndTask *task)
+int knd_class_set_export_GSL(struct kndSet *set, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
+    struct kndQueryView *view = task->ctx->query->view;
+    struct kndBatchLimits *batch = view->batch;
     int err;
+
     out->reset(out);
     err = out->write(out, "{set",
                      strlen("{set"));                                            RET_ERR();
@@ -284,7 +203,7 @@ int knd_class_set_export_GSL(struct kndSet *set,
         err = out->writec(out, '}');                                              RET_ERR();
     }
 
-    if (task->show_removed_objs) {
+    if (view->show_removed_objs) {
         err = out->writef(out, "{total %lu",
                           (unsigned long)set->num_elems);                         RET_ERR();
     } else {
@@ -297,8 +216,8 @@ int knd_class_set_export_GSL(struct kndSet *set,
         err = knd_print_offset(out, task->ctx->format_indent);                    RET_ERR();
     }
 
-    if (!task->ctx->batch_max) {
-        task->ctx->batch_max = KND_RESULT_BATCH_SIZE;
+    if (!batch->max_items) {
+        batch->max_items = KND_RESULT_BATCH_SIZE;
     }
 
     err = out->write(out, "[class",
@@ -314,12 +233,12 @@ int knd_class_set_export_GSL(struct kndSet *set,
         err = knd_print_offset(out, task->ctx->format_indent);                    RET_ERR();
     }
 
-    err = out->writef(out, "{batch{max %lu}",
-                      (unsigned long)task->ctx->batch_max);                       RET_ERR();
-    err = out->writef(out, "{size %lu}",
-                       (unsigned long)task->ctx->batch_size);                     RET_ERR();
+    err = out->writef(out, "{batch{max %zu}",
+                      batch->max_items);                       RET_ERR();
+    err = out->writef(out, "{size %zu}",
+                       batch->size);                     RET_ERR();
     err = out->writef(out,
-                     "{from %lu}}", (unsigned long)task->ctx->batch_from);        RET_ERR();
+                     "{from %zu}}", batch->from);        RET_ERR();
 
     err = out->writec(out, '}');                                                  RET_ERR();
 
@@ -364,15 +283,15 @@ static int present_subclasses(struct kndClass *self, size_t num_children,
     struct kndState *state;
     int err;
 
-    err = out->write(out, "{_subclasses {total ",
-                     strlen("{_subclasses {total "));                             RET_ERR();
+    err = out->write(out, "{children {total ",
+                     strlen("{children {total "));                             RET_ERR();
     err = out->writef(out, "%zu", num_children);                                  RET_ERR();
     err = out->writec(out, '}');                                                  RET_ERR();
 
-    if (self->num_terminals) {
-        err = out->write(out, " {num_terminals ",
-                         strlen(" {num_terminals "));                             RET_ERR();
-        err = out->writef(out, "%zu", self->num_terminals);                      RET_ERR();
+    if (self->num_descendants) {
+        err = out->write(out, " {num-desc ",
+                         strlen(" {num-desc "));                             RET_ERR();
+        err = out->writef(out, "%zu", self->num_descendants);                      RET_ERR();
         err = out->writec(out, '}');                                              RET_ERR();
     }
 
@@ -428,14 +347,6 @@ static int export_attrs(struct kndClass *self, struct kndTask *task, size_t dept
     size_t i = 0;
     int err;
 
-    if (task->ctx->format_indent) {
-        OUT("\n", 1);
-        err = knd_print_offset(out, task->ctx->format_indent);
-        RET_ERR();
-    }
-
-    OUT("[attr", strlen("[attr"));
-
     FOREACH (attr, self->attrs) {
         if (task->ctx->format_indent) {
             OUT("\n", 1);
@@ -446,7 +357,6 @@ static int export_attrs(struct kndClass *self, struct kndTask *task, size_t dept
         KND_TASK_ERR("failed to export %.*s attr", attr->name_size, attr->name);
         i++;
     }
-    OUT("]", 1);
     return knd_OK;
 }
 
@@ -542,7 +452,7 @@ static int export_inverse_rels(struct kndClass *self, struct kndTask *task, size
             err = knd_print_offset(out, (depth + 2) * indent_size);
             RET_ERR();
         }
-        OUT("\"class\":", strlen("\"class\":"));
+        OUT("\"cls\":", strlen("\"cls\":"));
         if (indent_size) {
             OUT(" ", 1);
         }
@@ -580,7 +490,7 @@ static int export_inverse_rels(struct kndClass *self, struct kndTask *task, size
             curr_depth = task->ctx->max_depth;
             task->ctx->max_depth = 0;
             task->depth = depth + 3;
-            task->batch_size = 0;
+            task->view->batch->batch_size = 0;
             OUT(",", 1);
             if (indent_size) {
                 OUT("\n", 1);
@@ -640,9 +550,12 @@ int knd_class_export_GSL(struct kndClass *self, struct kndTask *task,
                 task->depth, task->max_depth, indent_size);
     }
     OUT("{", 1);
+
     if (!is_list_item) {
-        OUT("class ", strlen("class "));
+        OUT("cls", strlen("cls"));
     }
+
+    OUT(" ", 1);
 
     if (self->name_size) {
         err = out->write_escaped(out, self->name, self->name_size);

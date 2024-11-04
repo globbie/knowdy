@@ -41,7 +41,7 @@ int knd_rel_pred_resolve(struct kndAttrStm *var, struct kndTask *task)
     if (DEBUG_REL_PRED_RESOLVE_LEVEL_2) {
         knd_log("\n>> resolving REL var {class %.*s {%.*s %.*s}} "
                 " {proc %.*s {arg %.*s} {impl-arg %.*s}}",
-                attr->parent->name_size, attr->parent->name, var->name_size, var->name,
+                attr->owner->name_size, attr->owner->name, var->name_size, var->name,
                 var->val_size, var->val, rel->ref_proc_name_size, rel->ref_proc_name,
                 rel->subj_arg_name_size, rel->subj_arg_name,
                 rel->impl_arg_name_size, rel->impl_arg_name);

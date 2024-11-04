@@ -65,32 +65,87 @@ void knd_attr_str(struct kndAttr *self, size_t depth)
                 depth * KND_OFFSET_SIZE, "",
                 self->classname_size, self->classname);
     }
-
-    /*if (self->proc) {
-        proc = self->proc;
-        knd_log("%*s  PROC: %.*s",
-                depth * KND_OFFSET_SIZE, "", proc->name_size, proc->name);
-        proc->depth = depth + 1;
-        proc->str(proc);
-    }
-    */
-    /*if (self->calc_oper_size) {
-        knd_log("%*s  oper: %s attr: %s",
-                depth * KND_OFFSET_SIZE, "",
-                self->calc_oper, self->calc_attr);
-    }
-    */
-
-    /*if (self->default_val_size) {
-        knd_log("%*s  default VAL: %s",
-                depth * KND_OFFSET_SIZE, "", self->default_val);
-    }
-    */
-
     if (self->is_a_set)
         knd_log("%*s]", depth * KND_OFFSET_SIZE, "");
     else
         knd_log("%*s}",  depth * KND_OFFSET_SIZE, "");
+}
+
+static int get_immediate_attr(struct kndClass *owner, const char *id, size_t id_size,
+                              struct kndAttr **result)
+{
+    struct kndAttr *attr = NULL;
+    FOREACH (attr, owner->attrs) {
+        if (!memcmp(attr->id, id, id_size)) {
+            *result = attr;
+            return knd_OK;
+        }
+    }
+    return knd_NO_MATCH;
+}
+
+int knd_attr_find(struct kndClass *cls, const char *name, size_t name_size,
+                  struct kndAttr **result, struct kndTask *task)
+{
+    struct kndSharedDict *attr_name_idx = task->idxs->attr_name_idx;
+    struct kndAttrRef *refs, *ref = NULL;
+    struct kndAttr *attr = NULL;
+    struct kndClassEntry *entry;
+    struct kndClass *c;
+    int err;
+
+    refs = knd_shared_dict_get(attr_name_idx, name, name_size);
+    if (!refs) {
+        err = knd_NO_MATCH;
+        KND_TASK_ERR("no such attr %.*s", name_size, name);
+    }
+
+    FOREACH (ref, refs) {
+        err = knd_shared_set_get(task->idxs->class_idx,
+                                 ref->owner_id, ref->owner_id_size, (void**)&entry);
+        KND_TASK_ERR("failed to get a {class-entry %.*s}",
+                     ref->owner_id_size, ref->owner_id);
+
+        /* direct owner for this attr */
+        if (entry == cls->entry) {
+            if (ref->attr) {
+                attr = ref->attr;
+            }
+
+            err = get_immediate_attr(cls, ref->id, ref->id_size, &attr);
+            KND_TASK_ERR("no immediate {attr %.*s} in {class %.*s}",
+                         ref->name_size, ref->name, cls->name_size, cls->name);
+            break;
+        }
+
+        err = knd_class_acquire(entry, &c, task);
+        KND_TASK_ERR("failed to acquire class {entry %.*s}",
+                     entry->name_size, entry->name);
+
+        knd_log(">> {class %.*s}", c->name_size, c->name);
+
+        err = knd_is_base(c, cls);
+        if (err) continue;
+
+        if (ref->attr) {
+            attr = ref->attr;
+            break;
+        }
+
+        /* get attr from owner class */
+        err = get_immediate_attr(cls, ref->id, ref->id_size, &attr);
+        KND_TASK_ERR("no immediate {attr %.*s} in {class %.*s}",
+                     ref->name_size, ref->name, cls->name_size, cls->name);
+        break;
+    }
+
+    if (!attr) {
+        err = knd_NO_MATCH;
+        KND_TASK_ERR("class %.*s has no attr %.*s", cls->name_size, cls->name, name_size, name);
+    }
+
+    *result = attr;
+    return knd_OK;
 }
 
 int knd_attr_export(struct kndAttr *self, knd_format format, struct kndTask *task)
@@ -106,101 +161,6 @@ int knd_attr_export(struct kndAttr *self, knd_format format, struct kndTask *tas
     return knd_NO_MATCH;
 }
 
-int knd_get_arg_value(struct kndAttrStm *src, struct kndAttrStm *query,
-                      struct kndProcCallArg *result_arg, struct kndTask *task)
-{
-    struct kndAttrStm *curr_var;
-    struct kndAttr *attr;
-    struct kndAttrRef *ref;
-    struct kndClass *parent_class = src->base_pred->parent;
-    struct kndClassEntry *entry;
-    struct kndClass *c;
-    int err;
-
-    if (DEBUG_ATTR_LEVEL_2) {
-        knd_log("\n\n.. from \"%.*s\" (parent class:%.*s) is_list:%d   extract attr: \"%.*s\"",
-                src->name_size, src->name,
-                parent_class->name_size, parent_class->name,
-                src->attr->is_a_set,
-                query->name_size, query->name);
-        knd_log("ref class: %.*s",
-                src->attr->class_entry->name_size,
-                src->attr->class_entry->name);
-        knd_attr_stm_str(src, 1);
-    }
-
-    if (src->attr->class_entry) {
-        entry = src->attr->class_entry;
-        err = knd_class_acquire(entry, &c, task);
-        KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
-        
-        err = knd_class_get_attr(c, query->name, query->name_size, &ref);
-        if (err) return err;
-        attr = ref->attr;
-    }
-    
-    /* check implied attr */
-    if (src->implied_attr) {
-        attr = src->implied_attr;
-
-        if (!memcmp(attr->name, query->name, query->name_size)) {
-            /*switch (attr->type) {
-            case KND_ATTR_UINT:
-                if (DEBUG_ATTR_LEVEL_2) {
-                    knd_log("== implied uint attr: %.*s value: %.*s",
-                            src->name_size, src->name,
-                            src->val_size, src->val);
-                }
-                result_arg->numval = src->numval;
-                return knd_OK;
-            case KND_ATTR_REF:
-                knd_log("++ match ref: %.*s",
-                       src->class->name_size, src->class->name);
-                return knd_get_class_attr_value(src->class_entry->class,
-                                                query->children, result_arg);
-                break;
-            default:
-                break;
-                }*/
-        }
-    }
-
-    /* iterate children */
-    FOREACH (curr_var, src->children) {
-        if (DEBUG_ATTR_LEVEL_2)
-            knd_log("== child:%.*s val: %.*s",
-                    curr_var->name_size, curr_var->name,
-                    curr_var->val_size, curr_var->val);
-
-
-        if (curr_var->name_size != query->name_size) continue;
-
-        if (!strncmp(curr_var->name, query->name, query->name_size)) {
-
-            /* set the implied value */
-            /*if (curr_var->implied_attr) {
-                attr = curr_var->implied_attr;
-                knd_log("!! implied attr found in \"%.*s\"!\n\n",
-                        curr_var->name_size, curr_var->name);
-                result_arg->numval = curr_var->numval;
-
-                return knd_OK;
-                }*/
-            
-            //result_arg->numval = curr_var->numval;
-            if (!query->num_children) return knd_OK;
-
-            //knd_log(".. continue to look up the \"%.*s\" attr..",
-            //        query->children->name_size, query->children->name);
-            //knd_attr_stm_str(curr_var, 1);
-            
-            err = knd_get_arg_value(curr_var, query->children, result_arg, task);
-            if (err) return err;
-        }
-    }
-    return knd_OK;
-}
-
 int knd_attr_stm_new(struct kndAttrStm **result, struct kndMemPool *mempool)
 {
     void *page;
@@ -213,25 +173,37 @@ int knd_attr_stm_new(struct kndAttrStm **result, struct kndMemPool *mempool)
     return knd_OK;
 }
 
-int knd_attr_facet_elems_new(struct kndAttrFacetElems **result, struct kndMemPool *mempool)
+int knd_attr_facet_elem_new(struct kndAttrFacetElem **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
-    assert(mempool->small_x4_page_size >= sizeof(struct kndAttrFacetElems));
-    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL_X4, &page);
+    assert(mempool->tiny_page_size >= sizeof(struct kndAttrFacetElem));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
-    memset(page, 0,  sizeof(struct kndAttrFacetElems));
+    memset(page, 0,  sizeof(struct kndAttrFacetElem));
     *result = page;
     return knd_OK;
 }
 
-int knd_attr_facet_new(struct kndAttrFacet **result, struct kndMemPool *mempool)
+int knd_attr_facet_elem_idx_new(struct kndAttrFacetElemIdx **result, struct kndMemPool *mempool)
 {
-    struct kndAttrFacetElems *elems;
+    void *page;
+    int err;
+    assert(mempool->small_x4_page_size >= sizeof(struct kndAttrFacetElemIdx));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL_X4, &page);
+    if (err) return err;
+    memset(page, 0,  sizeof(struct kndAttrFacetElemIdx));
+    *result = page;
+    return knd_OK;
+}
+
+int knd_attr_facet_new(struct kndAttrFacet **result, knd_attr_facet_type type, struct kndMemPool *mempool)
+{
+    struct kndAttrFacetElemIdx *elems;
     void *page;
     int err;
 
-    err = knd_attr_facet_elems_new(&elems, mempool);
+    err = knd_attr_facet_elem_idx_new(&elems, mempool);
     if (err) return err;
 
     assert(mempool->page_size >= sizeof(struct kndAttrFacet));
@@ -240,6 +212,7 @@ int knd_attr_facet_new(struct kndAttrFacet **result, struct kndMemPool *mempool)
     memset(page, 0,  sizeof(struct kndAttrFacet));
 
     *result = page;
+    (*result)->type = type;
     (*result)->elems = elems;
     return knd_OK;
 }

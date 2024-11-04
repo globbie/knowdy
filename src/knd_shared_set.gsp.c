@@ -474,7 +474,7 @@ static int create_leaf(struct kndStorageLeaf **result, size_t numid, struct kndS
     const char *path = idx->path;
     size_t path_size = idx->path_size;
     int err;
-   
+
     err = knd_storage_leaf_new(&leaf, numid, idx);
     KND_TASK_ERR("failed to alloc a storage leaf");
 
@@ -520,12 +520,16 @@ static int finalize_leaf(struct kndStorageLeaf *leaf, const char *path, size_t p
     int err;
 
     if (DEBUG_SHARED_SET_GSP_LEVEL_2) {
-        knd_log(".. finalize {leaf %zu {from %.*s} {to %.*s}",
+        knd_log(".. finalize {leaf %zu {from %.*s} {to %.*s} {size %zu}}",
                 leaf->numid, leaf->range_from_id_size, leaf->range_from_id,
-                 leaf->range_to_id_size, leaf->range_to_id);
+                leaf->range_to_id_size, leaf->range_to_id, leaf->file_size);
     }
 
     out->reset(out);
+
+    /* make sure the file name is unique,
+       some filesystems are case-insensitive */
+    OUTF("%zu_", leaf->numid);
 
     /* root dir special name */
     if (*leaf->range_from_id == '/') {
@@ -574,6 +578,9 @@ static int finalize_leaf(struct kndStorageLeaf *leaf, const char *path, size_t p
                 leaf->filepath_size, leaf->filepath, out->buf_size, out->buf);
         break;
     default:
+        knd_log(".. renaming {file %.*s} to {file %.*s}",
+                leaf->filepath_size, leaf->filepath, buf_size, buf);
+
         err = rename((const char*)leaf->filepath, (const char*)buf);
         KND_TASK_ERR("failed renaming {file %.*s} to {file %.*s}",
                      leaf->filepath_size, leaf->filepath, out->buf_size, out->buf);

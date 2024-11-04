@@ -19,48 +19,7 @@
 #define DEBUG_TASK_LEVEL_3 0
 #define DEBUG_TASK_LEVEL_TMP 1
 
-#if 0
-static const char * gsl_err_to_str(gsl_err_t err)
-{
-    switch (err.code) {
-    case gsl_FAIL:     return "Unclassified error";
-    case gsl_LIMIT:    return "LIMIT error";
-    case gsl_NO_MATCH: return "NO_MATCH error";
-    case gsl_FORMAT:   return "FORMAT error";
-    case gsl_EXISTS:   return "EXISTS error";
-    default:           return "Unknown error";
-    }
-}
-#endif
-
-#if 0
-static int log_parser_error(struct kndTask *self,
-                           gsl_err_t parser_err,
-                           size_t pos,
-                           const char *rec)
-{
-    size_t line = 0, column;
-    for (;;) {
-        const char *next_line = strchr(rec, '\n');
-        if (next_line == NULL) break;
-
-        size_t len = next_line + 1 - rec;
-        if (len > pos) break;
-
-        line++;
-        rec = next_line + 1;
-        pos -= len;
-    }
-    column = pos;
-
-    return self->log->writef(self->log, "parser error at line %zu:%zu: %d %s",
-                             line + 1, column + 1, parser_err.code, gsl_err_to_str(parser_err));
-}
-#endif
-
-static gsl_err_t run_set_format(void *obj,
-                                const char *name,
-                                size_t name_size)
+static gsl_err_t set_format(void *obj, const char *name, size_t name_size)
 {
     struct kndTask *self = obj;
     int err;
@@ -95,7 +54,7 @@ static gsl_err_t parse_format(void *obj, const char *rec, size_t *total_size)
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = run_set_format,
+          .run = set_format,
           .obj = self
         },
         { .name = "indent",
@@ -113,7 +72,7 @@ static gsl_err_t parse_format(void *obj, const char *rec, size_t *total_size)
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static gsl_err_t run_set_locale(void *obj, const char *name, size_t name_size)
+static gsl_err_t set_locale(void *obj, const char *name, size_t name_size)
 {
     struct kndTask *self = obj;
 
@@ -153,82 +112,7 @@ static gsl_err_t parse_locale(void *obj, const char *rec, size_t *total_size)
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = run_set_locale,
-          .obj = self
-        }
-    };
-
-    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-}
-
-static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_size)
-{
-    struct kndTask *task = obj;
-    int err;
-
-    if (DEBUG_TASK_LEVEL_2)
-        knd_log(".. parsing the system class import: \"%.*s\"..", 64, rec);
-
-    task->type = KND_COMMIT_STATE;
-    if (!task->ctx->commit) {
-        err = knd_commit_new(task->user_ctx->mempool, &task->ctx->commit);
-        if (err) return make_gsl_err_external(err);
-
-        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->snapshot->num_commits,
-                                                                memory_order_relaxed);
-    }
-
-    return knd_class_import(task->repo, rec, total_size, task);
-}
-
-static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_size)
-{
-    struct kndTask *task = obj;
-    // no explicit repo selection -> defaults to system repo
-    task->user_ctx->repo = task->repo;
-
-    if (DEBUG_TASK_LEVEL_3)
-        knd_log(".. parsing the system repo class selection: \"%.*s\"", 64, rec);
-    return knd_class_select(task->repo, rec, total_size, task);
-}
-
-static gsl_err_t parse_proc_import(void *obj, const char *rec, size_t *total_size)
-{
-    struct kndTask *task = obj;
-    int err;
-
-    if (DEBUG_TASK_LEVEL_2) {
-        knd_log(".. parsing the system proc import: \"%.*s\"..", 64, rec);
-    }
-    task->type = KND_COMMIT_STATE;
-    if (!task->ctx->commit) {
-        err = knd_commit_new(task->mempool, &task->ctx->commit);
-        if (err) return make_gsl_err_external(err);
-
-        task->ctx->commit->orig_state_id =\
-            atomic_load_explicit(&task->snapshot->num_commits, memory_order_relaxed);
-    }
-    return knd_proc_import(task->repo, rec, total_size, task);
-}
-
-static gsl_err_t parse_proc_select(void *obj, const char *rec, size_t *total_size)
-{
-    struct kndTask *task = obj;
-
-    if (DEBUG_TASK_LEVEL_2) {
-        knd_log(".. parsing the system proc select: \"%.*s\"", 64, rec);
-    }
-    return knd_proc_select(task->repo, rec, total_size, task);
-}
-
-static gsl_err_t parse_update(void *obj, const char *rec, size_t *total_size)
-{
-    struct kndTask *self = obj;
-
-    struct gslTaskSpec specs[] = {
-        { .name = "user",
-          .name_size = strlen("user"),
-          .parse = knd_parse_select_user,
+          .run = set_locale,
           .obj = self
         }
     };
@@ -239,7 +123,6 @@ gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
     gsl_err_t parser_err;
-    int err;
 
     struct gslTaskSpec specs[] = {
         { .name = "locale",
@@ -263,36 +146,9 @@ gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
           .parse = knd_parse_select_user,
           .obj = task
         },
-        { .type = GSL_SET_STATE,
-          .name = "class",
-          .name_size = strlen("class"),
-          .parse = parse_class_import,
-          .obj = task
-        },
-        { .name = "class",
-          .name_size = strlen("class"),
-          .parse = parse_class_select,
-          .obj = task
-        },
-        { .type = GSL_SET_STATE,
-          .name = "proc",
-          .name_size = strlen("proc"),
-          .parse = parse_proc_import,
-          .obj = task
-        },
-        { .name = "proc",
-          .name_size = strlen("proc"),
-          .parse = parse_proc_select,
-          .obj = task
-        },
         { .name = "repo",
           .name_size = strlen("repo"),
-          .parse = knd_parse_repo,
-          .obj = task
-        },
-        { .name = "update",
-          .name_size = strlen("update"),
-          .parse = parse_update,
+          .parse = knd_parse_repo_select,
           .obj = task
         }
     };
@@ -311,12 +167,6 @@ gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
     /* any commits? */
     switch (task->type) {
     case KND_COMMIT_STATE:
-        err = knd_confirm_commit(task->user_ctx->repo, task);
-        if (err) {
-            parser_err = make_gsl_err(gsl_FAIL);
-            knd_log("commit confirm err:%d code:%d", err, parser_err.code);
-            return parser_err;
-        }
         // TODO
         // check resource usage threshold, raise alert flag if needed        
         // knd_log(".. building report for commit %zu", task->ctx->commit->numid);
@@ -327,4 +177,3 @@ gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
     }
     return make_gsl_err(gsl_OK);
 }
-

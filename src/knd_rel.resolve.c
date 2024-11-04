@@ -34,7 +34,7 @@ int knd_rel_resolve(struct kndRel *rel, struct kndTask *task)
     if (DEBUG_REL_RESOLVE_LEVEL_2) {
         knd_log("\n>> resolving REL attr {class %.*s {%.*s %.*s}} "
                 " {self-arg %.*s} {impl-arg %.*s}}",
-                rel->attr->parent->name_size, rel->attr->parent->name,
+                rel->attr->owner->name_size, rel->attr->owner->name,
                 rel->attr->name_size, rel->attr->name,
                 proc_name_size, proc_name,
                 rel->subj_arg_name_size, rel->subj_arg_name,

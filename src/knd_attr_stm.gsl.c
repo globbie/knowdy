@@ -97,7 +97,7 @@ extern int knd_export_inherited_attr_GSL(void *obj,
                                          void *elem)
 {
     struct kndTask *task = obj;
-    struct kndClass   *self = NULL; // TODO task->class;
+    struct kndClass   *self = NULL;
     struct kndAttrRef *ref = elem;
     struct kndAttr *attr = ref->attr;
     struct kndAttrStm *attr_stm = ref->attr_stm;
@@ -112,12 +112,11 @@ extern int knd_export_inherited_attr_GSL(void *obj,
                 self->name_size, self->name, attr->name_size, attr->name);
 
     /* skip over immediate attrs */
-    if (attr->parent == self) return knd_OK;
+    if (attr->owner == self) return knd_OK;
 
-    if (attr_stm && attr_stm->base_pred) {
-        /* already exported by parent */
-        if (attr_stm->base_pred->parent == self) return knd_OK;
-    }
+    //if (attr_stm && attr_stm->base_pred) {
+    //    if (attr_stm->base_pred->owner == self) return knd_OK;
+    //}
 
     /* NB: display only concise fields */
     if (!attr->concise_level) {

@@ -29,7 +29,7 @@
 
 struct LocalContext {
     struct kndClassBasePred *class_var;
-    struct kndAttrStm  *list_parent;
+    struct kndAttrStm  *list_owner;
     struct kndAttr     *attr;
     struct kndRepo     *repo;
     struct kndTask     *task;
@@ -236,7 +236,7 @@ static gsl_err_t parse_subtypes(void *obj, const char *name, size_t name_size,
     struct kndTask *task = ctx->task;
     int err;
 
-    if (DEBUG_ATTR_LEVEL_TMP) {
+    if (DEBUG_ATTR_LEVEL_2) {
         knd_log(".. {attr-type %.*s {spec %.*s}}",
                 strlen(knd_attr_names[attr->type]), knd_attr_names[attr->type],
                 name_size, name);
@@ -267,9 +267,9 @@ gsl_err_t knd_attr_import(struct kndAttr *self, struct kndTask *task,
 {
     gsl_err_t err;
 
-    if (DEBUG_ATTR_LEVEL_1) {
+    if (DEBUG_ATTR_LEVEL_2) {
         knd_log(".. {class %.*s} to import {attr-type %.*s}",
-                self->parent->name_size, self->parent->name,
+                self->owner->name_size, self->owner->name,
                 strlen(knd_attr_names[self->type]), knd_attr_names[self->type]);
     }
 
@@ -339,16 +339,13 @@ gsl_err_t knd_attr_import(struct kndAttr *self, struct kndTask *task,
         }
     };
 
-    if (DEBUG_ATTR_LEVEL_2)
-        knd_log(".. attr parsing: \"%.*s\"..", 32, rec);
-
     err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (err.code) {
         switch (err.code) {
         case gsl_NO_MATCH:
             KND_TASK_LOG("unknown \"%.*s\" tag in {class %.*s {attr %.*s}}",
                          err.val_size, err.val,
-                         self->parent->name_size, self->parent->name,
+                         self->owner->name_size, self->owner->name,
                          self->name_size, self->name);
             break;
         default:

@@ -67,14 +67,14 @@ static gsl_err_t set_attr_id(void *obj, const char *id, size_t id_size)
     attr->name = ref->name;
     attr->name_size = ref->name_size;
 
-    if (ref->attr) {
-        knd_log("?? doublet {attr %.*s {id %.*s}} {parent %.*s}",
+    /*if (ref->attr) {
+        knd_log("?? doublet {attr %.*s {id %.*s}} {owner %.*s}",
                 ref->name_size, ref->name, ref->id_size, ref->id,
-                ref->attr->parent->name_size, ref->attr->parent->name);
+                attr->owner->name_size, attr->owner->name);
         return make_gsl_err(gsl_FAIL);
     }
-
     ref->attr = attr;
+    */
     return make_gsl_err(gsl_OK);
 }
 
@@ -86,6 +86,18 @@ static gsl_err_t set_attr_ref_id(void *obj, const char *id, size_t id_size)
 
     memcpy(ref->id, id, id_size);
     ref->id_size = id_size;
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t set_owner_class_id(void *obj, const char *id, size_t id_size)
+{
+    struct kndAttrRef *ref = obj;
+    if (!id_size) return make_gsl_err(gsl_FORMAT);
+    if (id_size > KND_ID_SIZE) return make_gsl_err(gsl_LIMIT);
+
+    memcpy(ref->owner_id, id, id_size);
+    ref->owner_id_size = id_size;
 
     return make_gsl_err(gsl_OK);
 }
@@ -285,11 +297,11 @@ gsl_err_t knd_attr_read(struct kndAttr *attr, struct kndTask *task,
     };
     gsl_err_t err;
 
-    if (DEBUG_ATTR_READ_LEVEL_2)
-        knd_log(".. attr parsing: \"%.*s\"..", 32, rec);
-
     err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (err.code) return err;
+    if (err.code) {
+        knd_log("-- failed to parse attr rec: %d", err.code);
+        return err;
+    }
 
     if (attr->type == KND_ATTR_INNER) {
         if (!attr->classname_size) {
@@ -321,7 +333,12 @@ static gsl_err_t parse_attr_ref_array_item(void *obj, const char *rec, size_t *t
         { .is_implied = true,
           .run = set_attr_ref_id,
           .obj = ref
-        }
+        },
+        { .name = "c",
+          .name_size = strlen("c"),
+          .run = set_owner_class_id,
+          .obj = ref
+        }        
     };
     gsl_err_t parser_err;
 
@@ -333,7 +350,7 @@ static gsl_err_t parse_attr_ref_array_item(void *obj, const char *rec, size_t *t
     knd_calc_num_id(ref->id, ref->id_size, &ref->numid);
 
     if (DEBUG_ATTR_READ_LEVEL_3) {
-        knd_log(".. register attr attr %.*s", ref->name_size, ref->name);
+        knd_log(".. register {attr %.*s}", ref->name_size, ref->name);
     }
 
     refs = knd_shared_dict_get(attr_name_idx, ref->name, ref->name_size);
@@ -354,7 +371,8 @@ static gsl_err_t parse_attr_ref_array_item(void *obj, const char *rec, size_t *t
 
     err = knd_shared_set_add(attr_idx, ref->id, ref->id_size, (void*)ref);
     if (err) {
-        KND_TASK_LOG("{attr-attr %.*s already registered}?", ref->id_size, ref->id);
+        KND_TASK_LOG("failed to register {attr-id %.*s} {err %d}",
+                     ref->id_size, ref->id, err);
         return make_gsl_err_external(err);
     }
     return make_gsl_err(gsl_OK);

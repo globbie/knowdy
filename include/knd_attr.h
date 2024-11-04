@@ -114,6 +114,9 @@ struct kndAttrRef
     const char *name;
     size_t name_size;
 
+    char owner_id[KND_ID_SIZE];
+    size_t owner_id_size;
+
     struct kndAttr *attr;
 
     struct kndAttrStm *attr_stm;
@@ -123,7 +126,14 @@ struct kndAttrRef
     struct kndAttrRef *tail;
 };
 
-struct kndAttrFacetElems
+struct kndAttrFacetElem
+{
+    char id[KND_ID_SIZE];
+    struct kndClassEntry *entry;
+    struct kndAttrStm *stm;
+};
+
+struct kndAttrFacetElemIdx
 {
     void *cache[KND_FACET_MAX_THRESHOLD];
     struct kndSet *idx;
@@ -134,7 +144,9 @@ struct kndAttrFacet
     knd_attr_facet_type type;
     void *val;
 
-    struct kndAttrFacetElems *elems;
+    size_t depth;
+
+    struct kndAttrFacetElemIdx *elems;
     size_t num_elems;
 
     struct kndAttrFacet *children[KND_MAX_FACETS];
@@ -163,7 +175,7 @@ struct kndAttr
     const char *name;
     size_t name_size;
 
-    struct kndClass *parent;
+    struct kndClass *owner;
 
     bool is_a_set;
     bool set_is_unique;
@@ -221,7 +233,8 @@ void knd_attr_str(struct kndAttr *attr, size_t depth);
 int knd_attr_new(struct kndAttr **result, struct kndMemPool *mempool);
 int knd_attr_ref_new(struct kndAttrRef **result, struct kndMemPool *mempool);
 
-int knd_attr_facet_new(struct kndAttrFacet **result, struct kndMemPool *mempool);
+int knd_attr_facet_new(struct kndAttrFacet **result, knd_attr_facet_type type, struct kndMemPool *mempool);
+int knd_attr_facet_elem_new(struct kndAttrFacetElem **result, struct kndMemPool *mempool);
 
 // knd_attr.import.c
 gsl_err_t knd_attr_import(struct kndAttr *attr, struct kndTask *task, const char *rec, size_t *total_size);
@@ -230,9 +243,8 @@ gsl_err_t knd_attr_import(struct kndAttr *attr, struct kndTask *task, const char
 gsl_err_t knd_attr_read(struct kndAttr *self, struct kndTask *task,
                         const char *rec, size_t *total_size);
 
-int knd_attr_select_clause(struct kndAttr *attr, struct kndClass *c,
-                           struct kndRepo *repo, struct kndTask *task,
-                           const char *rec, size_t *total_size);
+int knd_attr_select_clause(struct kndAttr *attr, struct kndClass *cls,
+                           const char *rec, size_t *total_size, struct kndTask *task);
 
 // knd_attr.resolve.c
 int knd_attr_resolve(struct kndAttr *attr, struct kndTask *task);
@@ -252,3 +264,11 @@ int knd_attr_decode(struct kndAttr *attr, struct kndTask *task);
 
 int knd_ref_attr_new(struct kndRefAttr **result, const char *name, size_t name_size,
                      struct kndMemPool *mempool);
+
+void knd_attr_index_str(struct kndAttrFacet *owner, const char *seq, size_t seq_size, size_t depth);
+
+int knd_attr_find(struct kndClass *cls, const char *name, size_t name_size,
+                  struct kndAttr **result, struct kndTask *task);
+
+int knd_attr_parse_query_stm(struct kndAttrStm *stm,
+                             const char *rec, size_t *total_size, struct kndTask *task);

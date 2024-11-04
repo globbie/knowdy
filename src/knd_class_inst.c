@@ -28,6 +28,19 @@
 #define DEBUG_INST_LEVEL_4 0
 #define DEBUG_INST_LEVEL_TMP 1
 
+void knd_class_inst_append_attr_stm(struct kndClassInst *ci, struct kndAttrStm *attr_stm)
+{
+    if (!ci->attr_stms_tail) {
+        ci->attr_stms_tail  = attr_stm;
+        ci->attr_stms = attr_stm;
+    }
+    else {
+        ci->attr_stms_tail->next = attr_stm;
+        ci->attr_stms_tail = attr_stm;
+    }
+    ci->num_attr_stms++;
+}
+
 void knd_class_inst_str(struct kndClassInst *self, size_t depth)
 {
     //struct kndState *state = self->states;
@@ -42,8 +55,9 @@ void knd_class_inst_str(struct kndClassInst *self, size_t depth)
         //    knd_log("    state:%zu  phase:%d", state->numid, state->phase);
         //}
     }
-    if (self->base_pred->attr_stms) {
-        FOREACH (item, self->base_pred->attr_stms) {
+
+    if (self->attr_stms) {
+        FOREACH (item, self->attr_stms) {
             knd_attr_stm_str(item, depth + 1);
         }
     }

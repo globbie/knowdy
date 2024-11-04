@@ -328,13 +328,21 @@ int knd_class_resolve(struct kndClass *self, struct kndTask *task)
         err = knd_class_acquire(bp->entry, &c, task);
         KND_TASK_ERR("failed to acquire class %.*s",
                      bp->entry->name_size, bp->entry->name);
-        
+
+
         err = inherit_attrs(self, c, task);
         KND_TASK_ERR("failed to inherit attrs from {class %.*s}", c->name_size, c->name);
-        
-        if (bp->attr_stms) {
+
+        if (bp->num_attr_stms) {
+
+            if (DEBUG_CLASS_RESOLVE_LEVEL_3) {
+                knd_log(".. {cls %.*s} to resolve {base %.*s {num-attr-stms %zu}",
+                        self->name_size, self->name, c->name_size, c->name,
+                        bp->num_attr_stms);
+            }
+
             err = knd_resolve_attr_stms(self, bp, task);
-            KND_TASK_ERR("failed to resolve attr vars from {class %.*s}", c->name_size, c->name);
+            KND_TASK_ERR("failed to resolve attr stms from {class %.*s}", c->name_size, c->name);
         }
     }
 

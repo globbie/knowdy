@@ -123,7 +123,6 @@ struct kndMemPool
     size_t max_set_size;
 
     int (*alloc)(struct kndMemPool   *self);
-    int (*reset)(struct kndMemPool   *self);
     int (*present)(struct kndMemPool *self, struct kndOutput  *out);
     gsl_err_t (*parse)(struct kndMemPool *self, const char *rec, size_t *total_size);
 };

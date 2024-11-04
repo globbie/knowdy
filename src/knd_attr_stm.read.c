@@ -59,19 +59,6 @@ static gsl_err_t read_nested_attr_stm(void *obj, const char *name, size_t name_s
 static gsl_err_t set_attr_stm_val_id(void *obj, const char *val, size_t val_size);
 static gsl_err_t confirm_attr_stm(void *obj, const char *unused_var(name), size_t unused_var(name_size));
 
-static void append_attr_stm(struct kndClassBasePred *bp, struct kndAttrStm *attr_stm)
-{
-    if (!bp->attr_stms_tail) {
-        bp->attr_stms_tail  = attr_stm;
-        bp->attr_stms = attr_stm;
-    }
-    else {
-        bp->attr_stms_tail->next = attr_stm;
-        bp->attr_stms_tail = attr_stm;
-    }
-    bp->num_attr_stms++;
-}
-
 static gsl_err_t parse_text(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
@@ -125,6 +112,7 @@ static gsl_err_t parse_proc_ref(void *obj, const char *rec, size_t *total_size)
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return parser_err;
+
     return make_gsl_err(gsl_OK);
 }
 
@@ -207,26 +195,26 @@ static gsl_err_t read_nested_attr_stm(void *obj, const char *id, size_t id_size,
     struct LocalContext *ctx = obj;
     struct kndAttrStm *self = ctx->attr_stm;
     struct kndTask    *task = ctx->task;
-    struct kndAttrStm *var;
+    struct kndAttrStm *stm;
     struct kndMemPool *mempool = task->mempool;
     gsl_err_t parser_err;
     int err;
 
-    err = knd_attr_stm_new(&var, mempool);
+    err = knd_attr_stm_new(&stm, mempool);
     if (err) return *total_size = 0, make_gsl_err_external(err);
-    var->parent = self;
+    stm->parent = self;
 
-    memcpy(var->id, id, id_size);
-    var->id_size = id_size;
+    memcpy(stm->id, id, id_size);
+    stm->id_size = id_size;
 
     struct LocalContext attr_stm_ctx = {
-        .attr_stm = var,
+        .attr_stm = stm,
         .task = task
     };
 
     if (DEBUG_ATTR_STM_READ_LEVEL_2) {
-        knd_log(".. read nested attr {var %.*s} {parent %.*s}",
-                var->name_size, var->name, self->name_size, self->name);
+        knd_log(".. read nested attr {stm %.*s} {parent %.*s}",
+                stm->name_size, stm->name, self->name_size, self->name);
     }
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -252,17 +240,17 @@ static gsl_err_t read_nested_attr_stm(void *obj, const char *id, size_t id_size,
         },
         { .is_default = true,
           .run = confirm_attr_stm,
-          .obj = var
+          .obj = stm
         }
     };
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
-        KND_TASK_LOG("attr var reading failed: %d", parser_err.code);
+        KND_TASK_LOG("attr stm reading failed: %d", parser_err.code);
         return parser_err;
     }
 
-    var->next = self->children;
-    self->children = var;
+    stm->next = self->children;
+    self->children = stm;
     self->num_children++;
     return make_gsl_err(gsl_OK);
 }
@@ -270,12 +258,12 @@ static gsl_err_t read_nested_attr_stm(void *obj, const char *id, size_t id_size,
 static gsl_err_t set_attr_stm_id(void *obj, const char *id, size_t id_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndAttrStm *var = ctx->attr_stm;
+    struct kndAttrStm *stm = ctx->attr_stm;
     if (!id_size) return make_gsl_err(gsl_FORMAT);
     if (id_size > KND_ID_SIZE) return make_gsl_err(gsl_LIMIT);
     
-    memcpy(var->id, id, id_size);
-    var->id_size = id_size;
+    memcpy(stm->id, id, id_size);
+    stm->id_size = id_size;
 
     return make_gsl_err(gsl_OK);
 }
@@ -304,12 +292,11 @@ static gsl_err_t confirm_attr_stm(void *obj, const char *unused_var(name), size_
         if (!attr_stm->val_size)
             knd_log("NB: attr var value not set in %.*s (class: %.*s)",
                     attr_stm->name_size, attr_stm->name,
-                    attr_stm->base_pred->entry->name_size,
-                    attr_stm->base_pred->entry->name);
+                    attr_stm->attr->owner->name_size,
+                    attr_stm->attr->owner->name);
     }
     return make_gsl_err(gsl_OK);
 }
-
 
 static gsl_err_t append_attr_stm_list_item(void *accu, void *obj)
 {
@@ -346,9 +333,9 @@ static gsl_err_t read_attr_stm_list_item(void *obj, const char *rec, size_t *tot
     prev_attr_stm = ctx->attr_stm;
     ctx->attr_stm = attr_stm;
 
-    if (DEBUG_ATTR_STM_READ_LEVEL_2) {
-        knd_log("== reading a list of {attr-stm %.*s}: %.*s",
-                self->name_size, self->name, 32, rec);
+    if (DEBUG_ATTR_STM_READ_LEVEL_TMP) {
+        knd_log("== reading a list item of array {attr-stm %.*s}: %.*s",
+                self->id_size, self->id, 32, rec);
     }
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -379,19 +366,14 @@ static gsl_err_t read_attr_stm_list_item(void *obj, const char *rec, size_t *tot
     return append_attr_stm_list_item(self, attr_stm);
 }
 
-int knd_read_attr_stm_list(struct kndClassBasePred *self, const char *id, size_t id_size,
+int knd_read_attr_stm_list(struct kndAttrStm *stm, const char *id, size_t id_size,
                            const char *rec, size_t *total_size, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
-    struct kndAttrStm *stm;
     gsl_err_t parser_err;
     int err;
 
     if (id_size > KND_ID_SIZE) return knd_LIMIT;
-
-    err = knd_attr_stm_new(&stm, mempool);
-    KND_TASK_ERR("failed to alloc an attr stm");
-    stm->base_pred = self;
 
     memcpy(stm->id, id, id_size);
     stm->id_size = id_size;
@@ -406,26 +388,21 @@ int knd_read_attr_stm_list(struct kndClassBasePred *self, const char *id, size_t
         .parse = read_attr_stm_list_item,
         .obj = &ctx
     };
+
     parser_err = gsl_parse_array(&read_attr_stm_spec, rec, total_size);
     if (parser_err.code) return parser_err.code;
 
-    append_attr_stm(self, stm);
     return knd_OK;
 }
 
-int knd_read_attr_stm(struct kndClassBasePred *self, const char *id, size_t id_size,
+int knd_read_attr_stm(struct kndAttrStm *stm, const char *id, size_t id_size,
                       const char *rec, size_t *total_size, struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->mempool;
-    struct kndAttrStm *stm;
+    struct kndMemPool *mempool = task->mempool;   
     gsl_err_t parser_err;
     int err;
 
     if (id_size > KND_ID_SIZE) return knd_LIMIT;
-
-    err = knd_attr_stm_new(&stm, mempool);
-    KND_TASK_ERR("failed to alloc an attr stm");
-    stm->base_pred = self;
 
     memcpy(stm->id, id, id_size);
     stm->id_size = id_size;
@@ -467,7 +444,5 @@ int knd_read_attr_stm(struct kndClassBasePred *self, const char *id, size_t id_s
         knd_log("-- attr stm parsing failed: %d", parser_err.code);
         return parser_err.code;
     }
-    append_attr_stm(self, stm);
-
     return knd_OK;
 }

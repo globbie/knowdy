@@ -37,7 +37,7 @@ static int update_attr_stm_indices(struct kndClassInstEntry *entry, struct kndRe
     if (DEBUG_INST_IDX_LEVEL_2) {
         knd_log(".. class inst \"%.*s\" attr var indexing", entry->name_size, entry->name);
     }
-    FOREACH (var, entry->inst->base_pred->attr_stms) {
+    FOREACH (var, entry->inst->attr_stms) {
         switch (var->attr->type) {
         case KND_ATTR_TEXT:
             if (DEBUG_INST_IDX_LEVEL_3)
@@ -148,7 +148,7 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *is
             KND_TASK_ERR("class inst idx failed to register \"%.*s\"",
                          entry->name_size, entry->name);
 
-            if (entry->inst->base_pred->attr_stms) {
+            if (entry->inst->num_attr_stms) {
                 err = update_attr_stm_indices(entry, repo, task);
                 KND_TASK_ERR("failed to update attr inst indices with \"%.*s\"",
                              entry->id_size, entry->id);
@@ -164,7 +164,7 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *is
 int knd_class_inst_index(struct kndClassInst *self, struct kndTask *task)
 {
     struct kndClass *c;
-    struct kndAttrStm *var;
+    struct kndAttrStm *stm;
     struct kndAttr *attr;
     int err;
 
@@ -180,27 +180,27 @@ int knd_class_inst_index(struct kndClassInst *self, struct kndTask *task)
                 self->name_size, self->name);
     }
 
-    if (!self->base_pred->attr_stms) return knd_OK;
+    if (!self->num_attr_stms) return knd_OK;
 
-    FOREACH (var, self->base_pred->attr_stms) {
+    FOREACH (stm, self->attr_stms) {
         if (DEBUG_INST_IDX_LEVEL_3) {
-            knd_log(".. idx inst attr var {class %.*s {inst %.*s {%.*s %.*s}} {is-indexed %d}",
+            knd_log(".. idx inst attr stm {class %.*s {inst %.*s {%.*s %.*s}} {is-indexed %d}",
                     c->name_size, c->name, self->name_size, self->name,
-                    var->name_size, var->name, var->val_size, var->val, var->attr->is_indexed);
+                    stm->name_size, stm->name, stm->val_size, stm->val, stm->attr->is_indexed);
         }
-        attr = var->attr;
+        attr = stm->attr;
         if (!attr->is_indexed) continue;
 
         /*if (attr->is_a_set) {
             err = knd_index_attr_stm_list(self->entry->is_a, self->entry,
-                                          attr, var, task);
-            KND_TASK_ERR("failed to index class inst attr var list %.*s",
+                                          attr, stm, task);
+            KND_TASK_ERR("failed to index class inst attr stm list %.*s",
                          attr->name_size, attr->name);
             continue;
             }*/
 
-        err = knd_index_inst_attr_stm(self->entry, attr, var, task);
-        KND_TASK_ERR("failed to index inst attr var %.*s", attr->name_size, attr->name);
+        err = knd_index_inst_attr_stm(self->entry, attr, stm, task);
+        KND_TASK_ERR("failed to index inst attr stm %.*s", attr->name_size, attr->name);
     }
     return knd_OK;
 }

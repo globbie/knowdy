@@ -209,7 +209,7 @@ int knd_attr_resolve(struct kndAttr *attr, struct kndTask *task)
                     attr->ref_proc_name_size,
                     attr->ref_proc_name,
                     attr->name_size, attr->name,
-                    attr->parent->name_size, attr->parent->name);
+                    attr->owner->name_size, attr->owner->name);
             return knd_FAIL;
         }
         if (DEBUG_ATTR_RESOLVE_LEVEL_2)

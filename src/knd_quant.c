@@ -182,6 +182,30 @@ int knd_quant_uint_new(struct kndQuantUInt **result, struct kndMemPool *mempool)
     return knd_OK;
 }
 
+int knd_quant_uint_range_new(struct kndQuantUIntRange **result, struct kndMemPool *mempool)
+{
+    void *page;
+    int err;
+    assert(mempool->tiny_page_size >= sizeof(struct kndQuantUIntRange));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
+    if (err) return err;
+    memset(page, 0,  sizeof(struct kndQuantUIntRange));
+    *result = page;
+    return knd_OK;
+}
+
+int knd_quant_attr_stm_new(struct kndQuantAttrStm **result, struct kndMemPool *mempool)
+{
+    void *page;
+    int err;
+    assert(mempool->tiny_page_size >= sizeof(struct kndQuantAttrStm));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
+    if (err) return err;
+    memset(page, 0,  sizeof(struct kndQuantAttrStm));
+    *result = page;
+    return knd_OK;
+}
+
 int knd_quant_uint_facet_new(struct kndQuantUIntFacet **result, struct kndMemPool *mempool)
 {
     void *page;

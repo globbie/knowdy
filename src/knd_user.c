@@ -267,7 +267,7 @@ static int user_footer_export(struct kndTask *task)
 static gsl_err_t run_present_user(void *obj, const char *unused_var(val), size_t unused_var(val_size))
 {
     struct kndTask *task = obj;
-    struct kndUser *self = task->steward->user;
+    //struct kndUser *self = task->steward->user;
     struct kndClassInst *user_inst;
     struct kndOutput *out = task->out;
     int err;
@@ -280,11 +280,13 @@ static gsl_err_t run_present_user(void *obj, const char *unused_var(val), size_t
 
         // choose export format
         
-        err = knd_shared_set_map(self->class->inst_idx, knd_class_inst_iterate_export_JSON, (void*)task);
+        /*err = knd_shared_set_map(self->class->inst_idx,
+                knd_class_inst_iterate_export_JSON, (void*)task);
         if (err) {
             knd_log("export map failed: %d", err);
             return make_gsl_err_external(err);
         }
+        */
         return make_gsl_err(gsl_OK);
     }
 
@@ -302,24 +304,6 @@ static gsl_err_t run_present_user(void *obj, const char *unused_var(val), size_t
     err = user_footer_export(task);
     if (err) return make_gsl_err_external(err);
     
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t run_present_state(void *obj, const char *unused_var(val), size_t unused_var(val_size))
-{
-    struct kndTask *task = obj;
-    struct kndRepo *repo;
-    int err;
-
-    if (!task->user_ctx) {
-        KND_TASK_LOG("no user selected");
-        return make_gsl_err(gsl_FAIL);
-    }
-
-    repo = task->user_ctx->repo;
-    err = knd_present_repo_state(repo, task);
-    if (err) return make_gsl_err_external(err);
-
     return make_gsl_err(gsl_OK);
 }
 
@@ -364,7 +348,13 @@ gsl_err_t knd_parse_select_user(void *obj, const char *rec, size_t *total_size)
         },
         { .name = "repo",
           .name_size = strlen("repo"),
-          .parse = knd_parse_repo,
+          .parse = knd_parse_repo_select,
+          .obj = task
+        },
+        { .type = GSL_SET_STATE,
+          .name = "cls",
+          .name_size = strlen("cls"),
+          .parse = parse_class_import,
           .obj = task
         },
         { .type = GSL_SET_STATE,
@@ -392,11 +382,6 @@ gsl_err_t knd_parse_select_user(void *obj, const char *rec, size_t *total_size)
         { .name = "text",
           .name_size = strlen("text"),
           .parse = parse_text_search,
-          .obj = task
-        },
-        { .name = "_state",
-          .name_size = strlen("_state"),
-          .run = run_present_state,
           .obj = task
         },
         { .type = GSL_SET_STATE,

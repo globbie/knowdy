@@ -61,7 +61,7 @@ static int decode_inner_attr_stm(struct kndClass *base,
 {
     struct kndAttr *attr = parent->attr;
     struct kndClassEntry *entry = attr->class_entry;
-    struct kndClass *c = attr->parent;
+    struct kndClass *c = attr->owner;
     int err;
 
     if (DEBUG_ATTR_STM_DECODE_LEVEL_2) {
@@ -102,16 +102,8 @@ static int decode_inner_attr_stm(struct kndClass *base,
 static int decode_ref_attr_stm(struct kndClass *unused_var(base),
                                struct kndAttrStm *stm, struct kndTask *task)
 {
-    struct kndAttr *attr = stm->attr;
     struct kndClassEntry *entry;
     int err;
-
-    if (DEBUG_ATTR_STM_DECODE_LEVEL_2) {
-            knd_log(".. decoding {ref %.*s {val %.*s} {cls %.*s}}",
-                    stm->name_size, stm->name,
-                    stm->val_id_size, stm->val_id,
-                    attr->classname_size, attr->classname);
-    }
 
     err = knd_shared_set_get(task->idxs->class_idx, stm->val_id, stm->val_id_size,
                              (void**)&entry);
@@ -119,7 +111,7 @@ static int decode_ref_attr_stm(struct kndClass *unused_var(base),
                  stm->val_id_size, stm->val_id,
                  task->repo->name_size, task->repo->name);
 
-    if (DEBUG_ATTR_STM_DECODE_LEVEL_TMP) {
+    if (DEBUG_ATTR_STM_DECODE_LEVEL_3) {
             knd_log(">> decoded {ref %.*s {cls %.*s}}",
                     stm->name_size, stm->name,
                     entry->name_size, entry->name);
@@ -171,7 +163,7 @@ static int decode_attr_stm(struct kndClass *base,
                     base->name_size, base->name,
                     stm->name_size, stm->name, attr_type_name_size, attr_type_name,
                     attr->classname_size, attr->classname,
-                    attr->parent->name_size, attr->parent->name);
+                    attr->owner->name_size, attr->owner->name);
     }
 
     switch (attr->type) {

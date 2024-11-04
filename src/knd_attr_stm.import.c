@@ -38,7 +38,6 @@ static gsl_err_t import_attr_stm_list_item(void *obj, const char *rec, size_t *t
 
 static gsl_err_t import_nested_attr_stm(void *obj, const char *name, size_t name_size,
                                         const char *rec, size_t *total_size);
-static void append_attr_stm(struct kndClassBasePred *ci, struct kndAttrStm *attr_stm);
 
 static gsl_err_t set_attr_stm_name(void *obj, const char *name, size_t name_size)
 {
@@ -98,17 +97,16 @@ static gsl_err_t import_nested_attr_stm_list(void *obj, const char *name, size_t
     struct kndAttrStm *attr_stm;
     int err;
 
-    if (DEBUG_ATTR_STM_LEVEL_2)
+    if (DEBUG_ATTR_STM_LEVEL_2) {
         knd_log(".. import nested attr_stm list: \"%.*s\" REC: %.*s",
                 name_size, name, 32, rec);
-
+    }
     err = knd_attr_stm_new(&attr_stm, mempool);
     if (err) {
         return make_gsl_err(err);
     }
     attr_stm->name = name;
     attr_stm->name_size = name_size;
-    attr_stm->base_pred = parent_attr_stm->base_pred;
 
     attr_stm->next = parent_attr_stm->children;
     parent_attr_stm->children = attr_stm;
@@ -128,22 +126,15 @@ static gsl_err_t import_nested_attr_stm_list(void *obj, const char *name, size_t
     return gsl_parse_array(&import_attr_stm_spec, rec, total_size);
 }
 
-int knd_import_attr_stm(struct kndClassBasePred *self, const char *name, size_t name_size,
+int knd_import_attr_stm(struct kndAttrStm *attr_stm, const char *name, size_t name_size,
                         const char *rec, size_t *total_size, struct kndTask *task)
-{
-    struct kndAttrStm *attr_stm;
-    struct kndMemPool *mempool = task->user_ctx->mempool;
+{    
     gsl_err_t parser_err;
     int err;
 
     if (DEBUG_ATTR_STM_LEVEL_2) {
         knd_log(".. import attr stm \"%.*s\" REC: %.*s", name_size, name, 32, rec);
     }
-    err = knd_attr_stm_new(&attr_stm, mempool);
-    if (err) return err;
-    attr_stm->base_pred = self;
-    attr_stm->name = name;
-    attr_stm->name_size = name_size;
 
     struct LocalContext ctx = {
         .attr_stm = attr_stm,
@@ -154,12 +145,7 @@ int knd_import_attr_stm(struct kndClassBasePred *self, const char *name, size_t 
         { .is_implied = true,
           .run = set_attr_stm_value,
           .obj = attr_stm
-        }/*,
-        { .name = "_inst",
-          .name_size = strlen("_inst"),
-          .run = set_class_inst_ref,
-          .obj = attr_stm
-          }*/,
+        },
         { .type = GSL_SET_STATE,
           .validate = import_nested_attr_stm,
           .obj = &ctx
@@ -175,15 +161,6 @@ int knd_import_attr_stm(struct kndClassBasePred *self, const char *name, size_t 
           .validate = import_nested_attr_stm_list,
           .obj = &ctx
         },
-        /*{ .name = "_t",
-          .name_size = strlen("_t"),
-          .parse = parse_text,
-          .obj = &ctx
-        },
-        { .name = "_cdata",
-          .name_size = strlen("_cdata"),
-          .obj = &cdata_spec
-          }*/
         { .is_default = true,
           .run = confirm_attr_stm,
           .obj = &ctx
@@ -195,31 +172,23 @@ int knd_import_attr_stm(struct kndClassBasePred *self, const char *name, size_t 
         KND_TASK_LOG("\"%.*s\" attr var import failed", name_size, name);
         return parser_err.code;
     }
-    append_attr_stm(self, attr_stm);
-
-    if (DEBUG_ATTR_STM_LEVEL_2)
-        knd_log("++ attr var value: %.*s", attr_stm->val_size, attr_stm->val);
 
     return knd_OK;
 }
 
-static gsl_err_t append_attr_stm_list_item(void *accu, void *obj)
+static void append_attr_stm_list_item(struct kndAttrStm *self, struct kndAttrStm *stm)
 {
-    struct kndAttrStm *self = accu;
-    struct kndAttrStm *attr_stm = obj;
-
     if (!self->list_tail) {
-        self->list_tail = attr_stm;
-        self->list = attr_stm;
+        self->list_tail = stm;
+        self->list = stm;
     }
     else {
-        self->list_tail->next = attr_stm;
-        self->list_tail = attr_stm;
+        self->list_tail->next = stm;
+        self->list_tail = stm;
     }
+    stm->is_list_item = true;
+    stm->parent = self;
     self->num_list_elems++;
-    //attr_stm->list_count = self->num_list_elems;
-
-    return make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t parse_subclass_inst(void *obj, const char *rec, size_t *total_size)
@@ -271,12 +240,9 @@ static gsl_err_t import_attr_stm_list_item(void *obj, const char *rec, size_t *t
 
     err = knd_attr_stm_new(&attr_stm, mempool);
     if (err) return *total_size = 0, make_gsl_err_external(err);
-    attr_stm->base_pred = self->base_pred;
-    attr_stm->is_list_item = true;
-    attr_stm->parent = self;
     ctx->attr_stm = attr_stm;
 
-    if (DEBUG_ATTR_STM_LEVEL_3) {
+    if (DEBUG_ATTR_STM_LEVEL_2) {
         knd_log("== importing a list item of %.*s: %.*s",
                 self->name_size, self->name, 32, rec);
     }
@@ -285,8 +251,8 @@ static gsl_err_t import_attr_stm_list_item(void *obj, const char *rec, size_t *t
           .run = set_attr_stm_name,
           .obj = attr_stm
         },
-        { .name = "_cls",
-          .name_size = strlen("_cls"),
+        { .name = "cls",
+          .name_size = strlen("cls"),
           .parse = parse_subclass,
           .obj = ctx
         },
@@ -312,14 +278,13 @@ static gsl_err_t import_attr_stm_list_item(void *obj, const char *rec, size_t *t
     if (parser_err.code) {
         return parser_err;
     }
-    // append
-    return append_attr_stm_list_item(self, attr_stm);
+    append_attr_stm_list_item(self, attr_stm);
+    return make_gsl_err(gsl_OK);
 }
 
-int knd_import_attr_stm_list(struct kndClassBasePred *bp, const char *name, size_t name_size,
+int knd_import_attr_stm_list(struct kndAttrStm *attr_stm, const char *name, size_t name_size,
                              const char *rec, size_t *total_size, struct kndTask *task)
 {
-    struct kndAttrStm *attr_stm;
     struct kndMemPool *mempool = task->user_ctx->mempool;
     gsl_err_t parser_err;
     int err;
@@ -328,16 +293,9 @@ int knd_import_attr_stm_list(struct kndClassBasePred *bp, const char *name, size
         knd_log("== import attr attr_stm list: \"%.*s\" REC: %.*s",
                 name_size, name, 32, rec);
     }
-    err = knd_attr_stm_new(&attr_stm, mempool);
-    KND_TASK_ERR("failed to alloc an attr var");
-    attr_stm->base_pred = bp;
-    attr_stm->name = name;
-    attr_stm->name_size = name_size;
-    append_attr_stm(bp, attr_stm);
 
     struct LocalContext ctx = {
         .list_parent = attr_stm,
-        //.attr_stm = attr_stm,
         .task = task
     };
 
@@ -346,8 +304,12 @@ int knd_import_attr_stm_list(struct kndClassBasePred *bp, const char *name, size
         .parse = import_attr_stm_list_item,
         .obj = &ctx
     };
+
     parser_err = gsl_parse_array(&import_attr_stm_spec, rec, total_size);
     if (parser_err.code) return parser_err.code;
+
+    assert (attr_stm->list != NULL);
+
     return knd_OK;
 }
 
@@ -364,7 +326,6 @@ static gsl_err_t import_nested_attr_stm(void *obj, const char *name, size_t name
     
     err = knd_attr_stm_new(&attr_stm, mempool);
     if (err) return *total_size = 0, make_gsl_err_external(err);
-    attr_stm->base_pred = self->base_pred;
     attr_stm->parent = self;
     attr_stm->name = name;
     attr_stm->name_size = name_size;
@@ -428,35 +389,4 @@ static gsl_err_t import_nested_attr_stm(void *obj, const char *name, size_t name
     self->num_children++;
 
     return make_gsl_err(gsl_OK);
-}
-
-static void append_attr_stm(struct kndClassBasePred *bp, struct kndAttrStm *stm)
-{
-    struct kndAttrStm *curr_stm;
-
-    FOREACH (curr_stm, bp->attr_stms) {
-        if (curr_stm->name_size != stm->name_size) continue;
-        if (!memcmp(curr_stm->name, stm->name, stm->name_size)) {
-            if (!curr_stm->list_tail) {
-                curr_stm->list_tail = stm;
-                curr_stm->list = stm;
-            }
-            else {
-                curr_stm->list_tail->next = stm;
-                curr_stm->list_tail = stm;
-            }
-            curr_stm->num_list_elems++;
-            return;
-        }
-    }
-
-    if (!bp->attr_stms_tail) {
-        bp->attr_stms_tail  = stm;
-        bp->attr_stms = stm;
-    }
-    else {
-        bp->attr_stms_tail->next = stm;
-        bp->attr_stms_tail = stm;
-    }
-    bp->num_attr_stms++;
 }

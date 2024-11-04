@@ -73,6 +73,8 @@ static int present_status(struct kndMemPool *self, struct kndOutput *out)
     size_t num_small_x4_pages = self->num_small_x4_pages;
     bool usage_alert = false;
 
+    OUTF("{mempool %p {type %d} {small-x4-pages %zu}\n", self, self->type,  small_x4_pages_used);
+
     switch (self->type) {
     case KND_ALLOC_SHARED:
         pages_used = self->shared_pages_used;
@@ -457,7 +459,6 @@ static void mempool_init(struct kndMemPool *self)
 {
     self->parse = parse_memory_settings;
     self->alloc = knd_mempool_alloc;
-    self->reset = reset_capacity;
     self->present = present_status;
 }
 

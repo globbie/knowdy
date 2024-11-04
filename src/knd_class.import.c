@@ -216,7 +216,7 @@ static gsl_err_t parse_attr(void *obj, const char *name, size_t name_size,
     }
     err = knd_attr_new(&attr, mempool);
     if (err) return *total_size = 0, make_gsl_err_external(err);
-    attr->parent = self;
+    attr->owner = self;
 
     for (size_t i = 0; i < num_attr_types; i++) {
         c = knd_attr_names[i];
@@ -270,19 +270,9 @@ static gsl_err_t parse_attr(void *obj, const char *name, size_t name_size,
         return parser_err;
     }
  
-    if (!self->attr_tail) {
-        self->attr_tail = attr;
-        self->attrs = attr;
-    } else {
-        self->attr_tail->next = attr;
-        self->attr_tail = attr;
-    }
-    self->num_attrs++;
+    knd_class_append_attr(self, attr);
 
-    if (attr->is_implied)
-        self->implied_attr = attr;
-
-    /* restore parent's glosses */
+    /* restore owner's glosses */
     task->ctx->tr = tr;
     return make_gsl_err(gsl_OK);
 }
@@ -291,10 +281,22 @@ static gsl_err_t import_attr_stm(void *obj, const char *name, size_t name_size,
                                  const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    struct kndClassBasePred *bp = ctx->base_pred;
+    struct kndAttrStm *stm;
     int err;
 
-    err = knd_import_attr_stm(ctx->base_pred, name, name_size, rec, total_size, ctx->task);
+    err = knd_attr_stm_new(&stm, task->mempool);
+    if (err) {
+        return *total_size = 0, make_gsl_err_external(err);
+    }
+    stm->name = name;
+    stm->name_size = name_size;
+
+    err = knd_import_attr_stm(stm, name, name_size, rec, total_size, ctx->task);
     if (err) return *total_size = 0, make_gsl_err_external(err);
+
+    knd_append_attr_stm(bp, stm);
 
     return make_gsl_err(gsl_OK);
 }
@@ -303,11 +305,25 @@ static gsl_err_t import_attr_stm_list(void *obj, const char *name, size_t name_s
                                       const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    struct kndClassBasePred *bp = ctx->base_pred;
+    struct kndAttrStm *stm;
     int err;
 
-    err = knd_import_attr_stm_list(ctx->base_pred, name, name_size,
+    err = knd_attr_stm_new(&stm, task->mempool);
+    if (err) {
+        return *total_size = 0, make_gsl_err_external(err);
+    }
+    stm->name = name;
+    stm->name_size = name_size;
+
+    err = knd_import_attr_stm_list(stm, name, name_size,
                                    rec, total_size, ctx->task);
     if (err) return *total_size = 0, make_gsl_err_external(err);
+
+    assert (stm->list != NULL);
+
+    knd_append_attr_stm(bp, stm);
 
     return make_gsl_err(gsl_OK);
 }
@@ -359,20 +375,13 @@ static gsl_err_t parse_baseclass(void *obj, const char *rec, size_t *total_size)
         KND_TASK_LOG("failed to alloc a base pred");
         return *total_size = 0, make_gsl_err_external(err);
     }
-    base_pred->parent = self;
+    base_pred->owner = self;
 
     ctx->base_pred = base_pred;
     parser_err = parse_base_pred(rec, total_size, ctx);
     if (parser_err.code) return parser_err;
 
-    if (!self->base_preds) {
-        self->base_preds_tail = base_pred;
-        self->base_preds = base_pred;
-    } else {
-        self->base_preds_tail->next = base_pred;
-        self->base_preds_tail = base_pred;
-    }
-    self->num_base_preds++;
+    knd_class_append_base_pred(self, base_pred);
 
     return make_gsl_err(gsl_OK);
 }
@@ -449,7 +458,7 @@ gsl_err_t knd_class_import(struct kndRepo *repo, const char *rec, size_t *total_
     }
     err = knd_class_new(&c, mempool);
     if (err) {
-        KND_TASK_LOG("mempool failed to alloc kndClass");
+        KND_TASK_LOG("mempool failed to alloc a class");
         return make_gsl_err_external(err);
     }
 

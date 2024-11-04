@@ -156,7 +156,7 @@ static int knd_interact(struct kndSteward *steward)
         knd_task_reset(reader_task);
         reader_task->ctx->max_depth = 3;
         // reader_task->mode = KND_TASK_TRACE_MODE;
-
+        
         err = knd_task_run(reader_task, block, block_size);
         if (err != knd_OK) {
             knd_log("-- task run failed: %.*s",

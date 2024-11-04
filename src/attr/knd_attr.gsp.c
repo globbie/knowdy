@@ -70,6 +70,7 @@ int knd_attr_names_marshall(void *elem, size_t *output_size, struct kndTask *tas
     struct kndSharedDictItem *item, *items = elem;
     struct kndAttrRef *attr_ref, *attr_refs;
     struct kndAttr *attr;
+    struct kndClassEntry *entry;
     struct kndOutput *out = task->out;
     size_t orig_size = out->buf_size;
 
@@ -77,6 +78,7 @@ int knd_attr_names_marshall(void *elem, size_t *output_size, struct kndTask *tas
 
     FOREACH (item, items) {
         attr_refs = item->data;
+
         attr = attr_refs->attr;
 
         OUT("{", strlen("{"));
@@ -87,8 +89,15 @@ int knd_attr_names_marshall(void *elem, size_t *output_size, struct kndTask *tas
         FOREACH (attr_ref, attr_refs) {
             // TODO check commit version
             attr = attr_ref->attr;
+            entry = attr->owner->entry;
+            
             OUT("{", strlen("{"));
             OUT(attr->id, attr->id_size);
+
+            OUT("{c ", strlen("{c "));
+            OUT(entry->id, entry->id_size);
+            OUT("}", strlen("}"));
+
             OUT("}", strlen("}"));
         }
         OUT("]", strlen("]"));
@@ -105,7 +114,6 @@ int knd_attr_export_GSP(struct kndAttr *self, struct kndTask *task)
     struct kndOutput *out = task->out;
     char buf[KND_NAME_SIZE] = {0};
     size_t buf_size = 0;
-
     const char *type_name = knd_attr_names[self->type];
     size_t type_name_size = strlen(knd_attr_names[self->type]);
     int err;

@@ -40,16 +40,9 @@ void knd_task_del(struct kndTask *self)
 
 void knd_task_reset(struct kndTask *self)
 {
-    self->type = KND_GET_STATE;
+    self->type = KND_DEFAULT_STATE;
     self->phase = KND_SELECTED;
-    /* initialize request with off limit values */
-    self->state_eq = -1;
-    self->state_gt = -1;
-    self->state_gte = -1;
-    self->state_lt = 0;
-    self->state_lte = 0;
 
-    self->show_removed_objs = false;
     self->depth = 0;
     self->max_depth = 1;
 
@@ -62,10 +55,6 @@ void knd_task_reset(struct kndTask *self)
     self->payload = NULL;
     self->out->reset(self->out);
     self->log->reset(self->log);
-
-    self->ctx_mempool->reset(self->ctx_mempool);
-    self->mempool = self->ctx_mempool;
-    // NB self->cache_mempool stays intact
 
     if (self->class_name_idx)
         knd_dict_reset(self->class_name_idx);
@@ -81,6 +70,10 @@ void knd_task_reset(struct kndTask *self)
 
     if (self->proc_arg_name_idx)
         knd_dict_reset(self->proc_arg_name_idx);
+
+    knd_mempool_reset(self->ctx_mempool);
+    self->mempool = self->ctx_mempool;
+    // NB self->cache_mempool stays intact
 }
 
 static int task_err_export_JSON(struct kndTask *task)
@@ -201,7 +194,7 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
         break;
     case gsl_NO_MATCH:
         if (!task->log->buf_size) {
-            KND_TASK_LOG("\"%.*s\" tag is not valid here, \"task\" expected",
+            KND_TASK_LOG("{tag %.*s} is not valid here, \"task\" expected",
                          parser_err.val_size, parser_err.val);
         }
         break;
@@ -216,7 +209,7 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
             KND_TASK_LOG("server output error");
             return gsl_err_to_knd_err_codes(parser_err);
         }
-        knd_log("-- task {ctx-error %d} {gls-err %d}",
+        knd_log("-- task {ctx-error %d} {gsl-err %d}",
                 task->ctx->error, parser_err.code);
         task->output = out->buf;
         task->output_size = out->buf_size;

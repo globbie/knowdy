@@ -247,9 +247,9 @@ int knd_class_inst_export_JSON(struct kndClassInst *self, bool is_list_item,
     OUT(self->entry->is_a->name, self->entry->is_a->name_size);
     OUT("\"", 1);
 
-    if (self->base_pred && self->base_pred->attr_stms) {
+    if (self->num_attr_stms) {
         curr_depth = task->ctx->depth;
-        err = knd_attr_stms_export_JSON(self->base_pred->attr_stms, task, false, depth + 1);
+        err = knd_attr_stms_export_JSON(self->attr_stms, task, false, depth + 1);
         KND_TASK_ERR("failed to export JSON of class inst attr vars");
         task->ctx->depth = curr_depth;
     }
@@ -270,6 +270,7 @@ int knd_class_inst_export_JSON(struct kndClassInst *self, bool is_list_item,
     return knd_OK;
 }
 
+#if 0
 int knd_class_inst_iterate_export_JSON(void *obj, const char *unused_var(inst_id),
                                        size_t unused_var(inst_id_size), size_t count, void *elem)
 {
@@ -338,3 +339,4 @@ int knd_class_inst_set_export_JSON(struct kndSet *set, struct kndTask *task)
     err = out->writec(out, '}');                                                  RET_ERR();
     return knd_OK;
 }
+#endif

@@ -146,23 +146,17 @@ void knd_dict_reset(struct kndDict *self)
     memset(self->hash_array, 0, sizeof(struct kndDictItem*) * self->size);
 }
 
-int knd_dict_new(struct kndDict **dict, struct kndMemPool *mempool, size_t init_size)
+int knd_dict_new(struct kndDict **result, struct kndMemPool *mempool, size_t init_size)
 {
-    void *page;
     struct kndDict *self;
-    int err;
 
-    assert(mempool->small_page_size >= sizeof(struct kndDict));
-    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
-    if (err) return err;
-    memset(page, 0, sizeof(struct kndDict));
-    self = page;
-
+    self = calloc(1, sizeof(struct kndDict));
+    if (!self) return knd_NOMEM;
     self->hash_array = calloc(init_size, sizeof(struct kndDictItem*));
     if (!self->hash_array) return knd_NOMEM;
     self->size = init_size;
 
     self->mempool = mempool;
-    *dict = self;
+    *result = self;
     return knd_OK;
 }

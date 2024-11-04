@@ -521,9 +521,10 @@ int knd_storage_leaf_open(struct kndSharedSet *self, struct kndStorageLeaf *leaf
 
     assert (filename_size != 0);
 
-    if (DEBUG_SHARED_SET_READ_LEVEL_2) {
-        knd_log(".. open storage {leaf %.*s {filepath %.*s}}",
-                leaf->name_size, leaf->name, filename_size, filename);
+    if (DEBUG_SHARED_SET_READ_LEVEL_TMP) {
+        knd_log(".. open storage {leaf %.*s {filepath %.*s} {size %zu}}",
+                leaf->name_size, leaf->name, filename_size, filename,
+                leaf->file_size);
     }
 
     if (stat(filename, &st)) {

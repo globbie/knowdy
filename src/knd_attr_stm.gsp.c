@@ -53,7 +53,7 @@ struct LocalContext {
 
 static int attr_stm_list_export_GSP(struct kndAttrStm *parent_item, struct kndTask *task, struct kndOutput *out);
 
-static int inner_attr_export_GSP(struct kndAttrStm *var, struct kndTask *task)
+static int inner_attr_export_GSP(struct kndAttrStm *stm, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndAttrStm *item;
@@ -61,32 +61,22 @@ static int inner_attr_export_GSP(struct kndAttrStm *var, struct kndTask *task)
     struct kndCharSeq *seq;
     int err;
 
-    if (DEBUG_ATTR_STM_GSP_LEVEL_TMP) {
-        if (!memcmp(var->base_pred->parent->name, "Container", strlen("Container"))) {
-            knd_log(">> class \"%.*s\" var:%.*s attr type:%d",
-                    var->base_pred->parent->name_size,
-                    var->base_pred->parent->name,
-                    var->name_size, var->name, var->attr->type);
-        }
-    }
-
-    if (var->implied_attr) {
-        attr = var->implied_attr;
+    if (stm->implied_attr) {
+        attr = stm->implied_attr;
 
         switch (attr->type) {
         case KND_ATTR_REF:
-            OUT(var->class_entry->id, var->class_entry->id_size);
+            OUT(stm->class_entry->id, stm->class_entry->id_size);
 
             if (DEBUG_ATTR_STM_GSP_LEVEL_3) {
                 knd_log(".. GSP export inner item: %.*s {class %.*s {id %.*s}}",
-                        var->name_size, var->name,
-                        var->class_entry->name_size, var->class_entry->name,
-                        var->class_entry->id_size, var->class_entry->id);
+                        stm->name_size, stm->name,
+                        stm->class_entry->name_size, stm->class_entry->name,
+                        stm->class_entry->id_size, stm->class_entry->id);
             }
-
             break;
         case KND_ATTR_STR:
-            err = knd_charseq_fetch(task->repo, var->name, var->name_size, &seq, task);
+            err = knd_charseq_fetch(task->repo, stm->name, stm->name_size, &seq, task);
             KND_TASK_ERR("failed to encode a charseq");
             OUT(seq->id, seq->id_size);
             break;
@@ -95,11 +85,11 @@ static int inner_attr_export_GSP(struct kndAttrStm *var, struct kndTask *task)
         }
     }
     
-    FOREACH (item, var->children) {
+    FOREACH (item, stm->children) {
         attr = item->attr;
         if (attr->is_a_set) {
             err = attr_stm_list_export_GSP(item, task, out);
-            KND_TASK_ERR("failed to export inner attr var list");
+            KND_TASK_ERR("failed to export inner attr stm list");
             continue;
         }
 
@@ -119,7 +109,7 @@ static int inner_attr_export_GSP(struct kndAttrStm *var, struct kndTask *task)
             break;
         case KND_ATTR_INNER:
             err = inner_attr_export_GSP(item, task);
-            KND_TASK_ERR("failed to export inner var GSP");
+            KND_TASK_ERR("failed to export inner stm GSP");
             break;
         case KND_ATTR_BOOL:
             OUT("t", 1);
@@ -152,23 +142,23 @@ static int proc_item_export_GSP(struct kndAttrStm *item, struct kndTask *task)
 }
 #endif
 
-static int attr_stm_list_export_GSP(struct kndAttrStm *var, struct kndTask *task,
+static int attr_stm_list_export_GSP(struct kndAttrStm *stm, struct kndTask *task,
                                     struct kndOutput *out)
 {
     struct kndCharSeq *seq;
     struct kndAttrStm *item;
 
-    assert(var->attr != NULL);
-    knd_attr_type attr_type = var->attr->type;
+    assert(stm->attr != NULL);
+    knd_attr_type attr_type = stm->attr->type;
     int err;
 
     if (DEBUG_ATTR_STM_GSP_LEVEL_3) {
-        knd_log(".. export GSP list: %.*s", var->name_size, var->name);
+        knd_log(".. export GSP list: %.*s", stm->name_size, stm->name);
     }
 
     OUT("[", 1);
-    OUT(var->attr->id, var->attr->id_size);
-    FOREACH (item, var->list) {
+    OUT(stm->attr->id, stm->attr->id_size);
+    FOREACH (item, stm->list) {
         OUT("{", 1);
         switch (attr_type) {
         case KND_ATTR_REL:
@@ -185,7 +175,7 @@ static int attr_stm_list_export_GSP(struct kndAttrStm *var, struct kndTask *task
             break;
         case KND_ATTR_INNER:
             err = inner_attr_export_GSP(item, task);
-            KND_TASK_ERR("failed to export inner attr var");
+            KND_TASK_ERR("failed to export inner attr stm");
             break;
         case KND_ATTR_STR:
             err = knd_charseq_fetch(task->repo, item->name, item->name_size, &seq, task);
@@ -195,7 +185,7 @@ static int attr_stm_list_export_GSP(struct kndAttrStm *var, struct kndTask *task
         default:
             OUT(item->name, item->name_size);
             // err = knd_attr_stm_export_GSP(item, task, out, 0);
-            // KND_TASK_ERR("failed to export attr var");
+            // KND_TASK_ERR("failed to export attr stm");
             break;
         }
         OUT("}", 1);

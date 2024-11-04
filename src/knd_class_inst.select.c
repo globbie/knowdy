@@ -10,6 +10,7 @@
 
 #include "knd_text.h"
 #include "knd_quant.h"
+#include "knd_query.h"
 #include "knd_rel.h"
 #include "knd_shared_set.h"
 #include "knd_set.h"
@@ -101,6 +102,7 @@ static gsl_err_t set_curr_state(void *obj, const char *val, size_t val_size)
     char buf[KND_NAME_SIZE];
     size_t buf_size;
     struct kndTask *task = obj;
+    struct kndStateRange *state = &task->ctx->query->state;
     long numval;
     int err;
 
@@ -115,11 +117,12 @@ static gsl_err_t set_curr_state(void *obj, const char *val, size_t val_size)
 
     // TODO: check integer
 
-    task->state_eq = (size_t)numval;
+    state->eq = (size_t)numval;
 
     return make_gsl_err(gsl_OK);
 }
 
+#if 0
 static gsl_err_t present_state(void *obj, const char *unused_var(name), size_t unused_var(name_size))
 {
     struct LocalContext *ctx = obj;
@@ -147,7 +150,7 @@ static gsl_err_t present_state(void *obj, const char *unused_var(name), size_t u
     err = knd_class_get_inst_updates(ctx->class, task->state_gt, task->state_lt, task->state_eq, set);
     if (err) return make_gsl_err_external(err);
 
-    task->show_removed_objs = true;
+    //task->show_removed_objs = true;
 
     //err = knd_class_inst_set_export_JSON(set, task);
     //if (err) return make_gsl_err_external(err);
@@ -167,11 +170,13 @@ static gsl_err_t present_state(void *obj, const char *unused_var(name), size_t u
 
     return make_gsl_err(gsl_OK);
 }
+#endif
 
 static gsl_err_t parse_select_state(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
+    struct kndStateRange *state = &task->ctx->query->state;
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -183,29 +188,25 @@ static gsl_err_t parse_select_state(void *obj, const char *rec, size_t *total_si
           .name = "gt",
           .name_size = strlen("gt"),
           .parse = gsl_parse_size_t,
-          .obj = &task->state_gt
+          .obj = &state->gt
         },
         { .is_selector = true,
           .name = "lt",
           .name_size = strlen("lt"),
           .parse = gsl_parse_size_t,
-          .obj = &task->state_lt
+          .obj = &state->lt
         },
         { .is_selector = true,
           .name = "gte",
           .name_size = strlen("gte"),
           .parse = gsl_parse_size_t,
-          .obj = &task->state_gte
+          .obj = &state->gte
         },
         { .is_selector = true,
           .name = "lte",
           .name_size = strlen("lte"),
           .parse = gsl_parse_size_t,
-          .obj = &task->state_lte
-        },
-        { .is_default = true,
-          .run = present_state,
-          .obj = ctx
+          .obj = &state->lte
         }
     };
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
@@ -314,7 +315,7 @@ static gsl_err_t present_inst_selection(void *obj, const char *unused_var(val),
 
         /* final presentation in JSON
            TODO: choose output format */
-        task->show_removed_objs = false;
+        //    task->show_removed_objs = false;
         //err = knd_class_inst_set_export_JSON(set, task);
         //if (err) return make_gsl_err_external(err);
 

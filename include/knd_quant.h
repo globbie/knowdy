@@ -27,6 +27,7 @@ struct kndAttrStm;
 struct kndAttrFacet;
 struct kndTask;
 struct kndClassEntry;
+struct kndQuery;
 
 typedef enum knd_quant_base_type { KND_QUANT_DIGIT,
                                  KND_QUANT_TEN,
@@ -58,6 +59,10 @@ typedef enum knd_quant_type { KND_QUANT_INT,
                               KND_QUANT_REAL,
                               KND_QUANT_UREAL } knd_quant_type;
 
+typedef enum knd_quant_pred_type { KND_QUANT_EQ,
+                                   KND_QUANT_RANGE,
+                                   KND_QUANT_APPROX } knd_quant_pred_type;
+
 static const char* const knd_quant_attr_setting_names[] = {
     "none",
     "calc"
@@ -86,6 +91,15 @@ struct kndQuantUInt
     size_t numval;
 };
 
+struct kndQuantUIntRange
+{
+    struct kndQuantUInt *gt;
+    bool gt_eq;
+
+    struct kndQuantUInt *lt;
+    bool lt_eq;
+};
+
 struct kndQuantUReal
 {
     char seq[KND_UREAL_MAX_SEQ_SIZE];
@@ -102,6 +116,19 @@ struct kndQuantAttr
     bool is_calculated;
 
     struct kndQuantAttr *next;
+};
+
+struct kndQuantAttrStm
+{
+    knd_quant_pred_type type;
+    struct kndQuantAttr *attr;
+
+    struct kndQuantUInt *uint;
+    struct kndQuantUIntRange *uint_range;
+
+    struct kndQuantUReal *ureal;
+
+    struct kndQuantAttrStm *next;
 };
 
 struct kndQuantState
@@ -121,8 +148,11 @@ struct kndQuantState
 int knd_quant_new(struct kndQuant **self, struct kndMemPool *mempool);
 int knd_quant_attr_new(struct kndQuantAttr **result, knd_quant_type type,
                        const char *name, size_t name_size, struct kndMemPool *mempool);
+int knd_quant_attr_stm_new(struct kndQuantAttrStm **result, struct kndMemPool *mempool);
 
 int knd_quant_uint_new(struct kndQuantUInt **result, struct kndMemPool *mempool);
+int knd_quant_uint_range_new(struct kndQuantUIntRange **result, struct kndMemPool *mempool);
+
 int knd_quant_uint_facet_new(struct kndQuantUIntFacet **result, struct kndMemPool *mempool);
 
 int knd_quant_ureal_new(struct kndQuantUReal **result, struct kndMemPool *mempool);
@@ -139,3 +169,6 @@ int knd_quant_uint_index(struct kndAttrFacet *facet, struct kndClassEntry *topic
                          struct kndAttrStm *stm, struct kndTask *task);
 int knd_quant_ureal_index(struct kndAttrFacet *facet, struct kndClassEntry *topic,
                           struct kndAttrStm *stm, struct kndTask *task);
+
+int knd_quant_uint_parse_stm(struct kndQuantAttrStm *stm,
+                             const char *rec, size_t *total_size, struct kndTask *task);

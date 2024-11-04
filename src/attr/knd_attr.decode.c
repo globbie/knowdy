@@ -52,7 +52,7 @@ int knd_attr_decode(struct kndAttr *attr, struct kndTask *task)
 
     if (DEBUG_ATTR_DECODE_LEVEL_2) {
         knd_log(".. decoding {class %.*s {attr %.*s}}",
-                attr->parent->name_size, attr->parent->name,
+                attr->owner->name_size, attr->owner->name,
                 attr->name_size, attr->name);
     }
 
@@ -60,7 +60,6 @@ int knd_attr_decode(struct kndAttr *attr, struct kndTask *task)
         err = decode_glosses(attr->tr, task);
         KND_TASK_ERR("failed to decode glosses of {attr %.*s}", attr->name_size, attr->name);
     }
-
     
     return knd_OK;
 }

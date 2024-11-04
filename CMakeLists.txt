@@ -86,14 +86,13 @@ set(HEADERS include/knd_attr.h include/knd_attr_stm.h include/knd_rel.h
         include/knd_state.h include/knd_commit.h
         include/knd_task.h include/knd_text.h
         include/knd_user.h include/knd_utils.h include/knd_version.h)
+
 set(SOURCES src/attr/knd_attr.c src/attr/knd_attr.import.c src/attr/knd_attr.resolve.c
         src/attr/knd_attr.read.c src/attr/knd_attr.decode.c src/attr/knd_attr.select.c
         src/attr/knd_attr.json.c src/attr/knd_attr.gsl.c src/attr/knd_attr.gsp.c
         src/knd_attr_stm.c src/knd_attr_stm.import.c src/knd_attr_stm.index.c
         src/knd_attr_stm.resolve.c src/knd_attr_stm.read.c src/knd_attr_stm.decode.c
         src/knd_attr_stm.gsl.c src/knd_attr_stm.json.c src/knd_attr_stm.gsp.c
-        src/knd_rel.c src/knd_rel.import.c src/knd_rel.resolve.c
-        src/knd_rel_pred.resolve.c 
         src/knd_class.c src/knd_class.gsl.c
         src/knd_class.encode.c src/knd_class.decode.c src/knd_class.read.c
         src/knd_class.import.c src/knd_class.json.c src/knd_class.resolve.c src/knd_class.index.c
@@ -102,8 +101,9 @@ set(SOURCES src/attr/knd_attr.c src/attr/knd_attr.import.c src/attr/knd_attr.res
         src/knd_class_inst.import.c src/knd_class_inst.read.c
         src/knd_class_inst.json.c src/knd_class_inst.select.c
         src/knd_class_inst.resolve.c src/knd_class_inst.index.c
+        src/knd_dict.c src/knd_shared_dict.c src/knd_shared_dict.gsp.c
+        src/knd_ignore.c
         src/knd_logic.c src/knd_logic.import.c
-        src/knd_dict.c src/knd_shared_dict.c src/knd_shared_dict.gsp.c src/knd_ignore.c
         src/knd_memblock.c src/knd_mempool.c src/knd_output.c
         src/knd_proc.c src/knd_proc.import.c  src/knd_proc.resolve.c src/knd_proc.select.c 
         src/knd_proc.gsl.c src/knd_proc.json.c
@@ -111,8 +111,11 @@ set(SOURCES src/attr/knd_attr.c src/attr/knd_attr.import.c src/attr/knd_attr.res
         src/knd_proc_inst.gsl.c src/knd_proc_inst.json.c
         src/knd_proc.svg.c src/knd_proc_arg.c
         src/knd_proc_arg.gsl.c src/knd_proc_arg.json.c src/knd_proc_call.c
-        src/knd_quant.c src/knd_quant.index.c
-        src/knd_repo.c src/knd_repo.gsl.c src/knd_repo.gsp.c
+        src/knd_quant.c src/knd_quant.index.c src/knd_quant.select.c src/knd_query.c
+        src/knd_query.gsl.c
+        src/knd_rel.c src/knd_rel.import.c src/knd_rel.resolve.c
+        src/knd_rel_pred.resolve.c 
+        src/knd_repo.c src/knd_repo.gsl.c src/knd_repo.gsp.c src/knd_repo.select.c
         src/knd_repo.commit.c src/knd_repo.read.c src/knd_repo.cache.c
         src/knd_set.c src/knd_shared_set.c src/knd_shared_set.gsp.c
         src/knd_shared_set.read.c src/knd_set_idx.c

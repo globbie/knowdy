@@ -122,10 +122,20 @@ static gsl_err_t import_attr_stm(void *obj, const char *name, size_t name_size,
                                  const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    struct kndAttrStm *stm;
     int err;
-    err = knd_import_attr_stm(ctx->class_inst->base_pred, name, name_size,
+
+    err = knd_attr_stm_new(&stm, task->mempool);
+    if (err) {
+        return *total_size = 0, make_gsl_err_external(err);
+    }
+
+    err = knd_import_attr_stm(stm, name, name_size,
                               rec, total_size, ctx->task);
     if (err) return *total_size = 0, make_gsl_err_external(err);
+
+    
     return make_gsl_err(gsl_OK);
 }
 
@@ -133,10 +143,20 @@ static gsl_err_t import_attr_stm_list(void *obj, const char *name, size_t name_s
                                       const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    struct kndAttrStm *stm;
     int err;
-    err = knd_import_attr_stm_list(ctx->class_inst->base_pred, name, name_size,
+
+    err = knd_attr_stm_new(&stm, task->mempool);
+    if (err) {
+        return *total_size = 0, make_gsl_err_external(err);
+    }
+
+    err = knd_import_attr_stm_list(stm, name, name_size,
                                    rec, total_size, ctx->task);
     if (err) return *total_size = 0, make_gsl_err_external(err);
+
+    
     return make_gsl_err(gsl_OK);
 }
 
@@ -252,7 +272,6 @@ int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *
     struct kndClass *c;
     struct kndClassInst *inst;
     struct kndClassInstEntry *inst_entry;
-    struct kndClassBasePred *base_pred;
     struct kndState *state;
     struct kndStateRef *state_ref;
     struct kndTaskContext *ctx = task->ctx;
@@ -290,14 +309,6 @@ int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *
     KND_TASK_ERR("class inst alloc failed");
     inst->entry = inst_entry;
     inst_entry->inst = inst;
-
-    err = knd_class_base_pred_new(&base_pred, mempool);
-    KND_TASK_ERR("failed to alloc a class var");
-    base_pred->type = KND_INSTANCE_BLUEPRINT;
-    base_pred->entry = entry;
-    base_pred->parent = c;
-    base_pred->parent_inst = inst;
-    inst->base_pred = base_pred;
 
     parser_err = import_class_inst(inst, rec, total_size, task);
     if (parser_err.code) return parser_err.code;

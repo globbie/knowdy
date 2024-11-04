@@ -48,7 +48,13 @@ static const char *const knd_format_names[] = {
                               printf ("-- <%s> failed at line %d of file \"%s\"\n",\
                                       __func__, __LINE__, __FILE__); return err; } 
 
-#define OUT(...) \
+#define OUTS(STR) \
+    { \
+        int e = out->write(out, #STR, strlen(#STR)); \
+        if (e) return e; \
+    }
+
+#define OUT(...)                                \
     { \
         int e = out->write(out, __VA_ARGS__); \
         if (e) return e; \
@@ -327,6 +333,8 @@ static const char *const knd_format_names[] = {
 #define KND_CACHE_NUM_CELLS 64
 #define KND_CACHE_MAX_MEM_SIZE 1024 * 1024 * 10
 #define KND_CACHE_STATE_INTERVAL 32
+
+#define KND_MAX_DESCENDANTS_IDX_SIZE 64
 
 #define KND_OBJ_STORAGE_SIZE 100
 #define KND_TRN_STORAGE_SIZE 10000

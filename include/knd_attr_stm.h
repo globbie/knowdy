@@ -18,6 +18,8 @@
  *   Knowdy Concept Attr Statement
  */
 
+#include "knd_class.h"
+
 struct kndAttrStmCtx
 {
     struct kndAttrStm *parent_stm;
@@ -47,15 +49,13 @@ struct kndAttrStm
     size_t val_size;
     char val_id[KND_ID_SIZE];
     size_t val_id_size;
-    void *val_subtype;
+    void *subtype;
 
     struct kndCharSeq *seq;
 
     knd_logic_t logic;
 
     struct kndAttr *implied_attr;
-
-    struct kndClassBasePred *base_pred;
 
     struct kndText *text;
 
@@ -94,15 +94,16 @@ struct kndAttrStm
 
 int knd_attr_stm_new(struct kndAttrStm **result, struct kndMemPool *mempool);
 
-int knd_import_attr_stm(struct kndClassBasePred *self, const char *name, size_t name_size,
+int knd_import_attr_stm(struct kndAttrStm *attr_stm, const char *name, size_t name_size,
                         const char *rec, size_t *total_size, struct kndTask *task);
-int knd_import_attr_stm_list(struct kndClassBasePred *self, const char *name, size_t name_size,
+int knd_import_attr_stm_list(struct kndAttrStm *attr_stm, const char *name, size_t name_size,
                              const char *rec, size_t *total_size, struct kndTask *task);
 
 // knd_attr_stm.gsp.c
-int knd_read_attr_stm(struct kndClassBasePred *self, const char *name, size_t name_size,
+int knd_read_attr_stm(struct kndAttrStm *stm, const char *id, size_t id_size,
                       const char *rec, size_t *total_size, struct kndTask *task);
-int knd_read_attr_stm_list(struct kndClassBasePred *self, const char *name, size_t name_size,
+
+int knd_read_attr_stm_list(struct kndAttrStm *stm, const char *name, size_t name_size,
                            const char *rec, size_t *total_size, struct kndTask *task);
 
 int knd_decode_attr_stms(struct kndClass *base, struct kndAttrStm *attr_stms, struct kndTask *task);
@@ -149,3 +150,34 @@ int knd_index_inst_attr_stm_list(struct kndClassInstEntry *topic_inst, struct kn
 
 int knd_attr_stm_inner_idx(struct kndClassEntry *topic, struct kndAttr *attr,
                            struct kndAttrStm *stm, struct kndTask *task);
+
+static inline void knd_append_attr_stm(struct kndClassBasePred *bp, struct kndAttrStm *stm)
+{
+    struct kndAttrStm *curr_stm;
+
+    FOREACH (curr_stm, bp->attr_stms) {
+        if (curr_stm->name_size != stm->name_size) continue;
+        if (!memcmp(curr_stm->name, stm->name, stm->name_size)) {
+            if (!curr_stm->list_tail) {
+                curr_stm->list_tail = stm;
+                curr_stm->list = stm;
+            }
+            else {
+                curr_stm->list_tail->next = stm;
+                curr_stm->list_tail = stm;
+            }
+            curr_stm->num_list_elems++;
+            return;
+        }
+    }
+
+    if (!bp->attr_stms_tail) {
+        bp->attr_stms_tail  = stm;
+        bp->attr_stms = stm;
+    }
+    else {
+        bp->attr_stms_tail->next = stm;
+        bp->attr_stms_tail = stm;
+    }
+    bp->num_attr_stms++;
+}

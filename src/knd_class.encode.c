@@ -70,7 +70,7 @@ int knd_class_inst_idx_fetch(struct kndClass *self, struct kndSharedDict **resul
     err = out->writef(out, "snapshot_%zu/", task->snapshot->numid);
     KND_TASK_ERR("snapshot path construction failed");
 
-    OUT("inst_", strlen("inst_"));
+    OUTS("inst_");
     OUT(self->entry->id, self->entry->id_size);
     OUT(".gsp", strlen(".gsp"));
 
@@ -205,31 +205,41 @@ static int export_children(struct kndClass *self, struct kndTask *task)
     return knd_OK;
 }
 
-#if 0
-static int export_class_ref(void *obj, const char *unused_var(elem_id), size_t unused_var(elem_id_size),
-                            size_t unused_var(count), void *elem)
+static int export_class_ref(void *obj,
+                            const char *unused_var(elem_id),
+                            size_t unused_var(elem_id_size),
+                            size_t unused_var(count),
+                            void *elem)
 {
     struct kndTask *task = obj;
     struct kndOutput *out = task->out;
-    struct kndClassRef *ref = elem;
-    struct kndClassEntry *entry = ref->entry;
-    struct kndClassInstRef *inst_ref;
-
+    struct kndClassEntry *entry = elem;
     OUT("{", 1);
     OUT(entry->id, entry->id_size);
-    if (ref->insts) {
-        OUT("[_i", strlen("[_i"));
-        FOREACH (inst_ref, ref->insts) {
-            OUT("{", 1);
-            OUT(inst_ref->entry->name, inst_ref->entry->name_size);
-            OUT("}", 1);
-        }
-        OUT("]", 1);
-    }
     OUT("}", 1);
     return knd_OK;
 }
-#endif
+
+static int export_descendants(struct kndClass *self, struct kndTask *task)
+{
+    struct kndOutput *out = task->out;
+    int err;
+
+    OUTF("{num-desc %zu}", self->descendants->num_elems);
+
+    if (self->num_descendants == self->num_children) return knd_OK;
+    if (self->num_descendants > KND_MAX_DESCENDANTS_IDX_SIZE) {
+        return knd_OK;
+    }
+
+    OUT("[desc", strlen("[desc"));
+
+    err = knd_set_map(self->descendants, export_class_ref, (void*)task);
+    KND_TASK_ERR("failed to export descendants");
+
+    OUT("]", 1);
+    return knd_OK;
+}
 
 static int export_class_body_commits(struct kndClass *self,
                                      struct kndClassCommit *unused_var(class_commit),
@@ -262,7 +272,7 @@ static int export_class_body_commits(struct kndClass *self,
     }
 
     if (self->attrs) {
-        for (attr = self->attrs; attr; attr = attr->next) {
+        FOREACH (attr, self->attrs) {
             err = knd_attr_export(attr, KND_FORMAT_GSP, task);
             if (err) return err;
         }
@@ -342,10 +352,10 @@ int knd_class_export_GSP(struct kndClass *self, struct kndTask *task)
 
     assert(entry->seq != NULL);
 
-    if (DEBUG_CLASS_ENCODE_LEVEL_2)
-        knd_log(".. GSP export of \"%.*s\" [%.*s]",
+    if (DEBUG_CLASS_ENCODE_LEVEL_TMP) {
+        knd_log(".. GSP export of {class %.*s {id %.*s}}",
                 entry->name_size, entry->name, entry->id_size, entry->id);
-
+    }
     //knd_uid_create(entry->seq->numid, idbuf, &idbuf_size);
     //OUT(idbuf, idbuf_size);
 
@@ -374,11 +384,14 @@ int knd_class_export_GSP(struct kndClass *self, struct kndTask *task)
         KND_TASK_ERR("failed to export children GSP");
     }
 
-    /*if (self->attr_hubs) {
-        err = export_inverse_rels(self, task);
-        KND_TASK_ERR("failed to export inverse rels GSP");
-        }*/
-    // insts
+    /* export descendants - check the max limit */
+    if (self->descendants) {
+        knd_log(".. export descendants of %.*s..", self->name_size, self->name);
+        err = export_descendants(self, task);
+        KND_TASK_ERR("failed to export descendants GSP");
+    }
+
+    /* instances */
     if (self->inst_idx) {
         err = out->writef(out, "{insts %zu}", self->inst_idx->num_elems);
         KND_TASK_ERR("failed to export num insts GSP");

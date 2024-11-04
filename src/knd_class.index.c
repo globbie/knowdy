@@ -104,7 +104,7 @@ static int index_ancestor(struct kndClass *self, struct kndClass *baseclass, str
         }
         return knd_OK;
     }
-    baseclass->num_terminals++;
+    baseclass->num_descendants++;
 
     /* register as a descendant */
     err = desc_idx->add(desc_idx, entry->id, entry->id_size, (void*)entry);
@@ -170,8 +170,6 @@ static int index_baseclass(struct kndClass *self, struct kndClass *base, struct 
     }
 
     if (!parent_linked) {
-        base->num_terminals++;
-
         if (DEBUG_CLASS_INDEX_LEVEL_2)
             knd_log(".. add {class %.*s {repo %.*s}} as a child of {class %.*s {repo %.*s}}",
                     entry->name_size, entry->name,
@@ -190,6 +188,7 @@ static int index_baseclass(struct kndClass *self, struct kndClass *base, struct 
         }
         err = desc_idx->add(desc_idx, entry->id, entry->id_size, (void*)entry);
         RET_ERR();
+        base->num_descendants++;
     }
     return knd_OK;
 }
