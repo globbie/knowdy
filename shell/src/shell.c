@@ -232,12 +232,12 @@ static int present_mempools(struct kndSteward *steward)
     out = steward->task->out;
     out->reset(out);
     mempool = steward->mempool_write;
-    mempool->present(mempool, out);
+    knd_mempool_present(mempool, out);
     knd_log("** System Mempool\n%.*s", out->buf_size, out->buf);
 
     out->reset(out);
     mempool = steward->user->mempool_write;
-    mempool->present(mempool, out);
+    knd_mempool_present(mempool, out);
     knd_log("** User Space Mempool\n%.*s", out->buf_size, out->buf);
     return knd_OK;
 }

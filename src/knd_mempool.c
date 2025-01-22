@@ -58,7 +58,7 @@ void knd_mempool_report(struct kndMemPool *self, struct kndMemPoolReport *report
     }
 }
 
-static int present_status(struct kndMemPool *self, struct kndOutput *out)
+int knd_mempool_present(struct kndMemPool *self, struct kndOutput *out)
 {
     size_t total_mem_usage = 0;
     size_t pages_used = self->pages_used;
@@ -416,50 +416,6 @@ int knd_mempool_alloc(struct kndMemPool *self)
     return knd_OK;
 }
 
-static gsl_err_t parse_memory_settings(struct kndMemPool *self, const char *rec, size_t *total_size)
-{
-    struct gslTaskSpec specs[] = {
-        {   .name = "max_base_pages",
-            .name_size = strlen("max_base_pages"),
-            .parse = gsl_parse_size_t,
-            .obj = &self->num_pages
-        },
-        {   .name = "max_small_x4_pages",
-            .name_size = strlen("max_small_x4_pages"),
-            .parse = gsl_parse_size_t,
-            .obj = &self->num_small_x4_pages
-        },
-        {   .name = "max_small_x2_pages",
-            .name_size = strlen("max_small_x2_pages"),
-            .parse = gsl_parse_size_t,
-            .obj = &self->num_small_x2_pages
-        },
-        {   .name = "max_small_pages",
-            .name_size = strlen("max_small_pages"),
-            .parse = gsl_parse_size_t,
-            .obj = &self->num_small_pages
-        },
-        {   .name = "max_tiny_pages",
-            .name_size = strlen("max_tiny_pages"),
-            .parse = gsl_parse_size_t,
-            .obj = &self->num_tiny_pages
-        },
-        {   .name = "max_set_size",
-            .name_size = strlen("max_set_size"),
-            .parse = gsl_parse_size_t,
-            .obj = &self->max_set_size
-        }
-    };
-    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-}
-
-static void mempool_init(struct kndMemPool *self)
-{
-    self->parse = parse_memory_settings;
-    self->alloc = knd_mempool_alloc;
-    self->present = present_status;
-}
-
 int knd_mempool_create(struct kndMemPool **result, struct kndMemConfig *config, size_t numid)
 {
     struct kndMemPool *mempool;
@@ -489,7 +445,6 @@ int knd_mempool_new(struct kndMemPool **obj, knd_mempool_t type, size_t mempool_
     memset(self, 0, sizeof(struct kndMemPool));
     self->type = type;
     self->numid = mempool_id;
-    mempool_init(self);
     *obj = self;
     return knd_OK;
 }

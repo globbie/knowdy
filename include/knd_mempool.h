@@ -121,10 +121,6 @@ struct kndMemPool
     atomic_size_t shared_tiny_pages_used;
 
     size_t max_set_size;
-
-    int (*alloc)(struct kndMemPool   *self);
-    int (*present)(struct kndMemPool *self, struct kndOutput  *out);
-    gsl_err_t (*parse)(struct kndMemPool *self, const char *rec, size_t *total_size);
 };
 
 int knd_mempool_create(struct kndMemPool **result, struct kndMemConfig *config, size_t numid);
@@ -141,4 +137,4 @@ void knd_mempool_reset(struct kndMemPool *self);
 void knd_mempool_reset_capacity(struct kndMemPool *self);
 
 void knd_mempool_report(struct kndMemPool *self, struct kndMemPoolReport *report);
-
+int knd_mempool_present(struct kndMemPool *self, struct kndOutput *out);
