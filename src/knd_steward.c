@@ -30,13 +30,13 @@ static gsl_err_t parse_mem_main_config(void *obj, const char *rec, size_t *total
             .parse = gsl_parse_size_t,
             .obj = &self->mem_main_config.num_pages
         },
-        {   .name = "max-small_x4-pages",
-            .name_size = strlen("max-small_x4-pages"),
+        {   .name = "max-small-x4-pages",
+            .name_size = strlen("max-small-x4-pages"),
             .parse = gsl_parse_size_t,
             .obj = &self->mem_main_config.num_small_x4_pages
         },
-        {   .name = "max-small_x2-pages",
-            .name_size = strlen("max-small_x2-pages"),
+        {   .name = "max-small-x2-pages",
+            .name_size = strlen("max-small-x2-pages"),
             .parse = gsl_parse_size_t,
             .obj = &self->mem_main_config.num_small_x2_pages
         },
@@ -64,13 +64,13 @@ static gsl_err_t parse_mem_ctx_config(void *obj, const char *rec, size_t *total_
             .parse = gsl_parse_size_t,
             .obj = &self->mem_ctx_config.num_pages
         },
-        {   .name = "max-small_x4-pages",
-            .name_size = strlen("max-small_x4-pages"),
+        {   .name = "max-small-x4-pages",
+            .name_size = strlen("max-small-x4-pages"),
             .parse = gsl_parse_size_t,
             .obj = &self->mem_ctx_config.num_small_x4_pages
         },
-        {   .name = "max-small_x2-pages",
-            .name_size = strlen("max-small_x2-pages"),
+        {   .name = "max-small-x2-pages",
+            .name_size = strlen("max-small-x2-pages"),
             .parse = gsl_parse_size_t,
             .obj = &self->mem_ctx_config.num_small_x2_pages
         },
@@ -98,13 +98,13 @@ static gsl_err_t parse_mem_cache_config(void *obj, const char *rec, size_t *tota
             .parse = gsl_parse_size_t,
             .obj = &self->mem_cache_config.num_pages
         },
-        {   .name = "max-small_x4-pages",
-            .name_size = strlen("max-small_x4-pages"),
+        {   .name = "max-small-x4-pages",
+            .name_size = strlen("max-small-x4-pages"),
             .parse = gsl_parse_size_t,
             .obj = &self->mem_cache_config.num_small_x4_pages
         },
-        {   .name = "max-small_x2-pages",
-            .name_size = strlen("max-small_x2-pages"),
+        {   .name = "max-small-x2-pages",
+            .name_size = strlen("max-small-x2-pages"),
             .parse = gsl_parse_size_t,
             .obj = &self->mem_cache_config.num_small_x2_pages
         },
@@ -132,12 +132,12 @@ static gsl_err_t parse_mem_user_config(void *obj, const char *rec, size_t *total
             .parse = gsl_parse_size_t,
             .obj = &self->mem_user_config.num_pages
         },
-        {   .name = "max-small_x4-pages",
+        {   .name = "max-small-x4-pages",
             .name_size = strlen("max-small_x4-pages"),
             .parse = gsl_parse_size_t,
             .obj = &self->mem_user_config.num_small_x4_pages
         },
-        {   .name = "max-small_x2-pages",
+        {   .name = "max-small-x2-pages",
             .name_size = strlen("max-small_x2-pages"),
             .parse = gsl_parse_size_t,
             .obj = &self->mem_user_config.num_small_x2_pages
@@ -304,7 +304,7 @@ static gsl_err_t parse_steward_config(void *obj, const char *rec, size_t *total_
             .buf_size = &self->data_path_size,
             .max_buf_size = KND_PATH_SIZE
         },
-        {  .name = "memory",
+        {   .name = "memory",
             .name_size = strlen("memory"),
             .parse = knd_parse_mem_main_config,
             .obj = obj,
