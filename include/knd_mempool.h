@@ -136,6 +136,9 @@ int  knd_mempool_alloc(struct kndMemPool *self);
 int knd_mempool_page(struct kndMemPool *self, knd_mempage_t page_type, void **result);
 
 void knd_mempool_free(struct kndMemPool *self, knd_mempage_t page_type, void *page_data);
+
 void knd_mempool_reset(struct kndMemPool *self);
+void knd_mempool_reset_capacity(struct kndMemPool *self);
+
 void knd_mempool_report(struct kndMemPool *self, struct kndMemPoolReport *report);
 

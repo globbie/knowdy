@@ -11,6 +11,7 @@
 #include "knd_proc_arg.h"
 #include "knd_proc_call.h"
 #include "knd_class.h"
+#include "knd_class_inst.h"
 #include "knd_task.h"
 #include "knd_state.h"
 

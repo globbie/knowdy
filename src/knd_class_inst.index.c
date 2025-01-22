@@ -35,7 +35,7 @@ static int update_attr_stm_indices(struct kndClassInstEntry *entry, struct kndRe
     //int err;
 
     if (DEBUG_INST_IDX_LEVEL_2) {
-        knd_log(".. class inst \"%.*s\" attr var indexing", entry->name_size, entry->name);
+        knd_log(".. class inst \"%.*s\" attr stm indexing", entry->name_size, entry->name);
     }
     FOREACH (var, entry->inst->attr_stms) {
         switch (var->attr->type) {
@@ -44,17 +44,6 @@ static int update_attr_stm_indices(struct kndClassInstEntry *entry, struct kndRe
                 knd_log(".. indexing text attr \"%.*s\"", var->name_size, var->name);
             //err = knd_text_index(var->text, repo, task);
             //KND_TASK_ERR("failed to index text attr var \"%.*s\"", var->name_size, var->name);
-            break;
-        case KND_ATTR_REL:
-            if (DEBUG_INST_IDX_LEVEL_3)
-                knd_log(".. indexing Rel attr \"%.*s\" (is a set:%d)",
-                        var->name_size, var->name, var->attr->is_a_set);
-
-            /*if (var->attr->is_a_set) {
-                err = knd_index_attr_stm_list(entry->is_a, entry, var->attr, var, task);
-                KND_TASK_ERR("failed to index attr var list");
-                break;
-                }*/
             break;
         default:
             break;

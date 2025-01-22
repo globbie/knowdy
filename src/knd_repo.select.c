@@ -28,8 +28,11 @@ static int find_repo(struct kndRepo **result, const char *name, size_t name_size
                      struct kndTask *task)
 {
     struct kndRepo *repo;
+    assert (task->repo_name_idx != NULL);
+
     repo = knd_dict_get(task->repo_name_idx, name, name_size);
     if (!repo) return knd_NO_MATCH;
+
     *result = repo;
     return knd_OK;
 }
@@ -129,12 +132,13 @@ static int get_by_id(struct kndQuery *query, struct kndTask *task)
     int err;
 
     // TODO check view settings
-
-    knd_log(">> {repo %.*s {query {type GET}}", repo->name_size, repo->name);
+    // knd_log(">> {repo %.*s {query {type GET}}", repo->name_size, repo->name);
 
     switch (query->obj_type) {
     case KND_QUERY_OBJ_REPO:
-        knd_log(".. presenting repo %.*s", repo->name_size, repo->name);
+
+        knd_log(".. presenting {repo %.*s}", repo->name_size, repo->name);
+
         break;
     case KND_QUERY_OBJ_CLASS:
         err = knd_class_export(query->cls, task->ctx->format, task);
@@ -142,25 +146,29 @@ static int get_by_id(struct kndQuery *query, struct kndTask *task)
     default:
         break;
     }
-
     return knd_OK;
 }
 
 static int select_by_attr_stms(struct kndQuery *query, struct kndTask *task)
 {
-    struct kndRepo *repo = query->repo;
     int err;
 
-    err = knd_query_export_GSL(query, task);
-    KND_TASK_ERR("failed to present a query");
+    err = knd_query_plan(query, task);
+    KND_TASK_ERR("failed to plan a query");
+
+    // plan execution or async queue?
+
 
     knd_log(">> SELECT query plan\n%.*s",
             task->out->buf_size, task->out->buf);
 
-    // plan execution or async queue?
-    knd_log(">> execute query plan");
+    // if async: export query to GSP, return a ref
 
-    // export to GSP, pass ref
+    err = knd_query_run(query, task);
+    KND_TASK_ERR("failed to run a query");
+
+    //err = knd_query_result_export_GSP(query, task);
+    //KND_TASK_ERR("failed to present results of a query");
 
     return knd_OK;
 }
@@ -208,7 +216,6 @@ gsl_err_t knd_parse_repo_select(void *obj, const char *rec, size_t *total_size)
             KND_TASK_LOG("failed to run a query");
             return make_gsl_err_external(err);
         }
-
         break;
     case KND_QUERY_SELECT:
         err = select_by_attr_stms(query, task);
@@ -230,6 +237,5 @@ gsl_err_t knd_parse_repo_select(void *obj, const char *rec, size_t *total_size)
     default:
         break;
     }
-
     return make_gsl_err(gsl_OK);    
 }

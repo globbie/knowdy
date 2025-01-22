@@ -146,7 +146,6 @@ static gsl_err_t read_attr_stm_list(void *obj, const char *name, size_t name_siz
 int knd_class_inst_read(struct kndClassInst *self, const char *rec, size_t *total_size,
                         struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndClassEntry *entry = task->payload;
     struct kndClass *c;
     int err;

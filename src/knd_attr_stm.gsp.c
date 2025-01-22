@@ -65,7 +65,7 @@ static int inner_attr_export_GSP(struct kndAttrStm *stm, struct kndTask *task)
         attr = stm->implied_attr;
 
         switch (attr->type) {
-        case KND_ATTR_REF:
+        case KND_ATTR_CLASS_REF:
             OUT(stm->class_entry->id, stm->class_entry->id_size);
 
             if (DEBUG_ATTR_STM_GSP_LEVEL_3) {
@@ -98,7 +98,7 @@ static int inner_attr_export_GSP(struct kndAttrStm *stm, struct kndTask *task)
         OUT(" ", 1);
 
         switch (attr->type) {
-        case KND_ATTR_REF:
+        case KND_ATTR_CLASS_REF:
             OUT(item->class_entry->id, item->class_entry->id_size);
             break;
         case KND_ATTR_TEXT:
@@ -161,9 +161,7 @@ static int attr_stm_list_export_GSP(struct kndAttrStm *stm, struct kndTask *task
     FOREACH (item, stm->list) {
         OUT("{", 1);
         switch (attr_type) {
-        case KND_ATTR_REL:
-            // fall through
-        case KND_ATTR_REF:
+        case KND_ATTR_CLASS_REF:
             assert(item->class_entry != NULL);
             OUT(item->class_entry->id, item->class_entry->id_size);
             break;
@@ -232,7 +230,7 @@ int knd_attr_stm_export_GSP(struct kndAttrStm *var, struct kndTask *task,
     knd_attr_type attr_type = var->attr->type;
 
     switch (attr_type) {
-    case KND_ATTR_REF:
+    case KND_ATTR_CLASS_REF:
         OUT(var->class_entry->id, var->class_entry->id_size);
         break;
     case KND_ATTR_INNER:

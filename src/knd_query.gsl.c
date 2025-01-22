@@ -44,11 +44,41 @@
 
 #include "knd_query.h"
 
-static int export_base_preds(struct kndQuery *self, struct kndTask *task, size_t depth)
+static int export_class_entry_GSL(void *obj, const char *elem_id, size_t elem_id_size,
+                                  size_t count, void *elem)
 {
+    struct kndTask *task = obj;
+    struct kndQueryView *view = task->ctx->query->view;
+    //struct kndBatchLimits *batch = view->batch;
+    //if (count < batch->from) return knd_OK;
+    //if (batch->size >= batch->max_items) return knd_RANGE;
+
     struct kndOutput *out = task->out;
-    struct kndClassBasePred *bp;
-    size_t bp_count = 0;
+    struct kndClassEntry *entry = elem;
+    struct kndClass *c;
+    size_t curr_depth = 0;
+    int err;
+
+    if (DEBUG_QUERY_GSL_LEVEL_2) {
+        knd_log(".. Query GSL export {class %.*s}",
+                entry->name_size, entry->name);
+    }
+
+    err = knd_class_acquire(entry, &c, task);
+    KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
+
+    err = knd_class_export_GSL(c, task, true, 1);
+    KND_TASK_ERR("failed to export GSL {class %.*s}", entry->name_size, entry->name);
+
+    task->depth = curr_depth;
+    // batch->size++;
+    return knd_OK;
+}
+
+static int export_attr_stms(struct kndQuery *query, struct kndTask *task, size_t depth)
+{
+    struct kndAttrStm *stm;
+    struct kndOutput *out = task->out;
     size_t indent_size = task->ctx->format_indent;
     int err;
 
@@ -57,59 +87,46 @@ static int export_base_preds(struct kndQuery *self, struct kndTask *task, size_t
         err = knd_print_offset(out, depth * indent_size);
         RET_ERR();
     }
-    OUT("[is", strlen("[is"));
+    OUT("[", 1);
+    OUT("stm", strlen("stm"));
 
-    FOREACH (bp, self->base_preds) {
-        if (indent_size) {
-            OUT("\n", 1);
-            err = knd_print_offset(out, (depth + 1) * indent_size);
-            RET_ERR();
+    FOREACH (stm, query->attr_stms) {
+
+        OUT("{", 1);
+
+        if (stm->match) {
+            OUT("[", 1);
+            OUT("cls", strlen("cls"));
+
+            err = knd_set_map(stm->match, export_class_entry_GSL, (void*)task);
+            KND_TASK_ERR("failed to export attr stm matching set to GSL");
+            OUT("]", 1);
         }
-        OUT("{ ", strlen("{ "));
-        OUT(bp->entry->name, bp->entry->name_size);
 
-        // TODO
-        /*err = knd_class_acquire(bp->entry, &c, task);
-        KND_TASK_ERR("failed to acquire baseclass %.*s",
-                     bp->entry->name_size, bp->entry->name);
-
-        if (c->tr) {
-            err = knd_text_gloss_export_GSL(c->tr, true, task, depth + 2);
-            KND_TASK_ERR("failed to export baseclass gloss GSL");
-            }*/
-       
-        if (bp->attr_stms) {
-            //curr_depth = task->ctx->depth;
-            err = knd_attr_stms_export_GSL(bp->attr_stms, task, false, depth + 1);
-            KND_TASK_ERR("failed to export attr vars GSL");
-            //task->ctx->depth = curr_depth;   
-        }
         OUT("}", 1);
-        bp_count++;
     }
-    OUT("]", 1);
+
+    OUT("]", 1); // stm list
     return knd_OK;
 }
 
-int knd_query_export_GSL(struct kndQuery *self, struct kndTask *task)
+int knd_query_export_GSL(struct kndQuery *query, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
-    size_t indent_size = task->ctx->format_indent;
-    size_t num_children;
-    bool use_locale = true;
+    //size_t indent_size = task->ctx->format_indent;
     int err;
 
     if (DEBUG_QUERY_GSL_LEVEL_2) {
         knd_log(".. GSL export {repo %.*s {query {type %d}}",
-                self->repo->name_size, self->repo->name, self->type);
+                query->repo->name_size, query->repo->name, query->type);
     }
     OUT("{", 1);
     OUT("query", strlen("query"));
     OUT(" ", 1);
 
-    if (self->num_base_preds) {
-        err = export_base_preds(self, task, 0);
-        RET_ERR();
+    if (query->num_attr_stms) {
+        err = export_attr_stms(query, task, 0);
+        KND_TASK_ERR("failed to export attr stms to GSL");
     }
 
     OUT("}", 1);

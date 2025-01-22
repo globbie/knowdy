@@ -127,14 +127,15 @@ struct kndQuantAttrStm
     struct kndQuantUIntRange *uint_range;
 
     struct kndQuantUReal *ureal;
+    //struct kndQuantURealRange *ureal_range;
 
+    struct kndSet *match;
     struct kndQuantAttrStm *next;
 };
 
 struct kndQuantState
 {
     knd_state_phase phase;
-    //char state[KND_STATE_SIZE];
     
     char val[KND_VAL_SIZE];
     size_t val_size;
@@ -172,3 +173,4 @@ int knd_quant_ureal_index(struct kndAttrFacet *facet, struct kndClassEntry *topi
 
 int knd_quant_uint_parse_stm(struct kndQuantAttrStm *stm,
                              const char *rec, size_t *total_size, struct kndTask *task);
+int knd_quant_uint_query_plan(struct kndQuantAttrStm *stm, struct kndAttrFacet *facet, struct kndTask *task);

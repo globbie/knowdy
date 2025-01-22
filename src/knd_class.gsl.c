@@ -562,6 +562,10 @@ int knd_class_export_GSL(struct kndClass *self, struct kndTask *task,
         RET_ERR();
     }
 
+    if (is_list_item) {
+        OUT(" ", 1);
+    }
+
     if (task->max_depth == 0) {
         goto final;
     }

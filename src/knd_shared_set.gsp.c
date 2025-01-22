@@ -574,13 +574,16 @@ static int finalize_leaf(struct kndStorageLeaf *leaf, const char *path, size_t p
     /* rename leaf file */
     switch (task->mode) {
     case KND_TASK_TRACE_MODE:
-        knd_log("\n.. renaming leaf file from %.*s to %.*s",
-                leaf->filepath_size, leaf->filepath, out->buf_size, out->buf);
+        if (DEBUG_SHARED_SET_GSP_LEVEL_2) {
+            knd_log("\n.. renaming leaf file from %.*s to %.*s",
+                    leaf->filepath_size, leaf->filepath, out->buf_size, out->buf);
+        }
         break;
     default:
-        knd_log(".. renaming {file %.*s} to {file %.*s}",
-                leaf->filepath_size, leaf->filepath, buf_size, buf);
-
+        if (DEBUG_SHARED_SET_GSP_LEVEL_2) {
+            knd_log(".. renaming {file %.*s} to {file %.*s}",
+                    leaf->filepath_size, leaf->filepath, buf_size, buf);
+        }
         err = rename((const char*)leaf->filepath, (const char*)buf);
         KND_TASK_ERR("failed renaming {file %.*s} to {file %.*s}",
                      leaf->filepath_size, leaf->filepath, out->buf_size, out->buf);

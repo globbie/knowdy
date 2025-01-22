@@ -203,7 +203,6 @@ gsl_err_t knd_attr_implied(void *obj, const char *unused_var(name), size_t unuse
     struct kndAttr *self = obj;
     switch (self->type) {
     case KND_ATTR_INNER:
-    case KND_ATTR_REL:
         knd_log("implicit representation not allowed for complex attr types {attr %.*s}",
                 self->name_size, self->name);
         return make_gsl_err(gsl_FAIL);
@@ -249,9 +248,9 @@ static gsl_err_t parse_subtypes(void *obj, const char *name, size_t name_size,
         err = knd_quant_attr_setting_import(attr->impl, name, name_size, rec, total_size, ctx->task);
         if (err) return *total_size = 0, make_gsl_err_external(err);    
         return make_gsl_err(gsl_OK);
-    case KND_ATTR_REF:
-        err = knd_quant_attr_setting_import(attr->impl, name, name_size, rec, total_size, ctx->task);
-        if (err) return *total_size = 0, make_gsl_err_external(err);    
+    case KND_ATTR_CLASS_REF:
+        //err = knd_attr_cls_ref_import(attr->impl, name, name_size, rec, total_size, ctx->task);
+        //if (err) return *total_size = 0, make_gsl_err_external(err);    
         return make_gsl_err(gsl_OK);
     default:
         break;
@@ -363,7 +362,7 @@ gsl_err_t knd_attr_import(struct kndAttr *self, struct kndTask *task,
     switch (self->type) {
     case KND_ATTR_INNER:
         if (!self->classname_size) {
-            KND_TASK_LOG("ref class not specified in %.*s", self->name_size, self->name);
+            KND_TASK_LOG("inner class not specified in %.*s", self->name_size, self->name);
             return make_gsl_err_external(knd_FORMAT);
         }
         break;

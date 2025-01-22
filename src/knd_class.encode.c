@@ -352,7 +352,7 @@ int knd_class_export_GSP(struct kndClass *self, struct kndTask *task)
 
     assert(entry->seq != NULL);
 
-    if (DEBUG_CLASS_ENCODE_LEVEL_TMP) {
+    if (DEBUG_CLASS_ENCODE_LEVEL_2) {
         knd_log(".. GSP export of {class %.*s {id %.*s}}",
                 entry->name_size, entry->name, entry->id_size, entry->id);
     }
@@ -386,7 +386,6 @@ int knd_class_export_GSP(struct kndClass *self, struct kndTask *task)
 
     /* export descendants - check the max limit */
     if (self->descendants) {
-        knd_log(".. export descendants of %.*s..", self->name_size, self->name);
         err = export_descendants(self, task);
         KND_TASK_ERR("failed to export descendants GSP");
     }

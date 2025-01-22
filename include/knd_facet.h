@@ -35,6 +35,5 @@ struct kndFacet
 };
 
 extern void kndFacet_init(struct kndFacet *self);
-extern int kndFacet_new(struct kndFacet **self);
-extern int knd_facet_new(struct kndMemPool *mempool,
-                         struct kndFacet **result);
+
+extern int knd_facet_new(struct kndFacet **result, struct kndMemPool *mempool);

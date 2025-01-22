@@ -74,7 +74,6 @@ int knd_quant_attr_setting_import(struct kndQuantAttr *self, const char *name, s
         }
         break;
     }
-
     return knd_OK;
 }
 

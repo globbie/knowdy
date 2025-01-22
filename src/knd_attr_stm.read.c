@@ -333,7 +333,7 @@ static gsl_err_t read_attr_stm_list_item(void *obj, const char *rec, size_t *tot
     prev_attr_stm = ctx->attr_stm;
     ctx->attr_stm = attr_stm;
 
-    if (DEBUG_ATTR_STM_READ_LEVEL_TMP) {
+    if (DEBUG_ATTR_STM_READ_LEVEL_2) {
         knd_log("== reading a list item of array {attr-stm %.*s}: %.*s",
                 self->id_size, self->id, 32, rec);
     }
@@ -369,9 +369,7 @@ static gsl_err_t read_attr_stm_list_item(void *obj, const char *rec, size_t *tot
 int knd_read_attr_stm_list(struct kndAttrStm *stm, const char *id, size_t id_size,
                            const char *rec, size_t *total_size, struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->mempool;
     gsl_err_t parser_err;
-    int err;
 
     if (id_size > KND_ID_SIZE) return knd_LIMIT;
 
@@ -398,9 +396,7 @@ int knd_read_attr_stm_list(struct kndAttrStm *stm, const char *id, size_t id_siz
 int knd_read_attr_stm(struct kndAttrStm *stm, const char *id, size_t id_size,
                       const char *rec, size_t *total_size, struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->mempool;   
     gsl_err_t parser_err;
-    int err;
 
     if (id_size > KND_ID_SIZE) return knd_LIMIT;
 

@@ -4,6 +4,7 @@
 
 #include "knd_class_inst.h"
 #include "knd_attr.h"
+#include "knd_text.h"
 #include "knd_attr_stm.h"
 #include "knd_set.h"
 #include "knd_shared_set.h"

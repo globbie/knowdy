@@ -189,7 +189,7 @@ static gsl_err_t parse_logic_clause(void *obj, const char *rec, size_t *total_si
 
     err = knd_logic_clause_parse(clause, rec, total_size, task);
     if (err) return *total_size = 0, make_gsl_err_external(err);
-    
+
     return make_gsl_err(gsl_OK);
 }
 
@@ -201,7 +201,7 @@ static gsl_err_t parse_attr(void *obj, const char *name, size_t name_size,
     struct kndTask *task = ctx->task;
     struct kndAttr *attr;
     struct kndQuantAttr *quant_attr;
-    struct kndRefAttr *ref_attr;
+    struct kndClassRefAttr *cls_ref_attr;
     struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndText *tr = task->ctx->tr;
     size_t num_attr_types = sizeof(knd_attr_names) / sizeof(knd_attr_names[0]);
@@ -246,21 +246,21 @@ static gsl_err_t parse_attr(void *obj, const char *name, size_t name_size,
         }
         attr->impl = quant_attr;
         break;
-    case KND_ATTR_REF:
-        err = knd_ref_attr_new(&ref_attr, name, name_size, task->mempool);
+    case KND_ATTR_CLASS_REF:
+        err = knd_cls_ref_attr_new(&cls_ref_attr, name, name_size, task->mempool);
         if (err) {
             return make_gsl_err_external(err);
         }
-        attr->impl = ref_attr;
+        attr->impl = cls_ref_attr;
         break;
-    case KND_ATTR_REL:
+        /*case KND_ATTR_REL:
         parser_err = knd_rel_import(attr, task, rec, total_size);
         if (parser_err.code) {
             if (DEBUG_CLASS_IMPORT_LEVEL_3)
                 knd_log("-- failed to parse the rel field: %d", parser_err.code);
             return parser_err;
         }
-        return make_gsl_err(gsl_OK);
+        return make_gsl_err(gsl_OK);*/
     default:
         break;
     }
@@ -296,7 +296,7 @@ static gsl_err_t import_attr_stm(void *obj, const char *name, size_t name_size,
     err = knd_import_attr_stm(stm, name, name_size, rec, total_size, ctx->task);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
-    knd_append_attr_stm(bp, stm);
+    knd_base_pred_append_attr_stm(bp, stm);
 
     return make_gsl_err(gsl_OK);
 }
@@ -323,7 +323,7 @@ static gsl_err_t import_attr_stm_list(void *obj, const char *name, size_t name_s
 
     assert (stm->list != NULL);
 
-    knd_append_attr_stm(bp, stm);
+    knd_base_pred_append_attr_stm(bp, stm);
 
     return make_gsl_err(gsl_OK);
 }

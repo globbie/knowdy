@@ -185,7 +185,7 @@ static gsl_err_t knd_parse_mem_main_config(void *obj, const char *rec, size_t *t
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static gsl_err_t get_agent_role(void *obj, const char *name, size_t name_size)
+static gsl_err_t set_steward_role(void *obj, const char *name, size_t name_size)
 {
     struct kndSteward *self = obj;
 
@@ -195,31 +195,16 @@ static gsl_err_t get_agent_role(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_agent(void *obj, const char *rec, size_t *total_size)
+static gsl_err_t set_steward_name(void *obj, const char *name, size_t name_size)
 {
     struct kndSteward *self = obj;
+    if (name_size >= KND_NAME_SIZE) {
+        knd_log("steward name exceeds current limit");
+        return make_gsl_err(gsl_FAIL);
+    }
+    memcpy(self->name, name, name_size);
+    self->name_size = name_size;
 
-    struct gslTaskSpec specs[] = {
-        {   .is_implied = true,
-            .buf = self->name,
-            .buf_size = &self->name_size,
-            .max_buf_size = KND_NAME_SIZE
-        },
-        {   .name = "role",
-            .name_size = strlen("role"),
-            .run = get_agent_role,
-            .obj = self
-        }
-    };
-    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-}
-
-static gsl_err_t run_check_schema(void *unused_var(obj), const char *val, size_t val_size)
-{
-    const char *schema_name = "knd";
-    size_t schema_name_size = strlen(schema_name);
-    if (val_size != schema_name_size)  return make_gsl_err(gsl_FAIL);
-    if (memcmp(schema_name, val, val_size)) return make_gsl_err(gsl_FAIL);
     return make_gsl_err(gsl_OK);
 }
 
@@ -288,13 +273,18 @@ static gsl_err_t parse_schema_path(void *obj, const char *rec, size_t *total_siz
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static gsl_err_t parse_schema(void *obj, const char *rec, size_t *total_size)
+static gsl_err_t parse_steward_config(void *obj, const char *rec, size_t *total_size)
 {
     struct kndSteward *self = obj;
 
     struct gslTaskSpec specs[] = {
         {   .is_implied = true,
-            .run = run_check_schema,
+            .run = set_steward_name,
+            .obj = obj
+        },
+        {   .name = "role",
+            .name_size = strlen("role"),
+            .run = set_steward_role,
             .obj = self
         },
         {   .name = "db-path",
@@ -306,7 +296,7 @@ static gsl_err_t parse_schema(void *obj, const char *rec, size_t *total_size)
         {   .name = "schema-path",
             .name_size = strlen("schema-path"),
             .parse = parse_schema_path,
-            .obj = self,
+            .obj = obj,
         },
         {   .name = "init-data-path",
             .name_size = strlen("init-data-path"),
@@ -317,15 +307,10 @@ static gsl_err_t parse_schema(void *obj, const char *rec, size_t *total_size)
         {  .name = "memory",
             .name_size = strlen("memory"),
             .parse = knd_parse_mem_main_config,
-            .obj = self,
-        },
-        {   .name = "agent",
-            .name_size = strlen("agent"),
-            .parse = parse_agent,
-            .obj = self
+            .obj = obj,
         },
         { .validate = reject_unrec_tag,
-          .obj = self
+          .obj = obj
         }
     };
     gsl_err_t parser_err;
@@ -363,9 +348,9 @@ static int steward_read_config(struct kndSteward *steward, const char *config, s
 {
     struct gslTaskSpec specs[] = {
         {
-            .name = "schema",
-            .name_size = strlen("schema"),
-            .parse = parse_schema,
+            .name = "steward",
+            .name_size = strlen("steward"),
+            .parse = parse_steward_config,
             .obj = steward
         }
     };
@@ -376,6 +361,7 @@ static int steward_read_config(struct kndSteward *steward, const char *config, s
 
     parser_err = gsl_parse_task(config, &total_parsed, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code != gsl_OK) {
+        knd_log("-- steward config failed");
         KND_STEWARD_LOG("failed to read configuration file");
         return gsl_err_to_knd_err_codes(parser_err);
     }
@@ -444,11 +430,11 @@ static int steward_init(struct kndSteward *steward)
     steward->mem_ctx_config.memtype = KND_ALLOC_INCR;
 
     /* repos */
-    //err = knd_set_new(&steward->repo_idx, steward->mempool_write);
-    //KND_STEWARD_ERR("failed to create a set idx");
+    err = knd_set_new(&steward->repo_idx, steward->mempool_write);
+    KND_STEWARD_ERR("failed to create a set idx");
 
-    //err = knd_shared_dict_new(&steward->repo_name_idx, steward->mempool_write, KND_MEDIUM_DICT_SIZE);
-    //KND_STEWARD_ERR("failed to create a dict idx");
+    err = knd_shared_dict_new(&steward->repo_name_idx, KND_MEDIUM_DICT_SIZE, steward->mempool_write, false);
+    KND_STEWARD_ERR("failed to create a dict idx");
 
     err = knd_repo_new(&repo, "/", 1, steward->path, steward->path_size,
                        steward->schema_path, steward->schema_path_size);
@@ -583,7 +569,8 @@ int knd_steward_snapshot_activate(struct kndSteward *steward)
     struct kndRepo *repo = steward->repo;
     int err;
 
-    knd_log(".. activating new snapshot ..");
+    if (DEBUG_STEWARD_LEVEL_TMP)
+        knd_log(".. activating new snapshot ..");
 
     // TODO iterate all repos
 

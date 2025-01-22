@@ -20,19 +20,17 @@
 #pragma once
 
 #include "knd_utils.h"
-#include "knd_attr.h"
-#include "knd_class_inst.h"
-#include "knd_text.h"
 #include "knd_config.h"
 #include "knd_state.h"
+#include "knd_attr.h"
+#include "knd_attr_stm.h"
 
 #include <gsl-parser/gsl_err.h>
+#include <string.h>
 #include <stdatomic.h>
 
-struct kndAttr;
-struct kndAttrStm;
-struct kndProcCallArg;
 struct kndClass;
+struct kndAttr;
 struct kndTask;
 struct kndSet;
 struct kndUser;
@@ -40,7 +38,7 @@ struct kndClassCommit;
 struct kndClassCommitRef;
 struct glbOutput;
 struct kndClassInstEntry;
-struct kndAttrRef;
+struct kndProcCallArg;
 
 typedef enum knd_class_phase_t {
      KND_CLASS_CREATED,
@@ -247,7 +245,6 @@ int knd_export_class_state_GSL(struct kndClass *self, struct kndTask *task);
 int knd_class_export_GSL(struct kndClass *self, struct kndTask *task, bool is_list_item, size_t depth);
 
 int knd_class_read_GSL(const char *rec, size_t *total_size, struct kndClassEntry **self, struct kndTask *task);
-gsl_err_t knd_read_class_var(struct kndClassBasePred *self, const char *rec, size_t *total_size, struct kndTask *task);
 
 int knd_empty_set_export_GSL(struct kndClass *self, struct kndTask *task);
 int knd_export_gloss_GSL(struct kndText *tr, struct kndTask *task);
@@ -381,4 +378,34 @@ static inline void knd_class_append_base_pred(struct kndClass *self, struct kndC
     }
     self->num_base_preds++;
 }
-   
+
+static inline void knd_base_pred_append_attr_stm(struct kndClassBasePred *bp, struct kndAttrStm *stm)
+{
+    struct kndAttrStm *curr_stm;
+
+    FOREACH (curr_stm, bp->attr_stms) {
+        if (curr_stm->name_size != stm->name_size) continue;
+        if (!memcmp(curr_stm->name, stm->name, stm->name_size)) {
+            if (!curr_stm->list_tail) {
+                curr_stm->list_tail = stm;
+                curr_stm->list = stm;
+            }
+            else {
+                curr_stm->list_tail->next = stm;
+                curr_stm->list_tail = stm;
+            }
+            curr_stm->num_list_elems++;
+            return;
+        }
+    }
+
+    if (!bp->attr_stms_tail) {
+        bp->attr_stms_tail  = stm;
+        bp->attr_stms = stm;
+    }
+    else {
+        bp->attr_stms_tail->next = stm;
+        bp->attr_stms_tail = stm;
+    }
+    bp->num_attr_stms++;
+}

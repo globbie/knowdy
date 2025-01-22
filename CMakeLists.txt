@@ -112,7 +112,7 @@ set(SOURCES src/attr/knd_attr.c src/attr/knd_attr.import.c src/attr/knd_attr.res
         src/knd_proc.svg.c src/knd_proc_arg.c
         src/knd_proc_arg.gsl.c src/knd_proc_arg.json.c src/knd_proc_call.c
         src/knd_quant.c src/knd_quant.index.c src/knd_quant.select.c src/knd_query.c
-        src/knd_query.gsl.c
+        src/knd_query.run.c src/knd_query.gsl.c
         src/knd_rel.c src/knd_rel.import.c src/knd_rel.resolve.c
         src/knd_rel_pred.resolve.c 
         src/knd_repo.c src/knd_repo.gsl.c src/knd_repo.gsp.c src/knd_repo.select.c

@@ -7,6 +7,7 @@
 #include "knd_shared_dict.h"
 #include "knd_attr.h"
 #include "knd_attr_stm.h"
+#include "knd_text.h"
 
 #define DEBUG_CLASS_INST_GSP_LEVEL_1 0
 #define DEBUG_CLASS_INST_GSP_LEVEL_2 0

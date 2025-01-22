@@ -105,6 +105,9 @@ int knd_set_intersect(struct kndSet *self, struct kndSet **sets, size_t num_sets
 {
     struct kndSetElemIdx *base_idx;
     struct kndSetElemIdx *idxs[KND_MAX_CLAUSES];
+
+    assert (num_sets >= 2 && sets != NULL);
+
     size_t num_idxs = num_sets - 1;
     int err;
 
@@ -112,10 +115,10 @@ int knd_set_intersect(struct kndSet *self, struct kndSet **sets, size_t num_sets
         return knd_FAIL;
     }
 
-    if (DEBUG_SET_LEVEL_2)
+    if (DEBUG_SET_LEVEL_2) {
         knd_log(" .. intersection by Set \"%.*s\".. total sets:%zu",
                 self->base->name_size, self->base->name, num_sets);
-
+    }
     /* sort sets by size */
     qsort(sets, num_sets, sizeof(struct kndSet*), compare_set_by_size_ascend);
 
@@ -123,8 +126,9 @@ int knd_set_intersect(struct kndSet *self, struct kndSet **sets, size_t num_sets
     base_idx = sets[0]->idx;
     sets++;
 
-    for (size_t i = 0; i < num_idxs; i++)
+    for (size_t i = 0; i < num_idxs; i++) {
         idxs[i] = sets[i]->idx;
+    }
 
     err = kndSet_traverse(self, base_idx, idxs, num_idxs, self->idx);
     if (err) return err;
@@ -402,8 +406,6 @@ int knd_set_sync(struct kndSet *self, map_cb_func cb, size_t *total_size, struct
 {
     struct kndSetDir *root_dir;
     int err;
-
-    knd_log(".. sync kndSet.. ");
 
     err = traverse_sync(self->idx, cb, task, &root_dir);
     if (err) return err;

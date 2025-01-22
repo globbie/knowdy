@@ -11,6 +11,7 @@
 #include "knd_shared_dict.h"
 #include "knd_user.h"
 #include "knd_class.h"
+#include "knd_class_inst.h"
 #include "knd_proc.h"
 #include "knd_mempool.h"
 #include "knd_output.h"
@@ -33,6 +34,7 @@ int knd_charseq_marshall(void *elem, size_t *output_size, struct kndTask *task)
                 seq->id_size, seq->id, seq->numid,
                 seq->val_size, seq->val, out->buf_size - orig_size);
     }
+
     *output_size = out->buf_size - orig_size;
     return knd_OK;
 }

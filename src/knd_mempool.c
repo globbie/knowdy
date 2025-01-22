@@ -355,7 +355,7 @@ static void build_linked_list(char *pages, size_t num_pages, size_t page_size,
     *page_list = NULL;
 }
 
-static int reset_capacity(struct kndMemPool *self)
+void knd_mempool_reset_capacity(struct kndMemPool *self)
 {
     memset(self->pages, 0, self->page_size * self->num_pages);
     build_linked_list(self->pages, self->num_pages, self->page_size, &self->page_list);
@@ -371,8 +371,6 @@ static int reset_capacity(struct kndMemPool *self)
 
     memset(self->tiny_pages, 0, self->tiny_page_size * self->num_tiny_pages);
     build_linked_list(self->tiny_pages, self->num_tiny_pages, self->tiny_page_size, &self->tiny_page_list);
-
-    return knd_OK;
 }
 
 int knd_mempool_alloc(struct kndMemPool *self)

@@ -21,6 +21,7 @@
 #pragma once
 
 #include "knd_class.h"
+#include "knd_attr_stm.h"
 #include "knd_utils.h"
 #include "knd_config.h"
 
@@ -77,35 +78,39 @@ struct kndQuery
     struct kndRepo    *repo;
     struct kndClass   *cls;
 
-    struct kndClassBasePred *base_preds;
-    struct kndClassBasePred *base_preds_tail;
-    size_t num_base_preds;
+    struct kndAttrStm *attr_stms;
+    struct kndAttrStm *attr_stms_tail;
+    size_t num_attr_stms;
 
-    struct kndSet *set;
+    // TODO rels
 
-    bool is_negated;
     knd_logic_t logic;
 
     struct kndQuery *children;
     size_t num_children;
 
-    struct kndSet *result_set;
+    struct kndSet *match;
 
     struct kndQuery *next;
 };
 
+extern gsl_err_t knd_parse_query(void *obj, const char *rec, size_t *total_size);
 
-static inline void knd_query_append_base_pred(struct kndQuery *q, struct kndClassBasePred *base_pred)
+extern int knd_query_export_GSL(struct kndQuery *self, struct kndTask *task);
+extern int knd_query_new(struct kndQuery **self, struct kndMemPool *mempool);
+extern int knd_query_plan(struct kndQuery *query, struct kndTask *task);
+extern int knd_query_run(struct kndQuery *query, struct kndTask *task);
+
+static inline void knd_query_append_attr_stm(struct kndQuery *q, struct kndAttrStm *stm)
 {
-    if (!q->base_preds) {
-        q->base_preds_tail = base_pred;
-        q->base_preds = base_pred;
-    } else {
-        q->base_preds_tail->next = base_pred;
-        q->base_preds_tail = base_pred;
+    if (!q->attr_stms_tail) {
+        q->attr_stms_tail = stm;
+        q->attr_stms = stm;
     }
-    q->num_base_preds++;
+    else {
+        q->attr_stms_tail->next = stm;
+        q->attr_stms_tail = stm;
+    }
+    q->num_attr_stms++;
 }
 
-int knd_query_export_GSL(struct kndQuery *self, struct kndTask *task);
-extern int knd_query_new(struct kndQuery **self, struct kndMemPool *mempool);

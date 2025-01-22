@@ -1,5 +1,6 @@
 #include "knd_commit.h"
 #include "knd_class.h"
+#include "knd_class_inst.h"
 #include "knd_attr.h"
 #include "knd_attr_stm.h"
 #include "knd_task.h"
@@ -32,7 +33,6 @@ struct LocalContext {
 
     struct kndClass *cls;
     struct kndClass *base_cls;
-    struct kndClassBasePred *base_pred;
 
     struct kndAttr *attr;
     struct kndClassDeclar *declar;
@@ -44,8 +44,6 @@ struct LocalContext {
         size_t state_gte;
         size_t state_lte;
     } state_filter;
-
-    bool create_subsets;
 };
 
 static gsl_err_t confirm_default_query(void *obj, const char *unused_var(val),
@@ -61,41 +59,12 @@ static gsl_err_t confirm_default_query(void *obj, const char *unused_var(val),
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t present_subclasses(void *obj, const char *unused_var(val),
-                                    size_t unused_var(val_size))
-{
-    struct LocalContext *ctx = obj;
-    struct kndTask *task = ctx->task;
-    struct kndClass *c = ctx->base_cls;
-    int err;
-
-    if (!c) {
-        KND_TASK_LOG("no base class selected");
-        return make_gsl_err(gsl_FAIL);
-    }
-
-    // TODO get view settings
-
-    if (!c->descendants) {
-        err = knd_empty_set_export(c, task->ctx->format, task);
-        if (err) return make_gsl_err_external(err);
-        return make_gsl_err(gsl_OK);
-    }
-
-    err = knd_class_set_export(c->descendants, task->ctx->format, task);
-    if (err) return make_gsl_err_external(err);
-
-    return make_gsl_err(gsl_OK);
-}
-
 static gsl_err_t select_class_attr(void *obj, const char *name, size_t name_size,
                                    const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndClassBasePred *bp = ctx->base_pred;
     struct kndClass *query_class = ctx->base_cls;
-    struct kndQuery *query = ctx->query;
     struct kndAttr *attr;
     struct kndAttrStm *stm;
     int err;
@@ -111,8 +80,8 @@ static gsl_err_t select_class_attr(void *obj, const char *name, size_t name_size
                      name_size, name, query_class->name_size, query_class->name);
         return make_gsl_err(gsl_FAIL);
     }
-    
-    if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
+
+    if (DEBUG_CLASS_SELECT_LEVEL_3) {
         knd_log("{class %.*s {attr %.*s}} confirmed by owner {class %.*s}",
                 query_class->name_size, query_class->name, name_size, name,
                 attr->owner->name_size, attr->owner->name);
@@ -125,7 +94,7 @@ static gsl_err_t select_class_attr(void *obj, const char *name, size_t name_size
     err = knd_attr_parse_query_stm(stm, rec, total_size, task);
     if (err) return make_gsl_err_external(err);
 
-    knd_append_attr_stm(bp, stm);
+    knd_query_append_attr_stm(ctx->query, stm);
 
     return make_gsl_err(gsl_OK);
 }
@@ -147,24 +116,16 @@ static gsl_err_t get_class(void *obj, const char *name, size_t name_size)
         task->ctx->error = knd_NO_MATCH;
         return make_gsl_err(gsl_FAIL);
     }
+
     err = knd_class_acquire(entry, &c, task);
     if (err) {
         KND_TASK_LOG("failed to acquire class \"%.*s\"", entry->name_size, entry->name);
         return make_gsl_err_external(err);
     }
-
     query->type = KND_QUERY_GET;
     query->obj_type = KND_QUERY_OBJ_CLASS;
     query->cls = c;
 
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t
-subsets_option(void *obj, const char *unused_var(name), size_t unused_var(name_size))
-{
-    struct LocalContext *ctx = obj;
-    ctx->create_subsets = true;
     return make_gsl_err(gsl_OK);
 }
 
@@ -203,9 +164,6 @@ static gsl_err_t get_baseclass(void *obj, const char *name, size_t name_size)
 
     query->type = KND_QUERY_SELECT;
     query->obj_type = KND_QUERY_OBJ_CLASS;
-    knd_query_append_base_pred(query, base_pred);
-
-    ctx->base_pred = base_pred;
     ctx->base_cls = c;
 
     return make_gsl_err(gsl_OK);
@@ -213,8 +171,6 @@ static gsl_err_t get_baseclass(void *obj, const char *name, size_t name_size)
 
 static gsl_err_t select_by_baseclass(void *obj, const char *rec, size_t *total_size)
 {
-    struct LocalContext *ctx = obj;
-    struct kndTask *task = ctx->task;
     gsl_err_t err;
 
     if (DEBUG_CLASS_SELECT_LEVEL_2)
@@ -404,9 +360,8 @@ gsl_err_t knd_class_select(struct kndRepo *repo, const char *rec, size_t *total_
 {
     struct kndQuery *query = task->ctx->query;
     gsl_err_t parser_err;
-    int err;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
+    if (DEBUG_CLASS_SELECT_LEVEL_2) {
         knd_log(".. parsing class select rec: \"%.*s\" {repo %.*s} {task-type %d}",
                 32, rec, repo->name_size, repo->name, task->type);
     }

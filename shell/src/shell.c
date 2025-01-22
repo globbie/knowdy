@@ -122,9 +122,9 @@ static int knd_interact(struct kndSteward *steward)
 
     /* start serving requests */
 
-    knd_log("\n++ Knowdy Steward is up and running!\n"
+    knd_log("\n++ %.*s is up and running!\n"
             "   {steward-role %s}  {knd-version %s}\n",
-            steward_role_name, KND_VERSION);
+            steward->name_size, steward->name, steward_role_name, KND_VERSION);
     knd_log("   (finish session by pressing Ctrl+C)\n");
 
     while ((buf = readline(">> ")) != NULL) {

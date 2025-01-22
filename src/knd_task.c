@@ -12,7 +12,7 @@
 #include "knd_mempool.h"
 #include "knd_utils.h"
 #include "knd_output.h"
-#include "knd_class.h"
+#include "knd_query.h"
 #include "knd_http_codes.h"
 
 #include <gsl-parser.h>
@@ -26,6 +26,9 @@
 
 void knd_task_del(struct kndTask *self)
 {
+    if (self->ctx) {
+        free(self->ctx);
+    }
     if (self->log) {
         self->log->del(self->log);
     }
@@ -186,6 +189,16 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
           .name_size = strlen("task"),
           .parse = knd_parse_task,
           .obj = task
+        },
+        { .name = "query",
+          .name_size = strlen("query"),
+          .parse = knd_parse_query,
+          .obj = task
+        },
+        { .name = "cmd",
+          .name_size = strlen("cmd"),
+          .parse = knd_parse_task,
+          .obj = task
         }
     };
     parser_err = gsl_parse_task(task->input, &total_size, specs, sizeof specs / sizeof specs[0]);
@@ -194,7 +207,7 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
         break;
     case gsl_NO_MATCH:
         if (!task->log->buf_size) {
-            KND_TASK_LOG("{tag %.*s} is not valid here, \"task\" expected",
+            KND_TASK_LOG("{tag %.*s} is not valid here, \"task\" or \"query\" expected",
                          parser_err.val_size, parser_err.val);
         }
         break;

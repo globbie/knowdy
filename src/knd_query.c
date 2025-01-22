@@ -21,6 +21,38 @@
 #define DEBUG_QUERY_LEVEL_3 0
 #define DEBUG_QUERY_LEVEL_TMP 1
 
+int knd_query_plan(struct kndQuery *query, struct kndTask *task)
+{
+    struct kndAttrStm *stm;
+    size_t min_ops = 0;
+    int err;
+
+    // TODO query cache lookup
+
+    FOREACH (stm, query->attr_stms) {
+        err = knd_attr_stm_plan(stm, task);
+        switch (err) {
+        case knd_OK:
+            break;
+        case knd_NO_MATCH:
+            knd_log("no matches for attr stm");
+
+            break;
+        default:
+            KND_TASK_ERR("failed to plan attr stm query");
+            break;
+        }
+
+        if (stm->min_query_ops < min_ops) {
+            min_ops = stm->min_query_ops;
+        }
+    }
+
+    // < KND_QUERY_MIN_OPERS ?
+
+    return knd_OK;
+}
+
 int knd_query_new(struct kndQuery **result, struct kndMemPool *mempool)
 {
     void *page;

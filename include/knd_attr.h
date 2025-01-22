@@ -48,6 +48,8 @@ typedef enum knd_attr_type {
     KND_ATTR_BIN,
     KND_ATTR_CDATA,
     KND_ATTR_INNER,
+    KND_ATTR_CLASS_REF,
+    KND_ATTR_CLASS_INST_REF,
     KND_ATTR_TEXT,
     KND_ATTR_INT,
     KND_ATTR_UINT,
@@ -57,11 +59,9 @@ typedef enum knd_attr_type {
     KND_ATTR_UREAL,
     KND_ATTR_TIME,
     KND_ATTR_DATE,
+    KND_ATTR_DATE_TIME,
     KND_ATTR_BOOL,
     KND_ATTR_PROB,
-    KND_ATTR_REF,
-    KND_ATTR_REL,
-    KND_ATTR_ATTR_REF,
     KND_ATTR_PROC_REF,
     KND_ATTR_PROC_ARG_REF,
     KND_ATTR_FILE
@@ -74,6 +74,8 @@ static const char* const knd_attr_names[] = {
     "bin",
     "cdata",
     "inner",
+    "cls-ref",
+    "cls-inst-ref",
     "text",
     "int",
     "uint",
@@ -83,11 +85,9 @@ static const char* const knd_attr_names[] = {
     "ureal",
     "time",
     "date",
+    "date-time",
     "bool",
     "prob",
-    "ref",
-    "rel",
-    "attr-ref",
     "proc-ref",
     "proc-arg-ref",
     "file"
@@ -98,6 +98,12 @@ typedef enum knd_attr_quant_type {
     KND_ATTR_SET,
     KND_ATTR_LIST
 } knd_attr_quant_type;
+
+static const char* const knd_facet_types[] = {
+    "Subclass",
+    "Sequence Size",
+    "Accumulation"
+};
 
 typedef enum knd_attr_facet_type {
     KND_ATTR_FACET_SUBCLASS,
@@ -155,11 +161,18 @@ struct kndAttrFacet
     struct kndAttrFacet *next;
 };
 
-struct kndRefAttr
+struct kndClassRefAttr
 {
     const char *name;
     size_t name_size;
+    struct kndClassEntry *entry;
+};
 
+struct kndClassInstRefAttr
+{
+    const char *name;
+    size_t name_size;
+    struct kndClassEntry *entry;
 };
 
 struct kndAttr
@@ -216,8 +229,8 @@ struct kndAttr
 int knd_export_inherited_attr(void *obj, const char *elem_id, size_t elem_id_size,
                               size_t count, void *elem);
 
-int knd_apply_attr_stm_updates(struct kndClass *self, struct kndClassUpdate *update, struct kndTask *task);
-
+int knd_apply_attr_stm_updates(struct kndClass *self, struct kndClassUpdate *update,
+                               struct kndTask *task);
 int knd_register_attr_ref(void *obj, const char *elem_id, size_t elem_id_size,
                           size_t count, void *elem);
 int knd_get_arg_value(struct kndAttrStm *src, struct kndAttrStm *query,
@@ -262,8 +275,10 @@ int knd_attr_names_unmarshall(const char *elem_id, size_t elem_id_size,
 
 int knd_attr_decode(struct kndAttr *attr, struct kndTask *task);
 
-int knd_ref_attr_new(struct kndRefAttr **result, const char *name, size_t name_size,
-                     struct kndMemPool *mempool);
+int knd_cls_ref_attr_new(struct kndClassRefAttr **result, const char *name, size_t name_size,
+                         struct kndMemPool *mempool);
+int knd_cls_inst_ref_attr_new(struct kndClassInstRefAttr **result, const char *name, size_t name_size,
+                              struct kndMemPool *mempool);
 
 void knd_attr_index_str(struct kndAttrFacet *owner, const char *seq, size_t seq_size, size_t depth);
 

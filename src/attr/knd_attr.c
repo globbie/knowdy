@@ -101,28 +101,33 @@ int knd_attr_find(struct kndClass *cls, const char *name, size_t name_size,
     }
 
     FOREACH (ref, refs) {
-        err = knd_shared_set_get(task->idxs->class_idx,
-                                 ref->owner_id, ref->owner_id_size, (void**)&entry);
-        KND_TASK_ERR("failed to get a {class-entry %.*s}",
-                     ref->owner_id_size, ref->owner_id);
+        if (ref->class_entry) {
+            entry = ref->class_entry;
+        } else {
+            assert (ref->owner_id_size != 0 && ref->owner_id != NULL);
+            err = knd_shared_set_get(task->idxs->class_idx,
+                                     ref->owner_id, ref->owner_id_size, (void**)&entry);
+            KND_TASK_ERR("failed to get a {class-entry %.*s}",
+                         ref->owner_id_size, ref->owner_id);
+        }
 
         /* direct owner for this attr */
         if (entry == cls->entry) {
             if (ref->attr) {
                 attr = ref->attr;
-            }
+            } else {
+                //knd_log("immediate {attr %.*s}", ref->id_size, ref->id);
 
-            err = get_immediate_attr(cls, ref->id, ref->id_size, &attr);
-            KND_TASK_ERR("no immediate {attr %.*s} in {class %.*s}",
-                         ref->name_size, ref->name, cls->name_size, cls->name);
+                err = get_immediate_attr(cls, ref->id, ref->id_size, &attr);
+                KND_TASK_ERR("no immediate {attr %.*s} in {class %.*s}",
+                             ref->name_size, ref->name, cls->name_size, cls->name);
+            }
             break;
         }
 
         err = knd_class_acquire(entry, &c, task);
         KND_TASK_ERR("failed to acquire class {entry %.*s}",
                      entry->name_size, entry->name);
-
-        knd_log(">> {class %.*s}", c->name_size, c->name);
 
         err = knd_is_base(c, cls);
         if (err) continue;
@@ -229,15 +234,30 @@ int knd_attr_ref_new(struct kndAttrRef **result, struct kndMemPool *mempool)
     return knd_OK;
 }
 
-int knd_ref_attr_new(struct kndRefAttr **result,
-                     const char *name, size_t name_size, struct kndMemPool *mempool)
+int knd_cls_ref_attr_new(struct kndClassRefAttr **result,
+                         const char *name, size_t name_size, struct kndMemPool *mempool)
 {
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndRefAttr));
+    assert(mempool->tiny_page_size >= sizeof(struct kndClassRefAttr));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
-    memset(page, 0,  sizeof(struct kndRefAttr));
+    memset(page, 0,  sizeof(struct kndClassRefAttr));
+    *result = page;
+    (*result)->name = name;
+    (*result)->name_size = name_size;
+    return knd_OK;
+}
+
+int knd_cls_inst_ref_attr_new(struct kndClassInstRefAttr **result,
+                              const char *name, size_t name_size, struct kndMemPool *mempool)
+{
+    void *page;
+    int err;
+    assert(mempool->tiny_page_size >= sizeof(struct kndClassInstRefAttr));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
+    if (err) return err;
+    memset(page, 0,  sizeof(struct kndClassInstRefAttr));
     *result = page;
     (*result)->name = name;
     (*result)->name_size = name_size;

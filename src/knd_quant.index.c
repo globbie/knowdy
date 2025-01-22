@@ -31,10 +31,11 @@ static int add_elem(struct kndAttrFacet *parent, const char *seq, size_t seq_siz
     struct kndSet *idx;
     int err;
 
-    assert (seq_size >= 1);
-    if (DEBUG_QUANT_INDEX_LEVEL_2) {
-        knd_log(".. add elem {seq %.*s} to {facet {type %d} {depth %zu}}",
-                seq_size, seq, parent->type, parent->depth);
+    assert (seq_size >= 1 && seq != NULL);
+
+    if (DEBUG_QUANT_INDEX_LEVEL_3) {
+        knd_log(".. add elem {seq %.*s {size %zu}} to {facet {type %d} {depth %zu}}",
+                seq_size, seq, seq_size, parent->type, parent->depth);
     }
 
     switch (parent->type) {
@@ -109,6 +110,7 @@ static int create_subfacets(struct kndAttrFacet *parent, const char *id, size_t 
 {
     struct kndQuantUInt *uint;
     struct kndAttrFacetElem *elem;
+    struct kndQuantAttrStm *quant_attr_stm;
     size_t seq_size = 0;
     int err;
 
@@ -121,8 +123,9 @@ static int create_subfacets(struct kndAttrFacet *parent, const char *id, size_t 
         elem = parent->elems->cache[i];
         if (!elem) break;
 
-        uint = elem->stm->subtype;
-
+        quant_attr_stm = elem->stm->subtype;
+        uint = quant_attr_stm->uint;
+        
         assert (uint != NULL);
 
         if (uint->seq_size > parent->depth) {
@@ -143,7 +146,11 @@ int knd_quant_uint_index(struct kndAttrFacet *facet, struct kndClassEntry *topic
                          struct kndAttrStm *stm, struct kndTask *task)
 {
     struct kndAttrFacetElem *elem;
-    struct kndQuantUInt *uint = stm->subtype;
+    struct kndQuantAttrStm *quant_attr_stm = stm->subtype;
+
+    assert (quant_attr_stm != NULL);
+
+    struct kndQuantUInt *uint = quant_attr_stm->uint;
     int err;
 
     if (DEBUG_QUANT_INDEX_LEVEL_2) {
@@ -187,7 +194,8 @@ int knd_quant_ureal_index(struct kndAttrFacet *unused_var(facet), struct kndClas
                           struct kndAttrStm *stm, struct kndTask *unused_var(task))
 {
     //struct kndAttrStm *stm;
-    struct kndQuantUReal *ureal = stm->subtype;
+    struct kndQuantAttrStm *quant_attr_stm = stm->subtype;
+    struct kndQuantUReal *ureal = quant_attr_stm->ureal;
     //int err;
 
     if (DEBUG_QUANT_INDEX_LEVEL_2) {

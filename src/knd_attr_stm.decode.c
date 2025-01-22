@@ -22,6 +22,7 @@
 #include "knd_class_inst.h"
 #include "knd_attr.h"
 #include "knd_attr_stm.h"
+#include "knd_quant.h"
 #include "knd_task.h"
 #include "knd_dict.h"
 #include "knd_shared_dict.h"
@@ -78,7 +79,7 @@ static int decode_inner_attr_stm(struct kndClass *base,
 
     if (c->implied_attr) {
         switch (c->implied_attr->type) {
-        case KND_ATTR_REF:
+        case KND_ATTR_CLASS_REF:
             err = knd_shared_set_get(task->idxs->class_idx,
                                      parent->val_id, parent->val_id_size,
                                      (void**)&parent->class_entry);
@@ -121,18 +122,28 @@ static int decode_ref_attr_stm(struct kndClass *unused_var(base),
     return knd_OK;
 }
 
-static int decode_num(struct kndAttrStm *stm, struct kndTask *task)
+static int decode_uint(struct kndAttrStm *stm, struct kndTask *task)
 {
     struct kndCharSeq *seq;
+    struct kndQuantAttrStm *quant_attr_stm;
+    struct kndQuantUInt *uint;
     int err;
 
     err = knd_charseq_decode(stm->val_id, stm->val_id_size, &seq, task);
     KND_TASK_ERR("failed to decode a charseq");
 
-    stm->val = seq->val;
-    stm->val_size = seq->val_size;
+    err = knd_quant_parse_uint(seq->val, seq->val_size, &uint, task);
+    KND_TASK_ERR("failed to parse uint value");
 
-    // numval
+    if (DEBUG_ATTR_STM_DECODE_LEVEL_2) {
+        knd_log(".. decode {seq %.*s} => {uint %zu}",
+                seq->val_size, seq->val, uint->numval);
+    }
+    err = knd_quant_attr_stm_new(&quant_attr_stm, task->mempool);
+    KND_TASK_ERR("failed to alloc a quant attr stm");
+
+    quant_attr_stm->uint = uint;
+    stm->subtype = quant_attr_stm;
     return knd_OK;
 }
 
@@ -173,18 +184,21 @@ static int decode_attr_stm(struct kndClass *base,
                      stm->name_size, stm->name, stm->id_size, stm->id);
         break;
     case KND_ATTR_UINT:
-        // fall through
-    case KND_ATTR_UREAL:
-        err = decode_num(stm, task);
-        KND_TASK_ERR("failed to decode {%.*s {val-id %.*s}}",
+        err = decode_uint(stm, task);
+        KND_TASK_ERR("failed to decode {%.*s {uint %.*s}}",
                      stm->name_size, stm->name, stm->val_id_size, stm->val_id);
+        break;
+    case KND_ATTR_UREAL:
+        //err = decode_ureal(stm, task);
+        //KND_TASK_ERR("failed to decode {%.*s {val-id %.*s}}",
+        //             stm->name_size, stm->name, stm->val_id_size, stm->val_id);
         break;
     case KND_ATTR_STR:
         err = decode_str(stm, task);
         KND_TASK_ERR("failed to decode {%.*s {val-id %.*s}}",
                      stm->name_size, stm->name, stm->val_id_size, stm->val_id);
         break;
-    case KND_ATTR_REF:
+    case KND_ATTR_CLASS_REF:
         err = decode_ref_attr_stm(base, stm, task);
         KND_TASK_ERR("failed to decode {rel %.*s {id %.*s}}",
                      stm->name_size, stm->name, stm->id_size, stm->id);

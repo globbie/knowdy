@@ -47,8 +47,7 @@
 
 static int resolve_attr_stm_list(struct kndRepo *repo, struct kndAttrStm *parent_item,
                                  struct kndTask *task);
-static int resolve_ref(struct kndRepo *repo, struct kndAttrStm *var,
-                       struct kndTask *task);
+static int resolve_cls_ref(struct kndRepo *repo, struct kndAttrStm *var, struct kndTask *task);
 
 static int resolve_implied_attr_stm(struct kndRepo *repo, struct kndAttr *attr,
                                     struct kndAttrStm *stm, struct kndTask *task)
@@ -93,7 +92,7 @@ static int resolve_implied_attr_stm(struct kndRepo *repo, struct kndAttr *attr,
             // TODO: float parsing
         }
         break;
-    case KND_ATTR_REF:
+    case KND_ATTR_CLASS_REF:
         if (classname_size) {
             stm->val = classname;
             stm->val_size = classname_size;
@@ -108,24 +107,7 @@ static int resolve_implied_attr_stm(struct kndRepo *repo, struct kndAttr *attr,
            break;
         }
 
-        err = resolve_ref(repo, stm, task);
-        if (err) return err;
-        break;
-    case KND_ATTR_REL:
-        if (classname_size) {
-            stm->val = classname;
-            stm->val_size = classname_size;
-        } else {
-            if (attr->is_required) {
-                KND_TASK_LOG("{class %.*s {implied-attr %.*s}} cannot be empty",
-                             attr->owner->name_size, attr->owner->name,
-                             attr->name_size, attr->name);
-                return knd_FORMAT;
-           }
-           // empty val, no resolving needed
-           break;
-        }
-        err = knd_rel_pred_resolve(stm, task);
+        err = resolve_cls_ref(repo, stm, task);
         if (err) return err;
         break;
     case KND_ATTR_STR:
@@ -144,6 +126,7 @@ static int resolve_inner_attr(struct kndRepo *repo, struct kndAttrStm *stm, stru
     struct kndAttrStm *item;
     struct kndAttr *attr = stm->attr;
     struct kndAttrRef *attr_ref;
+    struct kndQuantAttrStm *quant_attr_stm;
     struct kndQuantUInt *uint;
     struct kndProc *proc;
     struct kndSharedDict *class_name_idx = task->idxs->class_name_idx;
@@ -224,7 +207,13 @@ static int resolve_inner_attr(struct kndRepo *repo, struct kndAttrStm *stm, stru
         case KND_ATTR_UINT:
             err = knd_quant_parse_uint(item->val, item->val_size, &uint, task);
             KND_TASK_ERR("failed to parse uint value");
-            item->subtype = uint;
+
+            err = knd_quant_attr_stm_new(&quant_attr_stm, task->mempool);
+            KND_TASK_ERR("failed to alloc a quant attr stm");
+
+            quant_attr_stm->uint = uint;
+
+            stm->subtype = quant_attr_stm;
             break;
         case KND_ATTR_UREAL:
             //err = parse_ureal_value(item, task);
@@ -234,14 +223,14 @@ static int resolve_inner_attr(struct kndRepo *repo, struct kndAttrStm *stm, stru
             err = resolve_inner_attr(repo, item, task);
             if (err) return err;
             break;
-        case KND_ATTR_REF:
-            err = resolve_ref(repo, item, task);
+        case KND_ATTR_CLASS_REF:
+            err = resolve_cls_ref(repo, item, task);
             if (err) return err;
             break;
-        case KND_ATTR_REL:
-            err = knd_rel_pred_resolve(item, task);
-            if (err) return err;
-            break;
+            //case KND_ATTR_REL:
+            //err = knd_rel_pred_resolve(item, task);
+            //if (err) return err;
+            //break;
         case KND_ATTR_TEXT:
             item->attr = attr;
             err = knd_text_resolve(item, task);
@@ -300,25 +289,6 @@ static int resolve_attr_stm_list(struct kndRepo *repo, struct kndAttrStm *stm,
         attr->class_entry = c->entry;
     }
 
-    /* base template class */
-    /*entry = attr->class_entry;
-    err = knd_class_acquire(entry, &c, task);
-    KND_TASK_ERR("failed to acquire {class %.*s}", entry->name_size, entry->name);
-
-    if (c->phase < KND_CLASS_RESOLVED) {
-        err = knd_class_resolve(c, task);
-        KND_TASK_ERR("failed to resolve {class %.*s}", c->name_size, c->name);
-    }
-    */
-
-    /* TODO: does local repo have a clone of this class? */
-    /*if (self->entry->repo != c->entry->repo) {
-        err = knd_get_class(self->entry->repo, entry->name, entry->name_size,
-                            &local_class, task);
-        if (!err)
-            c = local_class;
-            }*/
-
     FOREACH (item, stm->list) {
         item->attr = attr;
         if (!item->val_size) {
@@ -331,12 +301,8 @@ static int resolve_attr_stm_list(struct kndRepo *repo, struct kndAttrStm *stm,
             err = resolve_inner_attr(repo, item, task);
             if (err) return err;
             break;
-        case KND_ATTR_REF:
-            err = resolve_ref(repo, item, task);
-            if (err) return err;
-            break;
-        case KND_ATTR_REL:
-            err = knd_rel_pred_resolve(item, task);
+        case KND_ATTR_CLASS_REF:
+            err = resolve_cls_ref(repo, item, task);
             if (err) return err;
             break;
         default:
@@ -346,84 +312,7 @@ static int resolve_attr_stm_list(struct kndRepo *repo, struct kndAttrStm *stm,
     return knd_OK;
 }
 
-static int resolve_attr_ref(struct kndAttrStm *parent_item, struct kndTask *task)
-{
-    struct kndSharedDict *class_name_idx = task->idxs->class_name_idx;
-    const char *classname = NULL;
-    size_t classname_size = 0;
-    const char *attrname = NULL;
-    size_t attrname_size = 0;
-    const char *val_classname = NULL;
-    size_t val_classname_size = 0;
-    struct kndClassEntry *entry;
-    struct kndClass *c;
-    struct kndAttrStm *attr_stm = NULL;
-    struct kndAttrRef *attr_ref;
-    int err;
-
-    if (DEBUG_ATTR_STM_RESOLVE_LEVEL_2)
-	knd_log(".. resolving attr ref %.*s..", parent_item->name_size, parent_item->name);
-
-    FOREACH (attr_stm, parent_item->children) {
-	if (!memcmp(attr_stm->name, "cls", strlen("cls"))) {
-	    classname = attr_stm->val;
-	    classname_size = attr_stm->val_size;
-	}
-	if (!memcmp(attr_stm->name, "val", strlen("val"))) {
-	    val_classname = attr_stm->val;
-	    val_classname_size = attr_stm->val_size;
-	}
-    }
-    if (!classname_size) {
-        err = knd_FAIL;
-	KND_TASK_ERR("no classname specified for attr ref \"%.*s\" (val:%.*s)",
-                     parent_item->name_size, parent_item->name,
-                     parent_item->val_size, parent_item->val);
-    }
-
-    entry = knd_shared_dict_get(class_name_idx, classname, classname_size);
-    if (!entry) {
-	 err = knd_NO_MATCH;
-         KND_TASK_ERR("no such {class %.*s} .."
-                      "failed to resolve {attr %.*s}",
-                      classname_size, classname, parent_item->name_size, parent_item->name);
-    }
-
-    /* get attr name */
-    attrname = parent_item->val;
-    attrname_size = parent_item->val_size;
-    if (!attrname_size) {
-        err = knd_FAIL;
-	KND_TASK_ERR("no attr name specified in attr ref \"%.*s\"",
-                     parent_item->name_size, parent_item->name);
-    }
-
-    err = knd_class_acquire(entry, &c, task);
-    KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
-
-    err = knd_class_get_attr(c, attrname, attrname_size, &attr_ref);
-    if (err) {
-	KND_TASK_ERR("no attr \"%.*s\" in {class %.*s}",
-                     attrname_size, attrname, entry->name_size, entry->name);
-    }
-    parent_item->class_entry = entry;
-    parent_item->ref_attr = attr_ref->attr;
-
-    if (val_classname_size) {
-        entry = knd_shared_dict_get(class_name_idx, val_classname, val_classname_size);
-        if (!entry) {
-            err = knd_NO_MATCH;
-            KND_TASK_ERR("no such class: \"%.*s\" .."
-                         "couldn't resolve the \"%.*s\" attr ref val",
-                         val_classname_size, val_classname,
-                         parent_item->name_size, parent_item->name);
-        }
-        parent_item->class_entry = entry;
-    }
-    return knd_OK;
-}
-
-static int resolve_ref(struct kndRepo *repo, struct kndAttrStm *stm, struct kndTask *task)
+static int resolve_cls_ref(struct kndRepo *repo, struct kndAttrStm *stm, struct kndTask *task)
 {
     struct kndClass *c, *ref_c;
     struct kndClassEntry *entry;
@@ -457,6 +346,7 @@ int knd_resolve_attr_stms(struct kndClass *self, struct kndClassBasePred *bp,
                           struct kndTask *task)
 {
     struct kndAttrStm *stm;
+    struct kndQuantAttrStm *quant_attr_stm;
     struct kndAttrRef *attr_ref;
     struct kndAttr *attr;
     struct kndProc *proc;
@@ -495,43 +385,77 @@ int knd_resolve_attr_stms(struct kndClass *self, struct kndClassBasePred *bp,
         switch (attr->type) {
         case KND_ATTR_INNER:
             err = resolve_inner_attr(self->entry->repo, stm, task);
-            if (err) return err;
+            KND_TASK_ERR("failed to resolve an inner attr");
             break;
-        case KND_ATTR_REF:
-            err = resolve_ref(self->entry->repo, stm, task);
-            if (err) return err;
-            break;
-        case KND_ATTR_REL:
-            err = knd_rel_pred_resolve(stm, task);
-            if (err) return err;
+        case KND_ATTR_CLASS_REF:
+            err = resolve_cls_ref(self->entry->repo, stm, task);
+            KND_TASK_ERR("failed to resolve a class ref");
             break;
         case KND_ATTR_TEXT:
             err = knd_text_resolve(stm, task);
-            KND_TASK_ERR("failed to resolve text attr");
+            KND_TASK_ERR("failed to resolve a text attr");
             break;
         case KND_ATTR_UINT:
+            assert (stm->val != NULL && stm->val_size != 0);
+
             err = knd_quant_parse_uint(stm->val, stm->val_size, &uint, task);
-            KND_TASK_ERR("failed to parse uint value");
-            stm->subtype = uint;
+            KND_TASK_ERR("failed to parse an uint value");
+
+            err = knd_quant_attr_stm_new(&quant_attr_stm, task->mempool);
+            KND_TASK_ERR("failed to alloc a quant attr stm");
+
+            quant_attr_stm->uint = uint;
+
+            stm->subtype = quant_attr_stm;
             break;
         case KND_ATTR_UREAL:
             err = knd_quant_parse_ureal(stm->val, stm->val_size, &ureal, task);
-            KND_TASK_ERR("failed to parse ureal value");
+            KND_TASK_ERR("failed to parse an ureal value");
             stm->subtype = ureal;
-            break;
-        case KND_ATTR_ATTR_REF:
-            err = resolve_attr_ref(stm, task);
-            if (err) return err;
             break;
         case KND_ATTR_PROC_REF:
             proc = attr->proc;
             err = knd_resolve_proc_ref(stm->val, stm->val_size, proc, &stm->proc_entry, task);
-            if (err) return err;
+            KND_TASK_ERR("failed to resolve a proc ref");
             break;
         default:
             /* atomic value, call a validation function? */
             break;
         }
+    }
+    return knd_OK;
+}
+
+int knd_attr_stm_plan(struct kndAttrStm *stm, struct kndTask *task)
+{
+    struct kndAttr *attr = stm->attr;
+    struct kndAttrFacet *facet = attr->facets;
+    struct kndQuantAttrStm *quant_attr_stm;
+    int err;
+
+    if (DEBUG_ATTR_STM_RESOLVE_LEVEL_TMP) {
+        knd_log(".. query planning of {attr %.*s} {attr-type %s}",
+                attr->name_size, attr->name, knd_attr_names[attr->type]);
+    }
+
+    if (!facet) {
+        knd_log("no index facets exist for attr %.*s", attr->name_size, attr->name);
+        return knd_OK;
+    }
+
+    switch (attr->type) {
+    case KND_ATTR_UINT:
+        quant_attr_stm = stm->subtype;
+
+        err = knd_quant_uint_query_plan(quant_attr_stm, facet, task);
+        KND_TASK_ERR("failed to plan a quant uint query");
+
+        if (quant_attr_stm->match) {
+            stm->match = quant_attr_stm->match;
+        }
+        break;
+    default:
+        break;
     }
     return knd_OK;
 }

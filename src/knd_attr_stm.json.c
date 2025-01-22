@@ -66,9 +66,7 @@ static int inner_stm_export_JSON(struct kndAttrStm *stm, struct kndTask *task, s
             OUT(" ", 1);
         }
         switch (attr->type) {
-        case KND_ATTR_REL:
-            // fall through
-        case KND_ATTR_REF:
+        case KND_ATTR_CLASS_REF:
             assert(stm->class_entry != NULL);
             OUT("\"", 1);
             OUT(stm->class_entry->name, stm->class_entry->name_size);
@@ -200,17 +198,9 @@ static int attr_stm_list_export_JSON(struct kndAttrStm *parent_stm, struct kndTa
             err = inner_stm_export_JSON(stm, task, depth + 2);
             if (err) return err;
             break;
-        case KND_ATTR_REL:
-            // fall through
-        case KND_ATTR_REF:
+        case KND_ATTR_CLASS_REF:
             err = ref_stm_export_JSON(stm, task, depth + 1);
             if (err) return err;
-            break;
-        case KND_ATTR_PROC_REF:
-            if (stm->proc_entry) {
-                //err = proc_stm_export_JSON(stm, task);
-                //if (err) return err;
-            }
             break;
         case KND_ATTR_STR:
             OUT("\"val\":", strlen("\"val\":"));
@@ -285,9 +275,7 @@ int knd_attr_stms_export_JSON(struct kndAttrStm *stms, struct kndTask *task,
         case KND_ATTR_UREAL:
             OUT(stm->val, stm->val_size);
             break;
-        case KND_ATTR_REL:
-            // fall through
-        case KND_ATTR_REF:
+        case KND_ATTR_CLASS_REF:
             assert(stm->class_entry != NULL);
             if (indent_size) {
                 OUT("\n", 1);
@@ -324,19 +312,6 @@ int knd_attr_stms_export_JSON(struct kndAttrStm *stms, struct kndTask *task,
         case KND_ATTR_TEXT:
             err = knd_text_export(stm->text, KND_FORMAT_JSON, task, depth);
             KND_TASK_ERR("failed to export text JSON");
-            break;
-        case KND_ATTR_PROC_REF:
-            if (stm->proc_entry) {
-                //err = proc_stm_export_JSON(stm, task);
-                //if (err) return err;
-            } else {
-                err = out->write(out, "\"", strlen("\""));
-                if (err) return err;
-                err = out->write(out, stm->val, stm->val_size);
-                if (err) return err;
-                err = out->write(out, "\"", strlen("\""));
-                if (err) return err;
-            }
             break;
         case KND_ATTR_INNER:
             OUT("{", 1);
@@ -395,7 +370,7 @@ int knd_attr_stm_export_JSON(struct kndAttrStm *stm, struct kndTask *task, size_
     case KND_ATTR_UREAL:
         OUT(stm->val, stm->val_size);
         break;
-    case KND_ATTR_REF:
+    case KND_ATTR_CLASS_REF:
         assert(stm->class_entry != NULL);
         OUT("\"", 1);
         OUT(stm->class_entry->name, stm->class_entry->name_size);
@@ -407,16 +382,6 @@ int knd_attr_stm_export_JSON(struct kndAttrStm *stm, struct kndTask *task, size_
         if (c->tr) {
             //err = knd_text_gloss_export_GSL(c->tr, task, depth);
             //KND_TASK_ERR("failed to export gloss GSL");
-        }
-        break;
-    case KND_ATTR_PROC_REF:
-        if (stm->proc_entry) {
-            //err = proc_stm_export_JSON(stm, task);
-            //if (err) return err;
-        } else {
-            OUT("\"", 1);
-            OUT(stm->val, stm->val_size);
-            OUT("\"", 1);
         }
         break;
     case KND_ATTR_INNER:

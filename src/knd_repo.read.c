@@ -408,7 +408,7 @@ static int read_class_idx(struct kndSharedSet *idx, struct kndTask *task)
     struct kndStorageLeaf *leaf;
     int err;
 
-    if (DEBUG_REPO_LEVEL_TMP) {
+    if (DEBUG_REPO_LEVEL_2) {
         knd_log(".. reading {class-idx %.*s}", idx->path_size, idx->path);
     }
 

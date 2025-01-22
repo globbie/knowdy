@@ -43,8 +43,8 @@ void knd_attr_stm_str(struct kndAttrStm *var, size_t depth)
             knd_log("%*s* {inner-class %.*s}", depth * KND_OFFSET_SIZE, "",
                     attr->class_entry->name_size, attr->class_entry->name);
             break;
-        case KND_ATTR_REF:
-            knd_log("%*s* {class-ref %.*s}", depth * KND_OFFSET_SIZE, "",
+        case KND_ATTR_CLASS_REF:
+            knd_log("%*s* {cls-ref %.*s}", depth * KND_OFFSET_SIZE, "",
                     attr->class_entry->name_size, attr->class_entry->name);
             break;
         default:
@@ -82,20 +82,11 @@ void knd_attr_stm_str(struct kndAttrStm *var, size_t depth)
                 knd_attr_stm_str(item, depth + 1);
             }
             break;
-        case KND_ATTR_REF:
+        case KND_ATTR_CLASS_REF:
             knd_log("%*s%.*s (\"%.*s\" class ref) => %.*s", depth * KND_OFFSET_SIZE, "",
                     var->name_size, var->name,
                     attr->class_entry->name_size, attr->class_entry->name,
                     var->class_entry->name_size, var->class_entry->name);
-            return;
-        case KND_ATTR_REL:
-            knd_log("%*s%.*s (\"%.*s\" rel)", depth * KND_OFFSET_SIZE, "",
-                    var->name_size, var->name,
-                    attr->class_entry->name_size, attr->class_entry->name);
-            if (var->class_inst_entry) {
-                knd_log("%*s=> \"%.*s\"", depth * KND_OFFSET_SIZE, "",
-                    var->class_inst_entry->name_size, var->class_inst_entry->name);
-            }
             return;
         case KND_ATTR_TEXT:
             knd_log("%*s%.*s:", depth * KND_OFFSET_SIZE, "", var->name_size, var->name);

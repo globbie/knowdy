@@ -17,8 +17,11 @@
  *   knd_attr_stm.h
  *   Knowdy Concept Attr Statement
  */
+#pragma once
 
-#include "knd_class.h"
+struct kndClass;
+struct kndClassEntry;
+struct kndClassBasePred;
 
 struct kndAttrStmCtx
 {
@@ -45,15 +48,14 @@ struct kndAttrStm
     const char *name;
     size_t name_size;
 
+    void *subtype;
+
     const char *val;
     size_t val_size;
     char val_id[KND_ID_SIZE];
     size_t val_id_size;
-    void *subtype;
 
     struct kndCharSeq *seq;
-
-    knd_logic_t logic;
 
     struct kndAttr *implied_attr;
 
@@ -86,8 +88,10 @@ struct kndAttrStm
     struct kndClassInstEntry *class_inst_entry;
 
     struct kndProcEntry *proc_entry;
-
     struct kndAttr *ref_attr;
+
+    struct kndSet *match;
+    size_t min_query_ops;
 
     struct kndAttrStm *next;
 };
@@ -151,33 +155,4 @@ int knd_index_inst_attr_stm_list(struct kndClassInstEntry *topic_inst, struct kn
 int knd_attr_stm_inner_idx(struct kndClassEntry *topic, struct kndAttr *attr,
                            struct kndAttrStm *stm, struct kndTask *task);
 
-static inline void knd_append_attr_stm(struct kndClassBasePred *bp, struct kndAttrStm *stm)
-{
-    struct kndAttrStm *curr_stm;
-
-    FOREACH (curr_stm, bp->attr_stms) {
-        if (curr_stm->name_size != stm->name_size) continue;
-        if (!memcmp(curr_stm->name, stm->name, stm->name_size)) {
-            if (!curr_stm->list_tail) {
-                curr_stm->list_tail = stm;
-                curr_stm->list = stm;
-            }
-            else {
-                curr_stm->list_tail->next = stm;
-                curr_stm->list_tail = stm;
-            }
-            curr_stm->num_list_elems++;
-            return;
-        }
-    }
-
-    if (!bp->attr_stms_tail) {
-        bp->attr_stms_tail  = stm;
-        bp->attr_stms = stm;
-    }
-    else {
-        bp->attr_stms_tail->next = stm;
-        bp->attr_stms_tail = stm;
-    }
-    bp->num_attr_stms++;
-}
+int knd_attr_stm_plan(struct kndAttrStm *stm, struct kndTask *task);

@@ -43,11 +43,11 @@ static gsl_err_t set_attr_stm_name(void *obj, const char *name, size_t name_size
 {
     struct kndAttrStm *self = obj;
 
-    if (DEBUG_ATTR_STM_LEVEL_2)
-        knd_log(".. set attr var name: %.*s is_list_item:%d val:%.*s",
+    if (DEBUG_ATTR_STM_LEVEL_2) {
+        knd_log(".. set attr stm name: %.*s is_list_item:%d val:%.*s",
                 name_size, name, self->is_list_item,
                 self->val_size, self->val);
-
+    }
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     self->name = name;
     self->name_size = name_size;
@@ -130,7 +130,6 @@ int knd_import_attr_stm(struct kndAttrStm *attr_stm, const char *name, size_t na
                         const char *rec, size_t *total_size, struct kndTask *task)
 {    
     gsl_err_t parser_err;
-    int err;
 
     if (DEBUG_ATTR_STM_LEVEL_2) {
         knd_log(".. import attr stm \"%.*s\" REC: %.*s", name_size, name, 32, rec);
@@ -285,9 +284,7 @@ static gsl_err_t import_attr_stm_list_item(void *obj, const char *rec, size_t *t
 int knd_import_attr_stm_list(struct kndAttrStm *attr_stm, const char *name, size_t name_size,
                              const char *rec, size_t *total_size, struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->user_ctx->mempool;
     gsl_err_t parser_err;
-    int err;
 
     if (DEBUG_ATTR_STM_LEVEL_2) {
         knd_log("== import attr attr_stm list: \"%.*s\" REC: %.*s",

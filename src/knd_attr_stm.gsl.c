@@ -61,9 +61,7 @@ static int inner_stm_export_GSL(struct kndAttrStm *var, struct kndTask *task, si
             knd_log(">> implied inner var attr \"%.*s\"", attr->name_size, attr->name);
         }
         switch (attr->type) {
-        case KND_ATTR_REL:
-            // fall through
-        case KND_ATTR_REF:
+        case KND_ATTR_CLASS_REF:
             assert(var->class_entry != NULL);
             OUT(var->class_entry->name, var->class_entry->name_size);
 
@@ -239,18 +237,9 @@ static int attr_stm_list_export_GSL(struct kndAttrStm *var, struct kndTask *task
             err = inner_stm_export_GSL(item, task, depth + 2);
             if (err) return err;
             break;
-        case KND_ATTR_REL:
-            // fall through
-        case KND_ATTR_REF:
+        case KND_ATTR_CLASS_REF:
             err = ref_var_export_GSL(item, task, depth + 2);
             if (err) return err;
-            break;
-        case KND_ATTR_PROC_REF:
-            /*if (item->proc) {
-                err = proc_item_export_GSL(item, task);
-                if (err) return err;
-                }*/
-            OUT(item->val, item->val_size);
             break;
         case KND_ATTR_STR:
             OUT(item->name, item->name_size);
@@ -362,9 +351,7 @@ int knd_attr_stm_export_GSL(struct kndAttrStm *stm, struct kndTask *task, size_t
     case KND_ATTR_UREAL:
         OUT(stm->val, stm->val_size);
         break;
-    case KND_ATTR_REL:
-        break;
-    case KND_ATTR_REF:
+    case KND_ATTR_CLASS_REF:
         assert(stm->class_entry != NULL);
         OUT(stm->class_entry->name, stm->class_entry->name_size);
 
@@ -375,22 +362,6 @@ int knd_attr_stm_export_GSL(struct kndAttrStm *stm, struct kndTask *task, size_t
             err = knd_text_gloss_export_GSL(c->tr, true, task, depth + 1);
             KND_TASK_ERR("failed to export gloss GSL");
         }
-        break;
-    case KND_ATTR_ATTR_REF:
-        if (stm->ref_attr) {
-	    err = knd_attr_export_GSL(stm->ref_attr, task, depth + 1);
-            RET_ERR();
-        } else {
-            err = out->write(out, "_null", strlen("_null"));
-            RET_ERR();
-        }
-        break;
-    case KND_ATTR_PROC_REF:
-        /*if (stm->proc) {
-            err = proc_stm_export_GSL(stm, task);
-            KND_TASK_ERR("proc stm GSL export failed");
-            } else { */
-        OUT(stm->val, stm->val_size);
         break;
     case KND_ATTR_INNER:
         err = inner_stm_export_GSL(stm, task, depth);
