@@ -61,7 +61,7 @@ static int retrieve_inst_updates(struct kndStateRef *ref,
                 knd_log("** inst id:%.*s", inst_entry->id_size, inst_entry->id);
             }
 
-            err = set->add(set,
+            err = knd_set_add(set,
                            inst_entry->id,
                            inst_entry->id_size, (void*)inst_entry);                   RET_ERR();
 
@@ -134,9 +134,9 @@ int knd_retrieve_class_updates(struct kndStateRef *ref, struct kndSet *set)
                 knd_log("** class:%.*s", entry->name_size, entry->name);
             }
 
-            err = set->add(set,
-                           entry->id,
-                           entry->id_size, (void*)entry);                   RET_ERR();
+            err = knd_set_add(set,
+                              entry->id,
+                              entry->id_size, (void*)entry);                   RET_ERR();
 
             /* TODO: filter out the insts
                that were created and removed _after_

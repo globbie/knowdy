@@ -72,7 +72,7 @@ int knd_repo_index_proc_arg(struct kndRepo *repo, struct kndProc *proc,
         err = knd_shared_dict_set(arg_name_idx, arg->name, arg->name_size, (void*)arg_ref);
         KND_TASK_ERR("failed to globally register {arg %.*s}", arg->name_size, arg->name);
 
-        err = arg_idx->add(arg_idx, arg->id, arg->id_size, (void*)arg_ref);
+        err = knd_set_add(arg_idx, arg->id, arg->id_size, (void*)arg_ref);
         KND_TASK_ERR("failed to globally register numid of arg \"%.*s\"",
                      arg->name_size, arg->name);
 

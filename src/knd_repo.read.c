@@ -169,7 +169,7 @@ static gsl_err_t parse_commit(void *obj, const char *rec, size_t *total_size)
         KND_TASK_LOG("failed to parse commit rec \"%.*s...\"", 32, rec);
         return parser_err;
     }
-    err = idx->add(idx, commit->id, commit->id_size, (void*)commit);
+    err = knd_set_add(idx, commit->id, commit->id_size, (void*)commit);
     if (err) {
         if (err == knd_CONFLICT) {
             KND_TASK_LOG("commit #%zu already exists", commit->numid);
@@ -335,7 +335,7 @@ int knd_repo_restore(struct kndRepo *self, struct kndRepoSnapshot *snapshot, str
     /* all commits are there in the idx,
        let's apply them in timely order */
     task->repo = self;
-    err = snapshot->commit_idx->map(snapshot->commit_idx, knd_apply_commit, (void*)task);
+    err = knd_set_map(snapshot->commit_idx, knd_apply_commit, (void*)task);
     KND_TASK_ERR("failed to apply commits");
     atomic_store_explicit(&snapshot->num_commits, snapshot->commit_idx->num_elems,
                           memory_order_relaxed);

@@ -35,7 +35,7 @@ static int inherit_arg(void *obj, const char *unused_var(elem_id), size_t unused
     struct kndProcArgRef *ref = NULL;
     int err;
 
-    err = self->arg_idx->get(self->arg_idx, arg->id, arg->id_size, (void**)&ref);
+    err = knd_set_get(self->arg_idx, arg->id, arg->id_size, (void**)&ref);
     if (!err) {
         if (DEBUG_PROC_RESOLVE_LEVEL_2)
             knd_log("== \"%.*s\" (id:%.*s) arg is already registered in \"%.*s\"",
@@ -51,14 +51,14 @@ static int inherit_arg(void *obj, const char *unused_var(elem_id), size_t unused
     ref->var = src_ref->var;
     ref->proc = src_ref->proc;
 
-    err = self->arg_idx->add(self->arg_idx, arg->id, arg->id_size, (void*)ref);
+    err = knd_set_add(self->arg_idx, arg->id, arg->id_size, (void*)ref);
     KND_TASK_ERR("failed to idx a proc arg ref");
 
-    if (DEBUG_PROC_RESOLVE_LEVEL_3)
-        knd_log("..  \"%.*s\" (var:%p) of \"%.*s\" inherited by \"%.*s\"",
-                arg->name_size, arg->name, ref->var,
+    if (DEBUG_PROC_RESOLVE_LEVEL_3) {
+        knd_log("..  \"%.*s\" of \"%.*s\" inherited by \"%.*s\"",
+                arg->name_size, arg->name,
                 base->name_size, base->name, self->name_size, self->name);
-
+    }
     return knd_OK;
 }
 
@@ -71,17 +71,17 @@ static int inherit_args(struct kndProc *self, struct kndProc *base, struct kndRe
         KND_TASK_ERR("failed to resolve base proc");
     }
 
-    if (DEBUG_PROC_RESOLVE_LEVEL_2)
+    if (DEBUG_PROC_RESOLVE_LEVEL_2) {
         knd_log(".. \"%.*s\" proc to inherit args from \"%.*s\"..",
                 self->entry->name_size, self->entry->name, base->name_size, base->name);
-
+    }
     struct LocalContext ctx = {
         .task = task,
         .proc = self,
         .base = base
     };
 
-    err = base->arg_idx->map(base->arg_idx, inherit_arg, (void*)&ctx);             RET_ERR();
+    err = knd_set_map(base->arg_idx, inherit_arg, (void*)&ctx);             RET_ERR();
     return knd_OK;
 }
 
@@ -258,7 +258,7 @@ int knd_proc_resolve(struct kndProc *self, struct kndTask *task)
         KND_TASK_ERR("failed to alloc an arg ref");
         arg_ref->arg = arg;
         arg_ref->proc = self;
-        err = self->arg_idx->add(self->arg_idx, arg->id, arg->id_size, (void*)arg_ref);
+        err = knd_set_add(self->arg_idx, arg->id, arg->id_size, (void*)arg_ref);
         KND_TASK_ERR("failed to idx an arg ref");
     }
 

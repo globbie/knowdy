@@ -137,7 +137,7 @@ static int inherit_attrs(struct kndClass *self, struct kndClass *base, struct kn
         .class = self,
         .baseclass = base
     };
-    err = base->attr_idx->map(base->attr_idx, inherit_attr, (void*)&ctx);
+    err = knd_set_map(base->attr_idx, inherit_attr, (void*)&ctx);
     KND_TASK_ERR("class \"%.*s\" failed to inherit attrs from \"%.*s\"",
                  self->name_size, self->name, base->name_size, base->name);
     return knd_OK;

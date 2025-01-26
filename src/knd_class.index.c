@@ -94,7 +94,7 @@ static int index_ancestor(struct kndClass *self, struct kndClass *baseclass, str
         baseclass->descendants = desc_idx;
     }
 
-    err = desc_idx->get(desc_idx, entry->id, entry->id_size, &result);
+    err = knd_set_get(desc_idx, entry->id, entry->id_size, &result);
     if (!err) {
         if (DEBUG_CLASS_INDEX_LEVEL_2) {
             knd_log("== index already present between %.*s (%.*s)"
@@ -107,7 +107,7 @@ static int index_ancestor(struct kndClass *self, struct kndClass *baseclass, str
     baseclass->num_descendants++;
 
     /* register as a descendant */
-    err = desc_idx->add(desc_idx, entry->id, entry->id_size, (void*)entry);
+    err = knd_set_add(desc_idx, entry->id, entry->id_size, (void*)entry);
     KND_TASK_ERR("failed to register a descendant");
 
     return knd_OK;
@@ -176,7 +176,7 @@ static int index_baseclass(struct kndClass *self, struct kndClass *base, struct 
         }
     }
 
-    err = desc_idx->add(desc_idx, entry->id, entry->id_size, (void*)entry);
+    err = knd_set_add(desc_idx, entry->id, entry->id_size, (void*)entry);
     KND_TASK_ERR("failed to register a descendant {class %.*s}"
                  " within an ancestor {class %.*s}  {err %d}",
                  entry->name_size, entry->name, base->name_size, base->name, err);

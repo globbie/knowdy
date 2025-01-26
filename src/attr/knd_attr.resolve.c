@@ -128,7 +128,7 @@ static int check_attr_name_conflict(struct kndClass *self, struct kndAttr *attr_
     while (attr_ref) {
         attr = attr_ref->attr;
 
-        err = attr_idx->get(attr_idx, attr->id, attr->id_size, &obj);
+        err = knd_set_get(attr_idx, attr->id, attr->id_size, &obj);
         if (!err) {
             err = knd_CONFLICT;
             KND_TASK_ERR("attr name %.*s already present in class %.*s",

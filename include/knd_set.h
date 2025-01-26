@@ -88,19 +88,6 @@ struct kndSet
 
     knd_set_type type;
     bool allow_overwrite;
-
-    /******** public methods ********/
-    int (*add)(struct kndSet *self,
-               const char *key,
-               size_t key_size,
-               void *elem);
-    int (*get)(struct kndSet *self,
-               const char *key,
-               size_t key_size,
-               void **elem);
-    int (*map)(struct kndSet *self,
-               map_cb_func cb,
-               void *obj);
 };
 
 int knd_set_new(struct kndSet **result, struct kndMemPool *mempool);

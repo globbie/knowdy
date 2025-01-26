@@ -415,14 +415,6 @@ int knd_set_sync(struct kndSet *self, map_cb_func cb, size_t *total_size, struct
     return knd_OK;
 }
 
-int knd_set_init(struct kndSet *self)
-{
-    self->add = knd_set_add;
-    self->get = knd_set_get;
-    self->map = knd_set_map;
-    return knd_OK;
-}
-
 int knd_set_new(struct kndSet **result, struct kndMemPool *mempool)
 {
     void *page;
@@ -440,7 +432,6 @@ int knd_set_new(struct kndSet **result, struct kndMemPool *mempool)
     *result = page;
     (*result)->mempool = mempool;
     (*result)->idx = idx;
-    knd_set_init(*result);
     return knd_OK;
 }
 
