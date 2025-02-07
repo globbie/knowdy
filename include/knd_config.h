@@ -219,8 +219,7 @@ static const char *const knd_format_names[] = {
 #define KND_SNAPSHOT_MEM_THRESHOLD_RATIO 0.6
 
 #define KND_MAX_FACETS 64
-#define KND_FACET_MAX_THRESHOLD 4
-#define KND_FACET_MIN_THRESHOLD 32
+#define KND_FACET_MAX_ELEM_CACHE 8
 
 #define KND_QUERY_MIN_OPERS 64
 
@@ -238,8 +237,6 @@ static const char *const knd_format_names[] = {
 
 #define KND_MAX_TASKS 64
 
-#define KND_MAX_BASES 256
-#define KND_MAX_INHERITED 256
 #define KND_MAX_RELS 1024
 #define KND_MAX_PROCS 1024
 

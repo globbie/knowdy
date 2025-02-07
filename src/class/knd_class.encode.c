@@ -142,22 +142,22 @@ static int export_glosses(struct kndClass *self, struct kndOutput *out)
 
 static int export_base_preds(struct kndClass *self, struct kndTask *task, struct kndOutput *out)
 {
-    struct kndClassBasePred *item;
+    struct kndClassBasePred *bp;
     int err;
 
     OUT("[is", strlen("[is"));
-    FOREACH (item, self->base_preds) {
+    FOREACH (bp, self->base_preds) {
         OUT("{", 1);
 
-        if (item->entry->id_size == 0) {
+        if (bp->entry->id_size == 0) {
             knd_log("unresolved base class ref %.*s in {class %.*s}?",
-                    item->entry->name_size, item->entry->name,
+                    bp->entry->name_size, bp->entry->name,
                     self->name_size, self->name);
         }
 
-        OUT(item->entry->id, item->entry->id_size);
-        if (item->attr_stms) {
-            err = knd_attr_stms_export_GSP(item->attr_stms, out, task, 0, false);
+        OUT(bp->entry->id, bp->entry->id_size);
+        if (bp->attr_stms) {
+            err = knd_attr_stms_export_GSP(bp->attr_stms, out, task, 0, false);
             if (err) return err;
         }
         OUTC('}');
@@ -177,6 +177,7 @@ static int export_ancestors(struct kndClass *self, struct kndTask *task)
         if (!self->ancestors->entry->id_size) 
             return knd_OK;
     }
+
     OUT("[anc", strlen("[anc"));
     FOREACH (ref, self->ancestors) {
         entry = ref->entry;

@@ -89,7 +89,7 @@ struct kndClassIdx
 struct kndClassRef
 {
     struct kndClassEntry *entry;
-    struct kndClass      *class;
+
     struct kndAttr       *attr;
     struct kndClassInstRef *insts;
     struct kndSet        *inst_idx;
@@ -110,6 +110,8 @@ struct kndClassBasePred
 
     struct kndClass *owner;
     struct kndClassEntry *entry;
+
+    size_t subclass_id;
 
     struct kndAttrStm *attr_stms;
     struct kndAttrStm *attr_stms_tail;
@@ -206,7 +208,7 @@ struct kndClass
     atomic_size_t    num_insts;
     atomic_size_t    inst_id_count;
 
-    bool indexing_in_progress;
+    //bool indexing_in_progress;
     bool is_indexed;
 
     bool reading_in_progress;

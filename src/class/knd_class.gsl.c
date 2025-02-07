@@ -195,14 +195,6 @@ int knd_class_set_export_GSL(struct kndSet *set, struct kndTask *task)
     err = out->write(out, "{set",
                      strlen("{set"));                                            RET_ERR();
 
-    // TODO: present child clauses
-    if (set->base) {
-        err = out->write(out, "{_is ",
-                         strlen("{_is "));                                        RET_ERR();
-        err = out->write(out, set->base->name,  set->base->name_size);            RET_ERR();
-        err = out->writec(out, '}');                                              RET_ERR();
-    }
-
     if (view->show_removed_objs) {
         err = out->writef(out, "{total %lu",
                           (unsigned long)set->num_elems);                         RET_ERR();

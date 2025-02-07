@@ -76,11 +76,11 @@ include_directories("include")
 set(HEADERS include/knd_attr.h include/knd_attr_stm.h include/knd_rel.h
         include/knd_class.h include/knd_class_inst.h include/knd_config.h
         include/knd_dict.h include/knd_shared_dict.h
-        include/knd_err.h include/knd_http_codes.h
+        include/knd_err.h include/knd_facet.h  include/knd_http_codes.h
         include/knd_logic.h include/knd_ignore.h
         include/knd_memblock.h include/knd_mempool.h include/knd_quant.h
         include/knd_proc.h include/knd_proc_arg.h include/knd_proc_call.h
-        include/knd_queue.h include/knd_query.h
+        include/knd_query.h
         include/knd_repo.h
         include/knd_set.h include/knd_shared_set.h include/knd_set_idx.h include/knd_steward.h
         include/knd_state.h include/knd_commit.h
@@ -90,42 +90,46 @@ set(HEADERS include/knd_attr.h include/knd_attr_stm.h include/knd_rel.h
 set(SOURCES src/attr/knd_attr.c src/attr/knd_attr.import.c src/attr/knd_attr.resolve.c
         src/attr/knd_attr.read.c src/attr/knd_attr.decode.c src/attr/knd_attr.select.c
         src/attr/knd_attr.json.c src/attr/knd_attr.gsl.c src/attr/knd_attr.gsp.c
-        src/knd_attr_stm.c src/knd_attr_stm.import.c src/knd_attr_stm.index.c
-        src/knd_attr_stm.resolve.c src/knd_attr_stm.read.c src/knd_attr_stm.decode.c
-        src/knd_attr_stm.gsl.c src/knd_attr_stm.json.c src/knd_attr_stm.gsp.c
-        src/knd_class.c src/knd_class.gsl.c
-        src/knd_class.encode.c src/knd_class.decode.c src/knd_class.read.c
-        src/knd_class.import.c src/knd_class.json.c src/knd_class.resolve.c src/knd_class.index.c
-        src/knd_class.select.c src/knd_class.states.c
-        src/knd_class_inst.c src/knd_class_inst.gsl.c src/knd_class_inst.gsp.c
-        src/knd_class_inst.import.c src/knd_class_inst.read.c
-        src/knd_class_inst.json.c src/knd_class_inst.select.c
-        src/knd_class_inst.resolve.c src/knd_class_inst.index.c
-        src/knd_dict.c src/knd_shared_dict.c src/knd_shared_dict.gsp.c
-        src/knd_ignore.c
-        src/knd_logic.c src/knd_logic.import.c
-        src/knd_memblock.c src/knd_mempool.c src/knd_output.c
-        src/knd_proc.c src/knd_proc.import.c  src/knd_proc.resolve.c src/knd_proc.select.c 
-        src/knd_proc.gsl.c src/knd_proc.json.c
-        src/knd_proc_inst.c src/knd_proc_inst.import.c
-        src/knd_proc_inst.gsl.c src/knd_proc_inst.json.c
-        src/knd_proc.svg.c src/knd_proc_arg.c
-        src/knd_proc_arg.gsl.c src/knd_proc_arg.json.c src/knd_proc_call.c
-        src/knd_quant.c src/knd_quant.index.c src/knd_quant.select.c src/knd_query.c
-        src/knd_query.run.c src/knd_query.gsl.c
-        src/knd_rel.c src/knd_rel.import.c src/knd_rel.resolve.c
-        src/knd_rel_pred.resolve.c 
-        src/knd_repo.c src/knd_repo.gsl.c src/knd_repo.gsp.c src/knd_repo.select.c
-        src/knd_repo.commit.c src/knd_repo.read.c src/knd_repo.cache.c
-        src/knd_set.c src/knd_shared_set.c src/knd_shared_set.gsp.c
-        src/knd_shared_set.read.c src/knd_set_idx.c
+        src/attr/knd_attr_stm.c src/attr/knd_attr_stm.import.c src/attr/knd_attr_stm.index.c
+        src/attr/knd_attr_stm.resolve.c src/attr/knd_attr_stm.select.c
+        src/attr/knd_attr_stm.read.c src/attr/knd_attr_stm.decode.c
+        src/attr/knd_attr_stm.gsl.c src/attr/knd_attr_stm.json.c src/attr/knd_attr_stm.gsp.c
+        src/class/knd_class.c src/class/knd_class.gsl.c
+        src/class/knd_class.encode.c src/class/knd_class.decode.c src/class/knd_class.read.c
+        src/class/knd_class.import.c src/class/knd_class.json.c
+        src/class/knd_class.resolve.c src/class/knd_class.index.c
+        src/class/knd_class.select.c src/class/knd_class.states.c
+        src/class/knd_class_inst.c src/class/knd_class_inst.gsl.c src/class/knd_class_inst.gsp.c
+        src/class/knd_class_inst.import.c src/class/knd_class_inst.read.c
+        src/class/knd_class_inst.json.c src/class/knd_class_inst.select.c
+        src/class/knd_class_inst.resolve.c src/class/knd_class_inst.index.c
+        src/dict/knd_dict.c src/dict/knd_shared_dict.c src/dict/knd_shared_dict.gsp.c
+        src/attr/knd_facet.c src/utils/knd_ignore.c
+        src/text/knd_logic.c src/text/knd_logic.import.c
+        src/mem/knd_memblock.c src/mem/knd_mempool.c src/mem/knd_output.c
+        src/proc/knd_proc.c src/proc/knd_proc.import.c
+        src/proc/knd_proc.resolve.c src/proc/knd_proc.select.c 
+        src/proc/knd_proc.gsl.c src/proc/knd_proc.json.c
+        src/proc/knd_proc_inst.c src/proc/knd_proc_inst.import.c
+        src/proc/knd_proc_inst.gsl.c src/proc/knd_proc_inst.json.c
+        src/proc/knd_proc.svg.c src/proc/knd_proc_arg.c
+        src/proc/knd_proc_arg.gsl.c src/proc/knd_proc_arg.json.c src/proc/knd_proc_call.c
+        src/quant/knd_quant.c src/quant/knd_quant.index.c src/quant/knd_quant.select.c
+        src/query/knd_query.c src/query/knd_query.run.c src/query/knd_query.gsl.c
+        src/rel/knd_rel.c src/rel/knd_rel.import.c src/rel/knd_rel.resolve.c
+        src/rel/knd_rel_pred.resolve.c 
+        src/repo/knd_repo.c src/repo/knd_repo.gsl.c src/repo/knd_repo.gsp.c src/repo/knd_repo.select.c
+        src/repo/knd_repo.commit.c src/repo/knd_repo.read.c src/repo/knd_repo.cache.c
+        src/set/knd_set.c src/set/knd_shared_set.c src/set/knd_shared_set.gsp.c
+        src/set/knd_shared_set.read.c src/set/knd_set_idx.c
         src/knd_steward.c
-        src/knd_state.c src/knd_commit.c
-        src/knd_task.c src/knd_task.select.c
-        src/knd_text.c src/knd_text.import.c src/knd_text.resolve.c
-        src/knd_text.read.c src/knd_text.decode.c src/knd_text.search.c src/knd_text.select.c
-        src/knd_text.gsl.c src/knd_text.gsp.c src/knd_text.json.c
-        src/knd_user.c src/knd_utils.c)
+        src/repo/knd_state.c src/repo/knd_commit.c
+        src/task/knd_task.c src/task/knd_task.select.c
+        src/text/knd_text.c src/text/knd_text.import.c src/text/knd_text.resolve.c
+        src/text/knd_text.read.c src/text/knd_text.decode.c
+        src/text/knd_text.search.c src/text/knd_text.select.c
+        src/text/knd_text.gsl.c src/text/knd_text.gsp.c src/text/knd_text.json.c
+        src/user/knd_user.c src/utils/knd_utils.c)
 
 add_library(${PROJECT_NAME}_obj OBJECT ${HEADERS} ${SOURCES})
 add_library(${PROJECT_NAME}_static STATIC $<TARGET_OBJECTS:${PROJECT_NAME}_obj>)

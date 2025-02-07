@@ -36,6 +36,7 @@ struct kndClassEntry;
 struct kndText;
 struct kndAttr;
 struct kndAttrStm;
+struct kndAttrFacet;
 struct kndProc;
 struct kndClassUpdate;
 struct kndProcCallArg;
@@ -99,18 +100,6 @@ typedef enum knd_attr_quant_type {
     KND_ATTR_LIST
 } knd_attr_quant_type;
 
-static const char* const knd_facet_types[] = {
-    "Subclass",
-    "Sequence Size",
-    "Accumulation"
-};
-
-typedef enum knd_attr_facet_type {
-    KND_ATTR_FACET_SUBCLASS,
-    KND_ATTR_FACET_SEQ_SIZE,
-    KND_ATTR_FACET_ACCUM
-} knd_attr_facet_type;
-
 struct kndAttrRef
 {
     char id[KND_ID_SIZE];
@@ -130,35 +119,6 @@ struct kndAttrRef
 
     struct kndAttrRef *next;
     struct kndAttrRef *tail;
-};
-
-struct kndAttrFacetElem
-{
-    char id[KND_ID_SIZE];
-    struct kndClassEntry *entry;
-    struct kndAttrStm *stm;
-};
-
-struct kndAttrFacetElemIdx
-{
-    void *cache[KND_FACET_MAX_THRESHOLD];
-    struct kndSet *idx;
-};
-
-struct kndAttrFacet
-{
-    knd_attr_facet_type type;
-    void *val;
-
-    size_t depth;
-
-    struct kndAttrFacetElemIdx *elems;
-    size_t num_elems;
-
-    struct kndAttrFacet *children[KND_MAX_FACETS];
-    size_t num_children;
-
-    struct kndAttrFacet *next;
 };
 
 struct kndClassRefAttr
@@ -245,9 +205,6 @@ void knd_attr_str(struct kndAttr *attr, size_t depth);
 
 int knd_attr_new(struct kndAttr **result, struct kndMemPool *mempool);
 int knd_attr_ref_new(struct kndAttrRef **result, struct kndMemPool *mempool);
-
-int knd_attr_facet_new(struct kndAttrFacet **result, knd_attr_facet_type type, struct kndMemPool *mempool);
-int knd_attr_facet_elem_new(struct kndAttrFacetElem **result, struct kndMemPool *mempool);
 
 // knd_attr.import.c
 gsl_err_t knd_attr_import(struct kndAttr *attr, struct kndTask *task, const char *rec, size_t *total_size);

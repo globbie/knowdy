@@ -59,6 +59,8 @@ static int inner_attr_export_GSP(struct kndAttrStm *stm, struct kndTask *task)
     struct kndAttrStm *item;
     struct kndAttr *attr;
     struct kndCharSeq *seq;
+    struct kndClassEntry *entry;
+    struct kndClassRefAttrStm *cref;
     int err;
 
     if (stm->implied_attr) {
@@ -66,13 +68,16 @@ static int inner_attr_export_GSP(struct kndAttrStm *stm, struct kndTask *task)
 
         switch (attr->type) {
         case KND_ATTR_CLASS_REF:
-            OUT(stm->class_entry->id, stm->class_entry->id_size);
+            assert (stm->subtype != NULL);
+            cref = stm->subtype;
+            entry = cref->cls_entry;
+
+            OUT(entry->id, entry->id_size);
 
             if (DEBUG_ATTR_STM_GSP_LEVEL_3) {
                 knd_log(".. GSP export inner item: %.*s {class %.*s {id %.*s}}",
                         stm->name_size, stm->name,
-                        stm->class_entry->name_size, stm->class_entry->name,
-                        stm->class_entry->id_size, stm->class_entry->id);
+                        entry->name_size, entry->name, entry->id_size, entry->id);
             }
             break;
         case KND_ATTR_STR:
@@ -99,11 +104,13 @@ static int inner_attr_export_GSP(struct kndAttrStm *stm, struct kndTask *task)
 
         switch (attr->type) {
         case KND_ATTR_CLASS_REF:
-            OUT(item->class_entry->id, item->class_entry->id_size);
+            cref = item->subtype;
+            entry = cref->cls_entry;
+            OUT(entry->id, entry->id_size);
             break;
         case KND_ATTR_TEXT:
             OUT("{_t ", strlen("{_t "));
-            err = knd_text_export_GSP(item->text, task);
+            err = knd_text_export_GSP(item->subtype, task);
             KND_TASK_ERR("failed to export text GSP");
             OUT("}", 1);
             break;
@@ -120,8 +127,6 @@ static int inner_attr_export_GSP(struct kndAttrStm *stm, struct kndTask *task)
             err = knd_charseq_fetch(task->repo, item->val, item->val_size, &seq, task);
             KND_TASK_ERR("failed to encode a charseq");
             OUT(seq->id, seq->id_size);
-
-            
             break;
         }
         OUT("}", 1);
@@ -129,24 +134,13 @@ static int inner_attr_export_GSP(struct kndAttrStm *stm, struct kndTask *task)
     return knd_OK;
 }
 
-#if 0
-static int proc_item_export_GSP(struct kndAttrStm *item, struct kndTask *task)
-{
-    struct kndProc *proc = item->proc;
-    struct kndOutput *out = task->out;
-    assert(proc != NULL);
-    OUT("{_p ", strlen("{_p "));
-    OUT(proc->entry->id, proc->entry->id_size);
-    OUT("}", 1);
-    return knd_OK;
-}
-#endif
-
 static int attr_stm_list_export_GSP(struct kndAttrStm *stm, struct kndTask *task,
                                     struct kndOutput *out)
 {
     struct kndCharSeq *seq;
     struct kndAttrStm *item;
+    struct kndClassEntry *entry;
+    struct kndClassRefAttrStm *cref;
 
     assert(stm->attr != NULL);
     knd_attr_type attr_type = stm->attr->type;
@@ -162,12 +156,15 @@ static int attr_stm_list_export_GSP(struct kndAttrStm *stm, struct kndTask *task
         OUT("{", 1);
         switch (attr_type) {
         case KND_ATTR_CLASS_REF:
-            assert(item->class_entry != NULL);
-            OUT(item->class_entry->id, item->class_entry->id_size);
+            assert(item->subtype != NULL);
+            cref = item->subtype;
+            entry = cref->cls_entry;
+
+            OUT(entry->id, entry->id_size);
             break;
         case KND_ATTR_TEXT:
             OUT("{_t ", strlen("{_t "));
-            err = knd_text_export_GSP(item->text, task);
+            err = knd_text_export_GSP(item->subtype, task);
             KND_TASK_ERR("failed to export text GSP");
             OUT("}", 1);
             break;
@@ -220,31 +217,35 @@ int knd_attr_stms_export_GSP(struct kndAttrStm *items, struct kndOutput *out,
     return knd_OK;
 }
 
-int knd_attr_stm_export_GSP(struct kndAttrStm *var, struct kndTask *task,
+int knd_attr_stm_export_GSP(struct kndAttrStm *stm, struct kndTask *task,
                             struct kndOutput *out, size_t unused_var(depth))
 {
     struct kndCharSeq *seq;
+    struct kndClassEntry *entry;
+    struct kndClassRefAttrStm *cref;
     int err;
 
-    assert(var->attr != NULL);
-    knd_attr_type attr_type = var->attr->type;
+    assert(stm->attr != NULL);
+    knd_attr_type attr_type = stm->attr->type;
 
     switch (attr_type) {
     case KND_ATTR_CLASS_REF:
-        OUT(var->class_entry->id, var->class_entry->id_size);
+        cref = stm->subtype;
+        entry = cref->cls_entry;
+        OUT(entry->id, entry->id_size);
         break;
     case KND_ATTR_INNER:
-        err = inner_attr_export_GSP(var, task);
-        KND_TASK_ERR("failed to export inner var GSP");
+        err = inner_attr_export_GSP(stm, task);
+        KND_TASK_ERR("failed to export inner stm GSP");
         break;
     case KND_ATTR_TEXT:
         OUT("{_t ", strlen("{_t "));
-        err = knd_text_export_GSP(var->text, task);
+        err = knd_text_export_GSP(stm->subtype, task);
         KND_TASK_ERR("GSP text export failed");
         OUT("}", 1);
         break;
     default:
-        err = knd_charseq_fetch(task->repo, var->val, var->val_size, &seq, task);
+        err = knd_charseq_fetch(task->repo, stm->val, stm->val_size, &seq, task);
         KND_TASK_ERR("failed to encode a charseq");
         OUT(seq->id, seq->id_size);
         break;

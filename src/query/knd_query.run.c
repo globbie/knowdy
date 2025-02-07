@@ -126,7 +126,7 @@ static gsl_err_t parse_locale(void *obj, const char *rec, size_t *total_size)
 int knd_query_run(struct kndQuery *query, struct kndTask *task)
 {
     struct kndSet *set;
-    struct kndAttrStm *stm;
+    //struct kndAttrStm *stm;
     int err;
 
     //FOREACH (stm, query->attr_stms) {

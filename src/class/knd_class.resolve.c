@@ -53,7 +53,8 @@ struct LocalContext {
 
 static int resolve_base(struct kndClass *self, struct kndTask *task);
 
-static int inherit_attr(void *obj, const char *unused_var(elem_id), size_t unused_var(elem_id_size),
+static int inherit_attr(void *obj,
+                        const char *unused_var(elem_id), size_t unused_var(elem_id_size),
                         size_t unused_var(count), void *elem)
 {
     struct LocalContext *ctx = obj;
@@ -185,7 +186,6 @@ static int link_ancestor(struct kndClass *self, struct kndClass *baseclass, stru
     /* add an ancestor */
     err = knd_class_ref_new(&ref, mempool);
     RET_ERR();
-    ref->class = baseclass;
     ref->entry = baseclass->entry;
     ref->next = self->ancestors;
     self->ancestors = ref;
@@ -193,28 +193,44 @@ static int link_ancestor(struct kndClass *self, struct kndClass *baseclass, stru
     return knd_OK;
 }
 
-static int link_baseclass(struct kndClass *self, struct kndClass *base, struct kndTask *task)
+static int set_child_ref(struct kndClass *base, struct kndClass *cls, struct kndTask *task)
+{
+    struct kndMemPool *mempool = task->mempool;
+    struct kndClassRef *ref;
+    int err;
+
+    err = knd_class_ref_new(&ref, mempool);
+    KND_TASK_ERR("failed to alloc class ref");
+    ref->entry = cls->entry;
+
+    ref->next = base->children;
+    base->children = ref;
+    base->num_children++;
+    if (base->num_children > KND_MAX_FACETS) {
+        knd_log("warning: num of subclasses of {cls %.*s} exceeds {max-facet-num %d}",
+                base->name_size, base->name, KND_MAX_FACETS);
+    }
+    return knd_OK;
+}
+
+static int link_baseclass(struct kndClass *cls, struct kndClass *base, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
     struct kndClassRef *ref, *baseref;
-    struct kndClassEntry *entry = self->entry;
+    struct kndClassEntry *entry = cls->entry;
     struct kndClass *c;
-    // struct kndRepo *repo = self->entry->repo;
     bool parent_linked = false;
     int err;
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_2)
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
         knd_log(".. \"%.*s\" (%.*s) links to base => \"%.*s\" (%.*s)",
                 entry->name_size, entry->name, entry->repo->name_size, entry->repo->name,
                 base->entry->name_size, base->entry->name,
                 base->entry->repo->name_size, base->entry->repo->name);
+    }
 
-    /* if (base->entry->repo != repo) {
-        err = knd_class_clone(base, repo, &base_copy, task);                   RET_ERR();
-        base = base_copy;
-        err = link_ancestor(self, base->entry, task);                             RET_ERR();
-        parent_linked = true;
-        } */
+    err = set_child_ref(base, cls, task);
+    KND_TASK_ERR("failed to register child {cls %.*s}", cls->name_size, cls->name);
 
     /* copy the ancestors */
     FOREACH (baseref, base->ancestors) {
@@ -224,7 +240,7 @@ static int link_baseclass(struct kndClass *self, struct kndClass *base, struct k
 
         if (c->state_top) continue;
 
-        err = link_ancestor(self, c, task);
+        err = link_ancestor(cls, c, task);
         RET_ERR();
     }
 
@@ -232,50 +248,55 @@ static int link_baseclass(struct kndClass *self, struct kndClass *base, struct k
         /* register a parent */
         err = knd_class_ref_new(&ref, mempool);
         KND_TASK_ERR("mempool failed to alloc a class ref");
-        ref->class = base;
         ref->entry = base->entry;
-        ref->next = self->ancestors;
-        self->ancestors = ref;
-        self->num_ancestors++;
+        ref->next = cls->ancestors;
+        cls->ancestors = ref;
+        cls->num_ancestors++;
     }
     return knd_OK;
 }
 
-static int resolve_baseclasses(struct kndClass *self, struct kndTask *task)
+static int find_subclass(struct kndClass *base, struct kndClass *cls)
+{
+    struct kndClassRef *ref;
+
+    FOREACH (ref, base->children) {
+        if (ref->entry == cls->entry) return knd_OK;
+    }
+    return knd_NO_MATCH;
+}
+
+static int resolve_baseclasses(struct kndClass *cls, struct kndTask *task)
 {
     struct kndClassBasePred *bp;
     struct kndClass *c = NULL;
     struct kndRepo *repo = task->repo;
-    const char *classname;
-    size_t classname_size;
     int err;
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
-        knd_log(".. {class %.*s to resolve its bases", self->name_size, self->name);
+        knd_log(".. {class %.*s to resolve its bases", cls->name_size, cls->name);
     }
 
-    if (self->phase >= KND_CLASS_BASE_RESOLVED) {
+    if (cls->phase >= KND_CLASS_BASE_RESOLVED) {
         knd_log("-- vicious circle detected in resolving bases of {class %.*s}",
-                self->name_size, self->name);
+                cls->name_size, cls->name);
         return knd_FAIL;
     }
 
-    FOREACH (bp, self->base_preds) {
-        classname = bp->name;
-        classname_size = bp->name_size;
-        if (!classname_size) {
+    FOREACH (bp, cls->base_preds) {
+        if (!bp->name_size) {
             err = knd_FAIL;
-            KND_TASK_ERR("no base class name specified in {class %.*s}",
-                         self->name_size, self->name);
+            KND_TASK_ERR("no base class name specified in {cls %.*s}",
+                         cls->name_size, cls->name);
         }
-        err = knd_get_class(repo, classname, classname_size, &c, task);
-        KND_TASK_ERR("no {class %.*s} found in {repo %.*s}",
-                     classname_size, classname, repo->name_size, repo->name);
+        err = knd_get_class(repo, bp->name, bp->name_size, &c, task);
+        KND_TASK_ERR("no {cls %.*s} found in {repo %.*s}",
+                     bp->name_size, bp->name, repo->name_size, repo->name);
 
         if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
             knd_log("++ \"%.*s\" ref established as a base class for \"%.*s\"!",
                     bp->entry->name_size, bp->entry->name,
-                    self->entry->name_size, self->entry->name);
+                    cls->entry->name_size, cls->entry->name);
         }
 
         if (c->phase < KND_CLASS_BASE_RESOLVED) {
@@ -283,13 +304,26 @@ static int resolve_baseclasses(struct kndClass *self, struct kndTask *task)
             RET_ERR();
         }
 
-        err = link_baseclass(self, c, task);
-        RET_ERR();
+        /* check if subclass is already registered in the base class */
+        err = find_subclass(c, cls);
+        if (err != knd_NO_MATCH) {
+            if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
+                knd_log("-- child {cls %.*s} already registered in base class?",
+                        cls->name_size, cls->name);
+            }
+            continue;
+        }
+
+        bp->subclass_id = c->num_children;
+
+        err = link_baseclass(cls, c, task);
+        KND_TASK_ERR("failed to link {cls %.*s} to base {cls %.*s}",
+                     cls->name_size, cls->name, c->name_size, c->name);
 
         bp->entry = c->entry;
     }
 
-    self->phase = KND_CLASS_BASE_RESOLVED;
+    cls->phase = KND_CLASS_BASE_RESOLVED;
     return knd_OK;
 }
 
@@ -446,7 +480,7 @@ int knd_resolve_class_ref(struct kndRepo *repo, const char *name, size_t name_si
 
     if (c->phase < KND_CLASS_BASE_RESOLVED) {
         err = resolve_base(c, task);
-        RET_ERR();
+        KND_TASK_ERR("failed to resolve class %.*s", c->name_size, c->name);
     }
 
     if (base) {

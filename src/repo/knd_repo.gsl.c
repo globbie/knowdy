@@ -7,6 +7,7 @@
 
 #include "knd_repo.h"
 #include "knd_attr.h"
+#include "knd_facet.h"
 #include "knd_set.h"
 #include "knd_shared_set.h"
 #include "knd_user.h"

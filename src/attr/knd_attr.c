@@ -166,61 +166,6 @@ int knd_attr_export(struct kndAttr *self, knd_format format, struct kndTask *tas
     return knd_NO_MATCH;
 }
 
-int knd_attr_stm_new(struct kndAttrStm **result, struct kndMemPool *mempool)
-{
-    void *page;
-    int err;
-    assert(mempool->small_x4_page_size >= sizeof(struct kndAttrStm));
-    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL_X4, &page);
-    if (err) return err;
-    memset(page, 0,  sizeof(struct kndAttrStm));
-    *result = page;
-    return knd_OK;
-}
-
-int knd_attr_facet_elem_new(struct kndAttrFacetElem **result, struct kndMemPool *mempool)
-{
-    void *page;
-    int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndAttrFacetElem));
-    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
-    if (err) return err;
-    memset(page, 0,  sizeof(struct kndAttrFacetElem));
-    *result = page;
-    return knd_OK;
-}
-
-int knd_attr_facet_elem_idx_new(struct kndAttrFacetElemIdx **result, struct kndMemPool *mempool)
-{
-    void *page;
-    int err;
-    assert(mempool->small_x4_page_size >= sizeof(struct kndAttrFacetElemIdx));
-    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL_X4, &page);
-    if (err) return err;
-    memset(page, 0,  sizeof(struct kndAttrFacetElemIdx));
-    *result = page;
-    return knd_OK;
-}
-
-int knd_attr_facet_new(struct kndAttrFacet **result, knd_attr_facet_type type, struct kndMemPool *mempool)
-{
-    struct kndAttrFacetElemIdx *elems;
-    void *page;
-    int err;
-
-    err = knd_attr_facet_elem_idx_new(&elems, mempool);
-    if (err) return err;
-
-    assert(mempool->page_size >= sizeof(struct kndAttrFacet));
-    err = knd_mempool_page(mempool, KND_MEMPAGE_BASE, &page);
-    if (err) return err;
-    memset(page, 0,  sizeof(struct kndAttrFacet));
-
-    *result = page;
-    (*result)->type = type;
-    (*result)->elems = elems;
-    return knd_OK;
-}
 
 int knd_attr_ref_new(struct kndAttrRef **result, struct kndMemPool *mempool)
 {

@@ -57,10 +57,12 @@ static gsl_err_t set_attr_stm_name(void *obj, const char *name, size_t name_size
 
 static gsl_err_t set_subclass_name(void *obj, const char *name, size_t name_size)
 {
-    struct kndAttrStm *self = obj;
+    struct kndClassRefAttrStm *cref = obj;
     if (!name_size) return make_gsl_err(gsl_FORMAT);
-    self->class_name = name;
-    self->class_name_size = name_size;
+
+    cref->cls_name = name;
+    cref->cls_name_size = name_size;
+
     return make_gsl_err(gsl_OK);
 }
 
@@ -213,11 +215,19 @@ static gsl_err_t parse_subclass_inst(void *obj, const char *rec, size_t *total_s
 static gsl_err_t parse_subclass(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
+    struct kndAttrStm *stm = ctx->attr_stm;
+    struct kndClassRefAttrStm *cref;
+    struct kndMemPool *mempool = ctx->task->user_ctx->mempool;
+    int err;
+
+    err = knd_cls_ref_attr_stm_new(&cref, mempool);
+    if (err) return *total_size = 0, make_gsl_err_external(err);
+    stm->subtype = cref;
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_subclass_name,
-          .obj = ctx->attr_stm
+          .obj = cref
         },
         { .name = "inst",
           .name_size = strlen("inst"),
@@ -376,7 +386,7 @@ static gsl_err_t import_nested_attr_stm(void *obj, const char *name, size_t name
     ctx->attr_stm = self;
 
     if (DEBUG_ATTR_STM_LEVEL_3) {
-        knd_log("++ attr var: \"%.*s\" val:%.*s (parent item: %.*s)",
+        knd_log("++ attr stm: \"%.*s\" val:%.*s (parent item: %.*s)",
                 attr_stm->name_size, attr_stm->name,
                 attr_stm->val_size, attr_stm->val,
                 self->name_size, self->name);

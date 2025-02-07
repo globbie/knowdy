@@ -76,7 +76,7 @@ static gsl_err_t parse_text(void *obj, const char *rec, size_t *total_size)
         KND_TASK_LOG("text read failed");
         return parser_err;
     }
-    ctx->attr_stm->text = text;
+    ctx->attr_stm->subtype = text;
     text->attr_stm = ctx->attr_stm;
 
     return make_gsl_err(gsl_OK);

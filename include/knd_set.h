@@ -76,17 +76,13 @@ struct kndSetElemIdx
 
 struct kndSet
 {
-    struct kndClassEntry *base;
-
+    knd_set_type type;
     struct kndSetElemIdx *idx;
     size_t num_elems;
     size_t num_valid_elems;
     
     struct kndMemPool *mempool;
 
-    struct kndSet *next;
-
-    knd_set_type type;
     bool allow_overwrite;
 };
 

@@ -63,28 +63,32 @@ static int decode_inner_attr_stm(struct kndClass *base,
     struct kndAttr *attr = parent->attr;
     struct kndClassEntry *entry = attr->class_entry;
     struct kndClass *c = attr->owner;
+    struct kndClassRefAttrStm *cref;
+    struct kndMemPool *mempool = task->mempool;
     int err;
 
     if (DEBUG_ATTR_STM_DECODE_LEVEL_2) {
         knd_log(".. decoding {base %.*s} inner obj {%.*s {cls %.*s} {val %.*s}}",
-                base->name_size, base->name,
-                parent->name_size, parent->name,
-                attr->classname_size, attr->classname,
-                parent->val_id_size,  parent->val_id);
+                base->name_size, base->name, parent->name_size, parent->name,
+                attr->classname_size, attr->classname, parent->val_id_size, parent->val_id);
     }
     assert (entry != NULL);
+
     err = knd_class_acquire(entry, &c, task);
     KND_TASK_ERR("failed to acquire inner {class %.*s}",
                  entry->name_size, entry->name);
+
+    err = knd_cls_ref_attr_stm_new(&cref, mempool);
+    KND_TASK_ERR("failed to alloc {cls-ref %.*s}", attr->classname_size, attr->classname);
+    parent->subtype = cref;
 
     if (c->implied_attr) {
         switch (c->implied_attr->type) {
         case KND_ATTR_CLASS_REF:
             err = knd_shared_set_get(task->idxs->class_idx,
                                      parent->val_id, parent->val_id_size,
-                                     (void**)&parent->class_entry);
-            KND_TASK_ERR("failed to get a {class-id %.*s}",
-                         parent->val_id_size, parent->val_id);
+                                     (void**)&cref->cls_entry);
+            KND_TASK_ERR("failed to get a {cls-id %.*s}", parent->val_id_size, parent->val_id);
             break;
         case KND_ATTR_STR:
             // decode str
@@ -100,10 +104,12 @@ static int decode_inner_attr_stm(struct kndClass *base,
     return knd_OK;
 }
 
-static int decode_ref_attr_stm(struct kndClass *unused_var(base),
-                               struct kndAttrStm *stm, struct kndTask *task)
+static int decode_cls_ref_attr_stm(struct kndClass *unused_var(base),
+                                   struct kndAttrStm *stm, struct kndTask *task)
 {
     struct kndClassEntry *entry;
+    struct kndClassRefAttrStm *cref;
+    struct kndMemPool *mempool = task->mempool;
     int err;
 
     err = knd_shared_set_get(task->idxs->class_idx, stm->val_id, stm->val_id_size,
@@ -114,10 +120,13 @@ static int decode_ref_attr_stm(struct kndClass *unused_var(base),
 
     if (DEBUG_ATTR_STM_DECODE_LEVEL_3) {
             knd_log(">> decoded {ref %.*s {cls %.*s}}",
-                    stm->name_size, stm->name,
-                    entry->name_size, entry->name);
+                    stm->name_size, stm->name, entry->name_size, entry->name);
     }
-    stm->class_entry = entry;
+
+    err = knd_cls_ref_attr_stm_new(&cref, mempool);
+    KND_TASK_ERR("failed to alloc {cls-ref %.*s}", stm->val_size, stm->val);
+    cref->cls_entry = entry;
+    stm->subtype = cref;
 
     return knd_OK;
 }
@@ -199,7 +208,7 @@ static int decode_attr_stm(struct kndClass *base,
                      stm->name_size, stm->name, stm->val_id_size, stm->val_id);
         break;
     case KND_ATTR_CLASS_REF:
-        err = decode_ref_attr_stm(base, stm, task);
+        err = decode_cls_ref_attr_stm(base, stm, task);
         KND_TASK_ERR("failed to decode {rel %.*s {id %.*s}}",
                      stm->name_size, stm->name, stm->id_size, stm->id);
         break;

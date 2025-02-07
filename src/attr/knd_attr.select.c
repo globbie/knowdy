@@ -61,7 +61,7 @@ int knd_attr_parse_query_stm(struct kndAttrStm *stm,
 {
     struct kndAttr *attr = stm->attr;
     struct kndQuantAttrStm *quant_attr_stm;
-    //gsl_err_t parser_err;
+    struct kndClassRefAttrStm *cref;
     int err;
 
     if (DEBUG_ATTR_SELECT_LEVEL_TMP) {
@@ -70,14 +70,16 @@ int knd_attr_parse_query_stm(struct kndAttrStm *stm,
 
     switch (attr->type) {
         /*case KND_ATTR_INNER:
-        parser_err = parse_inner_class_clause(attr, &ctx, rec, total_size);
-        if (parser_err.code) return parser_err.code;
-        break;
-    case KND_ATTR_CLASS_REF:
-        parser_err = parse_classref_clause(attr, &ctx, rec, total_size);
-        if (parser_err.code) return parser_err.code;
         break;
         */
+    case KND_ATTR_CLASS_REF:
+        err = knd_cls_ref_attr_stm_new(&cref, task->mempool);
+        KND_TASK_ERR("failed to alloc a cls ref attr stm");
+        stm->subtype = cref;
+
+        err = knd_cls_ref_parse_stm(quant_attr_stm, rec, total_size, task);
+        KND_TASK_ERR("failed to parse cls ref stm");
+        break;
     case KND_ATTR_UINT:
         err = knd_quant_attr_stm_new(&quant_attr_stm, task->mempool);
         KND_TASK_ERR("failed to alloc a quant attr stm");

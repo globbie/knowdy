@@ -8,6 +8,7 @@
 #include "knd_class.h"
 #include "knd_attr.h"
 #include "knd_attr_stm.h"
+#include "knd_facet.h"
 #include "knd_set.h"
 #include "knd_task.h"
 #include "knd_utils.h"
@@ -74,7 +75,7 @@ static int add_elem(struct kndAttrFacet *parent, const char *seq, size_t seq_siz
 
     parent->num_elems++;
 
-    if (f->num_elems < KND_FACET_MAX_THRESHOLD) {
+    if (f->num_elems < KND_FACET_MAX_ELEM_CACHE) {
         f->elems->cache[f->num_elems] = elem;
         f->num_elems++;
         return knd_OK;
@@ -119,7 +120,7 @@ static int create_subfacets(struct kndAttrFacet *parent, const char *id, size_t 
                 id_size, id, parent->type, parent->num_elems);
     }
 
-    for (size_t i = 0; i < KND_FACET_MAX_THRESHOLD; i++) {
+    for (size_t i = 0; i < KND_FACET_MAX_ELEM_CACHE; i++) {
         elem = parent->elems->cache[i];
         if (!elem) break;
 
@@ -168,7 +169,7 @@ int knd_quant_uint_index(struct kndAttrFacet *facet, struct kndClassEntry *topic
     elem->stm = stm;
 
     /* no need to apply a hash func for a small set */
-    if (facet->num_elems < KND_FACET_MAX_THRESHOLD) {
+    if (facet->num_elems < KND_FACET_MAX_ELEM_CACHE) {
         facet->elems->cache[facet->num_elems] = elem;
         facet->num_elems++;
         return knd_OK;
@@ -177,7 +178,7 @@ int knd_quant_uint_index(struct kndAttrFacet *facet, struct kndClassEntry *topic
     if (!facet->num_children) {
         if (DEBUG_QUANT_INDEX_LEVEL_3) {
             knd_log("-- NB: root facet buf capacity exceeded (%zu elems), creating subfacets",
-                    KND_FACET_MAX_THRESHOLD);
+                    KND_FACET_MAX_ELEM_CACHE);
         }
 
         err = create_subfacets(facet, "/", 1, task);

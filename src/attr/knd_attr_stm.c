@@ -78,23 +78,45 @@ void knd_attr_stm_str(struct kndAttrStm *var, size_t depth)
                     var->name_size, var->name,
                     attr->class_entry->name_size, attr->class_entry->name);
             FOREACH (item, var->children) {
-                knd_log("var: %.*s", item->name_size, item->name);
                 knd_attr_stm_str(item, depth + 1);
             }
             break;
         case KND_ATTR_CLASS_REF:
-            knd_log("%*s%.*s (\"%.*s\" class ref) => %.*s", depth * KND_OFFSET_SIZE, "",
+            knd_log("%*s%.*s (\"%.*s\" class ref)", depth * KND_OFFSET_SIZE, "",
                     var->name_size, var->name,
-                    attr->class_entry->name_size, attr->class_entry->name,
-                    var->class_entry->name_size, var->class_entry->name);
+                    attr->class_entry->name_size, attr->class_entry->name);
             return;
         case KND_ATTR_TEXT:
             knd_log("%*s%.*s:", depth * KND_OFFSET_SIZE, "", var->name_size, var->name);
-            knd_text_str(var->text, depth + 1);
+            //knd_text_str(var->text, depth + 1);
             return;
         default:
             knd_log("%*s%.*s (%s) => %.*s", depth * KND_OFFSET_SIZE, "",
                    var->name_size, var->name,  type_name, var->val_size, var->val);
             break;
     }
+}
+
+int knd_cls_ref_attr_stm_new(struct kndClassRefAttrStm **result, struct kndMemPool *mempool)
+{
+    void *page;
+    int err;
+    assert(mempool->tiny_page_size >= sizeof(struct kndClassRefAttrStm));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
+    if (err) return err;
+    memset(page, 0,  sizeof(struct kndClassRefAttrStm));
+    *result = page;
+    return knd_OK;
+}
+
+int knd_attr_stm_new(struct kndAttrStm **result, struct kndMemPool *mempool)
+{
+    void *page;
+    int err;
+    assert(mempool->small_x4_page_size >= sizeof(struct kndAttrStm));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL_X4, &page);
+    if (err) return err;
+    memset(page, 0,  sizeof(struct kndAttrStm));
+    *result = page;
+    return knd_OK;
 }

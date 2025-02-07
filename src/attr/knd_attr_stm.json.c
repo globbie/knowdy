@@ -47,6 +47,8 @@ static int inner_stm_export_JSON(struct kndAttrStm *stm, struct kndTask *task, s
     struct kndOutput *out = task->out;
     struct kndAttr *attr = stm->attr;
     struct kndClass *c;
+    struct kndClassEntry *entry;
+    struct kndClassRefAttrStm *cref;
     struct kndAttrStm *item;
     size_t count = 0;
     size_t indent_size = task->ctx->format_indent;
@@ -67,13 +69,16 @@ static int inner_stm_export_JSON(struct kndAttrStm *stm, struct kndTask *task, s
         }
         switch (attr->type) {
         case KND_ATTR_CLASS_REF:
-            assert(stm->class_entry != NULL);
+            assert(stm->subtype != NULL);
+            cref = stm->subtype;
+            entry = cref->cls_entry;
+
             OUT("\"", 1);
-            OUT(stm->class_entry->name, stm->class_entry->name_size);
+            OUT(entry->name, entry->name_size);
             OUT("\"", 1);
-            err = knd_class_acquire(stm->class_entry, &c, task);
+            err = knd_class_acquire(entry, &c, task);
             KND_TASK_ERR("failed to acquire class %.*s",
-                         stm->class_entry->name_size, stm->class_entry->name);
+                         entry->name_size, entry->name);
             if (c->tr) {
                 err = knd_text_gloss_export_JSON(c->tr, task, depth);
                 KND_TASK_ERR("failed to export gloss GSL");
@@ -120,20 +125,24 @@ static int ref_stm_export_JSON(struct kndAttrStm *stm, struct kndTask *task, siz
     struct kndOutput *out = task->out;
     size_t indent_size = task->ctx->format_indent;
     struct kndClass *c;
+    struct kndClassEntry *entry;
+    struct kndClassRefAttrStm *cref;
     int err;
 
-    assert(stm->class_entry != NULL);
+    assert(stm->subtype != NULL);
+    cref = stm->subtype;
+    entry = cref->cls_entry;
 
     OUT("\"class\":", strlen("\"class\":"));
     if (indent_size) {
         OUT(" ", 1);
     }
     OUT("\"", 1);
-    OUT(stm->class_entry->name, stm->class_entry->name_size);
+    OUT(entry->name, entry->name_size);
     OUT("\"", 1);
 
-    err = knd_class_acquire(stm->class_entry, &c, task);
-    KND_TASK_ERR("failed to acquire class %.*s", stm->class_entry->name_size, stm->class_entry->name);
+    err = knd_class_acquire(entry, &c, task);
+    KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
     if (c->tr) {
         err = knd_text_gloss_export_JSON(c->tr, task, depth);
         KND_TASK_ERR("failed to export gloss GSL");
@@ -244,6 +253,8 @@ int knd_attr_stms_export_JSON(struct kndAttrStm *stms, struct kndTask *task,
     struct kndAttrStm *stm;
     struct kndAttr *attr;
     struct kndClass *c;
+    struct kndClassEntry *entry;
+    struct kndClassRefAttrStm *cref;
     size_t indent_size = task->ctx->format_indent;
     int err;
 
@@ -276,7 +287,10 @@ int knd_attr_stms_export_JSON(struct kndAttrStm *stms, struct kndTask *task,
             OUT(stm->val, stm->val_size);
             break;
         case KND_ATTR_CLASS_REF:
-            assert(stm->class_entry != NULL);
+            assert(stm->subtype != NULL);
+            cref = stm->subtype;
+            entry = cref->cls_entry;
+
             if (indent_size) {
                 OUT("\n", 1);
                 err = knd_print_offset(out, (depth + 1) * indent_size);
@@ -293,11 +307,10 @@ int knd_attr_stms_export_JSON(struct kndAttrStm *stms, struct kndTask *task,
                 OUT(" ", 1);
             }
             OUT("\"", 1);
-            OUT(stm->class_entry->name, stm->class_entry->name_size);
+            OUT(entry->name, entry->name_size);
             OUT("\"", 1);
-            err = knd_class_acquire(stm->class_entry, &c, task);
-            KND_TASK_ERR("failed to acquire class %.*s",
-                         stm->class_entry->name_size, stm->class_entry->name);
+            err = knd_class_acquire(entry, &c, task);
+            KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
             if (c->tr) {
                 err = knd_text_gloss_export_JSON(c->tr, task, depth + 2);
                 KND_TASK_ERR("failed to export gloss JSON");
@@ -310,7 +323,7 @@ int knd_attr_stms_export_JSON(struct kndAttrStm *stms, struct kndTask *task,
             OUT("}", 1);
             break;
         case KND_ATTR_TEXT:
-            err = knd_text_export(stm->text, KND_FORMAT_JSON, task, depth);
+            err = knd_text_export(stm->subtype, KND_FORMAT_JSON, task, depth);
             KND_TASK_ERR("failed to export text JSON");
             break;
         case KND_ATTR_INNER:
@@ -353,6 +366,8 @@ int knd_attr_stm_export_JSON(struct kndAttrStm *stm, struct kndTask *task, size_
     struct kndOutput *out = task->out;
     size_t indent_size = task->ctx->format_indent;
     struct kndClass *c;
+    struct kndClassEntry *entry;
+    struct kndClassRefAttrStm *cref;
     int err;
 
     // if (task->ctx->depth > task->ctx->max_depth) return knd_OK;
@@ -371,14 +386,16 @@ int knd_attr_stm_export_JSON(struct kndAttrStm *stm, struct kndTask *task, size_
         OUT(stm->val, stm->val_size);
         break;
     case KND_ATTR_CLASS_REF:
-        assert(stm->class_entry != NULL);
+        assert(stm->subtype != NULL);
+        cref = stm->subtype;
+        entry = cref->cls_entry;
+
         OUT("\"", 1);
-        OUT(stm->class_entry->name, stm->class_entry->name_size);
+        OUT(entry->name, entry->name_size);
         OUT("\"", 1);
 
-        err = knd_class_acquire(stm->class_entry, &c, task);
-        KND_TASK_ERR("failed to acquire class %.*s",
-                     stm->class_entry->name_size, stm->class_entry->name);
+        err = knd_class_acquire(entry, &c, task);
+        KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
         if (c->tr) {
             //err = knd_text_gloss_export_GSL(c->tr, task, depth);
             //KND_TASK_ERR("failed to export gloss GSL");
@@ -412,9 +429,9 @@ int knd_attr_stm_export_JSON(struct kndAttrStm *stm, struct kndTask *task, size_
         OUT("}", 1);
         break;
     case KND_ATTR_TEXT:
-        assert(stm->text != NULL);
+        assert(stm->subtype != NULL);
         // OUT("\"_t\":{", strlen("\"_t\":"));
-        err = knd_text_export(stm->text, KND_FORMAT_JSON, task, depth + 1);
+        err = knd_text_export(stm->subtype, KND_FORMAT_JSON, task, depth + 1);
         KND_TASK_ERR("GSL text export failed");
         // OUT("}", strlen("}"));
         break;

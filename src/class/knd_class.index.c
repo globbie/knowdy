@@ -62,9 +62,9 @@ static int index_ancestor(struct kndClass *self, struct kndClass *baseclass, str
     int err;
 
     if (DEBUG_CLASS_INDEX_LEVEL_2) {
-        knd_log(".. %.*s class to update desc_idx of an ancestor: \"%.*s\" top:%d",
+        knd_log(".. %.*s class to update desc_idx of an ancestor {cls %.*s}",
                 self->name_size, self->name,
-                baseclass->name_size, baseclass->name, baseclass->state_top);
+                baseclass->name_size, baseclass->name);
     }
 
     if (baseclass->entry->repo != entry->repo) {
@@ -90,7 +90,7 @@ static int index_ancestor(struct kndClass *self, struct kndClass *baseclass, str
         err = knd_set_new(&desc_idx, mempool);
         KND_TASK_ERR("failed to alloc a set");
         desc_idx->type = KND_SET_CLASS;
-        desc_idx->base = baseclass->entry;
+        //desc_idx->base = baseclass->entry;
         baseclass->descendants = desc_idx;
     }
 
@@ -113,52 +113,32 @@ static int index_ancestor(struct kndClass *self, struct kndClass *baseclass, str
     return knd_OK;
 }
 
-static inline void set_child_ref(struct kndClass *self, struct kndClassRef *child_ref)
-{
-    child_ref->next = self->children;
-    self->children = child_ref;
-    self->num_children++;
-}
-
-static int index_baseclass(struct kndClass *self, struct kndClass *base, struct kndTask *task)
+static int register_desc(struct kndClass *base, struct kndClass *sub, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
-    struct kndClassRef *ref, *baseref;
-    // struct kndClass *base_copy = NULL;
-    struct kndClassEntry *entry = self->entry;
+    struct kndClassRef *ref;
+    struct kndClassEntry *entry = sub->entry;
     struct kndClassEntry *match;
     struct kndClass *c;
     struct kndSet *desc_idx;
-    bool parent_linked = false;
     int err;
 
-    /* register as a child */
-    err = knd_class_ref_new(&ref, mempool);
-    KND_TASK_ERR("failed to alloc class ref");
-    ref->entry = entry;
-    ref->class = self;
-    set_child_ref(base, ref);
-
-    if (task->type == KND_BULK_LOAD_STATE)
-        base->num_children++;
-
     /* update ancestors' indices */
-    FOREACH (baseref, base->ancestors) {
-
-        err = knd_class_acquire(baseref->entry, &c, task);
+    FOREACH (ref, base->ancestors) {
+        err = knd_class_acquire(ref->entry, &c, task);
         KND_TASK_ERR("failed to acquire {class %.*s}",
-                     baseref->entry->name_size, baseref->entry->name);
+                     ref->entry->name_size, ref->entry->name);
 
         if (c->state_top) continue;
 
-        err = index_ancestor(self, c, task);
+        err = index_ancestor(sub, c, task);
         KND_TASK_ERR("failed to index ancestor {class %.*s} of {class %.*s}",
                      c->name_size, c->name, base->name_size, base->name);
     }
 
     if (DEBUG_CLASS_INDEX_LEVEL_2) {
         knd_log(".. add {class %.*s} as a child of {class %.*s}",
-                self->name_size, self->name, base->name_size, base->name);
+                sub->name_size, sub->name, base->name_size, base->name);
     }
 
     /* register a descendant */
@@ -198,48 +178,39 @@ int knd_class_update_indices(struct kndRepo *repo, struct kndClassEntry *self,
     return knd_OK;
 }
 
-int knd_class_index(struct kndClass *self, struct kndTask *task)
+int knd_class_index(struct kndClass *cls, struct kndTask *task)
 {
     struct kndClassBasePred *bp;
     struct kndClass *c;
     struct kndAttrStm *stm;
     int err;
 
-    if (self->indexing_in_progress) {
-        knd_log("-- vicious circle detected in {class %.*s} while indexing",
-                self->name_size, self->name);
-        return knd_FAIL;
-    }
-    self->indexing_in_progress = true;
-
     if (DEBUG_CLASS_INDEX_LEVEL_2) {
-        knd_log(".. indexing {class %.*s {id %.*s}}",
-                self->entry->name_size, self->entry->name,
-                self->entry->id_size, self->entry->id);
+        knd_log(".. indexing {cls %.*s {id %.*s}}",
+                cls->entry->name_size, cls->entry->name,
+                cls->entry->id_size, cls->entry->id);
     }
 
-    FOREACH (bp, self->base_preds) {
+    FOREACH (bp, cls->base_preds) {
         err = knd_class_acquire(bp->entry, &c, task);
-        KND_TASK_ERR("failed to acquire {class %.*s}", bp->entry->name_size, bp->entry->name);
+        KND_TASK_ERR("failed to acquire {cls %.*s}", bp->entry->name_size, bp->entry->name);
 
-        if (!c->is_indexed) {
-            err = index_baseclass(self, c, task);
-            KND_TASK_ERR("failed to index a baseclass");
-        }
+        err = register_desc(c, cls, task);
+        KND_TASK_ERR("failed to register a subclass {cls %.*s} in base {cls %.*s}",
+                     cls->name_size, cls->name, bp->entry->name_size, bp->entry->name);
 
         FOREACH (stm, bp->attr_stms) {
             if (stm->attr->is_a_set) {
-                err = knd_index_attr_stm_list(self->entry, stm->attr, stm, task);
+                err = knd_index_attr_stm_list(cls->entry, stm->attr, stm, task);
                 KND_TASK_ERR("failed to index attr stm list %.*s",
                              stm->attr->name_size, stm->attr->name);
-                continue;
+            } else {
+                err = knd_index_attr_stm(cls->entry, stm->attr, stm, task);
+                KND_TASK_ERR("failed to index attr stm %.*s",
+                             stm->attr->name_size, stm->attr->name);
             }
-
-            err = knd_index_attr_stm(self->entry, stm->attr, stm, task);
-            KND_TASK_ERR("failed to index attr stm %.*s",
-                         stm->attr->name_size, stm->attr->name);
         }
     }
-    self->is_indexed = true;
+    cls->is_indexed = true;
     return knd_OK;
 }

@@ -44,10 +44,6 @@ static int kndSet_traverse(struct kndSet *self,
     bool gotcha = false;
     int err;
 
-    if (DEBUG_SET_LEVEL_2)
-        knd_log(".. traverse %.*s, total elems: %zu",
-                self->base->name_size, self->base->name, self->num_elems);
-
     /* iterate over terminal elems */
     for (size_t i = 0; i < KND_RADIX_BASE; i++) {
         elem = base_idx->elems[i];
@@ -115,10 +111,6 @@ int knd_set_intersect(struct kndSet *self, struct kndSet **sets, size_t num_sets
         return knd_FAIL;
     }
 
-    if (DEBUG_SET_LEVEL_2) {
-        knd_log(" .. intersection by Set \"%.*s\".. total sets:%zu",
-                self->base->name_size, self->base->name, num_sets);
-    }
     /* sort sets by size */
     qsort(sets, num_sets, sizeof(struct kndSet*), compare_set_by_size_ascend);
 

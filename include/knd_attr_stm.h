@@ -39,11 +39,23 @@ struct kndAttrStmRef
     struct kndAttrStmRef *tail;
 };
 
+struct kndClassRefAttrStm
+{
+    const char *cls_name;
+    size_t cls_name_size;
+    struct kndClassEntry *cls_entry;
+
+    const char *cls_inst_name;
+    size_t cls_inst_name_size;
+    struct kndClassInstEntry *cls_inst_entry;
+};
+ 
 struct kndAttrStm
 {
     char id[KND_ID_SIZE];
     size_t id_size;
     struct kndAttr *attr;
+    struct kndAttr *implied_attr;
 
     const char *name;
     size_t name_size;
@@ -57,10 +69,6 @@ struct kndAttrStm
 
     struct kndCharSeq *seq;
 
-    struct kndAttr *implied_attr;
-
-    struct kndText *text;
-
     struct kndAttrStm *parent;
     struct kndAttrStm *children;
     struct kndAttrStm *tail;
@@ -73,30 +81,15 @@ struct kndAttrStm
     size_t init_state;
     size_t num_states;
 
-    /* siblings */
     struct kndAttrStm *list;
     struct kndAttrStm *list_tail;
     size_t num_list_elems;
-
-    /* specify a subclass */
-    const char *class_name;
-    size_t class_name_size;
-    struct kndClassEntry *class_entry;
-
-    const char *class_inst_name;
-    size_t class_inst_name_size;
-    struct kndClassInstEntry *class_inst_entry;
-
-    struct kndProcEntry *proc_entry;
-    struct kndAttr *ref_attr;
 
     struct kndSet *match;
     size_t min_query_ops;
 
     struct kndAttrStm *next;
 };
-
-int knd_attr_stm_new(struct kndAttrStm **result, struct kndMemPool *mempool);
 
 int knd_import_attr_stm(struct kndAttrStm *attr_stm, const char *name, size_t name_size,
                         const char *rec, size_t *total_size, struct kndTask *task);
@@ -118,25 +111,24 @@ int knd_attr_stm_match(struct kndAttrStm *self, struct kndAttrStm *template);
 
 int knd_attr_stm_export_GSL(struct kndAttrStm *self, struct kndTask *task, size_t depth);
 int knd_attr_stms_export_GSL(struct kndAttrStm *items, struct kndTask *task, bool is_concise, size_t depth);
+
 int knd_attr_stm_export_JSON(struct kndAttrStm *stm, struct kndTask *task, size_t depth);
 int knd_attr_stms_export_JSON(struct kndAttrStm *stms, struct kndTask *task, bool is_concise, size_t depth);
-
-
 
 int knd_attr_stm_export_GSP(struct kndAttrStm *self, struct kndTask *task, struct kndOutput *out, size_t depth);
 int knd_attr_stms_export_GSP(struct kndAttrStm *items, struct kndOutput *out,struct kndTask *task,
                              size_t depth, bool is_concise);
 
-int knd_present_computed_inner_attrs(struct kndAttrStm *attr_stm, struct kndOutput *out);
+// int knd_present_computed_inner_attrs(struct kndAttrStm *attr_stm, struct kndOutput *out);
 
 int knd_compute_num_value(struct kndAttr *attr, struct kndAttrStm *attr_stm, long *result);
 
 
 void knd_attr_stm_str(struct kndAttrStm *item, size_t depth);
 
-extern gsl_err_t knd_select_attr_stm(struct kndClass *class, const char *name, size_t name_size,
-                                     const char *rec, size_t *total_size,
-                                     struct kndTask *task);
+gsl_err_t knd_select_attr_stm(struct kndClass *class, const char *name, size_t name_size,
+                              const char *rec, size_t *total_size,
+                              struct kndTask *task);
 
 int knd_resolve_attr_stms(struct kndClass *self, struct kndClassBasePred *parent_item,
                           struct kndTask *task);
@@ -156,3 +148,6 @@ int knd_attr_stm_inner_idx(struct kndClassEntry *topic, struct kndAttr *attr,
                            struct kndAttrStm *stm, struct kndTask *task);
 
 int knd_attr_stm_plan(struct kndAttrStm *stm, struct kndTask *task);
+
+int knd_cls_ref_attr_stm_new(struct kndClassRefAttrStm **result, struct kndMemPool *mempool);
+int knd_attr_stm_new(struct kndAttrStm **result, struct kndMemPool *mempool);

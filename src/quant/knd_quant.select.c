@@ -5,6 +5,7 @@
 #include <gsl-parser.h>
 
 #include "knd_quant.h"
+#include "knd_facet.h"
 #include "knd_class.h"
 #include "knd_attr.h"
 #include "knd_attr_stm.h"
@@ -52,6 +53,7 @@ static gsl_err_t set_eq_val(void *obj, const char *val, size_t val_size)
     }
 
     stm->uint = uint;
+
     knd_log(">> EQ {uint %zu}", uint->numval);
 
     return make_gsl_err(gsl_OK);
@@ -388,7 +390,7 @@ static int elem_eq_lookup(struct kndAttrFacet *parent, struct kndQuantUInt *uint
     err = get_next_facet(parent, seq, seq_size, &f, task);
     KND_TASK_ERR("failed to match a facet");
 
-    if (f->num_elems <= KND_FACET_MAX_THRESHOLD) {
+    if (f->num_elems <= KND_FACET_MAX_ELEM_CACHE) {
         err = cache_eq_lookup(f, uint, result, task);
         KND_TASK_ERR("failed to match a uint");
         return knd_OK;
@@ -423,7 +425,7 @@ static int elem_gt_lookup(struct kndAttrFacet *parent, struct kndQuantUInt *uint
     err = get_next_facet(parent, seq, seq_size, &f, task);
     KND_TASK_ERR("failed to match a facet");
 
-    if (f->num_elems <= KND_FACET_MAX_THRESHOLD) {
+    if (f->num_elems <= KND_FACET_MAX_ELEM_CACHE) {
         err = cache_eq_lookup(f, uint, result, task);
         KND_TASK_ERR("failed to match a uint");
         return knd_OK;
@@ -454,7 +456,7 @@ static int elem_lt_lookup(struct kndAttrFacet *parent, struct kndQuantUInt *uint
     err = get_next_facet(parent, seq, seq_size, &f, task);
     KND_TASK_ERR("failed to match a facet");
 
-    if (f->num_elems <= KND_FACET_MAX_THRESHOLD) {
+    if (f->num_elems <= KND_FACET_MAX_ELEM_CACHE) {
         err = cache_eq_lookup(f, uint, result, task);
         KND_TASK_ERR("failed to match a uint");
         return knd_OK;

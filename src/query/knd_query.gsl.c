@@ -45,23 +45,21 @@
 #include "knd_query.h"
 
 static int export_class_entry_GSL(void *obj, const char *elem_id, size_t elem_id_size,
-                                  size_t count, void *elem)
+                                  size_t unused_var(count), void *elem)
 {
     struct kndTask *task = obj;
-    struct kndQueryView *view = task->ctx->query->view;
+    //struct kndQueryView *view = task->ctx->query->view;
     //struct kndBatchLimits *batch = view->batch;
     //if (count < batch->from) return knd_OK;
     //if (batch->size >= batch->max_items) return knd_RANGE;
-
-    struct kndOutput *out = task->out;
     struct kndClassEntry *entry = elem;
     struct kndClass *c;
     size_t curr_depth = 0;
     int err;
 
     if (DEBUG_QUERY_GSL_LEVEL_2) {
-        knd_log(".. Query GSL export {class %.*s}",
-                entry->name_size, entry->name);
+        knd_log(".. Query GSL export {class %.*s {id %.*s}}",
+                entry->name_size, entry->name, elem_id_size, elem_id);
     }
 
     err = knd_class_acquire(entry, &c, task);

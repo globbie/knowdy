@@ -22,6 +22,7 @@
 #include "knd_class_inst.h"
 #include "knd_attr.h"
 #include "knd_attr_stm.h"
+#include "knd_facet.h"
 #include "knd_quant.h"
 #include "knd_task.h"
 #include "knd_user.h"
@@ -41,7 +42,6 @@
 #define DEBUG_ATTR_STM_IDX_LEVEL_4 0
 #define DEBUG_ATTR_STM_IDX_LEVEL_5 0
 #define DEBUG_ATTR_STM_IDX_LEVEL_TMP 1
-
 
 void knd_attr_index_str(struct kndAttrFacet *parent, const char *seq, size_t seq_size, size_t depth)
 {
@@ -90,13 +90,54 @@ int knd_attr_stm_inner_idx(struct kndClassEntry *topic, struct kndAttr *attr,
             err = knd_index_attr_stm_list(topic, item->attr, item, task);
             KND_TASK_ERR("failed to index attr stm list %.*s",
                          item->attr->name_size, item->attr->name);
-            return knd_OK;
+        } else {
+            err = knd_index_attr_stm(topic, item->attr, item, task);
+            KND_TASK_ERR("failed to index attr stm %.*s",
+                         item->attr->name_size, item->attr->name);
+        }
+    }
+    return knd_OK;
+}
+
+static int cls_ref_index(struct kndAttrFacet *facet, struct kndAttrStm *stm,
+                         struct kndClassEntry *topic, struct kndTask *task)
+{
+    assert (stm->subtype != NULL);
+    struct kndClassRefAttrStm *cref = stm->subtype;
+    struct kndClassEntry *entry = cref->cls_entry;
+    struct kndAttrFacetElem *elem;
+    int err;
+
+    knd_log("{cls-ref %.*s} {topic %.*s}", entry->name_size, entry->name,
+            topic->name_size, topic->name);
+
+    err = knd_attr_facet_elem_new(&elem, task->mempool);
+    KND_TASK_ERR("failed to alloc attr facet elem");
+    elem->entry = topic;
+    elem->stm = stm;
+
+    /* no need to apply a hash func for a small set */
+    if (facet->num_elems < KND_FACET_MAX_ELEM_CACHE) {
+        facet->elems->cache[facet->num_elems] = elem;
+        facet->num_elems++;
+        return knd_OK;
+    }
+
+    knd_log(".. class ref hash by subclass..");
+
+    if (!facet->num_children) {
+        if (DEBUG_ATTR_STM_IDX_LEVEL_3) {
+            knd_log("-- NB: root facet buf capacity exceeded (%zu elems), creating subfacets",
+                    KND_FACET_MAX_ELEM_CACHE);
         }
 
-        err = knd_index_attr_stm(topic, item->attr, item, task);
-        KND_TASK_ERR("failed to index attr stm %.*s",
-                     item->attr->name_size, item->attr->name);
+        //err = create_subfacets(facet, "/", 1, task);
+        //KND_TASK_ERR("failed to create subfacets");
     }
+
+    //err = add_cls_ref_elem(facet, elem, task);
+    //KND_TASK_ERR("failed to fetch a facet");
+    
     return knd_OK;
 }
 
@@ -114,6 +155,7 @@ int knd_index_attr_stm(struct kndClassEntry *entry, struct kndAttr *attr,
     }
 
     if (!facet) {
+        /* NB: set root facet type for numeric seqs */
         err = knd_attr_facet_new(&facet, KND_ATTR_FACET_SEQ_SIZE, task->mempool);
         KND_TASK_ERR("failed to alloc attr facet");
         attr->facets = facet;
@@ -143,12 +185,13 @@ int knd_index_attr_stm(struct kndClassEntry *entry, struct kndAttr *attr,
         break;
     case KND_ATTR_CLASS_REF:
         if (DEBUG_ATTR_STM_IDX_LEVEL_TMP) {
-            knd_log(".. {class %.*s} to index {cls-ref {%.*s %.*s}}",
-                    entry->name_size, entry->name, attr->name_size, attr->name,
-                    stm->val_size, stm->val);
+            knd_log(".. {cls %.*s} to index {cls-ref %.*s}",
+                    entry->name_size, entry->name, attr->name_size, attr->name);
         }
-        //err = knd_attr_cls_ref_index(entry, attr, stm, task);
-        //KND_TASK_ERR("failed to index class ref attr");
+        facet->type = KND_ATTR_FACET_SUBCLASS;
+
+        err = cls_ref_index(facet, stm, entry, task);
+        KND_TASK_ERR("failed to index class ref attr");
         break;
     case KND_ATTR_INNER:
         if (DEBUG_ATTR_STM_IDX_LEVEL_3) {
@@ -206,4 +249,3 @@ int knd_index_attr_stm_list(struct kndClassEntry *topic, struct kndAttr *attr,
     }
     return knd_OK;
 }
-
