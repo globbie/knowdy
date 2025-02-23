@@ -249,7 +249,7 @@ int knd_class_inst_export_JSON(struct kndClassInst *self, bool is_list_item,
 
     if (self->num_attr_stms) {
         curr_depth = task->ctx->depth;
-        err = knd_attr_stms_export_JSON(self->attr_stms, task, false, depth + 1);
+        err = knd_attr_stms_export_JSON(self->attr_stms, task, depth + 1);
         KND_TASK_ERR("failed to export JSON of class inst attr vars");
         task->ctx->depth = curr_depth;
     }

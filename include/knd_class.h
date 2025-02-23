@@ -411,3 +411,5 @@ static inline void knd_base_pred_append_attr_stm(struct kndClassBasePred *bp, st
     }
     bp->num_attr_stms++;
 }
+
+int knd_subclass_hash(void *obj, size_t *result, struct kndTask *task);

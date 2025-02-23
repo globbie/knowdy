@@ -120,11 +120,6 @@ extern int knd_export_inherited_attr_GSL(void *obj,
     //    if (attr_stm->base_pred->owner == self) return knd_OK;
     //}
 
-    /* NB: display only concise fields */
-    if (!attr->concise_level) {
-        return knd_OK;
-    }
-
     if (attr->proc) {
         if (DEBUG_ATTR_STM_GSL_LEVEL_2)
             knd_log("..computed attr: %.*s!", attr->name_size, attr->name);
@@ -262,8 +257,7 @@ static int attr_stm_list_export_GSL(struct kndAttrStm *stm, struct kndTask *task
     return knd_OK;
 }
 
-int knd_attr_stms_export_GSL(struct kndAttrStm *stms, struct kndTask *task,
-                             bool is_concise, size_t depth)
+int knd_attr_stms_export_GSL(struct kndAttrStm *stms, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     struct kndAttrStm *stm;
@@ -286,11 +280,6 @@ int knd_attr_stms_export_GSL(struct kndAttrStm *stms, struct kndTask *task,
         if (DEBUG_ATTR_STM_GSL_LEVEL_3) {
             knd_log(">> attr stm GSL export: %.*s",
                     attr->name_size, attr->name);
-        }
-        if (is_concise && !attr->concise_level) {
-            //knd_log(".. concise level: %d", attr->concise_level);
-            //if (stm->attr->type != KND_ATTR_INNER) 
-            //    continue;
         }
         task->ctx->depth = curr_depth;
 

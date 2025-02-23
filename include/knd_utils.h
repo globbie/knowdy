@@ -72,3 +72,4 @@ extern int knd_parse_incipit(const char *rec,
                              char *result_name,
                              size_t *result_name_size);
 
+int knd_seq_len_hash(void *obj, size_t *result);

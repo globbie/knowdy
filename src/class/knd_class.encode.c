@@ -157,7 +157,7 @@ static int export_base_preds(struct kndClass *self, struct kndTask *task, struct
 
         OUT(bp->entry->id, bp->entry->id_size);
         if (bp->attr_stms) {
-            err = knd_attr_stms_export_GSP(bp->attr_stms, out, task, 0, false);
+            err = knd_attr_stms_export_GSP(bp->attr_stms, out, task, 0);
             if (err) return err;
         }
         OUTC('}');

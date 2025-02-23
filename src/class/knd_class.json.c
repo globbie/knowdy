@@ -245,7 +245,7 @@ static int export_concise_JSON(struct kndClass *self, struct kndTask *task)
 
     FOREACH (item, self->base_preds) {
         if (!item->attr_stms) continue;
-        err = knd_attr_stms_export_JSON(item->attr_stms, task, true, 0);
+        err = knd_attr_stms_export_JSON(item->attr_stms, task, 0);
         KND_TASK_ERR("failed to export attr vars JSON");
     }
     if (DEBUG_JSON_LEVEL_2)
@@ -722,7 +722,7 @@ static int export_baseclasses(struct kndClass *self, struct kndTask *task, size_
 
         /* attr vars */
         if (bp->attr_stms) {
-            err = knd_attr_stms_export_JSON(bp->attr_stms, task, false, depth + 2);
+            err = knd_attr_stms_export_JSON(bp->attr_stms, task, depth + 2);
             KND_TASK_ERR("failed to export attr vars JSON");
         }
 

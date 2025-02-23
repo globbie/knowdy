@@ -48,7 +48,7 @@
 int knd_attr_stm_plan(struct kndAttrStm *stm, struct kndTask *task)
 {
     struct kndAttr *attr = stm->attr;
-    struct kndAttrFacet *facet = attr->facets;
+    struct kndFacet *facet = attr->facet;
     struct kndQuantAttrStm *quant_attr_stm;
     struct kndClassRefAttrStm *cref;
     int err;
@@ -59,7 +59,7 @@ int knd_attr_stm_plan(struct kndAttrStm *stm, struct kndTask *task)
     }
 
     if (!facet) {
-        knd_log("no index facets exist for attr %.*s", attr->name_size, attr->name);
+        knd_log("no facets exist for {attr %.*s}", attr->name_size, attr->name);
         return knd_OK;
     }
 

@@ -191,7 +191,7 @@ static int attr_stm_list_export_GSP(struct kndAttrStm *stm, struct kndTask *task
 
 int knd_attr_stms_export_GSP(struct kndAttrStm *items, struct kndOutput *out,
                              struct kndTask *task,
-                             size_t unused_var(depth), bool is_concise)
+                             size_t unused_var(depth))
 {
     struct kndAttrStm *item;
     struct kndAttr *attr;
@@ -200,7 +200,6 @@ int knd_attr_stms_export_GSP(struct kndAttrStm *items, struct kndOutput *out,
     FOREACH (item, items) {
         if (!item->attr) continue;
         attr = item->attr;
-        if (is_concise && !attr->concise_level) continue;
 
         if (attr->is_a_set) {
             err = attr_stm_list_export_GSP(item, task, out);

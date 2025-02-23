@@ -25,10 +25,15 @@ static gsl_err_t parse_mem_main_config(void *obj, const char *rec, size_t *total
     struct kndSteward *self = obj;
 
     struct gslTaskSpec specs[] = {
+        {   .name = "max-large-pages",
+            .name_size = strlen("max-large-pages"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->mem_main_config.num_large_pages
+        },
         {   .name = "max-base-pages",
             .name_size = strlen("max-base-pages"),
             .parse = gsl_parse_size_t,
-            .obj = &self->mem_main_config.num_pages
+            .obj = &self->mem_main_config.num_base_pages
         },
         {   .name = "max-small-x4-pages",
             .name_size = strlen("max-small-x4-pages"),
@@ -59,10 +64,15 @@ static gsl_err_t parse_mem_ctx_config(void *obj, const char *rec, size_t *total_
     struct kndSteward *self = obj;
 
     struct gslTaskSpec specs[] = {
+        {   .name = "max-large-pages",
+            .name_size = strlen("max-large-pages"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->mem_ctx_config.num_large_pages
+        },
         {   .name = "max-base-pages",
             .name_size = strlen("max-base-pages"),
             .parse = gsl_parse_size_t,
-            .obj = &self->mem_ctx_config.num_pages
+            .obj = &self->mem_ctx_config.num_base_pages
         },
         {   .name = "max-small-x4-pages",
             .name_size = strlen("max-small-x4-pages"),
@@ -93,10 +103,15 @@ static gsl_err_t parse_mem_cache_config(void *obj, const char *rec, size_t *tota
     struct kndSteward *self = obj;
 
     struct gslTaskSpec specs[] = {
+        {   .name = "max-large-pages",
+            .name_size = strlen("max-large-pages"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->mem_cache_config.num_large_pages
+        },
         {   .name = "max-base-pages",
             .name_size = strlen("max-base-pages"),
             .parse = gsl_parse_size_t,
-            .obj = &self->mem_cache_config.num_pages
+            .obj = &self->mem_cache_config.num_base_pages
         },
         {   .name = "max-small-x4-pages",
             .name_size = strlen("max-small-x4-pages"),
@@ -127,10 +142,15 @@ static gsl_err_t parse_mem_user_config(void *obj, const char *rec, size_t *total
     struct kndSteward *self = obj;
 
     struct gslTaskSpec specs[] = {
+        {   .name = "max-large-pages",
+            .name_size = strlen("max-large-pages"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->mem_user_config.num_large_pages
+        },
         {   .name = "max-base-pages",
             .name_size = strlen("max-base-pages"),
             .parse = gsl_parse_size_t,
-            .obj = &self->mem_user_config.num_pages
+            .obj = &self->mem_user_config.num_base_pages
         },
         {   .name = "max-small-x4-pages",
             .name_size = strlen("max-small_x4-pages"),

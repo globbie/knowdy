@@ -221,7 +221,7 @@ int knd_class_inst_export_GSL(struct kndClassInst *self, bool is_list_item,
     if (self->num_attr_stms) {
         curr_depth = task->ctx->depth;
         err = knd_attr_stms_export_GSL(self->attr_stms,
-                                       task, false, depth + 1);  RET_ERR();
+                                       task, depth + 1);  RET_ERR();
         task->ctx->depth = curr_depth;   
     }
 

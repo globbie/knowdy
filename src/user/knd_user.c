@@ -449,7 +449,8 @@ static int init_mempool(struct kndSteward *steward, knd_mempool_t memtype, size_
     err = knd_mempool_new(&mempool, memtype, numid);
     KND_STEWARD_ERR("failed to create a regular mempool");
 
-    mempool->num_pages = steward->mem_user_config.num_pages;
+    mempool->num_large_pages = steward->mem_user_config.num_large_pages;
+    mempool->num_base_pages = steward->mem_user_config.num_base_pages;
     mempool->num_small_x4_pages = steward->mem_user_config.num_small_x4_pages;
     mempool->num_small_x2_pages = steward->mem_user_config.num_small_x2_pages;
     mempool->num_small_pages = steward->mem_user_config.num_small_pages;

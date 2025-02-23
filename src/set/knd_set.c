@@ -431,7 +431,7 @@ int knd_set_elem_idx_new(struct kndSetElemIdx **result, struct kndMemPool *mempo
 {
     void *page;
     int err;
-    assert(mempool->page_size >= sizeof(struct kndSetElemIdx));
+    assert(mempool->base_page_size >= sizeof(struct kndSetElemIdx));
     err = knd_mempool_page(mempool, KND_MEMPAGE_BASE, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndSetElemIdx));

@@ -245,11 +245,11 @@ static gsl_err_t parse_subtypes(void *obj, const char *name, size_t name_size,
     case KND_ATTR_UINT:
         // fall through
     case KND_ATTR_UREAL:
-        err = knd_quant_attr_setting_import(attr->impl, name, name_size, rec, total_size, ctx->task);
+        err = knd_quant_attr_setting_import(attr->subtype, name, name_size, rec, total_size, ctx->task);
         if (err) return *total_size = 0, make_gsl_err_external(err);    
         return make_gsl_err(gsl_OK);
     case KND_ATTR_CLASS_REF:
-        //err = knd_attr_cls_ref_import(attr->impl, name, name_size, rec, total_size, ctx->task);
+        //err = knd_attr_cls_ref_import(attr->subtype, name, name_size, rec, total_size, ctx->task);
         //if (err) return *total_size = 0, make_gsl_err_external(err);    
         return make_gsl_err(gsl_OK);
     default:
@@ -327,11 +327,6 @@ gsl_err_t knd_attr_import(struct kndAttr *self, struct kndTask *task,
           .name_size = strlen("uniq"),
           .run = knd_attr_unique,
           .obj = self
-        },
-        { .name = "concise",
-          .name_size = strlen("concise"),
-          .parse = gsl_parse_size_t,
-          .obj = &self->concise_level
         },
         { .validate = parse_subtypes,
           .obj = &ctx

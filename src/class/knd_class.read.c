@@ -511,21 +511,21 @@ static gsl_err_t read_attr(void *obj, const char *name, size_t name_size,
         if (err) {
             return make_gsl_err_external(err);
         }
-        attr->impl = quant_attr;
+        attr->subtype = quant_attr;
         break;
     case KND_ATTR_UREAL:
         err = knd_quant_attr_new(&quant_attr, KND_QUANT_UREAL, name, name_size, mempool);
         if (err) {
             return make_gsl_err_external(err);
         }
-        attr->impl = quant_attr;
+        attr->subtype = quant_attr;
         break;
     case KND_ATTR_CLASS_REF:
         err = knd_cls_ref_attr_new(&cls_ref_attr, name, name_size, mempool);
         if (err) {
             return make_gsl_err_external(err);
         }
-        attr->impl = cls_ref_attr;
+        attr->subtype = cls_ref_attr;
         break;
     default:
         break;

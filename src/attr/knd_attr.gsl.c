@@ -41,8 +41,6 @@
 
 int knd_attr_export_GSL(struct kndAttr *self, struct kndTask *task, size_t depth)
 {
-    char buf[KND_NAME_SIZE] = {0};
-    size_t buf_size = 0;
     struct kndOutput *out = task->out;
     const char *type_name = knd_attr_names[self->type];
     size_t type_name_size = strlen(knd_attr_names[self->type]);
@@ -74,13 +72,6 @@ int knd_attr_export_GSL(struct kndAttr *self, struct kndTask *task, size_t depth
 
     if (self->is_indexed) {
         OUT(" {idx}", strlen(" {idx}"));
-    }
-
-    if (self->concise_level) {
-        buf_size = sprintf(buf, "%zu", self->concise_level);
-        OUT(" {concise ", strlen(" {concise "));
-        OUT(buf, buf_size);
-        OUT("}", 1);
     }
 
     if (self->classname_size) {

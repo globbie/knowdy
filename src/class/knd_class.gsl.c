@@ -154,7 +154,7 @@ static int export_concise_GSL(struct kndClass *self, struct kndTask *task, size_
     FOREACH (item, self->base_preds) {
         if (!item->attr_stms) continue;
 
-        err = knd_attr_stms_export_GSL(item->attr_stms, task, true, depth);
+        err = knd_attr_stms_export_GSL(item->attr_stms, task, depth);
         RET_ERR();
     }
 
@@ -388,7 +388,7 @@ static int export_base_preds(struct kndClass *self, struct kndTask *task, size_t
        
         if (bp->attr_stms) {
             //curr_depth = task->ctx->depth;
-            err = knd_attr_stms_export_GSL(bp->attr_stms, task, false, depth + 1);
+            err = knd_attr_stms_export_GSL(bp->attr_stms, task, depth + 1);
             KND_TASK_ERR("failed to export attr vars GSL");
             //task->ctx->depth = curr_depth;   
         }

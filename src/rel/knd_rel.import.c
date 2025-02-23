@@ -99,7 +99,7 @@ gsl_err_t knd_rel_import(struct kndAttr *attr, struct kndTask *task,
 
     err = knd_rel_new(mempool, &rel);
     if (err) return *total_size = 0, make_gsl_err_external(err);
-    attr->impl = rel;
+    attr->subtype = rel;
     rel->attr = attr;
 
     struct LocalContext ctx = {
@@ -147,11 +147,6 @@ gsl_err_t knd_rel_import(struct kndAttr *attr, struct kndTask *task,
           .name_size = strlen("uniq"),
           .run = knd_attr_unique,
           .obj = attr
-        },
-        { .name = "concise",
-          .name_size = strlen("concise"),
-          .parse = gsl_parse_size_t,
-          .obj = &attr->concise_level
         }
     };
 

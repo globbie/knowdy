@@ -575,3 +575,15 @@ void knd_base64_encode(char *encoded, const char *string, int len)
     }
     *p++ = '\0';
 }
+
+int knd_seq_len_hash(void *obj, size_t *result)
+{
+    size_t *curr_seq_size = obj;
+
+    if (*curr_seq_size == 0) {
+        return knd_LIMIT;
+    }
+
+    *result = *curr_seq_size - 1;
+    return knd_OK;
+}

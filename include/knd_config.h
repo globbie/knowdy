@@ -219,7 +219,7 @@ static const char *const knd_format_names[] = {
 #define KND_SNAPSHOT_MEM_THRESHOLD_RATIO 0.6
 
 #define KND_MAX_FACETS 64
-#define KND_FACET_MAX_ELEM_CACHE 8
+#define KND_FACET_MAX_ELEM_CACHE 32
 
 #define KND_QUERY_MIN_OPERS 64
 
@@ -385,14 +385,8 @@ static const char *const knd_format_names[] = {
 #define KND_SEARCH_BUF_SIZE 1024 * 100 * sizeof(char)
 #define KND_IDX_BUF_SIZE 10 * 1024 * 1024 * sizeof(char)
 
-#define KND_LARGE_MEMPAGE_SIZE 4096 * 4
-#define KND_NUM_LARGE_MEMPAGES 1000
-
-#define KND_BASE_X4_MEMPAGE_SIZE 4096
-#define KND_NUM_BASE_X4_MEMPAGES 10000
-
-#define KND_BASE_X2_MEMPAGE_SIZE 2048
-#define KND_BASE_X2_MEMPAGES 10000
+#define KND_LARGE_MEMPAGE_SIZE 2048
+#define KND_NUM_LARGE_MEMPAGES 100
 
 #define KND_BASE_MEMPAGE_SIZE 1024
 #define KND_NUM_BASE_MEMPAGES 10000

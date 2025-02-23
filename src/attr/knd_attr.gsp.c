@@ -112,8 +112,6 @@ int knd_attr_names_marshall(void *elem, size_t *output_size, struct kndTask *tas
 int knd_attr_export_GSP(struct kndAttr *self, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
-    char buf[KND_NAME_SIZE] = {0};
-    size_t buf_size = 0;
     const char *type_name = knd_attr_names[self->type];
     size_t type_name_size = strlen(knd_attr_names[self->type]);
     int err;
@@ -147,13 +145,6 @@ int knd_attr_export_GSP(struct kndAttr *self, struct kndTask *task)
 
     if (self->is_indexed) {
         OUT("{idx}", strlen("{idx}"));
-    }
-
-    if (self->concise_level) {
-        buf_size = sprintf(buf, "%zu", self->concise_level);
-        OUT("{concise ", strlen("{concise "));
-        OUT(buf, buf_size);
-        OUT("}", 1);
     }
 
     if (self->class_entry) {

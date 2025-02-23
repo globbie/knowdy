@@ -442,28 +442,6 @@ static int index_class(void *obj, const char *unused_var(elem_id),
     return knd_OK;
 }
 
-static int present_attr_facet(void *unused_var(obj), const char *unused_var(elem_id),
-                              size_t unused_var(elem_id_size),
-                              size_t unused_var(count), void *elem)
-{
-    //struct kndTask *task = obj;
-    struct kndAttrRef *ref = elem;
-    struct kndAttr *attr = ref->attr;
-    //int err;
-
-    /* cached attr */
-    if (attr) {
-        if (attr->num_facets && attr->facets->num_elems) {
-            knd_log(">> {class %.*s {attr %.*s}}",
-                    attr->owner->name_size, attr->owner->name,
-                    attr->name_size, attr->name);
-            knd_attr_index_str(attr->facets, "/", 1, 0);
-        }
-    }
-
-    return knd_OK;
-}
-
 
 #if 0
 static int index_class_insts(struct kndClass *c, struct kndTask *task)
@@ -673,12 +651,11 @@ int knd_repo_read_sources(struct kndRepo *self, struct kndTask *task)
     }
     /* read a system-wide schema */
     task->type = KND_BULK_LOAD_STATE;
-    err = read_GSL_file(self, NULL,
-                        KND_PACKAGE_INDEX_NAME, strlen(KND_PACKAGE_INDEX_NAME),
+    err = read_GSL_file(self, NULL, KND_PACKAGE_INDEX_NAME, strlen(KND_PACKAGE_INDEX_NAME),
                         KND_GSL_SCHEMA, task);
     KND_TASK_ERR("schema import failed");
 
-    /* resolve all cross references */
+    /* resolve class references */
     err = knd_shared_dict_map(task->idxs->class_name_idx, resolve_class, (void*)task);
     KND_TASK_ERR("failed to resolve all entries in class name idx");
 
@@ -688,11 +665,6 @@ int knd_repo_read_sources(struct kndRepo *self, struct kndTask *task)
     /* build indices */
     err = knd_shared_dict_map(task->idxs->class_name_idx, index_class, (void*)task);
     KND_TASK_ERR("failed to index all entries in class name idx");
-
-    if (DEBUG_REPO_GSL_LEVEL_3) {
-        err = knd_shared_dict_map(task->idxs->attr_name_idx, present_attr_facet, (void*)task);
-        KND_TASK_ERR("failed to present attr facets");
-    }
 
     /* any instances to load? */
     if (self->data_path_size) {

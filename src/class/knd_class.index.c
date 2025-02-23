@@ -214,3 +214,18 @@ int knd_class_index(struct kndClass *cls, struct kndTask *task)
     cls->is_indexed = true;
     return knd_OK;
 }
+
+int knd_subclass_hash(void *obj, size_t *result, struct kndTask *task)
+{
+    struct kndClassEntry *entry = obj;
+    size_t pos = 0;
+
+    KND_TASK_LOG(".. subclass hash of %.*s", entry->name_size, entry->name);
+
+    // no subclasses - knd_LIMIT
+
+    if (pos >= KND_MAX_FACETS) return knd_LIMIT;
+
+    *result = pos;
+    return knd_OK;
+}

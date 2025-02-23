@@ -28,7 +28,7 @@ int knd_rel_pred_resolve(struct kndAttrStm *var, struct kndTask *task)
 {
     struct kndSharedDict *class_name_idx = task->idxs->class_name_idx;
     struct kndAttr *attr = var->attr;
-    struct kndRel *rel = attr->impl;
+    struct kndRel *rel = attr->subtype;
     struct kndClassEntry *entry;
     struct kndClass *template_c, *c;
     struct kndAttrStm *item;

@@ -28,14 +28,12 @@
 
 struct kndOutput;
 
-typedef enum knd_mempage_t { KND_MEMPAGE_LARGE,
-                             KND_MEMPAGE_BASE_X4,
-                             KND_MEMPAGE_BASE_X2,
-                             KND_MEMPAGE_BASE,
-                             KND_MEMPAGE_SMALL_X4,
-                             KND_MEMPAGE_SMALL_X2,
+typedef enum knd_mempage_t { KND_MEMPAGE_TINY,
                              KND_MEMPAGE_SMALL,
-                             KND_MEMPAGE_TINY
+                             KND_MEMPAGE_SMALL_X2,
+                             KND_MEMPAGE_SMALL_X4,
+                             KND_MEMPAGE_BASE,
+                             KND_MEMPAGE_LARGE
 } knd_mempage_t;
 
 typedef enum knd_mempool_t {
@@ -57,14 +55,12 @@ struct kndMemPageHeader
 
 struct kndMemConfig {
     knd_mempool_t memtype;
-    size_t num_large_x4_pages;
-    size_t num_large_x2_pages;
-    size_t num_large_pages;
-    size_t num_pages;
-    size_t num_small_x4_pages;
-    size_t num_small_x2_pages;
-    size_t num_small_pages;
     size_t num_tiny_pages;
+    size_t num_small_pages;
+    size_t num_small_x2_pages;
+    size_t num_small_x4_pages;
+    size_t num_base_pages;
+    size_t num_large_pages;
 };
 
 struct kndMemPool
@@ -75,14 +71,23 @@ struct kndMemPool
     size_t capacity;
     size_t overflow_threshold;
 
+    /* 2048 bytes */
+    char *large_pages;
+    size_t large_page_size;
+    size_t num_large_pages;
+    size_t large_pages_used;
+    struct kndMemPageHeader *large_page_list;
+    struct kndMemPageHeader * _Atomic shared_large_page_list;
+    atomic_size_t shared_large_pages_used;
+
     /* 1024 bytes */
-    char *pages;
-    size_t page_size;
-    size_t num_pages;
-    size_t pages_used;
-    struct kndMemPageHeader *page_list;
-    struct kndMemPageHeader * _Atomic shared_page_list;
-    atomic_size_t shared_pages_used;
+    char *base_pages;
+    size_t base_page_size;
+    size_t num_base_pages;
+    size_t base_pages_used;
+    struct kndMemPageHeader *base_page_list;
+    struct kndMemPageHeader * _Atomic shared_base_page_list;
+    atomic_size_t shared_base_pages_used;
 
     /* 512 bytes */
     char *small_x4_pages;

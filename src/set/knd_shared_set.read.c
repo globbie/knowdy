@@ -96,8 +96,9 @@ static int payload_linear_scan(struct kndSharedSetDir *dir,
     int err;
 
     if (DEBUG_SHARED_SET_READ_LEVEL_2) {
-        knd_log(".. linear scan of \"%.*s\" [size:%zu]", block_size, block, block_size);
+        knd_log(".. linear scan of \"%.*s\" {size %zu}", block_size, block, block_size);
     }
+
     idbuf[idbuf_size] = *block;
     idbuf_size++;
     c = block + 1;
@@ -109,7 +110,7 @@ static int payload_linear_scan(struct kndSharedSetDir *dir,
             val_size = c - b;
             if (cb) {
                 err = cb(idbuf, idbuf_size, b, val_size, task);
-                KND_TASK_ERR("failed to unmarshall elem \"%.*s\"", idbuf_size, idbuf);
+                KND_TASK_ERR("failed to unmarshall {elem %.*s}", idbuf_size, idbuf);
             }
             dir->num_term_elems++;
             c++;
@@ -157,7 +158,7 @@ static int fetch_elem_linear_scan(const char *id, size_t id_size,
             val_size = c - b;
             if (curr_id == *id) {
                 err = cb(id, id_size, b, val_size, ctx, result, task);
-                KND_TASK_ERR("failed to unmarshall elem \"%.*s\"", id_size, id);
+                KND_TASK_ERR("failed to unmarshall {elem %.*s}", id_size, id);
                 return knd_OK;
             }
             c++;
@@ -529,19 +530,19 @@ int knd_storage_leaf_open(struct kndSharedSet *self, struct kndStorageLeaf *leaf
 
     if (stat(filename, &st)) {
         err = knd_IO_FAIL;
-        KND_TASK_ERR("no such file: %.*s", filename_size, filename);
+        KND_TASK_ERR("no such {file %.*s}", filename_size, filename);
     }
 
     if (leaf->file_size != (size_t)st.st_size) {
         err = knd_IO_FAIL;
-        KND_TASK_ERR("%.*s file size mismatch: expected %zu, not %zu bytes",
+        KND_TASK_ERR("{file %.*s} size mismatch: expected %zu, not %zu bytes",
                      filename_size, filename, leaf->file_size, st.st_size);
     }
 
     fd = open(filename, O_RDONLY);
     if (fd == -1) {
         err = knd_IO_FAIL;
-        KND_TASK_ERR("failed to open file %.*s", filename_size, filename);
+        KND_TASK_ERR("failed to open {file %.*s}", filename_size, filename);
     }
 
     err = knd_shared_set_dir_new(&dir, self->mempool);
@@ -581,7 +582,7 @@ static int read_file_chunk(struct kndStorageLeaf *leaf, size_t offset, size_t bu
     fd = open(filename, O_RDONLY);
     if (fd == -1) {
         err = knd_IO_FAIL;
-        KND_TASK_ERR("failed to open file %.*s", filename_size, filename);
+        KND_TASK_ERR("failed to open {file %.*s}", filename_size, filename);
     }
 
     file_out->reset(file_out);
@@ -636,7 +637,7 @@ static int read_elem(struct kndStorageLeaf *leaf, struct kndSharedSetDir *dir,
 
     if (dir->elems_linear_scan) {
         if (DEBUG_SHARED_SET_READ_LEVEL_3) {
-            knd_log(".. elem block linear scan from %zu (payload block size:%zu)",
+            knd_log(".. elem block linear scan from %zu {payload-block-size %zu}",
                     dir->global_offset, dir->payload_block_size);
         }
         elem_block_size = dir->payload_block_size;
@@ -649,8 +650,7 @@ static int read_elem(struct kndStorageLeaf *leaf, struct kndSharedSetDir *dir,
         }
 
         if (DEBUG_SHARED_SET_READ_LEVEL_3) {
-            knd_log("== elem block offset: %zu  size:%zu",
-                    elem_offset, elem_block_size);
+            knd_log("== elem block offset: %zu  size:%zu", elem_offset, elem_block_size);
         }
     }
 
@@ -694,7 +694,7 @@ int knd_storage_leaf_read_elem(struct kndStorageLeaf *leaf, const char *id, size
     }
     err = read_elem(leaf, leaf->dir, id, id_size, cb, ctx, result, task);
     if (err) {
-        KND_TASK_LOG("failed to read GSP elem %.*s", id_size, id);
+        KND_TASK_LOG("failed to read GSP {elem %.*s}", id_size, id);
     }
     task->type = orig_task_type;
     return err;

@@ -4,6 +4,7 @@
 
 #include "knd_attr.h"
 #include "knd_attr_stm.h"
+#include "knd_facet.h"
 #include "knd_proc.h"
 #include "knd_proc_arg.h"
 #include "knd_proc_call.h"
@@ -25,6 +26,18 @@
 #define DEBUG_ATTR_LEVEL_5 0
 #define DEBUG_ATTR_LEVEL_TMP 1
 
+void append_hash_spec(struct kndClassRefAttr *attr, struct kndFacetHashSpec *spec)
+{
+    if (attr->hash_specs_tail) {
+        attr->hash_specs_tail->next = spec;
+        attr->hash_specs_tail = spec;
+    } else {
+        attr->hash_specs = spec;   
+        attr->hash_specs_tail = spec;   
+    }
+    attr->num_hash_specs++;    
+}
+
 void knd_attr_str(struct kndAttr *self, size_t depth)
 {
     struct kndText *tr;
@@ -41,12 +54,6 @@ void knd_attr_str(struct kndAttr *self, size_t depth)
         knd_log("%*s  QUANT:SET",
                 depth * KND_OFFSET_SIZE, "");
     }
-
-    if (self->concise_level) {
-        knd_log("%*s  CONCISE:%zu",
-                depth * KND_OFFSET_SIZE, "", self->concise_level);
-    }
-
 
     if (self->is_implied) {
         knd_log("%*s  (implied)",
@@ -182,15 +189,24 @@ int knd_attr_ref_new(struct kndAttrRef **result, struct kndMemPool *mempool)
 int knd_cls_ref_attr_new(struct kndClassRefAttr **result,
                          const char *name, size_t name_size, struct kndMemPool *mempool)
 {
+    struct kndClassRefAttr *refattr;
+    struct kndFacetHashSpec *spec;
     void *page;
     int err;
     assert(mempool->tiny_page_size >= sizeof(struct kndClassRefAttr));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndClassRefAttr));
-    *result = page;
-    (*result)->name = name;
-    (*result)->name_size = name_size;
+    refattr = page;
+    refattr->name = name;
+    refattr->name_size = name_size;
+
+    err = knd_facet_hash_spec_new(&spec, name, name_size, knd_subclass_hash, mempool);
+    if (err) return err;
+
+    append_hash_spec(refattr, spec);
+
+    *result = refattr;
     return knd_OK;
 }
 

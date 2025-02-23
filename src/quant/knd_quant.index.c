@@ -19,10 +19,11 @@
 #define DEBUG_QUANT_INDEX_LEVEL_3 0
 #define DEBUG_QUANT_INDEX_LEVEL_TMP 1
 
-static int create_subfacets(struct kndAttrFacet *parent, const char *seq, size_t seq_size,
+static int create_subfacets(struct kndFacet *parent, const char *seq, size_t seq_size,
                             struct kndTask *task);
 
-static int add_elem(struct kndAttrFacet *parent, const char *seq, size_t seq_size,
+/*
+static int add_elem(struct kndFacet *parent, const char *seq, size_t seq_size,
                     struct kndAttrFacetElem *elem, struct kndTask *task)
 {
     struct kndAttrFacet *f;
@@ -40,7 +41,7 @@ static int add_elem(struct kndAttrFacet *parent, const char *seq, size_t seq_siz
     }
 
     switch (parent->type) {
-    case KND_ATTR_FACET_SEQ_SIZE:
+    case KND_ATTR_FACET_SEQ_LENGTH:
         pos = seq_size - 1;
         if (pos >= KND_MAX_FACETS) {
             err = knd_LIMIT;
@@ -102,51 +103,14 @@ static int add_elem(struct kndAttrFacet *parent, const char *seq, size_t seq_siz
     err = knd_set_add(idx, elem->entry->id, elem->entry->id_size, (void*)elem);
     KND_TASK_ERR("failed to add elem to a set");
     f->num_elems++;
-
-    return knd_OK;
+       return knd_OK;
 }
+*/
 
-static int create_subfacets(struct kndAttrFacet *parent, const char *id, size_t id_size,
-                            struct kndTask *task)
-{
-    struct kndQuantUInt *uint;
-    struct kndAttrFacetElem *elem;
-    struct kndQuantAttrStm *quant_attr_stm;
-    size_t seq_size = 0;
-    int err;
-
-    if (DEBUG_QUANT_INDEX_LEVEL_2) {
-        knd_log(".. creating subfacets of {curr-facet %.*s {type %d} {num-elems %zu}}",
-                id_size, id, parent->type, parent->num_elems);
-    }
-
-    for (size_t i = 0; i < KND_FACET_MAX_ELEM_CACHE; i++) {
-        elem = parent->elems->cache[i];
-        if (!elem) break;
-
-        quant_attr_stm = elem->stm->subtype;
-        uint = quant_attr_stm->uint;
-        
-        assert (uint != NULL);
-
-        if (uint->seq_size > parent->depth) {
-            seq_size = uint->seq_size - parent->depth;
-
-            err = add_elem(parent, uint->seq, seq_size, elem, task);
-            KND_TASK_ERR("failed to add an elem");
-            parent->num_elems--;
-            continue;
-        }
-        
-        knd_log("?? {elem %.*s} stays in the facet", uint->seq_size, uint->seq);
-    }
-    return knd_OK;
-}
-
-int knd_quant_uint_index(struct kndAttrFacet *facet, struct kndClassEntry *topic,
+int knd_quant_uint_index(struct kndFacet *facet, struct kndClassEntry *topic,
                          struct kndAttrStm *stm, struct kndTask *task)
 {
-    struct kndAttrFacetElem *elem;
+    //struct kndAttrFacetElem *elem;
     struct kndQuantAttrStm *quant_attr_stm = stm->subtype;
 
     assert (quant_attr_stm != NULL);
@@ -159,17 +123,15 @@ int knd_quant_uint_index(struct kndAttrFacet *facet, struct kndClassEntry *topic
                 topic->name_size, topic->name,
                 stm->name_size, stm->name, stm->val_size, stm->val, uint->numval,
                 uint->seq_size, uint->seq);
-
-        knd_attr_index_str(facet, "/", 1, 0);
     }
 
-    err = knd_attr_facet_elem_new(&elem, task->mempool);
-    KND_TASK_ERR("failed to alloc attr facet elem");
-    elem->entry = topic;
-    elem->stm = stm;
+    //    err = knd_attr_facet_elem_new(&elem, task->mempool);
+    //KND_TASK_ERR("failed to alloc attr facet elem");
+    // elem->entry = topic;
+    //elem->stm = stm;
 
     /* no need to apply a hash func for a small set */
-    if (facet->num_elems < KND_FACET_MAX_ELEM_CACHE) {
+    /*if (facet->num_elems < KND_FACET_MAX_ELEM_CACHE) {
         facet->elems->cache[facet->num_elems] = elem;
         facet->num_elems++;
         return knd_OK;
@@ -187,11 +149,11 @@ int knd_quant_uint_index(struct kndAttrFacet *facet, struct kndClassEntry *topic
 
     err = add_elem(facet, uint->seq, uint->seq_size, elem, task);
     KND_TASK_ERR("failed to fetch a facet");
-
+    */
     return knd_OK;
 }
 
-int knd_quant_ureal_index(struct kndAttrFacet *unused_var(facet), struct kndClassEntry *topic,
+int knd_quant_ureal_index(struct kndFacet *facet, struct kndClassEntry *topic,
                           struct kndAttrStm *stm, struct kndTask *unused_var(task))
 {
     //struct kndAttrStm *stm;

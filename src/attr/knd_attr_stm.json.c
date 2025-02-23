@@ -246,8 +246,7 @@ static int attr_stm_list_export_JSON(struct kndAttrStm *parent_stm, struct kndTa
     return knd_OK;
 }
 
-int knd_attr_stms_export_JSON(struct kndAttrStm *stms, struct kndTask *task,
-                              bool is_concise, size_t depth)
+int knd_attr_stms_export_JSON(struct kndAttrStm *stms, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     struct kndAttrStm *stm;
@@ -261,7 +260,6 @@ int knd_attr_stms_export_JSON(struct kndAttrStm *stms, struct kndTask *task,
     FOREACH (stm, stms) {
         assert(stm->attr != NULL);
         attr = stm->attr;
-        if (is_concise && !attr->concise_level) continue;
 
         OUT(",", 1);
         if (attr->is_a_set) {

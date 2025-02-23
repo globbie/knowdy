@@ -45,6 +45,8 @@ struct kndClassRefAttrStm
     size_t cls_name_size;
     struct kndClassEntry *cls_entry;
 
+    int (*knd_facet_hash_fn)(void *obj, size_t *numval);
+
     const char *cls_inst_name;
     size_t cls_inst_name_size;
     struct kndClassInstEntry *cls_inst_entry;
@@ -110,14 +112,14 @@ int knd_attr_stm_match(struct kndAttrStm *self, struct kndAttrStm *template);
 
 
 int knd_attr_stm_export_GSL(struct kndAttrStm *self, struct kndTask *task, size_t depth);
-int knd_attr_stms_export_GSL(struct kndAttrStm *items, struct kndTask *task, bool is_concise, size_t depth);
+int knd_attr_stms_export_GSL(struct kndAttrStm *items, struct kndTask *task, size_t depth);
 
 int knd_attr_stm_export_JSON(struct kndAttrStm *stm, struct kndTask *task, size_t depth);
-int knd_attr_stms_export_JSON(struct kndAttrStm *stms, struct kndTask *task, bool is_concise, size_t depth);
+int knd_attr_stms_export_JSON(struct kndAttrStm *stms, struct kndTask *task, size_t depth);
 
 int knd_attr_stm_export_GSP(struct kndAttrStm *self, struct kndTask *task, struct kndOutput *out, size_t depth);
 int knd_attr_stms_export_GSP(struct kndAttrStm *items, struct kndOutput *out,struct kndTask *task,
-                             size_t depth, bool is_concise);
+                             size_t depth);
 
 // int knd_present_computed_inner_attrs(struct kndAttrStm *attr_stm, struct kndOutput *out);
 
@@ -151,3 +153,6 @@ int knd_attr_stm_plan(struct kndAttrStm *stm, struct kndTask *task);
 
 int knd_cls_ref_attr_stm_new(struct kndClassRefAttrStm **result, struct kndMemPool *mempool);
 int knd_attr_stm_new(struct kndAttrStm **result, struct kndMemPool *mempool);
+
+int knd_attr_parse_query_stm(struct kndAttrStm *stm,
+                             const char *rec, size_t *total_size, struct kndTask *task);

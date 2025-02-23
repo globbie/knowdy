@@ -36,7 +36,7 @@ struct kndClassEntry;
 struct kndText;
 struct kndAttr;
 struct kndAttrStm;
-struct kndAttrFacet;
+struct kndFacet;
 struct kndProc;
 struct kndClassUpdate;
 struct kndProcCallArg;
@@ -125,6 +125,11 @@ struct kndClassRefAttr
 {
     const char *name;
     size_t name_size;
+
+    struct kndFacetHashSpec *hash_specs;
+    struct kndFacetHashSpec *hash_specs_tail;
+    size_t num_hash_specs;
+
     struct kndClassEntry *entry;
 };
 
@@ -138,7 +143,7 @@ struct kndClassInstRefAttr
 struct kndAttr
 {
     knd_attr_type type;
-    void *impl;
+    void *subtype;
 
     char id[KND_ID_SIZE];
     size_t id_size;
@@ -171,11 +176,7 @@ struct kndAttr
     size_t ref_proc_name_size;
     struct kndProc *proc;
 
-    /* concise representation */
-    size_t concise_level;
-
-    struct kndAttrFacet *facets;
-    size_t num_facets;
+    struct kndFacet *facet;
 
     struct kndState *states;
     size_t init_state;
@@ -237,10 +238,5 @@ int knd_cls_ref_attr_new(struct kndClassRefAttr **result, const char *name, size
 int knd_cls_inst_ref_attr_new(struct kndClassInstRefAttr **result, const char *name, size_t name_size,
                               struct kndMemPool *mempool);
 
-void knd_attr_index_str(struct kndAttrFacet *owner, const char *seq, size_t seq_size, size_t depth);
-
 int knd_attr_find(struct kndClass *cls, const char *name, size_t name_size,
                   struct kndAttr **result, struct kndTask *task);
-
-int knd_attr_parse_query_stm(struct kndAttrStm *stm,
-                             const char *rec, size_t *total_size, struct kndTask *task);

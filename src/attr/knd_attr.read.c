@@ -287,11 +287,6 @@ gsl_err_t knd_attr_read(struct kndAttr *attr, struct kndTask *task,
           .name_size = strlen("uniq"),
           .run = confirm_unique,
           .obj = attr
-        },
-        { .name = "concise",
-          .name_size = strlen("concise"),
-          .parse = gsl_parse_size_t,
-          .obj = &attr->concise_level
         }
     };
     gsl_err_t err;

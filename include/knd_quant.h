@@ -24,7 +24,7 @@
 #include "knd_state.h"
 
 struct kndAttrStm;
-struct kndAttrFacet;
+struct kndFacet;
 struct kndTask;
 struct kndClassEntry;
 struct kndQuery;
@@ -115,6 +115,9 @@ struct kndQuantAttr
 
     bool is_calculated;
 
+    struct kndFacetHashSpec *hash_specs;
+    size_t num_hash_specs;
+
     struct kndQuantAttr *next;
 };
 
@@ -166,11 +169,11 @@ int knd_quant_parse_uint(const char *val, size_t val_size,
 int knd_quant_parse_ureal(const char *val, size_t val_size,
                          struct kndQuantUReal **result, struct kndTask *task);
 
-int knd_quant_uint_index(struct kndAttrFacet *facet, struct kndClassEntry *topic,
+int knd_quant_uint_index(struct kndFacet *facet, struct kndClassEntry *topic,
                          struct kndAttrStm *stm, struct kndTask *task);
-int knd_quant_ureal_index(struct kndAttrFacet *facet, struct kndClassEntry *topic,
+int knd_quant_ureal_index(struct kndFacet *facet, struct kndClassEntry *topic,
                           struct kndAttrStm *stm, struct kndTask *task);
 
 int knd_quant_uint_parse_stm(struct kndQuantAttrStm *stm,
                              const char *rec, size_t *total_size, struct kndTask *task);
-int knd_quant_uint_query_plan(struct kndQuantAttrStm *stm, struct kndAttrFacet *facet, struct kndTask *task);
+int knd_quant_uint_query_plan(struct kndQuantAttrStm *stm, struct kndFacet *facet, struct kndTask *task);
