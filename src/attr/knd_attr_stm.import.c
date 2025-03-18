@@ -39,34 +39,7 @@ static gsl_err_t import_attr_stm_list_item(void *obj, const char *rec, size_t *t
 static gsl_err_t import_nested_attr_stm(void *obj, const char *name, size_t name_size,
                                         const char *rec, size_t *total_size);
 
-static gsl_err_t set_attr_stm_name(void *obj, const char *name, size_t name_size)
-{
-    struct kndAttrStm *self = obj;
-
-    if (DEBUG_ATTR_STM_LEVEL_2) {
-        knd_log(".. set attr stm name: %.*s is_list_item:%d val:%.*s",
-                name_size, name, self->is_list_item,
-                self->val_size, self->val);
-    }
-    if (!name_size) return make_gsl_err(gsl_FORMAT);
-    self->name = name;
-    self->name_size = name_size;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t set_subclass_name(void *obj, const char *name, size_t name_size)
-{
-    struct kndClassRefAttrStm *cref = obj;
-    if (!name_size) return make_gsl_err(gsl_FORMAT);
-
-    cref->cls_name = name;
-    cref->cls_name_size = name_size;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t set_attr_stm_value(void *obj, const char *val, size_t val_size)
+static gsl_err_t set_attr_stm_val(void *obj, const char *val, size_t val_size)
 {
     struct kndAttrStm *stm = obj;
 
@@ -144,7 +117,7 @@ int knd_import_attr_stm(struct kndAttrStm *attr_stm, const char *name, size_t na
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = set_attr_stm_value,
+          .run = set_attr_stm_val,
           .obj = attr_stm
         },
         { .type = GSL_SET_STATE,
@@ -192,59 +165,13 @@ static void append_attr_stm_list_item(struct kndAttrStm *self, struct kndAttrStm
     self->num_list_elems++;
 }
 
-static gsl_err_t parse_subclass_inst(void *obj, const char *rec, size_t *total_size)
-{
-    struct LocalContext *ctx = obj;
-
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = set_attr_stm_value,
-          .obj = ctx->attr_stm
-        },
-        { .validate = import_nested_attr_stm,
-          .obj = ctx
-        },
-        { .type = GSL_GET_ARRAY_STATE,
-          .validate = import_nested_attr_stm_list,
-          .obj = ctx
-        }
-    };
-    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-}
-
-static gsl_err_t parse_subclass(void *obj, const char *rec, size_t *total_size)
-{
-    struct LocalContext *ctx = obj;
-    struct kndAttrStm *stm = ctx->attr_stm;
-    struct kndClassRefAttrStm *cref;
-    struct kndMemPool *mempool = ctx->task->user_ctx->mempool;
-    int err;
-
-    err = knd_cls_ref_attr_stm_new(&cref, mempool);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-    stm->subtype = cref;
-
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = set_subclass_name,
-          .obj = cref
-        },
-        { .name = "inst",
-          .name_size = strlen("inst"),
-          .parse = parse_subclass_inst,
-          .obj = ctx
-        }
-    };
-    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-}
-
 static gsl_err_t import_attr_stm_list_item(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
     struct kndAttrStm *self = ctx->list_parent;
     struct kndAttrStm *attr_stm;
-    struct kndMemPool *mempool = task->user_ctx->mempool;
+    struct kndMemPool *mempool = task->mempool;
     int err;
 
     err = knd_attr_stm_new(&attr_stm, mempool);
@@ -255,15 +182,11 @@ static gsl_err_t import_attr_stm_list_item(void *obj, const char *rec, size_t *t
         knd_log("== importing a list item of %.*s: %.*s",
                 self->name_size, self->name, 32, rec);
     }
+
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = set_attr_stm_name,
+          .run = set_attr_stm_val,
           .obj = attr_stm
-        },
-        { .name = "cls",
-          .name_size = strlen("cls"),
-          .parse = parse_subclass,
-          .obj = ctx
         },
         { .validate = import_nested_attr_stm,
           .obj = ctx
@@ -345,7 +268,7 @@ static gsl_err_t import_nested_attr_stm(void *obj, const char *name, size_t name
     }
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = set_attr_stm_value,
+          .run = set_attr_stm_val,
           .obj = attr_stm
         }, /*
         { .name = "_inst",
@@ -397,3 +320,4 @@ static gsl_err_t import_nested_attr_stm(void *obj, const char *name, size_t name
 
     return make_gsl_err(gsl_OK);
 }
+

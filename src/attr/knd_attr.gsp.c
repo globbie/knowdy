@@ -90,7 +90,7 @@ int knd_attr_names_marshall(void *elem, size_t *output_size, struct kndTask *tas
             // TODO check commit version
             attr = attr_ref->attr;
             entry = attr->owner->entry;
-            
+
             OUT("{", strlen("{"));
             OUT(attr->id, attr->id_size);
 
@@ -109,65 +109,62 @@ int knd_attr_names_marshall(void *elem, size_t *output_size, struct kndTask *tas
     return knd_OK;
 }
 
-int knd_attr_export_GSP(struct kndAttr *self, struct kndTask *task)
+int knd_attr_export_GSP(struct kndAttr *attr, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
-    const char *type_name = knd_attr_names[self->type];
-    size_t type_name_size = strlen(knd_attr_names[self->type]);
+    const char *type_name = knd_attr_names[attr->type];
+    size_t type_name_size = strlen(knd_attr_names[attr->type]);
+    struct kndClassRefAttr *cls_ref_attr;
+    struct kndClassInnerAttr *cls_inner_attr;
+    struct kndClassEntry *entry;
     int err;
 
     OUT("{", 1);
     OUT(type_name, type_name_size);
 
     OUT(" ", 1);
-    //knd_uid_create(self->sid, buf, &buf_size);
-    //OUT(buf, buf_size);
+    OUT(attr->id, attr->id_size);
 
-    //OUT("{id ", strlen("{id "));
-    OUT(self->id, self->id_size);
-    //OUT("}", 1);
-
-    if (self->is_a_set) {
+    if (attr->is_a_set) {
         OUT("{t set}", strlen("{t set}"));
     }
 
-    if (self->is_implied) {
-        OUT("{impl}", strlen("{impl}"));
-    }
-
-    if (self->is_required) {
+    if (attr->is_required) {
         OUT("{req}", strlen("{req}"));
     }
 
-    if (self->is_unique) {
+    if (attr->is_unique) {
         OUT("{uniq}", strlen("{uniq}"));
     }
 
-    if (self->is_indexed) {
-        OUT("{idx}", strlen("{idx}"));
-    }
-
-    if (self->class_entry) {
+    switch (attr->type) {
+    case KND_ATTR_CLS_INNER:
+        cls_inner_attr = attr->subtype;
+        entry = cls_inner_attr->template_cls;
         OUT("{c ", strlen("{c "));
-        OUT(self->class_entry->id, self->class_entry->id_size);
+        OUT(entry->id, entry->id_size);
         OUT("}", 1);
+        break;
+    case KND_ATTR_CLS_REF:
+        cls_ref_attr = attr->subtype;
+        entry = cls_ref_attr->template_cls;
+        OUT("{c ", strlen("{c "));
+        OUT(entry->id, entry->id_size);
+        OUT("}", 1);
+        break;
+    default:
+        break;
     }
 
-    if (self->class_entry) {
-        OUT("{rc ", strlen("{rc "));
-        OUT(self->class_entry->id, self->class_entry->id_size);
-        OUT("}", 1);
-    }
-
-    if (self->ref_proc_name_size) {
+    if (attr->ref_proc_name_size) {
         OUT("{p ", strlen("{p "));
-        OUT(self->ref_proc_name, self->ref_proc_name_size);
+        OUT(attr->ref_proc_name, attr->ref_proc_name_size);
         OUT("}", 1);
     }
 
     /* choose gloss */
-    if (self->tr) {
-        err = export_glosses(self, out);
+    if (attr->tr) {
+        err = export_glosses(attr, out);
         KND_TASK_ERR("failed to export glosses GSP");
     }
 

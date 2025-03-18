@@ -74,30 +74,31 @@ static int inherit_attr(void *obj,
                     attr->name_size, attr->name, attr->id_size, attr->id,
                     self->name_size, self->name);
         }
-        /* override an existing attr var */
+
+        /* override an existing attr stm */
         if (ref->attr_stm && src_ref->attr_stm) {
             if (DEBUG_CLASS_RESOLVE_LEVEL_3) {
-                knd_log("..  \"%.*s\" (id:%.*s) attr var already set in \"%.*s\" => %.*s",
+                knd_log("..  {stm %.*s {id %.*s}} already set in \"%.*s\" => %.*s",
                         attr->name_size, attr->name, attr->id_size, attr->id,
                         self->name_size, self->name, ref->attr_stm->val_size, ref->attr_stm->val);
                 knd_log("override with new val: %.*s",
                             src_ref->attr_stm->val_size, src_ref->attr_stm->val);
             }
             ref->attr_stm = src_ref->attr_stm;
-            ref->class_entry = src_ref->class_entry;
+            ref->cls_entry = src_ref->cls_entry;
             return knd_OK;
         }
     }
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_2) 
-        knd_log("..  \"%.*s\" (id:%.*s attr_stm:%p) attr inherited by %.*s..",
-                attr->name_size, attr->name, attr->id_size, attr->id, src_ref->attr_stm,
+    if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
+        knd_log("..  {attr %.*s {id %.*s}} inherited by {cls %.*s}",
+                attr->name_size, attr->name, attr->id_size, attr->id,
                 self->name_size, self->name);
-
+    }
     if (ref) {
         if (src_ref->attr_stm) {
             ref->attr_stm = src_ref->attr_stm;
-            ref->class_entry = src_ref->class_entry;
+            ref->cls_entry = src_ref->cls_entry;
         }
         return knd_OK;
     }
@@ -107,14 +108,10 @@ static int inherit_attr(void *obj,
 
     ref->attr = attr;
     ref->attr_stm = src_ref->attr_stm;
-    ref->class_entry = src_ref->class_entry;
+    ref->cls_entry = src_ref->cls_entry;
 
     err = knd_set_add(attr_idx, attr->id, attr->id_size, (void*)ref);
     KND_TASK_ERR("failed to update attr idx of %.*s", self->name_size, self->name);
-
-    // inherit implied attr
-    if (attr->is_implied && !self->implied_attr)
-        self->implied_attr = attr;
 
     return knd_OK;
 }
@@ -202,6 +199,7 @@ static int set_child_ref(struct kndClass *base, struct kndClass *cls, struct knd
     err = knd_class_ref_new(&ref, mempool);
     KND_TASK_ERR("failed to alloc class ref");
     ref->entry = cls->entry;
+    ref->numid = base->num_children;
 
     ref->next = base->children;
     base->children = ref;
@@ -333,6 +331,7 @@ int knd_class_resolve(struct kndClass *self, struct kndTask *task)
     struct kndClassEntry *entry = self->entry;
     struct kndClass *c;
     struct kndAttrRef *attr_ref, *ref;
+    struct kndAttrStm *stm;
     int err;
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
@@ -360,23 +359,15 @@ int knd_class_resolve(struct kndClass *self, struct kndTask *task)
 
     FOREACH (bp, self->base_preds) {
         err = knd_class_acquire(bp->entry, &c, task);
-        KND_TASK_ERR("failed to acquire class %.*s",
-                     bp->entry->name_size, bp->entry->name);
-
+        KND_TASK_ERR("failed to acquire class %.*s", bp->entry->name_size, bp->entry->name);
 
         err = inherit_attrs(self, c, task);
         KND_TASK_ERR("failed to inherit attrs from {class %.*s}", c->name_size, c->name);
 
-        if (bp->num_attr_stms) {
-
-            if (DEBUG_CLASS_RESOLVE_LEVEL_3) {
-                knd_log(".. {cls %.*s} to resolve {base %.*s {num-attr-stms %zu}",
-                        self->name_size, self->name, c->name_size, c->name,
-                        bp->num_attr_stms);
-            }
-
-            err = knd_resolve_attr_stms(self, bp, task);
-            KND_TASK_ERR("failed to resolve attr stms from {class %.*s}", c->name_size, c->name);
+        FOREACH (stm, bp->attr_stms) {
+            err = knd_resolve_attr_stm(self, stm, task);
+            KND_TASK_ERR("failed to resolve attr stm {cls %.*s {%.*s}}",
+                         c->name_size, c->name, stm->name_size, stm->name);
         }
     }
 
@@ -422,9 +413,9 @@ static int resolve_base(struct kndClass *self, struct kndTask *task)
     return knd_OK;
 }
 
-int knd_resolve_class_ref(struct kndRepo *repo, const char *name, size_t name_size,
-                          struct kndClass *base, struct kndClass **result,
-                          struct kndTask *task)
+int knd_resolve_cls_ref(struct kndRepo *repo, const char *name, size_t name_size,
+                        struct kndClass *base, struct kndClass **result,
+                        struct kndTask *task)
 {
     struct kndClassEntry *entry;
     struct kndClass *c;

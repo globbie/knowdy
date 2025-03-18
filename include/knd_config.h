@@ -219,7 +219,7 @@ static const char *const knd_format_names[] = {
 #define KND_SNAPSHOT_MEM_THRESHOLD_RATIO 0.6
 
 #define KND_MAX_FACETS 64
-#define KND_FACET_MAX_ELEM_CACHE 32
+#define KND_FACET_MAX_ELEM_CACHE 3
 
 #define KND_QUERY_MIN_OPERS 64
 

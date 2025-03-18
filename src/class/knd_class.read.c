@@ -481,6 +481,7 @@ static gsl_err_t read_attr(void *obj, const char *name, size_t name_size,
     struct kndAttr *attr;
     struct kndQuantAttr *quant_attr;
     struct kndClassRefAttr *cls_ref_attr;
+    struct kndClassInnerAttr *cls_inner_attr;
     const char *c;
     int err;
     gsl_err_t parser_err;
@@ -520,7 +521,14 @@ static gsl_err_t read_attr(void *obj, const char *name, size_t name_size,
         }
         attr->subtype = quant_attr;
         break;
-    case KND_ATTR_CLASS_REF:
+    case KND_ATTR_CLS_INNER:
+        err = knd_cls_inner_attr_new(&cls_inner_attr, name, name_size, mempool);
+        if (err) {
+            return make_gsl_err_external(err);
+        }
+        attr->subtype = cls_inner_attr;
+        break;
+    case KND_ATTR_CLS_REF:
         err = knd_cls_ref_attr_new(&cls_ref_attr, name, name_size, mempool);
         if (err) {
             return make_gsl_err_external(err);
@@ -530,7 +538,7 @@ static gsl_err_t read_attr(void *obj, const char *name, size_t name_size,
     default:
         break;
     }
-    
+
     parser_err = knd_attr_read(attr, task, rec, total_size);
     if (parser_err.code) {
         KND_TASK_LOG("failed to read {attr %.*s}", name_size, name);
@@ -552,15 +560,6 @@ static gsl_err_t read_attr(void *obj, const char *name, size_t name_size,
         break;
     default:
         break;
-    }
-    
-    if (attr->is_implied) {
-        if (DEBUG_CLASS_READ_LEVEL_2) {
-            knd_log("++ implicit attr {class %.*s {attr %.*s {id %.*s}}}",
-                    self->name_size, self->name,
-                    attr->name_size, attr->name, attr->id_size, attr->id);
-        }
-        self->implied_attr = attr;
     }
 
     if (DEBUG_CLASS_READ_LEVEL_2) {

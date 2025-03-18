@@ -202,7 +202,8 @@ static gsl_err_t parse_attr(void *obj, const char *name, size_t name_size,
     struct kndAttr *attr;
     struct kndQuantAttr *quant_attr;
     struct kndClassRefAttr *cls_ref_attr;
-    struct kndMemPool *mempool = task->user_ctx->mempool;
+    struct kndClassInnerAttr *cls_inner_attr;
+    struct kndMemPool *mempool = task->mempool;
     struct kndText *tr = task->ctx->tr;
     size_t num_attr_types = sizeof(knd_attr_names) / sizeof(knd_attr_names[0]);
     const char *c;
@@ -246,12 +247,19 @@ static gsl_err_t parse_attr(void *obj, const char *name, size_t name_size,
         }
         attr->subtype = quant_attr;
         break;
-    case KND_ATTR_CLASS_REF:
+    case KND_ATTR_CLS_REF:
         err = knd_cls_ref_attr_new(&cls_ref_attr, name, name_size, task->mempool);
         if (err) {
             return make_gsl_err_external(err);
         }
         attr->subtype = cls_ref_attr;
+        break;
+    case KND_ATTR_CLS_INNER:
+        err = knd_cls_inner_attr_new(&cls_inner_attr, name, name_size, task->mempool);
+        if (err) {
+            return make_gsl_err_external(err);
+        }
+        attr->subtype = cls_inner_attr;
         break;
         /*case KND_ATTR_REL:
         parser_err = knd_rel_import(attr, task, rec, total_size);

@@ -116,7 +116,7 @@ int knd_quant_uint_index(struct kndFacet *facet, struct kndClassEntry *topic,
     assert (quant_attr_stm != NULL);
 
     struct kndQuantUInt *uint = quant_attr_stm->uint;
-    int err;
+    //int err;
 
     if (DEBUG_QUANT_INDEX_LEVEL_2) {
         knd_log(".. {class %.*s} to index uint attr {%.*s %.*s {numval %lu {seq %.*s}}}",
@@ -170,4 +170,34 @@ int knd_quant_ureal_index(struct kndFacet *facet, struct kndClassEntry *topic,
     return knd_OK;
 }
 
+int knd_quant_seq_len_hash(void *curr_val, void *obj, void **val, size_t *numval, struct kndTask *task)
+{
+    struct kndAttrStm *stm = obj;
+    struct kndQuantAttrStm *quant_attr_stm = stm->subtype;
+    struct kndQuantUInt *uint = quant_attr_stm->uint;
+    size_t pos = 0;
 
+    if (DEBUG_QUANT_INDEX_LEVEL_TMP) {
+        knd_log(".. hash quant {seq %.*s {len %zu}}", uint->seq_size, uint->seq, uint->seq_size);
+    }
+
+    *numval = uint->seq_size;
+    *val = uint;
+    return knd_OK;
+}
+
+int knd_quant_hash(void *curr_val, void *obj, void **val, size_t *numval, struct kndTask *task)
+{
+    struct kndAttrStm *stm = obj;
+    struct kndQuantAttrStm *quant_attr_stm = stm->subtype;
+    struct kndQuantUInt *uint = quant_attr_stm->uint;
+    size_t pos = 0;
+
+    if (DEBUG_QUANT_INDEX_LEVEL_TMP) {
+        knd_log(".. hash seq {uint %zu}", uint->numval);
+    }
+
+    *numval = pos;
+    *val = uint;
+    return knd_OK;
+}

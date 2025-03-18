@@ -22,23 +22,23 @@
 
 #include "knd_config.h"
 #include "knd_state.h"
+#include "knd_facet.h"
 
 struct kndAttrStm;
-struct kndFacet;
 struct kndTask;
 struct kndClassEntry;
 struct kndQuery;
 
 typedef enum knd_quant_base_type { KND_QUANT_DIGIT,
-                                 KND_QUANT_TEN,
-                                 KND_QUANT_HUNDRED,
-                                 KND_QUANT_THOUSAND,
-                                 KND_QUANT_TEN_THOUSAND,
-                                 KND_QUANT_HUNDRED_THOUSAND,
-                                 KND_QUANT_MILLION,
-                                 KND_QUANT_BILLION,
-                                 KND_QUANT_TRILLION,
-                                 KND_QUANT_QUADRILLION } knd_quant_base_type;
+                                   KND_QUANT_TEN,
+                                   KND_QUANT_HUNDRED,
+                                   KND_QUANT_THOUSAND,
+                                   KND_QUANT_TEN_THOUSAND,
+                                   KND_QUANT_HUNDRED_THOUSAND,
+                                   KND_QUANT_MILLION,
+                                   KND_QUANT_BILLION,
+                                   KND_QUANT_TRILLION,
+                                   KND_QUANT_QUADRILLION } knd_quant_base_type;
 
 typedef enum knd_quant_oper_type { KND_QUANT_OPER_ADD,
                                  KND_QUANT_OPER_SUBTR,
@@ -116,6 +116,7 @@ struct kndQuantAttr
     bool is_calculated;
 
     struct kndFacetHashSpec *hash_specs;
+    struct kndFacetHashSpec *hash_specs_tail;
     size_t num_hash_specs;
 
     struct kndQuantAttr *next;
@@ -177,3 +178,7 @@ int knd_quant_ureal_index(struct kndFacet *facet, struct kndClassEntry *topic,
 int knd_quant_uint_parse_stm(struct kndQuantAttrStm *stm,
                              const char *rec, size_t *total_size, struct kndTask *task);
 int knd_quant_uint_query_plan(struct kndQuantAttrStm *stm, struct kndFacet *facet, struct kndTask *task);
+
+int knd_quant_seq_len_hash(void *curr_val, void *obj, void **val, size_t *numval, struct kndTask *task);
+int knd_quant_hash(void *curr_val, void *obj, void **val, size_t *numval, struct kndTask *task);
+

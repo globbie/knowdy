@@ -126,6 +126,8 @@ static gsl_err_t read_nested_attr_stm_list(void *obj, const char *id, size_t id_
     struct kndAttrStm *attr_stm;
     struct kndAttrRef *ref;
     struct kndAttr *attr;
+    struct kndClassInnerAttr *cls_inner_attr;
+    struct kndClassEntry *entry;
     int err;
 
     if (DEBUG_ATTR_STM_READ_LEVEL_2) {
@@ -136,7 +138,7 @@ static gsl_err_t read_nested_attr_stm_list(void *obj, const char *id, size_t id_
 
     err = knd_set_get(ctx->class->attr_idx, id, id_size, (void**)&ref);
     if (err) {
-        KND_TASK_LOG("{class %.*s} has no list attr: %.*s",
+        KND_TASK_LOG("{cls %.*s} has no list attr: %.*s",
                      ctx->class->name_size, ctx->class->name, id_size, id);
         return *total_size = 0, make_gsl_err_external(err);
     }
@@ -145,8 +147,8 @@ static gsl_err_t read_nested_attr_stm_list(void *obj, const char *id, size_t id_
     attr = ref->attr;
 
     if (DEBUG_ATTR_STM_READ_LEVEL_2) {
-        knd_log(">> list attr decoded: %.*s  (type:%d)",
-                attr->name_size, attr->name, attr->type);
+        knd_log(">> list attr decoded: %.*s  {type %s}",
+                attr->name_size, attr->name, knd_attr_names[attr->type]);
     }
     err = knd_attr_stm_new(&attr_stm, mempool);
     if (err) return make_gsl_err(err);
@@ -168,24 +170,26 @@ static gsl_err_t read_nested_attr_stm_list(void *obj, const char *id, size_t id_
         .obj = &attr_stm_ctx
     };
 
-    switch (attr->type) {
-    case KND_ATTR_INNER:
-        assert(attr->class_entry != NULL);
+    /*   switch (attr->type) {
+    case KND_ATTR_CLS_INNER:
+        cls_inner_attr = stm->attr->subtype;
+        entry = cls_inner_attr->template_cls;
 
-        err = knd_class_acquire(attr->class_entry, &attr->cls, task);
+        err = knd_class_acquire(entry, &attr->cls, task);
         if (err) {
             KND_TASK_LOG("failed to acquire {class %.*s}",
-                         attr->class_entry->name_size, attr->class_entry->name);
+                         attr->cls_entry->name_size, attr->cls_entry->name);
             return *total_size = 0, make_gsl_err_external(err);
         }
         if (DEBUG_ATTR_STM_READ_LEVEL_2) {
             knd_log(">> list inner {class %.*s}",
-                    attr->class_entry->name_size, attr->class_entry->name);
+                    attr->cls_entry->name_size, attr->cls_entry->name);
         }
         break;
     default:
         break;
     }
+    */
     return gsl_parse_array(&read_attr_stm_spec, rec, total_size);
 }
 
@@ -212,8 +216,8 @@ static gsl_err_t read_nested_attr_stm(void *obj, const char *id, size_t id_size,
         .task = task
     };
 
-    if (DEBUG_ATTR_STM_READ_LEVEL_2) {
-        knd_log(".. read nested attr {stm %.*s} {parent %.*s}",
+    if (DEBUG_ATTR_STM_READ_LEVEL_TMP) {
+        knd_log(".. reading nested attr {stm %.*s} {parent %.*s}",
                 stm->name_size, stm->name, self->name_size, self->name);
     }
     struct gslTaskSpec specs[] = {
@@ -252,19 +256,6 @@ static gsl_err_t read_nested_attr_stm(void *obj, const char *id, size_t id_size,
     stm->next = self->children;
     self->children = stm;
     self->num_children++;
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t set_attr_stm_id(void *obj, const char *id, size_t id_size)
-{
-    struct LocalContext *ctx = obj;
-    struct kndAttrStm *stm = ctx->attr_stm;
-    if (!id_size) return make_gsl_err(gsl_FORMAT);
-    if (id_size > KND_ID_SIZE) return make_gsl_err(gsl_LIMIT);
-    
-    memcpy(stm->id, id, id_size);
-    stm->id_size = id_size;
-
     return make_gsl_err(gsl_OK);
 }
 
@@ -337,9 +328,10 @@ static gsl_err_t read_attr_stm_list_item(void *obj, const char *rec, size_t *tot
         knd_log("== reading a list item of array {attr-stm %.*s}: %.*s",
                 self->id_size, self->id, 32, rec);
     }
+
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = set_attr_stm_id,
+          .run = set_attr_stm_val_id,
           .obj = ctx
         },
         { .validate = read_nested_attr_stm,

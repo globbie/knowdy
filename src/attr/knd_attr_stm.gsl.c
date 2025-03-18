@@ -56,34 +56,6 @@ static int inner_stm_export_GSL(struct kndAttrStm *stm, struct kndTask *task, si
         knd_log(".. GSL export inner stm \"%.*s\" val:%.*s  list item:%d",
                 stm->name_size, stm->name, stm->val_size, stm->val, stm->is_list_item);
     }
-    if (stm->implied_attr) {
-        attr = stm->implied_attr;
-
-        if (DEBUG_ATTR_STM_GSL_LEVEL_3) {
-            knd_log(">> implied inner stm {attr %.*s}", attr->name_size, attr->name);
-        }
-        switch (attr->type) {
-        case KND_ATTR_CLASS_REF:
-            assert(stm->subtype != NULL);
-            cref = stm->subtype;
-            entry = cref->cls_entry;
-
-            OUT(entry->name, entry->name_size);
-
-            err = knd_class_acquire(entry, &c, task);
-            KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
-            if (c->tr) {
-                err = knd_text_gloss_export_GSL(c->tr, true, task, depth);
-                KND_TASK_ERR("failed to export gloss GSL");
-            }
-            break;
-        case KND_ATTR_STR:
-            OUT(stm->name, stm->name_size);
-            break;
-        default:
-            break;
-        }
-    }
 
     FOREACH (item, stm->children) {
         err = knd_attr_stm_export_GSL(item, task, depth);
@@ -183,7 +155,7 @@ extern int knd_export_inherited_attr_GSL(void *obj,
         err = out->writec(out, ' ');                            RET_ERR();
         err = out->write(out, attr_stm->val, attr_stm->val_size);             RET_ERR();
         break;
-    case KND_ATTR_INNER:
+    case KND_ATTR_CLS_INNER:
         err = inner_stm_export_GSL(attr_stm, task, depth + 1);
         if (err) return err;
         break;
@@ -233,13 +205,13 @@ static int attr_stm_list_export_GSL(struct kndAttrStm *stm, struct kndTask *task
         }
         OUT("{", 1);
         switch (attr->type) {
-        case KND_ATTR_INNER:
+        case KND_ATTR_CLS_INNER:
             item->id_size = sprintf(item->id, "%lu", (unsigned long)count);
             count++;
             err = inner_stm_export_GSL(item, task, depth + 2);
             if (err) return err;
             break;
-        case KND_ATTR_CLASS_REF:
+        case KND_ATTR_CLS_REF:
             err = ref_stm_export_GSL(item, task, depth + 2);
             if (err) return err;
             break;
@@ -269,7 +241,6 @@ int knd_attr_stms_export_GSL(struct kndAttrStm *stms, struct kndTask *task, size
 
     FOREACH (stm, stms) {
         attr = stm->attr;
-        if (stm->implied_attr) attr = stm->implied_attr;
 
         if (!attr) {
             knd_log("-- no attr found for {attr-stm %.*s}",
@@ -311,10 +282,6 @@ int knd_attr_stm_export_GSL(struct kndAttrStm *stm, struct kndTask *task, size_t
     size_t indent_size = task->ctx->format_indent;
     int err;
 
-    if (stm->implied_attr) {
-        attr = stm->implied_attr;
-    }
-
     if (!attr) {
         knd_log("no attr for {attr-stm %.*s}", stm->name_size, stm->name);
         return knd_FAIL;
@@ -349,7 +316,7 @@ int knd_attr_stm_export_GSL(struct kndAttrStm *stm, struct kndTask *task, size_t
     case KND_ATTR_UREAL:
         OUT(stm->val, stm->val_size);
         break;
-    case KND_ATTR_CLASS_REF:
+    case KND_ATTR_CLS_REF:
         assert(stm->subtype != NULL);
         cref = stm->subtype;
         entry = cref->cls_entry;
@@ -363,7 +330,7 @@ int knd_attr_stm_export_GSL(struct kndAttrStm *stm, struct kndTask *task, size_t
             KND_TASK_ERR("failed to export gloss GSL");
         }
         break;
-    case KND_ATTR_INNER:
+    case KND_ATTR_CLS_INNER:
         err = inner_stm_export_GSL(stm, task, depth);
         KND_TASK_ERR("GSL inner stm output failed");
         break;

@@ -72,7 +72,7 @@ int knd_attr_parse_query_stm(struct kndAttrStm *stm,
         /*case KND_ATTR_INNER:
         break;
         */
-    case KND_ATTR_CLASS_REF:
+    case KND_ATTR_CLS_REF:
         err = knd_cls_ref_attr_stm_new(&cref, task->mempool);
         KND_TASK_ERR("failed to alloc a cls ref attr stm");
         stm->subtype = cref;

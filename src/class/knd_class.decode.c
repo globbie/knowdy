@@ -115,7 +115,7 @@ int knd_class_decode(struct kndClass *c, struct kndTask *task)
     struct kndClass *base;
     int err;
 
-    if (DEBUG_CLASS_DECODE_LEVEL_2) {
+    if (DEBUG_CLASS_DECODE_LEVEL_TMP) {
         knd_log("\n.. decoding {class %.*s {num-bases %zu}}",
                 c->name_size, c->name, c->num_base_preds);
         size_t count = 0;
@@ -128,27 +128,27 @@ int knd_class_decode(struct kndClass *c, struct kndTask *task)
     }
 
     if (c->phase >= KND_CLASS_DECODED) {
-        knd_log("-- vicious circle detected in decoding {class %.*s}", c->name_size, c->name);
+        knd_log("-- vicious circle detected in decoding {cls %.*s}", c->name_size, c->name);
         return knd_FAIL;
     }
 
     if (c->tr) {
         FOREACH (t, c->tr) {
             err = knd_charseq_decode(t->id, t->id_size, &t->seq, task);
-            KND_TASK_ERR("failed to decode {class %.*s {gloss %.*s}}",
+            KND_TASK_ERR("failed to decode {cls %.*s {gloss %.*s}}",
                          c->name_size, c->name, t->id_size, t->id);
         }
     }
 
     FOREACH (bp, c->base_preds) {
         err = knd_class_acquire(bp->entry, &base, task);
-        KND_TASK_ERR("failed to acquire {base %.*s} of {class %.*s}",
+        KND_TASK_ERR("failed to acquire {base %.*s} of {cls %.*s}",
                      bp->entry->name_size, bp->entry->name,
                      c->name_size, c->name);
 
         if (bp->attr_stms) {
             err = knd_decode_attr_stms(base, bp->attr_stms, task);
-            KND_TASK_ERR("failed to decode attr stms of {class %.*s}",
+            KND_TASK_ERR("failed to decode attr stms of {cls %.*s}",
                          base->name_size, base->name);
         }
     }
@@ -156,7 +156,7 @@ int knd_class_decode(struct kndClass *c, struct kndTask *task)
     if (c->num_attrs) {
         FOREACH (attr, c->attrs) {
             err = knd_attr_decode(attr, task);
-            KND_TASK_ERR("failed to decode {class %.*s {attr %.*s}}",
+            KND_TASK_ERR("failed to decode {cls %.*s {attr %.*s}}",
                          c->name_size, c->name, attr->id_size, attr->id);
         }
     }

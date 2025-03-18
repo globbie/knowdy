@@ -72,9 +72,9 @@ static gsl_err_t set_attr_id(void *obj, const char *id, size_t id_size)
                 ref->name_size, ref->name, ref->id_size, ref->id,
                 attr->owner->name_size, attr->owner->name);
         return make_gsl_err(gsl_FAIL);
-    }
-    ref->attr = attr;
-    */
+    } */
+    // ref->attr = attr;
+
     return make_gsl_err(gsl_OK);
 }
 
@@ -101,43 +101,43 @@ static gsl_err_t set_owner_class_id(void *obj, const char *id, size_t id_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t set_class(void *obj, const char *id, size_t id_size)
+static gsl_err_t set_template_cls(void *obj, const char *id, size_t id_size)
 {
     struct LocalContext *ctx = obj;
     struct kndAttr *attr = ctx->attr;
     struct kndClassEntry *entry;
     struct kndTask *task = ctx->task;
+    struct kndClassRefAttr *cls_ref_attr;
+    struct kndClassInnerAttr *cls_inner_attr;
     int err;
+
     if (!id_size) return make_gsl_err(gsl_FORMAT);
     if (id_size > KND_ID_SIZE) return make_gsl_err(gsl_FORMAT);
 
     err = knd_shared_set_get(task->idxs->class_idx, id, id_size, (void**)&entry);
     if (err) {
-        KND_TASK_LOG("failed to link class entry \"%.*s\"", id_size, id);
+        KND_TASK_LOG("no such {cls %.*s}", id_size, id);
         return make_gsl_err_external(err);
     }
 
-    attr->classname = entry->name;
-    attr->classname_size = entry->name_size;
-    attr->class_entry = entry;
+    attr->cls_name = entry->name;
+    attr->cls_name_size = entry->name_size;
+
+    switch (attr->type) {
+    case KND_ATTR_CLS_INNER:
+        cls_inner_attr = attr->subtype;
+        cls_inner_attr->template_cls = entry;
+        break;
+    case KND_ATTR_CLS_REF:
+        cls_ref_attr = attr->subtype;
+        cls_ref_attr->template_cls = entry;
+        break;
+    default:
+        break;
+    }
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t confirm_idx(void *obj, const char *unused_var(name), size_t unused_var(name_size))
-{
-    struct kndAttr *attr = obj;
-    attr->is_indexed = true;
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t confirm_implied(void *obj,
-                                 const char *unused_var(name),
-                                 size_t unused_var(name_size))
-{
-    struct kndAttr *attr = obj;
-    attr->is_implied = true;
-    return make_gsl_err(gsl_OK);
-}
 static gsl_err_t confirm_required(void *obj,
                                   const char *unused_var(name),
                                   size_t unused_var(name_size))
@@ -255,27 +255,12 @@ gsl_err_t knd_attr_read(struct kndAttr *attr, struct kndTask *task,
         },
         { .name = "c",
           .name_size = strlen("c"),
-          .run = set_class,
-          .obj = &ctx
-        },
-        { .name = "rc",
-          .name_size = strlen("rc"),
-          .run = set_class,
+          .run = set_template_cls,
           .obj = &ctx
         },
         { .name = "t",
           .name_size = strlen("t"),
           .parse = parse_quant_type,
-          .obj = attr
-        },
-        { .name = "idx",
-          .name_size = strlen("idx"),
-          .run = confirm_idx,
-          .obj = attr
-        },
-        { .name = "impl",
-          .name_size = strlen("impl"),
-          .run = confirm_implied,
           .obj = attr
         },
         { .name = "req",
@@ -296,16 +281,6 @@ gsl_err_t knd_attr_read(struct kndAttr *attr, struct kndTask *task,
         knd_log("-- failed to parse attr rec: %d", err.code);
         return err;
     }
-
-    if (attr->type == KND_ATTR_INNER) {
-        if (!attr->classname_size) {
-            knd_log("-- ref class not specified in %.*s",
-                    attr->name_size, attr->name);
-            return make_gsl_err_external(knd_FAIL);
-        }
-    }
-
-    // TODO: reject attr names starting with an underscore _
 
     return make_gsl_err(gsl_OK);
 }

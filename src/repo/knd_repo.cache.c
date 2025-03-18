@@ -52,20 +52,20 @@ static int build_cache_item(void *obj, const char *unused_var(elem_id),
     if (!detect_if_cacheable(entry)) return knd_OK;
 
     err = knd_class_acquire(entry, &c, task);
-    KND_TASK_ERR("failed to acquire {class %.*s}", entry->name_size, entry->name);
+    KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);
 
-    if (c->is_indexed) return knd_OK;
+    if (c->phase >= KND_CLASS_INDEXED) return knd_OK;
 
     if (DEBUG_REPO_CACHE_LEVEL_2) {
-        knd_log(".. indexing {class %.*s {id %.*s}}",
+        knd_log(".. indexing {cls %.*s {id %.*s}}",
                 c->name_size, c->name, entry->id_size, entry->id);
     }
 
     err = knd_class_index(c, task);
-    KND_TASK_ERR("failed to index {class %.*s}", entry->name_size, entry->name);
+    KND_TASK_ERR("failed to index {cls %.*s}", entry->name_size, entry->name);
 
     if (DEBUG_REPO_CACHE_LEVEL_3) {
-        knd_log("made a cache copy of {class %.*s {id %.*s}}",
+        knd_log("made a cache copy of {cls %.*s {id %.*s}}",
                 c->name_size, c->name, entry->id_size, entry->id);
     }
     return knd_OK;

@@ -173,12 +173,11 @@ int knd_class_inst_index(struct kndClassInst *self, struct kndTask *task)
 
     FOREACH (stm, self->attr_stms) {
         if (DEBUG_INST_IDX_LEVEL_3) {
-            knd_log(".. idx inst attr stm {class %.*s {inst %.*s {%.*s %.*s}} {is-indexed %d}",
+            knd_log(".. idx inst attr stm {class %.*s {inst %.*s {%.*s %.*s}}",
                     c->name_size, c->name, self->name_size, self->name,
-                    stm->name_size, stm->name, stm->val_size, stm->val, stm->attr->is_indexed);
+                    stm->name_size, stm->name, stm->val_size, stm->val);
         }
         attr = stm->attr;
-        if (!attr->is_indexed) continue;
 
         /*if (attr->is_a_set) {
             err = knd_index_attr_stm_list(self->entry->is_a, self->entry,

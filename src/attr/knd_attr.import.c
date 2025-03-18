@@ -65,8 +65,8 @@ static gsl_err_t set_format(void *obj, const char *name, size_t name_size)
         knd_log("-- attr name not specified");
         return make_gsl_err(gsl_FAIL);
     }
-    self->format_classname = name;
-    self->format_classname_size = name_size;
+    self->format_cls_name = name;
+    self->format_cls_name_size = name_size;
     return make_gsl_err(gsl_OK);
 }
 
@@ -78,11 +78,11 @@ static gsl_err_t set_class(void *obj, const char *name, size_t name_size)
         knd_log("-- attr name not specified");
         return make_gsl_err(gsl_FAIL);
     }
-    self->classname = name;
-    self->classname_size = name_size;
+    self->cls_name = name;
+    self->cls_name_size = name_size;
 
-    self->classname = name;
-    self->classname_size = name_size;
+    self->cls_name = name;
+    self->cls_name_size = name_size;
     return make_gsl_err(gsl_OK);
 }
 
@@ -191,36 +191,22 @@ gsl_err_t knd_parse_quant_type(void *obj, const char *rec, size_t *total_size)
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-gsl_err_t knd_attr_idx(void *obj, const char *unused_var(name), size_t unused_var(name_size))
-{
-    struct kndAttr *self = obj;
-    self->is_indexed = true;
-    return make_gsl_err(gsl_OK);
-}
-
-gsl_err_t knd_attr_implied(void *obj, const char *unused_var(name), size_t unused_var(name_size))
-{
-    struct kndAttr *self = obj;
-    switch (self->type) {
-    case KND_ATTR_INNER:
-        knd_log("implicit representation not allowed for complex attr types {attr %.*s}",
-                self->name_size, self->name);
-        return make_gsl_err(gsl_FAIL);
-    default:
-        break;
-    }
-    self->is_implied = true;
-    return make_gsl_err(gsl_OK);
-}
-
-gsl_err_t knd_attr_required(void *obj, const char *unused_var(name), size_t unused_var(name_size))
+static gsl_err_t attr_is_required(void *obj, const char *unused_var(name), size_t unused_var(name_size))
 {
     struct kndAttr *self = obj;
     self->is_required = true;
     return make_gsl_err(gsl_OK);
 }
 
-gsl_err_t knd_attr_unique(void *obj, const char *unused_var(name), size_t unused_var(name_size))
+static gsl_err_t attr_is_mult(void *obj, const char *unused_var(name), size_t unused_var(name_size))
+{
+    struct kndAttr *self = obj;
+    self->quant_type = KND_ATTR_SET;
+    self->is_a_set = true;
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t attr_is_unique(void *obj, const char *unused_var(name), size_t unused_var(name_size))
 {
     struct kndAttr *self = obj;
     self->is_unique = true;
@@ -248,7 +234,7 @@ static gsl_err_t parse_subtypes(void *obj, const char *name, size_t name_size,
         err = knd_quant_attr_setting_import(attr->subtype, name, name_size, rec, total_size, ctx->task);
         if (err) return *total_size = 0, make_gsl_err_external(err);    
         return make_gsl_err(gsl_OK);
-    case KND_ATTR_CLASS_REF:
+    case KND_ATTR_CLS_REF:
         //err = knd_attr_cls_ref_import(attr->subtype, name, name_size, rec, total_size, ctx->task);
         //if (err) return *total_size = 0, make_gsl_err_external(err);    
         return make_gsl_err(gsl_OK);
@@ -308,24 +294,19 @@ gsl_err_t knd_attr_import(struct kndAttr *self, struct kndTask *task,
           .parse = knd_parse_quant_type,
           .obj = self
         },
-        { .name = "idx",
-          .name_size = strlen("idx"),
-          .run = knd_attr_idx,
-          .obj = self
-        },
-        { .name = "impl",
-          .name_size = strlen("impl"),
-          .run = knd_attr_implied,
+        { .name = "mult",
+          .name_size = strlen("mult"),
+          .run = attr_is_mult,
           .obj = self
         },
         { .name = "req",
           .name_size = strlen("req"),
-          .run = knd_attr_required,
+          .run = attr_is_required,
           .obj = self
         },
         { .name = "uniq",
           .name_size = strlen("uniq"),
-          .run = knd_attr_unique,
+          .run = attr_is_unique,
           .obj = self
         },
         { .validate = parse_subtypes,
@@ -355,8 +336,8 @@ gsl_err_t knd_attr_import(struct kndAttr *self, struct kndTask *task,
     }
 
     switch (self->type) {
-    case KND_ATTR_INNER:
-        if (!self->classname_size) {
+    case KND_ATTR_CLS_INNER:
+        if (!self->cls_name_size) {
             KND_TASK_LOG("inner class not specified in %.*s", self->name_size, self->name);
             return make_gsl_err_external(knd_FORMAT);
         }

@@ -66,17 +66,9 @@ int knd_attr_export_GSL(struct kndAttr *self, struct kndTask *task, size_t depth
         OUT(" {t set}", strlen(" {t set}"));
     }
 
-    if (self->is_implied) {
-        OUT(" {impl}", strlen(" {impl}"));
-    }
-
-    if (self->is_indexed) {
-        OUT(" {idx}", strlen(" {idx}"));
-    }
-
-    if (self->classname_size) {
+    if (self->cls_name_size) {
         OUT(" {c ", strlen(" {c "));
-        OUT(self->classname, self->classname_size);
+        OUT(self->cls_name, self->cls_name_size);
         OUT("}", 1);
     }
 

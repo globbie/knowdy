@@ -17,38 +17,46 @@
 #define DEBUG_FACET_LEVEL_5 0
 #define DEBUG_FACET_LEVEL_TMP 1
 
-int knd_facet_hash_spec_new(struct kndFacetHashSpec **result,
-                            const char *name, size_t name_size, knd_facet_hash_fn hash_fn,
-                            struct kndMemPool *mempool)
+int knd_facet_hash_spec_new(struct kndFacetHashSpec **result, knd_facet_type facet_type,
+                            knd_facet_hash_fn hash_fn, struct kndMemPool *mempool)
 {
     void *page;
+    struct kndFacetHashSpec *spec;
     int err;
     assert(mempool->tiny_page_size >= sizeof(struct kndFacetHashSpec));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndFacetHashSpec));
-    *result = page;
-    (*result)->name = name;
-    (*result)->name_size = name_size;
-    (*result)->hash_fn = hash_fn;
+    spec = page;
+
+    spec->type = facet_type;
+    spec->hash_fn = hash_fn;
+
+    *result = spec;
     return knd_OK;
 }
 
-int knd_facet_new(struct kndFacet **result,
+int knd_facet_new(struct kndFacet **result, void *val,
                   struct kndFacetHashSpec *hash_specs, size_t num_hash_specs,
-                  struct kndMemPool *mempool)
+                  knd_facet_elem_key_fn elem_key_fn, struct kndMemPool *mempool)
 {
     struct kndFacet *f;
     void *page;
     int err;
 
     assert(mempool->base_page_size >= sizeof(struct kndFacet));
+
     err = knd_mempool_page(mempool, KND_MEMPAGE_BASE, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndFacet));
     f = page;
+    f->val = val;
     f->hash_specs = hash_specs;
     f->num_hash_specs = num_hash_specs;
+
+    f->elem_key_fn = elem_key_fn;
+    f->curr_spec = hash_specs;
+
     *result = f;
     return knd_OK;
 }

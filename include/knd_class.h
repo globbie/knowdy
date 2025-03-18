@@ -89,6 +89,7 @@ struct kndClassIdx
 struct kndClassRef
 {
     struct kndClassEntry *entry;
+    size_t numid;
 
     struct kndAttr       *attr;
     struct kndClassInstRef *insts;
@@ -208,12 +209,9 @@ struct kndClass
     atomic_size_t    num_insts;
     atomic_size_t    inst_id_count;
 
-    //bool indexing_in_progress;
-    bool is_indexed;
-
     bool reading_in_progress;
     bool is_read;
-    
+
     bool state_top;
 };
 
@@ -345,8 +343,8 @@ int knd_class_get_inst_updates(struct kndClass *self, size_t gt, size_t lt, size
 
 // knd_class.resolve.c
 int knd_class_resolve(struct kndClass *self, struct kndTask *task);
-int knd_resolve_class_ref(struct kndRepo *repo, const char *name, size_t name_size,
-                          struct kndClass *base, struct kndClass **result, struct kndTask *task);
+int knd_resolve_cls_ref(struct kndRepo *repo, const char *name, size_t name_size,
+                        struct kndClass *base, struct kndClass **result, struct kndTask *task);
 
 // knd_class.index.c
 int knd_class_update_indices(struct kndRepo *repo, struct kndClassEntry *self, struct kndState *state, struct kndTask *task);
@@ -364,9 +362,6 @@ static inline void knd_class_append_attr(struct kndClass *self, struct kndAttr *
         self->attr_tail = attr;
     }
     self->num_attrs++;
-
-    if (attr->is_implied)
-        self->implied_attr = attr;
 }
 
 static inline void knd_class_append_base_pred(struct kndClass *self, struct kndClassBasePred *base_pred)
@@ -412,4 +407,5 @@ static inline void knd_base_pred_append_attr_stm(struct kndClassBasePred *bp, st
     bp->num_attr_stms++;
 }
 
-int knd_subclass_hash(void *obj, size_t *result, struct kndTask *task);
+int knd_facet_subclass_hash(void *val, void *elem,void **payload, size_t *hashval,
+                            struct kndTask *task);

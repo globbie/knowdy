@@ -26,6 +26,18 @@
 #define DEBUG_ATTR_LEVEL_5 0
 #define DEBUG_ATTR_LEVEL_TMP 1
 
+void append_inner_hash_spec(struct kndClassInnerAttr *attr, struct kndFacetHashSpec *spec)
+{
+    if (attr->hash_specs_tail) {
+        attr->hash_specs_tail->next = spec;
+        attr->hash_specs_tail = spec;
+    } else {
+        attr->hash_specs = spec;   
+        attr->hash_specs_tail = spec;   
+    }
+    attr->num_hash_specs++;    
+}
+
 void append_hash_spec(struct kndClassRefAttr *attr, struct kndFacetHashSpec *spec)
 {
     if (attr->hash_specs_tail) {
@@ -55,11 +67,6 @@ void knd_attr_str(struct kndAttr *self, size_t depth)
                 depth * KND_OFFSET_SIZE, "");
     }
 
-    if (self->is_implied) {
-        knd_log("%*s  (implied)",
-                depth * KND_OFFSET_SIZE, "");
-    }
-
     tr = self->tr;
     while (tr) {
         knd_log("%*s   ~ %s %.*s",
@@ -67,10 +74,10 @@ void knd_attr_str(struct kndAttr *self, size_t depth)
         tr = tr->next;
     }
 
-    if (self->classname_size) {
+    if (self->cls_name_size) {
         knd_log("%*s  REF class template: %.*s",
                 depth * KND_OFFSET_SIZE, "",
-                self->classname_size, self->classname);
+                self->cls_name_size, self->cls_name);
     }
     if (self->is_a_set)
         knd_log("%*s]", depth * KND_OFFSET_SIZE, "");
@@ -108,8 +115,8 @@ int knd_attr_find(struct kndClass *cls, const char *name, size_t name_size,
     }
 
     FOREACH (ref, refs) {
-        if (ref->class_entry) {
-            entry = ref->class_entry;
+        if (ref->cls_entry) {
+            entry = ref->cls_entry;
         } else {
             assert (ref->owner_id_size != 0 && ref->owner_id != NULL);
             err = knd_shared_set_get(task->idxs->class_idx,
@@ -186,6 +193,29 @@ int knd_attr_ref_new(struct kndAttrRef **result, struct kndMemPool *mempool)
     return knd_OK;
 }
 
+int knd_cls_inner_attr_new(struct kndClassInnerAttr **result,
+                           const char *name, size_t name_size, struct kndMemPool *mempool)
+{
+    struct kndClassInnerAttr *inner;
+    struct kndFacetHashSpec *spec;
+    void *page;
+    int err;
+    assert(mempool->tiny_page_size >= sizeof(struct kndClassInnerAttr));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
+    if (err) return err;
+    memset(page, 0,  sizeof(struct kndClassInnerAttr));
+    inner = page;
+    inner->name = name;
+    inner->name_size = name_size;
+
+    err = knd_facet_hash_spec_new(&spec, KND_FACET_SUBCLASS, knd_facet_subclass_hash, mempool);
+    if (err) return err;
+    append_inner_hash_spec(inner, spec);
+
+    *result = inner;
+    return knd_OK;
+}
+
 int knd_cls_ref_attr_new(struct kndClassRefAttr **result,
                          const char *name, size_t name_size, struct kndMemPool *mempool)
 {
@@ -201,7 +231,7 @@ int knd_cls_ref_attr_new(struct kndClassRefAttr **result,
     refattr->name = name;
     refattr->name_size = name_size;
 
-    err = knd_facet_hash_spec_new(&spec, name, name_size, knd_subclass_hash, mempool);
+    err = knd_facet_hash_spec_new(&spec, KND_FACET_SUBCLASS, knd_facet_subclass_hash, mempool);
     if (err) return err;
 
     append_hash_spec(refattr, spec);

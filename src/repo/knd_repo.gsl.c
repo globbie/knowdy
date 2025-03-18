@@ -431,7 +431,7 @@ static int index_class(void *obj, const char *unused_var(elem_id),
     err = knd_class_acquire(entry, &c, task);
     KND_TASK_ERR("failed to acquire {class %.*s}", entry->name_size, entry->name);
 
-    if (c->is_indexed) return knd_OK;
+    if (c->phase >= KND_CLASS_INDEXED) return knd_OK;
 
     err = knd_class_index(c, task);
     KND_TASK_ERR("failed to index {class %.*s}", entry->name_size, entry->name);

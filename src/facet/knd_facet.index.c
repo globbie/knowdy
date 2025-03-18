@@ -20,6 +20,7 @@ static int create_subfacets(struct kndFacet *parent, struct kndTask *task)
     struct kndFacet *f;
     size_t numval;
     void *elem;
+    void *hashval;
     struct kndFacetHashSpec *spec;
     knd_facet_hash_fn hash_fn;
     int err;
@@ -32,8 +33,8 @@ static int create_subfacets(struct kndFacet *parent, struct kndTask *task)
     spec = parent->hash_specs;
 
     if (DEBUG_FACET_IDX_LEVEL_TMP) {
-        knd_log(".. creating subfacets of {facet {spec %.*s} {num-elems %zu}}",
-                spec->name_size, spec->name, parent->num_elems);
+        knd_log(".. creating subfacets of {facet {num-elems %zu}}",
+                parent->num_elems);
     }
 
     hash_fn = spec->hash_fn;
@@ -42,7 +43,7 @@ static int create_subfacets(struct kndFacet *parent, struct kndTask *task)
         elem = parent->cache[i];
         if (!elem) break;
 
-        err = hash_fn(elem, &numval, task);
+        err = hash_fn(parent->val, elem, &hashval, &numval, task);
         if (err) {
             // check knd_LIMIT
 
@@ -54,15 +55,17 @@ static int create_subfacets(struct kndFacet *parent, struct kndTask *task)
 
         f = parent->children[numval];
         if (!f) {
-            err = knd_facet_new(&f, parent->hash_specs, parent->num_hash_specs, task->mempool);
+            err = knd_facet_new(&f, hashval, parent->hash_specs, parent->num_hash_specs,
+                                parent->elem_key_fn, task->mempool);
             KND_TASK_ERR("failed to alloc a subfacet");
             parent->children[numval] = f;
             parent->num_children++;
         }
 
-        err = knd_facet_add(f, elem, task);
-        KND_TASK_ERR("failed to add elem to facet");
+        //err = knd_facet_add(f, elem, task);
+        //KND_TASK_ERR("failed to add elem to facet");
     }
+
     return knd_OK;
 }
 
@@ -71,6 +74,7 @@ int knd_facet_add(struct kndFacet *facet, void *elem, struct kndTask *task)
     struct kndFacet *f;
     struct kndFacetHashSpec *spec = facet->hash_specs;
     size_t numval;
+    void *payload;
     int err;
 
     /* no need to apply a hash func for a small set */
@@ -80,19 +84,22 @@ int knd_facet_add(struct kndFacet *facet, void *elem, struct kndTask *task)
         return knd_OK;
     }
 
+
     if (!facet->num_children) {
+
+        // no more hash specs?
+
         err = create_subfacets(facet, task);
         KND_TASK_ERR("failed to create subfacets");
-        // no more subfacets ?
-        // apply next facet?
+
     }
 
-    err = spec->hash_fn(elem, &numval, task);
+    err = spec->hash_fn(facet->val, elem, &payload, &numval, task);
     KND_TASK_ERR("failed to apply a facet hash func");
 
-    f = facet->children[numval];
+    /*f = facet->children[numval];
     err = knd_facet_add(f, elem, task);
     KND_TASK_ERR("failed to add a facet elem");
-
+    */
     return knd_OK;
 }

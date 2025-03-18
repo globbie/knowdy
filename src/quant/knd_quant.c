@@ -16,6 +16,18 @@
 #define DEBUG_NUM_LEVEL_3 0
 #define DEBUG_NUM_LEVEL_TMP 1
 
+void append_quant_hash_spec(struct kndQuantAttr *attr, struct kndFacetHashSpec *spec)
+{
+    if (attr->hash_specs_tail) {
+        attr->hash_specs_tail->next = spec;
+        attr->hash_specs_tail = spec;
+    } else {
+        attr->hash_specs = spec;   
+        attr->hash_specs_tail = spec;   
+    }
+    attr->num_hash_specs++;    
+}
+
 static gsl_err_t set_calc(void *obj, const char *unused_var(val), size_t val_size)
 {
     struct kndQuantAttr *self = obj;
@@ -157,15 +169,28 @@ int knd_quant_attr_new(struct kndQuantAttr **result, knd_quant_type type,
                        const char *name, size_t name_size, struct kndMemPool *mempool)
 {
     void *page;
+    struct kndQuantAttr *quant_attr;
+    struct kndFacetHashSpec *spec;
     int err;
+
     assert(mempool->tiny_page_size >= sizeof(struct kndQuantAttr));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndQuantAttr));
-    *result = page;
-    (*result)->type = type;
-    (*result)->name = name;
-    (*result)->name_size = name_size;
+    quant_attr = page;
+    quant_attr->type = type;
+    quant_attr->name = name;
+    quant_attr->name_size = name_size;
+
+    err = knd_facet_hash_spec_new(&spec, KND_FACET_SEQ_LENGTH, knd_quant_seq_len_hash, mempool);
+    if (err) return err;
+    append_quant_hash_spec(quant_attr, spec);
+
+    err = knd_facet_hash_spec_new(&spec, KND_FACET_ACCUM, knd_quant_hash, mempool);
+    if (err) return err;
+    append_quant_hash_spec(quant_attr, spec);
+
+    *result = quant_attr;
     return knd_OK;
 }
 

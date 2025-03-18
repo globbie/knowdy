@@ -452,13 +452,13 @@ int knd_get_class(struct kndRepo *repo, const char *name, size_t name_size,
     }
 
     err = knd_class_acquire(entry, &c, task);
-    KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
+    KND_TASK_ERR("failed to acquire cls %.*s", entry->name_size, entry->name);
 
     if (c->num_states) {
         state = c->states;
         if (state->phase == KND_REMOVED) {
             err = knd_NO_MATCH;
-            KND_TASK_ERR("{class %s} was removed", name);
+            KND_TASK_ERR("{cls %s} was removed", name);
         }
     }
     *result = c;
@@ -564,10 +564,10 @@ int knd_class_acquire(struct kndClassEntry *entry, struct kndClass **result, str
 
     err = knd_storage_leaf_read_elem(leaf, entry->id, entry->id_size,
                                      knd_class_unmarshall, entry, (void**)&c, task);
-    KND_TASK_ERR("failed to read {class %.*s}", entry->name_size, entry->name);
+    KND_TASK_ERR("failed to read {cls %.*s}", entry->name_size, entry->name);
 
     err = knd_class_decode(c, task);
-    KND_TASK_ERR("failed to decode {class %.*s}", c->name_size, c->name);
+    KND_TASK_ERR("failed to decode {cls %.*s}", c->name_size, c->name);
 
     *result = c;
     return knd_OK;
@@ -637,8 +637,6 @@ static int class_attrs_copy(struct kndClass *orig, struct kndClass *c,
         attr->name_size = orig_attr->name_size;
 
         attr->is_a_set = orig_attr->is_a_set;
-        attr->is_implied = orig_attr->is_implied;
-        attr->is_indexed = orig_attr->is_indexed;
         attr->is_unique = orig_attr->is_unique;
 
         if (!c->attr_tail) {

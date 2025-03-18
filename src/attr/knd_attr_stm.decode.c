@@ -58,47 +58,46 @@ struct LocalContext {
 };
 
 static int decode_inner_attr_stm(struct kndClass *base,
-                                 struct kndAttrStm *parent, struct kndTask *task)
+                                 struct kndAttrStm *stm, struct kndTask *task)
 {
-    struct kndAttr *attr = parent->attr;
-    struct kndClassEntry *entry = attr->class_entry;
-    struct kndClass *c = attr->owner;
-    struct kndClassRefAttrStm *cref;
+    struct kndAttr *attr = stm->attr;
+    struct kndClassInnerAttr *cls_inner_attr = attr->subtype;
+    struct kndClassEntry *entry;
+    struct kndClass *c;
+    struct kndClassInnerAttrStm *inner_stm;
     struct kndMemPool *mempool = task->mempool;
+    struct kndRepo *repo = task->repo;
     int err;
-
-    if (DEBUG_ATTR_STM_DECODE_LEVEL_2) {
+    
+    if (DEBUG_ATTR_STM_DECODE_LEVEL_TMP) {
         knd_log(".. decoding {base %.*s} inner obj {%.*s {cls %.*s} {val %.*s}}",
-                base->name_size, base->name, parent->name_size, parent->name,
-                attr->classname_size, attr->classname, parent->val_id_size, parent->val_id);
+                base->name_size, base->name, attr->name_size, attr->name,
+                attr->cls_name_size, attr->cls_name, stm->val_id_size, stm->val_id);
     }
-    assert (entry != NULL);
 
-    err = knd_class_acquire(entry, &c, task);
-    KND_TASK_ERR("failed to acquire inner {class %.*s}",
-                 entry->name_size, entry->name);
+    err = knd_cls_inner_attr_stm_new(&inner_stm, mempool);
+    KND_TASK_ERR("failed to alloc {inner %.*s}", attr->cls_name_size, attr->cls_name);
+    stm->subtype = inner_stm;
 
-    err = knd_cls_ref_attr_stm_new(&cref, mempool);
-    KND_TASK_ERR("failed to alloc {cls-ref %.*s}", attr->classname_size, attr->classname);
-    parent->subtype = cref;
+    /* specific inner subclass */
+    if (stm->val_id_size) {
+        err = knd_shared_set_get(task->idxs->class_idx, stm->val_id, stm->val_id_size,
+                                 (void**)&entry);
+        KND_TASK_ERR("{cls %.*s} not found in {repo %.*s}",
+                     stm->val_id_size, stm->val_id, repo->name_size, repo->name);
 
-    if (c->implied_attr) {
-        switch (c->implied_attr->type) {
-        case KND_ATTR_CLASS_REF:
-            err = knd_shared_set_get(task->idxs->class_idx,
-                                     parent->val_id, parent->val_id_size,
-                                     (void**)&cref->cls_entry);
-            KND_TASK_ERR("failed to get a {cls-id %.*s}", parent->val_id_size, parent->val_id);
-            break;
-        case KND_ATTR_STR:
-            // decode str
-            break;
-        default:
-            break;
+        err = knd_class_acquire(entry, &c, task);
+        KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);
+
+        if (c->phase < KND_CLASS_DECODED) {
+            err = knd_class_decode(c, task);
+            KND_TASK_ERR("failed to decode {cls %.*s}", c->name_size, c->name);
         }
+        
+        inner_stm->cls_entry = entry;
     }
 
-    err = knd_decode_attr_stms(base, parent->children, task);
+    err = knd_decode_attr_stms(base, stm->children, task);
     KND_TASK_ERR("failed to decode attr stms of {class %.*s}", base->name_size, base->name);
 
     return knd_OK;
@@ -182,12 +181,12 @@ static int decode_attr_stm(struct kndClass *base,
             knd_log(".. decoding {base %.*s} {attr %.*s {type %.*s} {cls %.*s} {parent %.*s}}",
                     base->name_size, base->name,
                     stm->name_size, stm->name, attr_type_name_size, attr_type_name,
-                    attr->classname_size, attr->classname,
+                    attr->cls_name_size, attr->cls_name,
                     attr->owner->name_size, attr->owner->name);
     }
 
     switch (attr->type) {
-    case KND_ATTR_INNER:
+    case KND_ATTR_CLS_INNER:
         err = decode_inner_attr_stm(base, stm, task);
         KND_TASK_ERR("failed to decode {inner %.*s {id %.*s}}",
                      stm->name_size, stm->name, stm->id_size, stm->id);
@@ -207,9 +206,9 @@ static int decode_attr_stm(struct kndClass *base,
         KND_TASK_ERR("failed to decode {%.*s {val-id %.*s}}",
                      stm->name_size, stm->name, stm->val_id_size, stm->val_id);
         break;
-    case KND_ATTR_CLASS_REF:
+    case KND_ATTR_CLS_REF:
         err = decode_cls_ref_attr_stm(base, stm, task);
-        KND_TASK_ERR("failed to decode {rel %.*s {id %.*s}}",
+        KND_TASK_ERR("failed to decode {ref %.*s {id %.*s}}",
                      stm->name_size, stm->name, stm->id_size, stm->id);
         break;
     default:
@@ -227,18 +226,16 @@ static int decode_attr_stm_list(struct kndClass *base,
 
     assert(parent->list != NULL);
 
-    if (DEBUG_ATTR_STM_DECODE_LEVEL_2) {
+    if (DEBUG_ATTR_STM_DECODE_LEVEL_TMP) {
             const char *attr_type_name = knd_attr_names[attr->type];
             size_t attr_type_name_size = strlen(attr_type_name);
             knd_log(".. decoding a list of {attr %.*s {type %.*s {set}} {cls %.*s}}",
                     parent->name_size, parent->name, attr_type_name_size, attr_type_name,
-                    attr->classname_size, attr->classname);
+                    attr->cls_name_size, attr->cls_name);
     }
 
     FOREACH (stm, parent->list) {
         stm->attr = attr;
-        memcpy(stm->val_id, stm->id, stm->id_size);
-        stm->val_id_size = stm->id_size;
 
         err = decode_attr_stm(base, stm, task);
         KND_TASK_ERR("failed to decode {attr-stm %.*s}", stm->id_size, stm->id);
@@ -252,23 +249,16 @@ int knd_decode_attr_stms(struct kndClass *base, struct kndAttrStm *attr_stms, st
     struct kndAttrRef *ref;
     int err;
 
-    if (DEBUG_ATTR_STM_DECODE_LEVEL_2) {
+    if (DEBUG_ATTR_STM_DECODE_LEVEL_TMP) {
         knd_log(".. decoding attr stms of {base %.*s}", base->name_size, base->name);
     }
 
     FOREACH (stm, attr_stms) {
         err = knd_shared_set_get(task->idxs->attr_idx, stm->id, stm->id_size, (void**)&ref);
         KND_TASK_ERR("failed to get attr ref {attr %.*s}", stm->id_size, stm->id);
-        if (!ref->attr) {
-            err = knd_CONFLICT;
-            KND_TASK_ERR("failed to decode {ref %.*s} {base %.*s {attr-stm %.*s {id %.*s}}}",
-                    ref->name_size, ref->name,
-                    base->name_size, base->name,
-                    stm->name_size, stm->name, stm->id_size, stm->id);
-        }
+
         stm->name = ref->name;
         stm->name_size = ref->name_size;
-        stm->attr = ref->attr;
 
         if (stm->attr->is_a_set) {
             err = decode_attr_stm_list(base, stm, task);

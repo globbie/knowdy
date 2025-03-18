@@ -211,21 +211,101 @@ int knd_class_index(struct kndClass *cls, struct kndTask *task)
             }
         }
     }
-    cls->is_indexed = true;
+    cls->phase = KND_CLASS_INDEXED;
     return knd_OK;
 }
 
-int knd_subclass_hash(void *obj, size_t *result, struct kndTask *task)
-{
-    struct kndClassEntry *entry = obj;
-    size_t pos = 0;
 
-    KND_TASK_LOG(".. subclass hash of %.*s", entry->name_size, entry->name);
+
+int knd_facet_subclass_hash(void *val, void *elem, void **payload, size_t *hashval,
+                            struct kndTask *task)
+{
+    struct kndAttrStm *stm = elem;
+    struct kndAttr *attr = stm->is_list_item ? stm->parent->attr : stm->attr;
+    struct kndClassInnerAttr *cls_inner_attr;
+    struct kndClassRefAttr *cls_ref_attr;
+
+    struct kndClassRefAttrStm *ref_stm;
+    struct kndClassInnerAttrStm *inner_stm;
+
+    struct kndClass *c, *subc, *elem_c;
+    struct kndClassEntry *entry;
+    struct kndClassRef *ref;
+    struct kndClassEntry *curr_entry = val;
+    size_t pos = 0;
+    int err;
+
+    assert (curr_entry != NULL);
+
+    switch (attr->type) {
+    case KND_ATTR_CLS_INNER:
+        cls_inner_attr = attr->subtype;
+        inner_stm = stm->subtype;
+
+        entry = inner_stm->cls_entry ? inner_stm->cls_entry : cls_inner_attr->template_cls;
+
+        if (DEBUG_CLASS_INDEX_LEVEL_TMP) {
+            knd_log(".. subclass hash of {inner %.*s} {facet-cls %.*s}",
+                    entry->name_size, entry->name,
+                    curr_entry->name_size, curr_entry->name);
+        }
+
+        err = knd_class_acquire(curr_entry, &c, task);
+        KND_TASK_ERR("failed to acquire {cls %.*s}",
+                     curr_entry->name_size, curr_entry->name);
+
+        err = knd_class_acquire(entry, &elem_c, task);
+        KND_TASK_ERR("failed to acquire {cls %.*s}",
+                     entry->name_size, entry->name);
+
+        FOREACH (ref, c->children) {
+            knd_log("  >> child {cls %.*s {child-id %zu}}",
+                    ref->entry->name_size, ref->entry->name, ref->numid);
+
+            if (ref->entry == entry) {
+                knd_log("++ direct child match");
+                break;
+            }
+
+            err = knd_class_acquire(ref->entry, &subc, task);
+            KND_TASK_ERR("failed to acquire {cls %.*s}",
+                         ref->entry->name_size, ref->entry->name);
+
+            err = knd_is_base(subc, elem_c);
+            if (err) continue;
+
+            knd_log("++ subclass match");                
+        }
+
+        //err = match_subclass(curr_entry, task);
+        //KND_TASK_ERR("failed to compute a subclass hash");
+
+        break;
+    case KND_ATTR_CLS_REF:
+        cls_ref_attr = attr->subtype;
+        ref_stm = stm->subtype;
+        entry = ref_stm->cls_entry ? ref_stm->cls_entry : cls_ref_attr->template_cls;
+
+        if (DEBUG_CLASS_INDEX_LEVEL_TMP) {
+            knd_log(".. subclass hash of {cls-ref %.*s} {facet-cls %.*s}",
+                    entry->name_size, entry->name,
+                    curr_entry->name_size, curr_entry->name);
+        }
+
+
+        
+        break;
+    default:
+        break;
+    }
+
 
     // no subclasses - knd_LIMIT
 
     if (pos >= KND_MAX_FACETS) return knd_LIMIT;
 
-    *result = pos;
+    *hashval = pos;
+    *payload = entry;
     return knd_OK;
 }
+

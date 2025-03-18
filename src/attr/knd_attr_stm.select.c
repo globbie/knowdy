@@ -74,7 +74,7 @@ int knd_attr_stm_plan(struct kndAttrStm *stm, struct kndTask *task)
             stm->match = quant_attr_stm->match;
         }
         break;
-    case KND_ATTR_CLASS_REF:
+    case KND_ATTR_CLS_REF:
         cref = stm->subtype;
 
         if (DEBUG_ATTR_STM_SELECT_LEVEL_TMP) {

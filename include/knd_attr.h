@@ -48,9 +48,9 @@ typedef enum knd_attr_type {
     KND_ATTR_STR,
     KND_ATTR_BIN,
     KND_ATTR_CDATA,
-    KND_ATTR_INNER,
-    KND_ATTR_CLASS_REF,
-    KND_ATTR_CLASS_INST_REF,
+    KND_ATTR_CLS_INNER,
+    KND_ATTR_CLS_REF,
+    KND_ATTR_CLS_INST_REF,
     KND_ATTR_TEXT,
     KND_ATTR_INT,
     KND_ATTR_UINT,
@@ -115,10 +115,22 @@ struct kndAttrRef
     struct kndAttr *attr;
 
     struct kndAttrStm *attr_stm;
-    struct kndClassEntry *class_entry;
+    struct kndClassEntry *cls_entry;
 
     struct kndAttrRef *next;
     struct kndAttrRef *tail;
+};
+
+struct kndClassInnerAttr
+{
+    const char *name;
+    size_t name_size;
+
+    struct kndFacetHashSpec *hash_specs;
+    struct kndFacetHashSpec *hash_specs_tail;
+    size_t num_hash_specs;
+
+    struct kndClassEntry *template_cls;
 };
 
 struct kndClassRefAttr
@@ -130,7 +142,7 @@ struct kndClassRefAttr
     struct kndFacetHashSpec *hash_specs_tail;
     size_t num_hash_specs;
 
-    struct kndClassEntry *entry;
+    struct kndClassEntry *template_cls;
 };
 
 struct kndClassInstRefAttr
@@ -159,18 +171,17 @@ struct kndAttr
     bool set_is_unique;
     bool set_is_atomic;
     bool is_required;
-    bool is_indexed;
-    bool is_implied;
+
     bool is_unique;
 
-    const char *classname;
-    size_t classname_size;
-    struct kndClassEntry *class_entry;
-    struct kndClass *cls;
+    const char *cls_name;
+    size_t cls_name_size;
+    //struct kndClassEntry *cls_entry;
+    //struct kndClass *cls;
 
-    const char *format_classname;
-    size_t format_classname_size;
-    struct kndClassEntry *format_class_entry;
+    const char *format_cls_name;
+    size_t format_cls_name_size;
+    struct kndClassEntry *format_cls_entry;
 
     const char *ref_proc_name;
     size_t ref_proc_name_size;
@@ -233,9 +244,14 @@ int knd_attr_names_unmarshall(const char *elem_id, size_t elem_id_size,
 
 int knd_attr_decode(struct kndAttr *attr, struct kndTask *task);
 
-int knd_cls_ref_attr_new(struct kndClassRefAttr **result, const char *name, size_t name_size,
+int knd_cls_inner_attr_new(struct kndClassInnerAttr **result,
+                           const char *name, size_t name_size,
+                           struct kndMemPool *mempool);
+int knd_cls_ref_attr_new(struct kndClassRefAttr **result,
+                         const char *name, size_t name_size,
                          struct kndMemPool *mempool);
-int knd_cls_inst_ref_attr_new(struct kndClassInstRefAttr **result, const char *name, size_t name_size,
+int knd_cls_inst_ref_attr_new(struct kndClassInstRefAttr **result,
+                              const char *name, size_t name_size,
                               struct kndMemPool *mempool);
 
 int knd_attr_find(struct kndClass *cls, const char *name, size_t name_size,

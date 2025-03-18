@@ -43,6 +43,22 @@
 #define DEBUG_ATTR_STM_IDX_LEVEL_5 0
 #define DEBUG_ATTR_STM_IDX_LEVEL_TMP 1
 
+int knd_attr_stm_get_elem_key(void *obj, const char **key, size_t *key_size)
+{
+    struct kndAttrStm *stm = obj;
+    struct kndClassRefAttrStm *cls_ref_stm = stm->subtype;
+    struct kndClassEntry *entry = cls_ref_stm->cls_entry;
+
+    if (DEBUG_ATTR_STM_IDX_LEVEL_TMP) {
+        knd_log(".. get a key of {cls-ref %.*s {id %.*s}}",
+                entry->name_size, entry->name, entry->id_size, entry->id);
+    }
+
+    *key = entry->id;
+    *key_size = entry->id_size;
+    return knd_OK;
+}
+
 int knd_attr_stm_inner_idx(struct kndClassEntry *topic, struct kndAttr *attr,
                            struct kndAttrStm *parent, struct kndTask *task)
 {
@@ -54,12 +70,6 @@ int knd_attr_stm_inner_idx(struct kndClassEntry *topic, struct kndAttr *attr,
                 topic->name_size, topic->name,
                 knd_attr_names[attr->type], attr->name_size, attr->name,
                 attr->is_a_set);
-    }
-
-    if (parent->implied_attr && parent->implied_attr->is_indexed) {
-        err = knd_index_attr_stm(topic, parent->implied_attr, parent, task);
-        KND_TASK_ERR("failed to index attr stm %.*s",
-                     parent->implied_attr->name_size, parent->implied_attr->name);
     }
 
     /* check nested children */
@@ -81,28 +91,27 @@ int knd_index_attr_stm(struct kndClassEntry *entry, struct kndAttr *attr,
                        struct kndAttrStm *stm, struct kndTask *task)
 {
     struct kndQuantAttr *quant_attr;
+    struct kndClassInnerAttr *cls_inner_attr;
     struct kndClassRefAttr *cls_ref_attr;
-    struct kndClassRefAttrStm *cref;
-    struct kndQuantAttrStm *quant_attr_stm;
     int err;
 
-    if (DEBUG_ATTR_STM_IDX_LEVEL_2) {
-        knd_log(".. {class %.*s} to index {%s %.*s {%.*s %.*s}}",
+    if (DEBUG_ATTR_STM_IDX_LEVEL_TMP) {
+        knd_log(".. {cls %.*s} to index {%s %.*s} {list-item %d}",
                 entry->name_size, entry->name,
                 knd_attr_names[attr->type], attr->name_size, attr->name,
-                stm->name_size, stm->name, stm->val_size, stm->val);
+                stm->is_list_item);
     }
 
     switch (attr->type) {
     case KND_ATTR_UINT:
         quant_attr = attr->subtype;
-        quant_attr_stm = stm->subtype;
         if (!attr->facet) {
-            err = knd_facet_new(&attr->facet,
-                                quant_attr->hash_specs, quant_attr->num_hash_specs, task->mempool);
+            err = knd_facet_new(&attr->facet, NULL,
+                                quant_attr->hash_specs, quant_attr->num_hash_specs,
+                                NULL, task->mempool);
             KND_TASK_ERR("failed to alloc a facet");
         }
-        err = knd_facet_add(attr->facet, (void*)quant_attr_stm->uint, task);
+        err = knd_facet_add(attr->facet, stm, task);
         KND_TASK_ERR("failed to add {uint} elem to facet");
         break;
     case KND_ATTR_URATIO:
@@ -114,38 +123,31 @@ int knd_index_attr_stm(struct kndClassEntry *entry, struct kndAttr *attr,
         //KND_TASK_ERR("failed to index real number attr stm");
         break;
     case KND_ATTR_STR:
-        if (DEBUG_ATTR_STM_IDX_LEVEL_3) {
-            knd_log(".. {class %.*s} to index charseq attr {%s %.*s {%.*s %.*s}}",
-                    entry->name_size, entry->name,
-                    knd_attr_names[attr->type], attr->name_size, attr->name,
-                    stm->name_size, stm->name, stm->val_size, stm->val);
-        }
         break;
-    case KND_ATTR_CLASS_REF:
-        cls_ref_attr = attr->subtype;
+    case KND_ATTR_CLS_INNER:
+        cls_inner_attr = attr->subtype;
+        assert (cls_inner_attr != NULL);
         if (!attr->facet) {
-            err = knd_facet_new(&attr->facet,
-                                cls_ref_attr->hash_specs, cls_ref_attr->num_hash_specs, task->mempool);
+            err = knd_facet_new(&attr->facet, cls_inner_attr->template_cls,
+                                cls_inner_attr->hash_specs, cls_inner_attr->num_hash_specs,
+                                knd_attr_stm_get_elem_key, task->mempool);
             KND_TASK_ERR("failed to alloc a facet");
         }
-        cref = stm->subtype;
-
-        knd_log(".. indexing {cls-ref %.*s}",
-                cref->cls_entry->name_size, cref->cls_entry->name);
-
-        err = knd_facet_add(attr->facet, (void*)cref->cls_entry, task);
-        KND_TASK_ERR("failed to add {cls-ref %.*s} elem to facet",
-                     cref->cls_entry->name_size, cref->cls_entry->name);
+        err = knd_facet_add(attr->facet, stm, task);
+        KND_TASK_ERR("failed to add inner {stm %.*s} elem to facet",
+                     stm->name_size, stm->name);
         break;
-    case KND_ATTR_INNER:
-        if (DEBUG_ATTR_STM_IDX_LEVEL_2) {
-            knd_log(".. {class %.*s} to index inner class attr {%s %.*s {%.*s %.*s}}",
-                    entry->name_size, entry->name,
-                    knd_attr_names[attr->type], attr->name_size, attr->name,
-                    stm->name_size, stm->name, stm->val_size, stm->val);
+    case KND_ATTR_CLS_REF:
+        cls_ref_attr = attr->subtype;
+        if (!attr->facet) {
+            err = knd_facet_new(&attr->facet, cls_ref_attr->template_cls,
+                                cls_ref_attr->hash_specs, cls_ref_attr->num_hash_specs,
+                                knd_attr_stm_get_elem_key, task->mempool);
+            KND_TASK_ERR("failed to alloc a facet");
         }
-        //err = knd_attr_stm_inner_idx(entry, attr, stm, task);
-        //KND_TASK_ERR("failed to index inner attr stm");
+        err = knd_facet_add(attr->facet, stm, task);
+        KND_TASK_ERR("failed to add {stm %.*s} elem to facet",
+                     stm->name_size, stm->name);
         break;
     default:
         break;
@@ -157,17 +159,17 @@ int knd_index_inst_attr_stm(struct kndClassInstEntry *topic_inst, struct kndAttr
                             struct kndAttrStm *unused_var(stm), struct kndTask *unused_var(task))
 {
     if (DEBUG_ATTR_STM_IDX_LEVEL_TMP) {
-        knd_log(".. {class %.*s {inst %.*s}} to index {%s %.*s}",
+        knd_log(".. {cls %.*s {inst %.*s}} to index {%s %.*s}",
                 topic_inst->is_a->name_size, topic_inst->is_a->name,
                 topic_inst->name_size, topic_inst->name,
                 knd_attr_names[attr->type], attr->name_size, attr->name);
     }
     switch (attr->type) {
-    case KND_ATTR_CLASS_INST_REF:
+    case KND_ATTR_CLS_INST_REF:
         //err = index_inst_ref(topic_inst, attr, stm, task);
         //KND_TASK_ERR("failed to index inner attr stm");
         break;
-        /*case KND_ATTR_INNER:
+        /*case KND_ATTR_CLS_INNER:
         err = index_inner_attr_stm(topic, attr, stm, task);
         KND_TASK_ERR("failed to index inner attr stm");
         break;*/
@@ -184,9 +186,11 @@ int knd_index_attr_stm_list(struct kndClassEntry *topic, struct kndAttr *attr,
     int err;
 
     if (DEBUG_ATTR_STM_IDX_LEVEL_2) {
-        knd_log(".. attr stm list indexing {class %.*s {attr %.*s} [type:%d]}",
-                topic->name_size, topic->name, attr->name_size, attr->name, attr->type);
+        knd_log(".. attr stm list indexing {class %.*s {attr %.*s} {type %d}",
+                topic->name_size, topic->name, attr->name_size, attr->name,
+                attr->type);
     }
+
     FOREACH (stm, parent->list) {        
         err = knd_index_attr_stm(topic, attr, stm, task);
         KND_TASK_ERR("failed to index list attr stm %.*s", attr->name_size, attr->name);
