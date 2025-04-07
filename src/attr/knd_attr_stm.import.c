@@ -76,7 +76,7 @@ static gsl_err_t import_nested_attr_stm_list(void *obj, const char *name, size_t
         knd_log(".. import nested attr_stm list: \"%.*s\" REC: %.*s",
                 name_size, name, 32, rec);
     }
-    err = knd_attr_stm_new(&attr_stm, mempool);
+    err = knd_attr_stm_new(&attr_stm, parent_attr_stm->subj, mempool);
     if (err) {
         return make_gsl_err(err);
     }
@@ -174,7 +174,7 @@ static gsl_err_t import_attr_stm_list_item(void *obj, const char *rec, size_t *t
     struct kndMemPool *mempool = task->mempool;
     int err;
 
-    err = knd_attr_stm_new(&attr_stm, mempool);
+    err = knd_attr_stm_new(&attr_stm, self->subj, mempool);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     ctx->attr_stm = attr_stm;
 
@@ -253,8 +253,8 @@ static gsl_err_t import_nested_attr_stm(void *obj, const char *name, size_t name
     struct kndMemPool *mempool = task->user_ctx->mempool;
     gsl_err_t parser_err;
     int err;
-    
-    err = knd_attr_stm_new(&attr_stm, mempool);
+ 
+    err = knd_attr_stm_new(&attr_stm, self->subj, mempool);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     attr_stm->parent = self;
     attr_stm->name = name;

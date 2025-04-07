@@ -107,7 +107,7 @@ static gsl_err_t read_attr_stm(void *obj, const char *name, size_t name_size,
     struct kndAttrStm *stm;
     int err;
 
-    err = knd_attr_stm_new(&stm, task->mempool);
+    err = knd_attr_stm_new(&stm, NULL, task->mempool);
     if (err) {
         KND_TASK_LOG("failed to alloc an attr stm");
         return *total_size = 0, make_gsl_err_external(err);
@@ -129,7 +129,7 @@ static gsl_err_t read_attr_stm_list(void *obj, const char *name, size_t name_siz
     struct kndAttrStm *stm;
     int err;
 
-    err = knd_attr_stm_new(&stm, task->mempool);
+    err = knd_attr_stm_new(&stm, NULL, task->mempool);
     if (err) {
         KND_TASK_LOG("failed to alloc an attr stm");
         return *total_size = 0, make_gsl_err_external(err);

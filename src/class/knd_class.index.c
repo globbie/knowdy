@@ -172,8 +172,8 @@ int knd_class_update_indices(struct kndRepo *repo, struct kndClassEntry *self,
     //struct kndStateRef *ref;
     //int err;
 
-    knd_log(".. update {repo %.*s {class %.*s}} indices {idx %p}",
-            repo->name_size, repo->name, self->name_size, self->name, idx);
+    knd_log(".. update {repo %.*s {class %.*s}} indices",
+            repo->name_size, repo->name, self->name_size, self->name);
 
     return knd_OK;
 }
@@ -202,11 +202,11 @@ int knd_class_index(struct kndClass *cls, struct kndTask *task)
         FOREACH (stm, bp->attr_stms) {
             if (stm->attr->is_a_set) {
                 err = knd_index_attr_stm_list(cls->entry, stm->attr, stm, task);
-                KND_TASK_ERR("failed to index attr stm list %.*s",
+                KND_TASK_ERR("failed to index {attr-stm-list %.*s}",
                              stm->attr->name_size, stm->attr->name);
             } else {
                 err = knd_index_attr_stm(cls->entry, stm->attr, stm, task);
-                KND_TASK_ERR("failed to index attr stm %.*s",
+                KND_TASK_ERR("failed to index {attr-stm %.*s}",
                              stm->attr->name_size, stm->attr->name);
             }
         }
@@ -215,7 +215,48 @@ int knd_class_index(struct kndClass *cls, struct kndTask *task)
     return knd_OK;
 }
 
+static int find_direct_child(struct kndClassEntry *base, struct kndClassEntry *term,
+                             struct kndClassEntry **result, size_t *numval,
+                             struct kndTask *task)
+{
+    struct kndClass *base_c, *sub_c, *term_c;
+    struct kndClassEntry *child;
+    struct kndClassRef *ref;
+    int err;
 
+    err = knd_class_acquire(base, &base_c, task);
+    KND_TASK_ERR("failed to acquire {cls %.*s}", base->name_size, base->name);
+
+    if (!base_c->num_children) return knd_NO_MATCH;
+
+    FOREACH (ref, base_c->children) {
+
+        knd_log(">> child {cls %.*s {child-id %zu}}",
+                ref->entry->name_size, ref->entry->name, ref->numid);
+
+        if (ref->entry == term) {
+            *result = term;
+            *numval = ref->numid;
+            return knd_OK;
+        }
+
+        err = knd_class_acquire(ref->entry, &sub_c, task);
+        KND_TASK_ERR("failed to acquire {cls %.*s}",
+                     ref->entry->name_size, ref->entry->name);
+
+        err = knd_class_acquire(term, &term_c, task);
+        KND_TASK_ERR("failed to acquire {cls %.*s}", term->name_size, term->name);
+
+        err = knd_class_is_base(sub_c, term_c);
+        if (err) continue;
+
+        *result = ref->entry;
+        *numval = ref->numid;
+        return knd_OK;
+    }
+
+    return knd_NO_MATCH;
+}
 
 int knd_facet_subclass_hash(void *val, void *elem, void **payload, size_t *hashval,
                             struct kndTask *task)
@@ -228,11 +269,9 @@ int knd_facet_subclass_hash(void *val, void *elem, void **payload, size_t *hashv
     struct kndClassRefAttrStm *ref_stm;
     struct kndClassInnerAttrStm *inner_stm;
 
-    struct kndClass *c, *subc, *elem_c;
-    struct kndClassEntry *entry;
-    struct kndClassRef *ref;
+    struct kndClassEntry *entry, *result;
     struct kndClassEntry *curr_entry = val;
-    size_t pos = 0;
+    size_t numval;
     int err;
 
     assert (curr_entry != NULL);
@@ -250,37 +289,13 @@ int knd_facet_subclass_hash(void *val, void *elem, void **payload, size_t *hashv
                     curr_entry->name_size, curr_entry->name);
         }
 
-        err = knd_class_acquire(curr_entry, &c, task);
-        KND_TASK_ERR("failed to acquire {cls %.*s}",
+        err = find_direct_child(curr_entry, entry, &result, hashval, task);
+        KND_TASK_ERR("failed to match a direct child of {cls %.*s}",
                      curr_entry->name_size, curr_entry->name);
 
-        err = knd_class_acquire(entry, &elem_c, task);
-        KND_TASK_ERR("failed to acquire {cls %.*s}",
-                     entry->name_size, entry->name);
-
-        FOREACH (ref, c->children) {
-            knd_log("  >> child {cls %.*s {child-id %zu}}",
-                    ref->entry->name_size, ref->entry->name, ref->numid);
-
-            if (ref->entry == entry) {
-                knd_log("++ direct child match");
-                break;
-            }
-
-            err = knd_class_acquire(ref->entry, &subc, task);
-            KND_TASK_ERR("failed to acquire {cls %.*s}",
-                         ref->entry->name_size, ref->entry->name);
-
-            err = knd_is_base(subc, elem_c);
-            if (err) continue;
-
-            knd_log("++ subclass match");                
-        }
-
-        //err = match_subclass(curr_entry, task);
-        //KND_TASK_ERR("failed to compute a subclass hash");
-
-        break;
+        *payload = result;
+        // TODO
+        return knd_NO_MATCH;
     case KND_ATTR_CLS_REF:
         cls_ref_attr = attr->subtype;
         ref_stm = stm->subtype;
@@ -292,20 +307,15 @@ int knd_facet_subclass_hash(void *val, void *elem, void **payload, size_t *hashv
                     curr_entry->name_size, curr_entry->name);
         }
 
-
-        
-        break;
+        err = find_direct_child(curr_entry, entry, &result, hashval, task);
+        KND_TASK_ERR("failed to match a direct child of {cls %.*s}",
+                     curr_entry->name_size, curr_entry->name);
+        *payload = result;
+        // TODO
+        return knd_NO_MATCH;
     default:
         break;
     }
-
-
-    // no subclasses - knd_LIMIT
-
-    if (pos >= KND_MAX_FACETS) return knd_LIMIT;
-
-    *hashval = pos;
-    *payload = entry;
-    return knd_OK;
+    return knd_NO_MATCH;
 }
 

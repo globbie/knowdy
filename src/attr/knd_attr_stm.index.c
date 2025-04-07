@@ -46,16 +46,17 @@
 int knd_attr_stm_get_elem_key(void *obj, const char **key, size_t *key_size)
 {
     struct kndAttrStm *stm = obj;
-    struct kndClassRefAttrStm *cls_ref_stm = stm->subtype;
-    struct kndClassEntry *entry = cls_ref_stm->cls_entry;
+    struct kndClass *cls = stm->subj;
+
+    assert (cls != NULL);
 
     if (DEBUG_ATTR_STM_IDX_LEVEL_TMP) {
-        knd_log(".. get a key of {cls-ref %.*s {id %.*s}}",
-                entry->name_size, entry->name, entry->id_size, entry->id);
+        knd_log(".. get a key of {cls %.*s {id %.*s}}",
+                cls->name_size, cls->name, cls->entry->id_size, cls->entry->id);
     }
 
-    *key = entry->id;
-    *key_size = entry->id_size;
+    *key = cls->entry->id;
+    *key_size = cls->entry->id_size;
     return knd_OK;
 }
 
@@ -108,7 +109,7 @@ int knd_index_attr_stm(struct kndClassEntry *entry, struct kndAttr *attr,
         if (!attr->facet) {
             err = knd_facet_new(&attr->facet, NULL,
                                 quant_attr->hash_specs, quant_attr->num_hash_specs,
-                                NULL, task->mempool);
+                                knd_attr_stm_get_elem_key, task->mempool);
             KND_TASK_ERR("failed to alloc a facet");
         }
         err = knd_facet_add(attr->facet, stm, task);
@@ -186,14 +187,14 @@ int knd_index_attr_stm_list(struct kndClassEntry *topic, struct kndAttr *attr,
     int err;
 
     if (DEBUG_ATTR_STM_IDX_LEVEL_2) {
-        knd_log(".. attr stm list indexing {class %.*s {attr %.*s} {type %d}",
+        knd_log(".. attr stm list indexing {cls %.*s {attr %.*s} {type %d}",
                 topic->name_size, topic->name, attr->name_size, attr->name,
                 attr->type);
     }
 
-    FOREACH (stm, parent->list) {        
+    FOREACH (stm, parent->list) {
         err = knd_index_attr_stm(topic, attr, stm, task);
-        KND_TASK_ERR("failed to index list attr stm %.*s", attr->name_size, attr->name);
+        KND_TASK_ERR("failed to index list {attr-stm %.*s}", attr->name_size, attr->name);
     }
     return knd_OK;
 }

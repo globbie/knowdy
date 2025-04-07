@@ -137,7 +137,7 @@ static gsl_err_t import_nested_attr_stm(void *obj,
     gsl_err_t parser_err;
     int err;
 
-    err = knd_attr_stm_new(&attr_stm, mempool);
+    err = knd_attr_stm_new(&attr_stm, NULL, mempool);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     attr_stm->parent = self;
     attr_stm->name = name;
@@ -203,7 +203,7 @@ static gsl_err_t validate_do_arg(void *obj,
     call_arg->name = name;
     call_arg->name_size = name_size;
 
-    e = knd_attr_stm_new(&attr_stm, ctx->task->mempool);
+    e = knd_attr_stm_new(&attr_stm, NULL, ctx->task->mempool);
     if (e) {
         return make_gsl_err(e);
     }

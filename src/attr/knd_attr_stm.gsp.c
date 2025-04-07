@@ -68,10 +68,6 @@ static int inner_attr_export_GSP(struct kndAttrStm *stm, struct kndTask *task)
     entry = inner_stm->cls_entry;
     if (entry) {
         OUT(entry->id, entry->id_size);
-
-        knd_log(">> write {owner %.*s} {cls %.*s}",
-                stm->parent->attr->owner->name_size, stm->parent->attr->owner->name,
-                entry->name_size, entry->name, entry->id_size, entry->id);
     }
 
     FOREACH (item, stm->children) {

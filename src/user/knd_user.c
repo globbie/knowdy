@@ -483,7 +483,7 @@ int knd_user_new(struct kndUser **user,
     self->classname = classname;
     self->classname_size = classname_size;
 
-    err = knd_get_class(repo, classname, classname_size, &self->class, task);
+    err = knd_get_class_by_name(repo, classname, classname_size, &self->class, task);
     if (err) {
         KND_TASK_LOG("no such user class: %.*s", classname_size, classname);
         goto error;

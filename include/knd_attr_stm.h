@@ -70,6 +70,7 @@ struct kndAttrStm
     char id[KND_ID_SIZE];
     size_t id_size;
     struct kndAttr *attr;
+    struct kndClass *subj;
 
     const char *name;
     size_t name_size;
@@ -150,7 +151,7 @@ int knd_attr_stm_plan(struct kndAttrStm *stm, struct kndTask *task);
 int knd_cls_ref_attr_stm_new(struct kndClassRefAttrStm **result, struct kndMemPool *mempool);
 int knd_cls_inner_attr_stm_new(struct kndClassInnerAttrStm **result, struct kndMemPool *mempool);
 
-int knd_attr_stm_new(struct kndAttrStm **result, struct kndMemPool *mempool);
+int knd_attr_stm_new(struct kndAttrStm **result, struct kndClass *subj, struct kndMemPool *mempool);
 
 
 // knd_attr_stm.gsp.c

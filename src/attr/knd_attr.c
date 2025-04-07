@@ -143,7 +143,7 @@ int knd_attr_find(struct kndClass *cls, const char *name, size_t name_size,
         KND_TASK_ERR("failed to acquire class {entry %.*s}",
                      entry->name_size, entry->name);
 
-        err = knd_is_base(c, cls);
+        err = knd_class_is_base(c, cls);
         if (err) continue;
 
         if (ref->attr) {

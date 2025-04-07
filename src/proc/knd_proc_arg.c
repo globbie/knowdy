@@ -329,7 +329,7 @@ static gsl_err_t import_nested_attr_stm(void *obj,
     gsl_err_t parser_err;
     int err;
 
-    err = knd_attr_stm_new(&attr_stm, mempool);
+    err = knd_attr_stm_new(&attr_stm, NULL, mempool);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     attr_stm->parent = self;
     attr_stm->name = name;
@@ -385,7 +385,7 @@ static gsl_err_t parse_proc_arg_defin(void *obj,
         knd_log(".. proc call arg defin parsing: \"%.*s\"..",
                 32, rec);
 
-    err = knd_attr_stm_new(&attr_stm, ctx->task->mempool);
+    err = knd_attr_stm_new(&attr_stm, NULL, ctx->task->mempool);
     if (err) {
         return make_gsl_err(err);
     }
@@ -530,7 +530,7 @@ int knd_resolve_proc_arg_var(struct kndProc *proc, struct kndProcArgVar *var, st
                 KND_TASK_ERR("same class template specified twice");
             }
 
-            err = knd_is_base(template_c, c);
+            err = knd_class_is_base(template_c, c);
             KND_TASK_ERR("{class %.*s} is not a subclass of arg var template {class %.*s}",
                          entry->name_size, entry->name, template_c->name_size, template_c->name);
         }

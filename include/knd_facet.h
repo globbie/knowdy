@@ -88,6 +88,8 @@ struct kndFacet
     struct kndFacetHashSpec *curr_spec;
 
     void *cache[KND_FACET_MAX_ELEM_CACHE];
+    size_t cache_size;
+
     size_t num_elems;
     /* providing keys (ids) for storing elems in kndSet
        if cache capacity is exceeded */

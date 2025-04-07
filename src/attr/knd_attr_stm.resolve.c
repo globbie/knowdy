@@ -107,7 +107,7 @@ static int resolve_inner_cls(struct kndAttrStm *stm, struct kndTask *task)
             KND_TASK_ERR("{cls %.*s} failed to resolve", c->name_size, c->name);
         }
 
-        err = knd_is_base(template_c, c);
+        err = knd_class_is_base(template_c, c);
         KND_TASK_ERR("no inheritance from {cls %.*s} to {cls %.*s}",
                      template_c->name_size, template_c->name, c->name_size, c->name);
 

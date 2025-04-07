@@ -270,85 +270,6 @@ extern int knd_empty_set_export_JSON(struct kndClass *unused_var(self),
     return knd_OK;
 }
 
-static int export_facet(struct kndClassFacet *parent_facet, struct kndTask *task)
-{
-    struct kndOutput *out = task->out;
-    struct kndClassFacet *facet;
-    bool in_list = false;
-    int err;
-
-    err = out->write(out, "{\"_name\":",
-                     strlen("{\"_name\":"));                                       RET_ERR();
-    err = out->writec(out, '"');                                                  RET_ERR();
-    err = out->write(out, parent_facet->base->name,
-                     parent_facet->base->name_size);                               RET_ERR();
-    err = out->writec(out, '"');                                                  RET_ERR();
-
-    // err = export_gloss_JSON(parent_facet->base->class, task);                     RET_ERR();
-
-    //err = export_concise_JSON(parent_facet->base->class, task);                   RET_ERR();
-    
-    err = out->writef(out, ",\"_total\":%zu",
-                      parent_facet->num_elems);                RET_ERR();
-
-    if (parent_facet->children || parent_facet->elems) {
-        in_list = false;
-        err = out->write(out, ",\"_subclasses\":[",
-                         strlen(",\"_subclasses\":["));                            RET_ERR();
-
-        FOREACH (facet, parent_facet->children) {
-            if (in_list) {
-                err = out->writec(out, ',');                                      RET_ERR();
-            }
-            err = export_facet(facet, task);                                      RET_ERR();
-            in_list = true;
-        }
-
-        /*FOREACH (ref, parent_facet->elems) {
-            task->depth = 0;
-            task->ctx->max_depth = 0;
-            if (in_list) {
-                err = out->writec(out, ',');                                      RET_ERR();
-            }
-
-
-            err = knd_class_export_JSON(ref->entry->class, task, false, 0);
-            RET_ERR();
-            in_list = true;
-            }*/
-        err = out->writec(out, ']');                                              RET_ERR();
-    } 
-
-    err = out->writec(out, '}');                                                  RET_ERR();
-
-    return knd_OK;
-}
-
-int knd_class_facets_export_JSON(struct kndTask *task)
-{
-    struct kndClassFacet *facet;
-    struct kndClassFacet *facets = NULL;
-    struct kndOutput *out = task->out;
-    bool in_list = false;
-    int err;
-
-    err = out->write(out, "{\"_facets\":[",
-                     strlen("{\"_facets\":["));                                   RET_ERR();
-
-    FOREACH (facet, facets) {
-        if (in_list) {
-            err = out->writec(out, ',');                                          RET_ERR();
-        }
-        err = export_facet(facet, task);                                          RET_ERR();
-        in_list = true;
-    }
-
-    err = out->writec(out, ']');                                                  RET_ERR();
-    err = out->writec(out, '}');                                                  RET_ERR();
-
-    return knd_OK;
-}
-
 #if 0
 extern int knd_class_set_export_JSON(struct kndSet *set, struct kndTask *task)
 {
@@ -388,10 +309,6 @@ extern int knd_class_set_export_JSON(struct kndSet *set, struct kndTask *task)
     task->ctx->max_depth = curr_depth;
 
     err = out->writec(out, ']');                                                  RET_ERR();
-
-    /*if (set->facets) {
-        err = export_facets(set, task);                                           RET_ERR();
-        }*/
     
     err = out->writef(out, ",\"batch_max\":%lu",
                       (unsigned long)task->batch_max);                            RET_ERR();

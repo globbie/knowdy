@@ -82,12 +82,12 @@ static gsl_err_t select_class_attr(void *obj, const char *name, size_t name_size
     }
 
     if (DEBUG_CLASS_SELECT_LEVEL_3) {
-        knd_log("{class %.*s {attr %.*s}} confirmed by owner {class %.*s}",
+        knd_log("{cls %.*s {attr %.*s}} confirmed by owner {class %.*s}",
                 query_class->name_size, query_class->name, name_size, name,
                 attr->owner->name_size, attr->owner->name);
     }
 
-    err = knd_attr_stm_new(&stm, task->mempool);
+    err = knd_attr_stm_new(&stm, query_class, task->mempool);
     if (err) return make_gsl_err_external(err);   
     stm->attr = attr;
 
@@ -144,18 +144,18 @@ static gsl_err_t get_baseclass(void *obj, const char *name, size_t name_size)
 
     err = knd_get_class_entry(ctx->repo, name, name_size, true, &entry, task);
     if (err) {
-        KND_TASK_LOG("{class %.*s} not found", name_size, name);
+        KND_TASK_LOG("{cls %.*s} not found", name_size, name);
         task->ctx->error = knd_NO_MATCH;
         return make_gsl_err(gsl_FAIL);
     }
 
     err = knd_class_acquire(entry, &c, task);
     if (err) {
-        KND_TASK_LOG("failed to acquire class \"%.*s\"", entry->name_size, entry->name);
+        KND_TASK_LOG("failed to acquire {cls %.*s}", entry->name_size, entry->name);
         return make_gsl_err_external(err);
     }
 
-    err = knd_class_base_pred_new(&base_pred, mempool);
+    err = knd_class_base_pred_new(&base_pred, c, mempool);
     if (err) {
         KND_TASK_LOG("failed to alloc a base pred");
         return make_gsl_err_external(err);
@@ -174,7 +174,7 @@ static gsl_err_t select_by_baseclass(void *obj, const char *rec, size_t *total_s
     gsl_err_t err;
 
     if (DEBUG_CLASS_SELECT_LEVEL_2)
-        knd_log(".. select by baseclass \"%.*s\"..", 64, rec);
+        knd_log(".. select by base {cls %.*s}", 64, rec);
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,

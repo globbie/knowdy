@@ -227,7 +227,7 @@ int knd_resolve_primary_attrs(struct kndClass *self, struct kndTask *task)
     int err;
 
     if (DEBUG_ATTR_RESOLVE_LEVEL_2) {
-        knd_log(".. resolving primary attrs of {class %.*s {total-attrs %zu}}",
+        knd_log(".. resolving primary attrs of {cls %.*s {total-attrs %zu}}",
                 self->name_size, self->name, self->num_attrs);
     }
 

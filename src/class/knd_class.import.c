@@ -121,7 +121,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     }
 
     /* commit in progress */
-    err = knd_get_class(repo, name, name_size, &c, task);
+    err = knd_get_class_by_name(repo, name, name_size, &c, task);
     if (!err) {
         KND_TASK_LOG("{class %.*s} already exists in {repo %.*s}", name_size, name);
         task->ctx->http_code = HTTP_CONFLICT;
@@ -131,7 +131,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
 
     /* check user shared repo */
     if (task->user_ctx->base_repo) {
-        err = knd_get_class(task->user_ctx->base_repo, name, name_size, &c, task);
+        err = knd_get_class_by_name(task->user_ctx->base_repo, name, name_size, &c, task);
         if (!err) {
             KND_TASK_LOG("\"%.*s\" class already exists in a base repo: %.*s",
                          name_size, name,
@@ -294,7 +294,7 @@ static gsl_err_t import_attr_stm(void *obj, const char *name, size_t name_size,
     struct kndAttrStm *stm;
     int err;
 
-    err = knd_attr_stm_new(&stm, task->mempool);
+    err = knd_attr_stm_new(&stm, bp->subj, task->mempool);
     if (err) {
         return *total_size = 0, make_gsl_err_external(err);
     }
@@ -318,7 +318,7 @@ static gsl_err_t import_attr_stm_list(void *obj, const char *name, size_t name_s
     struct kndAttrStm *stm;
     int err;
 
-    err = knd_attr_stm_new(&stm, task->mempool);
+    err = knd_attr_stm_new(&stm, bp->subj, task->mempool);
     if (err) {
         return *total_size = 0, make_gsl_err_external(err);
     }
@@ -369,7 +369,7 @@ static gsl_err_t parse_baseclass(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndClass *self = ctx->class;
+    struct kndClass *cls = ctx->class;
     struct kndClassBasePred *base_pred;
     struct kndMemPool *mempool = task->user_ctx->mempool;
     gsl_err_t parser_err;
@@ -378,18 +378,17 @@ static gsl_err_t parse_baseclass(void *obj, const char *rec, size_t *total_size)
     if (DEBUG_CLASS_IMPORT_LEVEL_2) {
         knd_log(".. parsing the base {class %.*s}", 32, rec);
     }
-    err = knd_class_base_pred_new(&base_pred, mempool);
+    err = knd_class_base_pred_new(&base_pred, cls, mempool);
     if (err) {
         KND_TASK_LOG("failed to alloc a base pred");
         return *total_size = 0, make_gsl_err_external(err);
     }
-    base_pred->owner = self;
-
     ctx->base_pred = base_pred;
+
     parser_err = parse_base_pred(rec, total_size, ctx);
     if (parser_err.code) return parser_err;
 
-    knd_class_append_base_pred(self, base_pred);
+    knd_class_append_base_pred(cls, base_pred);
 
     return make_gsl_err(gsl_OK);
 }
@@ -458,11 +457,11 @@ gsl_err_t knd_class_import(struct kndRepo *repo, const char *rec, size_t *total_
 {
     struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndClass *c;
-    int err;
     gsl_err_t parser_err;
+    int err;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_2) {
-        knd_log(".. {worker %zu} to import {class %.*s}", task->id, 128, rec);
+        knd_log(".. {worker %zu} to import {cls %.*s}", task->id, 128, rec);
     }
     err = knd_class_new(&c, mempool);
     if (err) {
@@ -511,12 +510,12 @@ gsl_err_t knd_class_import(struct kndRepo *repo, const char *rec, size_t *total_
     if (parser_err.code) {
         switch (parser_err.code) {
         case gsl_NO_MATCH:
-            KND_TASK_LOG("unrecognized tag \"%.*s\" in {class %.*s}",
+            KND_TASK_LOG("unrecognized tag \"%.*s\" in {cls %.*s}",
                          parser_err.val_size, parser_err.val,
                          c->name_size, c->name);
             break;
         default:
-            KND_TASK_LOG("\"%.*s\" class parsing error: %d",
+            KND_TASK_LOG("{cls %.*s} parsing error: %d",
                          c->name_size, c->name, parser_err.code);
             break;
         }
@@ -539,7 +538,7 @@ gsl_err_t knd_class_import(struct kndRepo *repo, const char *rec, size_t *total_
     c->phase = KND_CLASS_IMPORTED;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_3) {
-        knd_log("++  {class %.*s} import completed!", c->name_size, c->name);
+        knd_log("++  {cls %.*s} import completed!", c->name_size, c->name);
     }
 
     switch (task->type) {

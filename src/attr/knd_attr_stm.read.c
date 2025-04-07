@@ -150,7 +150,7 @@ static gsl_err_t read_nested_attr_stm_list(void *obj, const char *id, size_t id_
         knd_log(">> list attr decoded: %.*s  {type %s}",
                 attr->name_size, attr->name, knd_attr_names[attr->type]);
     }
-    err = knd_attr_stm_new(&attr_stm, mempool);
+    err = knd_attr_stm_new(&attr_stm, parent_attr_stm->subj, mempool);
     if (err) return make_gsl_err(err);
     attr_stm->attr = attr;
     attr_stm->name = attr->name;
@@ -197,16 +197,16 @@ static gsl_err_t read_nested_attr_stm(void *obj, const char *id, size_t id_size,
                                       const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndAttrStm *self = ctx->attr_stm;
+    struct kndAttrStm *parent = ctx->attr_stm;
     struct kndTask    *task = ctx->task;
     struct kndAttrStm *stm;
     struct kndMemPool *mempool = task->mempool;
     gsl_err_t parser_err;
     int err;
 
-    err = knd_attr_stm_new(&stm, mempool);
+    err = knd_attr_stm_new(&stm, parent->subj, mempool);
     if (err) return *total_size = 0, make_gsl_err_external(err);
-    stm->parent = self;
+    stm->parent = parent;
 
     memcpy(stm->id, id, id_size);
     stm->id_size = id_size;
@@ -216,9 +216,9 @@ static gsl_err_t read_nested_attr_stm(void *obj, const char *id, size_t id_size,
         .task = task
     };
 
-    if (DEBUG_ATTR_STM_READ_LEVEL_TMP) {
+    if (DEBUG_ATTR_STM_READ_LEVEL_2) {
         knd_log(".. reading nested attr {stm %.*s} {parent %.*s}",
-                stm->name_size, stm->name, self->name_size, self->name);
+                stm->id_size, stm->id, parent->id_size, parent->id);
     }
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -253,9 +253,9 @@ static gsl_err_t read_nested_attr_stm(void *obj, const char *id, size_t id_size,
         return parser_err;
     }
 
-    stm->next = self->children;
-    self->children = stm;
-    self->num_children++;
+    stm->next = parent->children;
+    parent->children = stm;
+    parent->num_children++;
     return make_gsl_err(gsl_OK);
 }
 
@@ -316,7 +316,7 @@ static gsl_err_t read_attr_stm_list_item(void *obj, const char *rec, size_t *tot
     struct kndMemPool *mempool = task->mempool;
     int err;
 
-    err = knd_attr_stm_new(&attr_stm, mempool);
+    err = knd_attr_stm_new(&attr_stm, self->subj, mempool);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     attr_stm->is_list_item = true;
     attr_stm->parent = self;
@@ -427,6 +427,7 @@ int knd_read_attr_stm(struct kndAttrStm *stm, const char *id, size_t id_size,
           .obj = stm
         }
     };
+
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) {
         knd_log("-- attr stm parsing failed: %d", parser_err.code);

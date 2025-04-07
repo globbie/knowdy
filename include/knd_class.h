@@ -46,6 +46,7 @@ typedef enum knd_class_phase_t {
      KND_CLASS_READ,
      KND_CLASS_BASE_RESOLVED,
      KND_CLASS_RESOLVED,
+     KND_CLASS_BASE_DECODED,
      KND_CLASS_DECODED,
      KND_CLASS_INDEXED,
      KND_CLASS_COMPLETE
@@ -59,16 +60,6 @@ struct kndClassCommit
     struct kndClassInst **insts;
     size_t                num_insts;
     struct kndClassCommit *next;
-};
-
-struct kndClassFacet
-{
-    struct kndClassEntry *base;
-    struct kndSet *set;
-    struct kndClassRef *elems;
-    size_t num_elems;
-    struct kndClassFacet *children;
-    struct kndClassFacet *next;
 };
 
 struct kndClassIdx
@@ -109,10 +100,8 @@ struct kndClassBasePred
     size_t id_size;
     size_t numid;
 
-    struct kndClass *owner;
+    struct kndClass *subj;
     struct kndClassEntry *entry;
-
-    size_t subclass_id;
 
     struct kndAttrStm *attr_stms;
     struct kndAttrStm *attr_stms_tail;
@@ -217,12 +206,17 @@ struct kndClass
 
 int knd_get_class_entry(struct kndRepo *self, const char *name, size_t name_size, bool check_ancestors,
                         struct kndClassEntry **result, struct kndTask *task);
-int knd_get_class(struct kndRepo *self, const char *name, size_t name_size, struct kndClass **result, struct kndTask *task);
-int knd_get_class_by_id(struct kndRepo *self, const char *id, size_t id_size, struct kndClass **result, struct kndTask *task);
+
+int knd_get_class_by_name(struct kndRepo *self, const char *name, size_t name_size,
+                          struct kndClass **result, struct kndTask *task);
+int knd_get_class_by_id(struct kndRepo *self, const char *id, size_t id_size,
+                        struct kndClass **result, struct kndTask *task);
 int knd_get_class_entry_by_id(struct kndRepo *repo, const char *id, size_t id_size,
                               struct kndClassEntry **result, struct kndTask *task);
 
-int knd_is_base(struct kndClass *self, struct kndClass *child);
+int knd_class_is_base(struct kndClass *self, struct kndClass *child);
+int knd_class_is_direct_child(struct kndClass *base, struct kndClass *cls, size_t *numid);
+
 int knd_is_subclass_or_equals(struct kndClass *c, struct kndClass *base);
 
 // int knd_class_get_attr(struct kndClass *self, const char *name, size_t name_size, struct kndAttrRef **result);
@@ -317,11 +311,10 @@ int knd_class_idx_new(struct kndClassIdx **result, struct kndMemPool *mempool);
 
 int knd_inner_class_new(struct kndClass **self, struct kndMemPool *mempool);
 
-int knd_class_base_pred_new(struct kndClassBasePred **result, struct kndMemPool *mempool);
+int knd_class_base_pred_new(struct kndClassBasePred **result, struct kndClass *cls,
+                            struct kndMemPool *mempool);
 
 int knd_class_ref_new(struct kndClassRef **result, struct kndMemPool *mempool);
-
-int knd_class_facet_new(struct kndClassFacet **result, struct kndMemPool *mempool);
 
 int knd_class_commit_new(struct kndMemPool *mempool, struct kndClassCommit **result);
 
@@ -406,6 +399,8 @@ static inline void knd_base_pred_append_attr_stm(struct kndClassBasePred *bp, st
     }
     bp->num_attr_stms++;
 }
+
+int knd_class_link_base(struct kndClass *cls, struct kndClass *base, struct kndTask *task);
 
 int knd_facet_subclass_hash(void *val, void *elem,void **payload, size_t *hashval,
                             struct kndTask *task);

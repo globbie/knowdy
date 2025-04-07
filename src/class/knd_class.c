@@ -273,21 +273,6 @@ int knd_class_commit_state(struct kndClassEntry *self, knd_state_phase phase, st
     return knd_OK;
 }
 
-
-int knd_class_facets_export(struct kndTask *task)
-{
-    task->out->reset(task->out);
-
-    switch (task->ctx->format) {
-    case KND_FORMAT_JSON:
-        return knd_class_facets_export_JSON(task);
-    default:
-        break;
-        //return knd_class_set_export_GSL(self, task);
-    }
-    return knd_FAIL;
-}
-
 int knd_empty_set_export(struct kndClass *self, knd_format format, struct kndTask *task)
 {
     task->out->reset(task->out);
@@ -328,7 +313,20 @@ int knd_class_export_state(struct kndClass *self, knd_format format, struct kndT
     return knd_FAIL;
 }
 
-int knd_is_base(struct kndClass *self, struct kndClass *child)
+int knd_class_is_direct_child(struct kndClass *base, struct kndClass *cls, size_t *numid)
+{
+    struct kndClassRef *ref;
+
+    FOREACH (ref, base->children) {
+        if (ref->entry == cls->entry) {
+            *numid = ref->numid;
+            return knd_OK;
+        }
+    }
+    return knd_NO_MATCH;
+}
+
+int knd_class_is_base(struct kndClass *self, struct kndClass *child)
 {
     struct kndClassRef *ref;
 
@@ -346,7 +344,7 @@ int knd_is_base(struct kndClass *self, struct kndClass *child)
              return knd_OK;
     }
     if (DEBUG_CLASS_LEVEL_2)
-        knd_log("-- no inheritance from  \"%.*s\" to \"%.*s\" :(",
+        knd_log("no inheritance from {cls %.*s} to {cls %.*s}",
                 self->entry->name_size, self->entry->name,
                 child->name_size, child->name);
     return knd_NO_MATCH;
@@ -423,8 +421,8 @@ int knd_class_set_export(struct kndSet *self, knd_format format, struct kndTask 
     return knd_FAIL;
 }
 
-int knd_get_class(struct kndRepo *repo, const char *name, size_t name_size,
-                  struct kndClass **result, struct kndTask *task)
+int knd_get_class_by_name(struct kndRepo *repo, const char *name, size_t name_size,
+                          struct kndClass **result, struct kndTask *task)
 {
     struct kndClassEntry *entry;
     struct kndSharedDict *class_name_idx = task->idxs->class_name_idx;
@@ -433,18 +431,18 @@ int knd_get_class(struct kndRepo *repo, const char *name, size_t name_size,
     int err;
 
     if (DEBUG_CLASS_LEVEL_2) {
-        knd_log(".. {repo %.*s} to get {class %.*s}..",
+        knd_log(".. {repo %.*s} to get {cls %.*s}..",
                 repo->name_size, repo->name, name_size, name);
     }
 
     entry = knd_shared_dict_get(class_name_idx, name, name_size);
     if (!entry) {
-        if (DEBUG_CLASS_LEVEL_TMP) {
+        if (DEBUG_CLASS_LEVEL_3) {
             knd_log("no local class found in {repo %.*s}", repo->name_size, repo->name);
         }
         /* check base repo */
         if (repo->base) {
-            err = knd_get_class(repo->base, name, name_size, result, task);
+            err = knd_get_class_by_name(repo->base, name, name_size, result, task);
             if (err) return err;
             return knd_OK;
         }
@@ -541,7 +539,7 @@ int knd_class_acquire(struct kndClassEntry *entry, struct kndClass **result, str
     int err;
 
     if (DEBUG_CLASS_LEVEL_2) {
-        knd_log(">> acquire {class %.*s {id %.*s}}",
+        knd_log(">> acquire {cls %.*s {id %.*s}}",
                 entry->name_size, entry->name, entry->id_size, entry->id);
     }
 
@@ -580,7 +578,7 @@ int knd_get_class_entry_by_id(struct kndRepo *repo, const char *id, size_t id_si
     struct kndSharedSet *class_idx = task->idxs->class_idx;
     int err;
 
-    if (DEBUG_CLASS_LEVEL_TMP) {
+    if (DEBUG_CLASS_LEVEL_2) {
         knd_log(".. {repo %.*s} to get class entry by id \"%.*s\"",
                 repo->name_size, repo->name, id_size, id);
     }
@@ -708,7 +706,8 @@ int knd_class_entry_clone(struct kndClassEntry *self, struct kndRepo *repo,
     return knd_OK;
 }
 
-int knd_class_base_pred_new(struct kndClassBasePred **result, struct kndMemPool *mempool)
+int knd_class_base_pred_new(struct kndClassBasePred **result, struct kndClass *cls,
+                            struct kndMemPool *mempool)
 {
     void *page;
     int err;
@@ -717,6 +716,7 @@ int knd_class_base_pred_new(struct kndClassBasePred **result, struct kndMemPool 
     if (err) return err;
     memset(page, 0,  sizeof(struct kndClassBasePred));
     *result = page;
+    (*result)->subj = cls;
     return knd_OK;
 }
 
@@ -728,18 +728,6 @@ int knd_class_ref_new(struct kndClassRef **result, struct kndMemPool *mempool)
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndClassRef));
-    *result = page;
-    return knd_OK;
-}
-
-int knd_class_facet_new(struct kndClassFacet **result, struct kndMemPool *mempool)
-{
-    void *page;
-    int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndClassFacet));
-    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
-    if (err) return err;
-    memset(page, 0,  sizeof(struct kndClassFacet));
     *result = page;
     return knd_OK;
 }
@@ -768,7 +756,7 @@ int knd_class_entry_new(struct kndClassEntry **result, struct kndMemPool *mempoo
     return knd_OK;
 }
 
-int knd_class_new(struct kndClass **self, struct kndMemPool *mempool)
+int knd_class_new(struct kndClass **result, struct kndMemPool *mempool)
 {
     struct kndSet *attr_idx;
     void *page;
@@ -781,7 +769,7 @@ int knd_class_new(struct kndClass **self, struct kndMemPool *mempool)
     err = knd_set_new(&attr_idx, mempool);
     if (err) return err;
 
-    *self = page;
-    (*self)->attr_idx = attr_idx;
+    *result = page;
+    (*result)->attr_idx = attr_idx;
     return knd_OK;
 }

@@ -51,9 +51,9 @@ int knd_attr_decode(struct kndAttr *attr, struct kndTask *task)
     int err;
 
     if (DEBUG_ATTR_DECODE_LEVEL_2) {
-        knd_log(".. decoding {class %.*s {attr %.*s}}",
+        knd_log("decoding {cls %.*s {attr %.*s {id %.*s}}}",
                 attr->owner->name_size, attr->owner->name,
-                attr->name_size, attr->name);
+                attr->name_size, attr->name, attr->id_size, attr->id);
     }
 
     if (attr->tr) {

@@ -19,9 +19,6 @@
 #define DEBUG_QUANT_INDEX_LEVEL_3 0
 #define DEBUG_QUANT_INDEX_LEVEL_TMP 1
 
-static int create_subfacets(struct kndFacet *parent, const char *seq, size_t seq_size,
-                            struct kndTask *task);
-
 /*
 static int add_elem(struct kndFacet *parent, const char *seq, size_t seq_size,
                     struct kndAttrFacetElem *elem, struct kndTask *task)
@@ -166,7 +163,7 @@ int knd_quant_ureal_index(struct kndFacet *facet, struct kndClassEntry *topic,
                 topic->name_size, topic->name,
                 stm->name_size, stm->name, stm->val_size, stm->val, ureal->numval);
     }
-
+    
     return knd_OK;
 }
 
@@ -183,7 +180,9 @@ int knd_quant_seq_len_hash(void *curr_val, void *obj, void **val, size_t *numval
 
     *numval = uint->seq_size;
     *val = uint;
-    return knd_OK;
+
+    // TODO
+    return knd_NO_MATCH;
 }
 
 int knd_quant_hash(void *curr_val, void *obj, void **val, size_t *numval, struct kndTask *task)

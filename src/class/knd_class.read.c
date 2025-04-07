@@ -68,7 +68,7 @@ static gsl_err_t read_attr_stm(void *obj, const char *name, size_t name_size,
     struct kndAttrStm *stm;
     int err;
 
-    err = knd_attr_stm_new(&stm, task->mempool);
+    err = knd_attr_stm_new(&stm, ctx->base_pred->subj, task->mempool);
     if (err) {
         KND_TASK_LOG("failed to alloc an attr stm");
         return *total_size = 0, make_gsl_err_external(err);
@@ -90,7 +90,7 @@ static gsl_err_t read_attr_stm_list(void *obj, const char *name, size_t name_siz
     struct kndAttrStm *stm;
     int err;
 
-    err = knd_attr_stm_new(&stm, task->mempool);
+    err = knd_attr_stm_new(&stm, ctx->base_pred->subj, task->mempool);
     if (err) {
         KND_TASK_LOG("failed to alloc an attr stm");
         return *total_size = 0, make_gsl_err_external(err);
@@ -157,14 +157,13 @@ static gsl_err_t set_class_ref(void *obj, const char *id, size_t id_size)
 static gsl_err_t parse_baseclass_array_item(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndClass *self = ctx->class;
+    struct kndClass *cls = ctx->class;
     struct kndClassBasePred *base_pred;
     struct kndMemPool *mempool = ctx->task->mempool;
     int err;
 
-    err = knd_class_base_pred_new(&base_pred, mempool);
+    err = knd_class_base_pred_new(&base_pred, cls, mempool);
     if (err) return *total_size = 0, make_gsl_err_external(err);
-    base_pred->owner = self;
     ctx->base_pred = base_pred;
 
     struct gslTaskSpec specs[] = {
@@ -187,7 +186,7 @@ static gsl_err_t parse_baseclass_array_item(void *obj, const char *rec, size_t *
 
     knd_calc_num_id(base_pred->id, base_pred->id_size, &base_pred->numid);
 
-    knd_class_append_base_pred(self, base_pred);
+    knd_class_append_base_pred(cls, base_pred);
 
     ctx->base_pred = NULL;
 
@@ -591,12 +590,12 @@ int knd_class_read(struct kndClass *self, const char *rec, size_t *total_size,
                    struct kndTask *task)
 {
     if (DEBUG_CLASS_READ_LEVEL_2) {
-        knd_log(".. reading {class %.*s} GSP: \"%.*s\"",
+        knd_log(".. reading {cls %.*s} GSP {rec %.*s}",
                 self->name_size, self->name, 128, rec);
     }
 
     if (self->phase >= KND_CLASS_READ) {
-        knd_log("vicious circle detected while reading {class %.*s}",
+        knd_log("vicious circle detected while reading {cls %.*s}",
                 self->name_size, self->name);
         return knd_FAIL;
     }

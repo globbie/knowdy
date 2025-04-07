@@ -79,7 +79,7 @@ int knd_rel_pred_resolve(struct kndAttrStm *var, struct kndTask *task)
     err = knd_class_acquire(entry, &template_c, task);
     KND_TASK_ERR("failed to acquire template class \"%.*s\"", entry->name_size, entry->name);
 
-    err = knd_is_base(template_c, c);
+    err = knd_class_is_base(template_c, c);
     KND_TASK_ERR("no inheritance from %.*s to %.*s",
                  template_c->name_size, template_c->name, c->name_size, c->name);
 

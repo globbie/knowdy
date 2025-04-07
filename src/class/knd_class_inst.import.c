@@ -80,7 +80,7 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
             return make_gsl_err_external(err);
         }
 
-        err = knd_is_base(inner_c, c);
+        err = knd_class_is_base(inner_c, c);
         if (err) {
             KND_TASK_LOG("no inheritance from %.*s to %.*s",
                          inner_c->name_size, inner_c->name, c->name_size, c->name);
@@ -126,7 +126,7 @@ static gsl_err_t import_attr_stm(void *obj, const char *name, size_t name_size,
     struct kndAttrStm *stm;
     int err;
 
-    err = knd_attr_stm_new(&stm, task->mempool);
+    err = knd_attr_stm_new(&stm, NULL, task->mempool);
     if (err) {
         return *total_size = 0, make_gsl_err_external(err);
     }
@@ -147,7 +147,7 @@ static gsl_err_t import_attr_stm_list(void *obj, const char *name, size_t name_s
     struct kndAttrStm *stm;
     int err;
 
-    err = knd_attr_stm_new(&stm, task->mempool);
+    err = knd_attr_stm_new(&stm, NULL, task->mempool);
     if (err) {
         return *total_size = 0, make_gsl_err_external(err);
     }

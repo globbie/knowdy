@@ -46,6 +46,97 @@
 #define DEBUG_CLASS_DECODE_LEVEL_5 0
 #define DEBUG_CLASS_DECODE_LEVEL_TMP 1
 
+struct LocalContext {
+    struct kndTask *task;
+    struct kndRepo *repo;
+    struct kndClass *class;
+    struct kndClass *baseclass;
+    struct kndClassBasePred *base_pred;
+};
+
+static int inherit_attr(void *obj,
+                        const char *unused_var(elem_id), size_t unused_var(elem_id_size),
+                        size_t unused_var(count), void *elem)
+{
+    struct LocalContext *ctx = obj;
+    struct kndTask    *task = ctx->task;
+    struct kndMemPool *mempool = task->mempool;
+    struct kndClass   *self = ctx->class;
+    struct kndSet     *attr_idx = self->attr_idx;
+    struct kndAttrRef *src_ref = elem;
+    struct kndAttr    *attr    = src_ref->attr;
+    struct kndAttrRef *ref = NULL;
+    int err;
+
+    err = knd_set_get(attr_idx, attr->id, attr->id_size, (void**)&ref);
+    if (!err) {
+        if (DEBUG_CLASS_DECODE_LEVEL_2) {
+            knd_log("..  {attr %.*s {id %.*s}} already active in {cls %.*s}..",
+                    attr->name_size, attr->name, attr->id_size, attr->id,
+                    self->name_size, self->name);
+        }
+
+        /* override an existing attr stm */
+        if (ref->attr_stm && src_ref->attr_stm) {
+            if (DEBUG_CLASS_DECODE_LEVEL_3) {
+                knd_log("..  {stm %.*s {id %.*s}} already set in \"%.*s\" => %.*s",
+                        attr->name_size, attr->name, attr->id_size, attr->id,
+                        self->name_size, self->name, ref->attr_stm->val_size, ref->attr_stm->val);
+                knd_log("override with new val: %.*s",
+                            src_ref->attr_stm->val_size, src_ref->attr_stm->val);
+            }
+            ref->attr_stm = src_ref->attr_stm;
+            ref->cls_entry = src_ref->cls_entry;
+            return knd_OK;
+        }
+    }
+
+    if (DEBUG_CLASS_DECODE_LEVEL_3) {
+        knd_log("..  {attr %.*s {id %.*s}} inherited by {cls %.*s}",
+                attr->name_size, attr->name, attr->id_size, attr->id,
+                self->name_size, self->name);
+    }
+    if (ref) {
+        if (src_ref->attr_stm) {
+            ref->attr_stm = src_ref->attr_stm;
+            ref->cls_entry = src_ref->cls_entry;
+        }
+        return knd_OK;
+    }
+
+    err = knd_attr_ref_new(&ref, mempool);
+    KND_TASK_ERR("failed to alloc an attr ref err:%d", err);
+
+    ref->attr = attr;
+    ref->attr_stm = src_ref->attr_stm;
+    ref->cls_entry = src_ref->cls_entry;
+
+    err = knd_set_add(attr_idx, attr->id, attr->id_size, (void*)ref);
+    KND_TASK_ERR("failed to update attr idx of %.*s", self->name_size, self->name);
+
+    return knd_OK;
+}
+
+static int inherit_attrs(struct kndClass *c, struct kndClass *base, struct kndTask *task)
+{
+    int err;
+
+    if (DEBUG_CLASS_DECODE_LEVEL_2) {
+        knd_log(".. {cls %.*s} to inherit attrs from {cls %.*s} {total %zu}",
+                c->entry->name_size, c->entry->name,
+                base->name_size, base->name, base->attr_idx->num_elems);
+    }
+    struct LocalContext ctx = {
+        .task = task,
+        .class = c,
+        .baseclass = base
+    };
+    err = knd_set_map(base->attr_idx, inherit_attr, (void*)&ctx);
+    KND_TASK_ERR("{cls %.*s} failed to inherit attrs from {cls %.*s}",
+                 c->name_size, c->name, base->name_size, base->name);
+    return knd_OK;
+}
+
 int knd_class_entry_unmarshall(const char *elem_id, size_t elem_id_size,
                                const char *rec, size_t rec_size,
                                void **result, struct kndTask *task)
@@ -107,6 +198,77 @@ int knd_class_entry_unmarshall(const char *elem_id, size_t elem_id_size,
     return knd_OK;
 }
 
+static int decode_baseclasses(struct kndClass *c, struct kndTask *task)
+{
+    struct kndClassBasePred *bp;
+    struct kndClass *base;
+    size_t numid;
+    int err;
+
+    if (DEBUG_CLASS_DECODE_LEVEL_2) {
+        knd_log("{cls %.*s} to decode its bases", c->name_size, c->name);
+    }
+
+    if (c->phase >= KND_CLASS_BASE_DECODED) {
+        knd_log("-- vicious circle detected in resolving bases of {class %.*s}",
+                c->name_size, c->name);
+        return knd_FAIL;
+    }
+
+    FOREACH (bp, c->base_preds) {
+        err = knd_class_acquire(bp->entry, &base, task);
+        KND_TASK_ERR("failed to acquire {base %.*s} of {cls %.*s}",
+                     bp->entry->name_size, bp->entry->name,
+                     c->name_size, c->name);
+
+        if (base->phase < KND_CLASS_BASE_DECODED) {
+            err = decode_baseclasses(base, task);
+            KND_TASK_ERR("failed to decode base classes of {cls %.*s}",
+                         base->name_size, base->name);
+        }
+
+        /* check if subclass is already registered in the base class */
+        err = knd_class_is_direct_child(base, c, &numid);
+        if (err != knd_NO_MATCH) {
+            if (DEBUG_CLASS_DECODE_LEVEL_2) {
+                knd_log("-- child {cls %.*s} already registered in base {cls %.*s}?",
+                        c->name_size, c->name, base->name_size, base->name);
+            }
+            continue;
+        }
+
+        err = knd_class_link_base(c, base, task);
+        KND_TASK_ERR("failed to link {cls %.*s} to base {cls %.*s}",
+                     c->name_size, c->name, base->name_size, base->name);
+    }
+
+    c->phase = KND_CLASS_BASE_DECODED;
+    return knd_OK;
+}
+
+static int register_attr(struct kndClass *self, struct kndAttr *attr, struct kndTask *task)
+{
+    struct kndMemPool *mempool = task->mempool;
+    struct kndSharedDict *attr_name_idx = task->idxs->attr_name_idx;
+    struct kndSharedSet *attr_idx = task->idxs->attr_idx;
+    struct kndAttrRef *attr_ref, *attr_refs;
+    int err;
+
+    if (DEBUG_CLASS_DECODE_LEVEL_2) {
+        knd_log(".. register {cls %.*s {attr %.*s}}",
+                self->name_size, self->name, attr->name_size, attr->name);
+    }
+    err = knd_attr_ref_new(&attr_ref, mempool);
+    KND_TASK_ERR("failed to alloc kndAttrRef")
+    attr_ref->attr = attr;
+    attr_ref->cls_entry = self->entry;
+
+    err = knd_set_add(self->attr_idx, attr->id, attr->id_size, (void*)attr_ref);
+    KND_TASK_ERR("failed to register {cls %.*s {attr %.*s}}",
+                 self->name_size, self->name, attr->name_size, attr->name);
+    return knd_OK;
+}
+
 int knd_class_decode(struct kndClass *c, struct kndTask *task)
 {
     struct kndClassBasePred *bp;
@@ -115,8 +277,8 @@ int knd_class_decode(struct kndClass *c, struct kndTask *task)
     struct kndClass *base;
     int err;
 
-    if (DEBUG_CLASS_DECODE_LEVEL_TMP) {
-        knd_log("\n.. decoding {class %.*s {num-bases %zu}}",
+    if (DEBUG_CLASS_DECODE_LEVEL_2) {
+        knd_log("\n.. decoding {cls %.*s {num-bases %zu}}",
                 c->name_size, c->name, c->num_base_preds);
         size_t count = 0;
         FOREACH (bp, c->base_preds) {
@@ -130,6 +292,24 @@ int knd_class_decode(struct kndClass *c, struct kndTask *task)
     if (c->phase >= KND_CLASS_DECODED) {
         knd_log("-- vicious circle detected in decoding {cls %.*s}", c->name_size, c->name);
         return knd_FAIL;
+    }
+
+    /* immediate attrs */
+    if (c->num_attrs) {
+        FOREACH (attr, c->attrs) {
+            err = knd_attr_decode(attr, task);
+            KND_TASK_ERR("failed to decode {cls %.*s {attr %.*s}}",
+                         c->name_size, c->name, attr->id_size, attr->id);
+
+            err = register_attr(c, attr, task);
+            KND_TASK_ERR("failed to register {cls %.*s {attr %.*s}}",
+                         c->name_size, c->name, attr->id_size, attr->id);
+        }
+    }
+
+    if (c->phase < KND_CLASS_BASE_DECODED) {
+        err = decode_baseclasses(c, task);
+        KND_TASK_ERR("failed to decode base classes of {cls %.*s}", c->name_size, c->name);
     }
 
     if (c->tr) {
@@ -146,18 +326,14 @@ int knd_class_decode(struct kndClass *c, struct kndTask *task)
                      bp->entry->name_size, bp->entry->name,
                      c->name_size, c->name);
 
+        err = inherit_attrs(c, base, task);
+        KND_TASK_ERR("failed to inherit attrs from {cls %.*s}",
+                     base->name_size, base->name);
+
         if (bp->attr_stms) {
             err = knd_decode_attr_stms(base, bp->attr_stms, task);
             KND_TASK_ERR("failed to decode attr stms of {cls %.*s}",
                          base->name_size, base->name);
-        }
-    }
-
-    if (c->num_attrs) {
-        FOREACH (attr, c->attrs) {
-            err = knd_attr_decode(attr, task);
-            KND_TASK_ERR("failed to decode {cls %.*s {attr %.*s}}",
-                         c->name_size, c->name, attr->id_size, attr->id);
         }
     }
 

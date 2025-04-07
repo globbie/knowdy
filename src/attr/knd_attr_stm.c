@@ -115,7 +115,7 @@ int knd_cls_inner_attr_stm_new(struct kndClassInnerAttrStm **result, struct kndM
     return knd_OK;
 }
 
-int knd_attr_stm_new(struct kndAttrStm **result, struct kndMemPool *mempool)
+int knd_attr_stm_new(struct kndAttrStm **result, struct kndClass *subj, struct kndMemPool *mempool)
 {
     void *page;
     int err;
@@ -124,5 +124,6 @@ int knd_attr_stm_new(struct kndAttrStm **result, struct kndMemPool *mempool)
     if (err) return err;
     memset(page, 0,  sizeof(struct kndAttrStm));
     *result = page;
+    (*result)->subj = subj;
     return knd_OK;
 }

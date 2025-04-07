@@ -88,54 +88,6 @@ extern int knd_export_inherited_attr_GSL(void *obj,
     /* skip over immediate attrs */
     if (attr->owner == self) return knd_OK;
 
-    //if (attr_stm && attr_stm->base_pred) {
-    //    if (attr_stm->base_pred->owner == self) return knd_OK;
-    //}
-
-    if (attr->proc) {
-        if (DEBUG_ATTR_STM_GSL_LEVEL_2)
-            knd_log("..computed attr: %.*s!", attr->name_size, attr->name);
-
-        if (!attr_stm) {
-            err = knd_attr_stm_new(&attr_stm, mempool);
-            RET_ERR();
-            attr_stm->attr = attr;
-            attr_stm->name = attr->name;
-            attr_stm->name_size = attr->name_size;
-            ref->attr_stm = attr_stm;
-        }
-
-        switch (attr->type) {
-        case KND_ATTR_UINT:
-            //numval = attr_stm->numval;
-
-            //if (!attr_stm->is_cached) {
-                //err = knd_compute_class_attr_num_value(self, attr_stm);
-                //if (err) return err;
-                //numval = attr_stm->numval;
-                //attr_stm->numval = numval;
-                //attr_stm->is_cached = true;
-            //}
-
-            err = out->writec(out, ',');
-            if (err) return err;
-            err = out->writec(out, '"');
-            if (err) return err;
-            err = out->write(out, attr->name, attr->name_size);
-            if (err) return err;
-            err = out->writec(out, '"');
-            if (err) return err;
-            err = out->writec(out, ':');
-            if (err) return err;
-            
-            err = out->writef(out, "%zu", numval);                                RET_ERR();
-            break;
-        default:
-            break;
-        }
-        return knd_OK;
-    }
-
     if (!attr_stm) {
         // TODO
         return knd_OK;

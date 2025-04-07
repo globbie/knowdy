@@ -98,6 +98,7 @@ static gsl_err_t set_owner_class_id(void *obj, const char *id, size_t id_size)
 
     memcpy(ref->owner_id, id, id_size);
     ref->owner_id_size = id_size;
+
     return make_gsl_err(gsl_OK);
 }
 
