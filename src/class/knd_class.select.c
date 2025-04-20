@@ -9,6 +9,7 @@
 #include "knd_user.h"
 #include "knd_query.h"
 #include "knd_set.h"
+#include "knd_facet.h"
 #include "knd_shared_set.h"
 #include "knd_output.h"
 
@@ -33,6 +34,7 @@ struct LocalContext {
 
     struct kndClass *cls;
     struct kndClass *base_cls;
+    struct kndClass *base_subj_cls;
 
     struct kndAttr *attr;
     struct kndClassDeclar *declar;
@@ -76,15 +78,19 @@ static gsl_err_t select_class_attr(void *obj, const char *name, size_t name_size
 
     err = knd_attr_find(query_class, name, name_size, &attr, task);
     if (err) {
-        KND_TASK_LOG("{attr %.*s} is not applicable to {class %.*s}",
+        KND_TASK_LOG("{attr %.*s} is not applicable to {cls %.*s}",
                      name_size, name, query_class->name_size, query_class->name);
         return make_gsl_err(gsl_FAIL);
     }
 
-    if (DEBUG_CLASS_SELECT_LEVEL_3) {
-        knd_log("{cls %.*s {attr %.*s}} confirmed by owner {class %.*s}",
+    if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
+        knd_log("{cls %.*s {attr %.*s}} confirmed by owner {cls %.*s}",
                 query_class->name_size, query_class->name, name_size, name,
                 attr->owner->name_size, attr->owner->name);
+
+        if (attr->facet) {
+            knd_facet_str(attr->facet, knd_attr_stm_present_subj, 0);
+        }
     }
 
     err = knd_attr_stm_new(&stm, query_class, task->mempool);
@@ -112,14 +118,14 @@ static gsl_err_t get_class(void *obj, const char *name, size_t name_size)
 
     err = knd_get_class_entry(ctx->repo, name, name_size, true, &entry, task);
     if (err) {
-        KND_TASK_LOG("{class %.*s} not found", name_size, name);
+        KND_TASK_LOG("{cls %.*s} not found", name_size, name);
         task->ctx->error = knd_NO_MATCH;
         return make_gsl_err(gsl_FAIL);
     }
 
     err = knd_class_acquire(entry, &c, task);
     if (err) {
-        KND_TASK_LOG("failed to acquire class \"%.*s\"", entry->name_size, entry->name);
+        KND_TASK_LOG("failed to acquire {cls %.*s}", entry->name_size, entry->name);
         return make_gsl_err_external(err);
     }
     query->type = KND_QUERY_GET;
@@ -169,16 +175,72 @@ static gsl_err_t get_baseclass(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
+static gsl_err_t get_subj_baseclass(void *obj, const char *name, size_t name_size)
+{
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    struct kndMemPool *mempool = task->mempool;
+    struct kndQuery *query = ctx->query;
+    struct kndClassBasePred *base_pred;
+    struct kndClassEntry *entry;
+    struct kndClass *c;
+    int err;
+
+    if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
+
+    err = knd_get_class_entry(ctx->repo, name, name_size, true, &entry, task);
+    if (err) {
+        KND_TASK_LOG("{cls %.*s} not found", name_size, name);
+        task->ctx->error = knd_NO_MATCH;
+        return make_gsl_err(gsl_FAIL);
+    }
+
+    err = knd_class_acquire(entry, &c, task);
+    if (err) {
+        KND_TASK_LOG("failed to acquire {cls %.*s}", entry->name_size, entry->name);
+        return make_gsl_err_external(err);
+    }
+
+    ctx->base_subj_cls = c;
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t select_inverse_attr(void *obj, const char *rec, size_t *total_size)
+{
+    gsl_err_t err;
+
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = get_subj_baseclass,
+          .obj = obj
+        },
+        { .validate = select_class_attr,
+          .obj = obj
+        }
+    };
+
+    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (err.code) return err;
+
+    return make_gsl_err(gsl_OK);
+}
+
 static gsl_err_t select_by_baseclass(void *obj, const char *rec, size_t *total_size)
 {
     gsl_err_t err;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_2)
+    if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
         knd_log(".. select by base {cls %.*s}", 64, rec);
-
+    }
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = get_baseclass,
+          .obj = obj
+        },
+        { .name = "of",
+          .name_size = strlen("of"),
+          .parse = select_inverse_attr,
           .obj = obj
         },
         { .validate = select_class_attr,

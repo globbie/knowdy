@@ -25,16 +25,6 @@ struct kndSet;
 struct kndMemPool;
 struct kndTask;
 
-static const char* const knd_facet_types[] = {
-    "Sequence Length",
-    "Accumulation",
-    "Address",
-    "Subclass"
-};
-
-typedef int (*knd_facet_hash_fn)(void *curr_val, void *elem, void **val, size_t *numval, struct kndTask *task);
-typedef int (*knd_facet_elem_key_fn)(void *obj, const char **key, size_t *key_size);
-
 typedef enum knd_facet_type {
     KND_FACET_SEQ_LENGTH,
     KND_FACET_ACCUM,
@@ -42,12 +32,29 @@ typedef enum knd_facet_type {
     KND_FACET_SUBCLASS
 } knd_facet_type;
 
+static const char* const knd_facet_type_names[] = {
+    "Sequence Length",
+    "Accumulation",
+    "Address",
+    "Subclass"
+};
+
+typedef int (*knd_facet_hash_fn)(void *curr_val, void *elem, void **val,
+                                 size_t *numval, struct kndTask *task);
+typedef void (*knd_facet_val_str_fn)(void *curr_val, size_t depth);
+
+typedef int (*knd_facet_elem_key_fn)(void *elem, const char **key, size_t *key_size);
+typedef void (*knd_facet_elem_str_fn)(void *elem, size_t depth);
+
+typedef int (*knd_facet_map_fn)(void *elem, struct kndTask *task);
+
 struct kndFacetHashSpec {
     knd_facet_type type;
     const char *name;
     size_t name_size;
 
     knd_facet_hash_fn hash_fn;
+    knd_facet_val_str_fn val_str_fn;
 
     struct kndFacetHashSpec *next;
 };
@@ -92,15 +99,13 @@ struct kndFacet
 
     size_t num_elems;
     /* providing keys (ids) for storing elems in kndSet
-       if cache capacity is exceeded */
+       if cache storage capacity is exceeded */
     knd_facet_elem_key_fn elem_key_fn;
     struct kndSet *idx;
 
     /* subfacets */
     struct kndFacet *children[KND_MAX_FACETS];
     size_t num_children;
-
-    //struct kndFacet *spec;
 };
 
 struct kndFacetLeaf
@@ -142,7 +147,14 @@ int knd_facet_new(struct kndFacet **result, void *val,
                   knd_facet_elem_key_fn elem_key_fn, struct kndMemPool *mempool);
 
 int knd_facet_hash_spec_new(struct kndFacetHashSpec **result, knd_facet_type facet_type,
-                            knd_facet_hash_fn hash_fn, struct kndMemPool *mempool);
+                            knd_facet_hash_fn hash_fn, knd_facet_val_str_fn val_str_fn,
+                            struct kndMemPool *mempool);
 
-void knd_facet_str(struct kndFacet *parent, size_t depth);
 int knd_facet_add(struct kndFacet *facet, void *elem, struct kndTask *task);
+
+int knd_facet_map(struct kndFacet *facet, void *val,
+                  const char *range_from, size_t range_from_size,
+                  const char *range_to, size_t range_to_size,
+                  knd_facet_map_fn cb, struct kndTask *task);
+
+void knd_facet_str(struct kndFacet *facet, knd_facet_elem_str_fn cb, size_t depth);

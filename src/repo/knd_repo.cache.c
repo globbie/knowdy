@@ -32,7 +32,7 @@ static bool detect_if_cacheable(struct kndClassEntry *unused_var(entry))
 {
     //size_t num_requests = atomic_load_explicit(&entry->num_requests, memory_order_relaxed);
     //if (num_requests > 3) {
-        //knd_log("{class %.*s {num-requests %zu}}",
+        //knd_log("{cls %.*s {num-requests %zu}}",
         //        entry->name_size, entry->name, num_requests);
         // TODO
     //    return true;
@@ -77,8 +77,8 @@ int knd_repo_cache_update(struct kndRepoSnapshot *snapshot, struct kndTask *task
     struct kndRepo *repo = snapshot->repo;
     int err;
 
-    if (DEBUG_REPO_CACHE_LEVEL_TMP) {
-        knd_log("\n.. rebuilding cache for {repo %.*s}", repo->name_size, repo->name);
+    if (DEBUG_REPO_CACHE_LEVEL_2) {
+        knd_log(".. rebuilding cache for {repo %.*s}", repo->name_size, repo->name);
     }
 
     // TODO sort entries by usage

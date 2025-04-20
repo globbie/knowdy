@@ -17,8 +17,39 @@
 #define DEBUG_FACET_LEVEL_5 0
 #define DEBUG_FACET_LEVEL_TMP 1
 
+void knd_facet_str(struct kndFacet *facet,
+                   knd_facet_elem_str_fn elem_str_fn, size_t depth)
+{
+    struct kndFacetHashSpec *spec = facet->curr_spec;
+
+    assert (spec != NULL);
+
+    knd_log("{facet %s", knd_facet_type_names[spec->type]);
+
+    if (facet->val) {
+        spec->val_str_fn(facet->val, depth);
+    } else {
+        knd_log("{root}");
+    }
+
+    if (facet->cache_size) {
+        for (size_t i = 0; i < facet->cache_size; i++) {
+            elem_str_fn(facet->cache[i], depth);
+        }
+    }
+
+    if (facet->num_children) {
+        for (size_t i = 0; i < facet->num_children; i++) {
+            knd_facet_str(facet->children[i], elem_str_fn, depth + 1);
+        }
+    }
+
+    knd_log("}");
+}
+
 int knd_facet_hash_spec_new(struct kndFacetHashSpec **result, knd_facet_type facet_type,
-                            knd_facet_hash_fn hash_fn, struct kndMemPool *mempool)
+                            knd_facet_hash_fn hash_fn, knd_facet_val_str_fn val_str_fn,
+                            struct kndMemPool *mempool)
 {
     void *page;
     struct kndFacetHashSpec *spec;
@@ -31,6 +62,7 @@ int knd_facet_hash_spec_new(struct kndFacetHashSpec **result, knd_facet_type fac
 
     spec->type = facet_type;
     spec->hash_fn = hash_fn;
+    spec->val_str_fn = val_str_fn;
 
     *result = spec;
     return knd_OK;
@@ -59,27 +91,6 @@ int knd_facet_new(struct kndFacet **result, void *val,
 
     *result = f;
     return knd_OK;
-}
-
-void knd_facet_str(struct kndFacet *parent, size_t depth)
-{
-    struct kndFacet *f;
-
-    if (parent->num_children) {
-        knd_log("%*s{facet {num-subfacets %zu} {num-elems %zu}}",
-                depth * KND_OFFSET_SIZE, "", 
-                parent->num_children, parent->num_elems);
-    } else {
-        knd_log("%*s{facet {num-elems %zu}}",
-                depth * KND_OFFSET_SIZE, "", parent->num_elems);
-    }
-
-    for (size_t i = 0; i < KND_MAX_FACETS; i++) {
-        f = parent->children[i];
-        if (!f) continue;
-
-        knd_facet_str(f, depth + 1);
-    }
 }
 
 int knd_facet_leaf_new(struct kndFacetLeaf **result, size_t numid, struct kndFacet *f)

@@ -165,6 +165,7 @@ int knd_index_inst_attr_stm(struct kndClassInstEntry *topic_inst, struct kndAttr
                 topic_inst->name_size, topic_inst->name,
                 knd_attr_names[attr->type], attr->name_size, attr->name);
     }
+
     switch (attr->type) {
     case KND_ATTR_CLS_INST_REF:
         //err = index_inst_ref(topic_inst, attr, stm, task);

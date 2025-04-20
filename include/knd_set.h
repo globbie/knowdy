@@ -97,5 +97,5 @@ int knd_set_intersect(struct kndSet *self, struct kndSet **sets, size_t num_sets
 
 int knd_set_add(struct kndSet *self, const char *key, size_t key_size, void *elem);
 int knd_set_sync(struct kndSet *self, map_cb_func cb, size_t *total_size, struct kndTask *task);
-int knd_set_map(struct kndSet *self, map_cb_func cb, void *obj);
+int knd_set_map(struct kndSet *self, map_cb_func cb, void *ctx);
 int knd_set_get(struct kndSet *self, const char *key, size_t key_size, void **elem);

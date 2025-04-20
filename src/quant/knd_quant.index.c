@@ -122,31 +122,8 @@ int knd_quant_uint_index(struct kndFacet *facet, struct kndClassEntry *topic,
                 uint->seq_size, uint->seq);
     }
 
-    //    err = knd_attr_facet_elem_new(&elem, task->mempool);
-    //KND_TASK_ERR("failed to alloc attr facet elem");
-    // elem->entry = topic;
-    //elem->stm = stm;
-
-    /* no need to apply a hash func for a small set */
-    /*if (facet->num_elems < KND_FACET_MAX_ELEM_CACHE) {
-        facet->elems->cache[facet->num_elems] = elem;
-        facet->num_elems++;
-        return knd_OK;
-    }
-
-    if (!facet->num_children) {
-        if (DEBUG_QUANT_INDEX_LEVEL_3) {
-            knd_log("-- NB: root facet buf capacity exceeded (%zu elems), creating subfacets",
-                    KND_FACET_MAX_ELEM_CACHE);
-        }
-
-        err = create_subfacets(facet, "/", 1, task);
-        KND_TASK_ERR("failed to create subfacets");
-    }
-
-    err = add_elem(facet, uint->seq, uint->seq_size, elem, task);
-    KND_TASK_ERR("failed to fetch a facet");
-    */
+    // TODO
+    
     return knd_OK;
 }
 
@@ -163,7 +140,9 @@ int knd_quant_ureal_index(struct kndFacet *facet, struct kndClassEntry *topic,
                 topic->name_size, topic->name,
                 stm->name_size, stm->name, stm->val_size, stm->val, ureal->numval);
     }
-    
+
+    // TODO
+
     return knd_OK;
 }
 
@@ -175,7 +154,8 @@ int knd_quant_seq_len_hash(void *curr_val, void *obj, void **val, size_t *numval
     size_t pos = 0;
 
     if (DEBUG_QUANT_INDEX_LEVEL_TMP) {
-        knd_log(".. hash quant {seq %.*s {len %zu}}", uint->seq_size, uint->seq, uint->seq_size);
+        knd_log(".. hash quant {seq %.*s {len %zu}}",
+                uint->seq_size, uint->seq, uint->seq_size);
     }
 
     *numval = uint->seq_size;
@@ -185,7 +165,16 @@ int knd_quant_seq_len_hash(void *curr_val, void *obj, void **val, size_t *numval
     return knd_NO_MATCH;
 }
 
-int knd_quant_hash(void *curr_val, void *obj, void **val, size_t *numval, struct kndTask *task)
+void knd_quant_seq_len_str(void *val, size_t depth)
+{
+    struct kndQuantUInt *uint = val; 
+
+    knd_log("{seq %.*s {len %zu}}",
+            uint->seq_size, uint->seq, uint->seq_size);
+}
+
+int knd_quant_hash(void *curr_val, void *obj, void **val, size_t *numval,
+                   struct kndTask *task)
 {
     struct kndAttrStm *stm = obj;
     struct kndQuantAttrStm *quant_attr_stm = stm->subtype;
@@ -199,4 +188,12 @@ int knd_quant_hash(void *curr_val, void *obj, void **val, size_t *numval, struct
     *numval = pos;
     *val = uint;
     return knd_OK;
+}
+
+void knd_quant_str(void *val, size_t depth)
+{
+    struct kndQuantUInt *uint = val;
+
+    knd_log("{seq %.*s {len %zu}}",
+            uint->seq_size, uint->seq, uint->seq_size);
 }

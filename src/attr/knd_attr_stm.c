@@ -91,6 +91,33 @@ void knd_attr_stm_str(struct kndAttrStm *stm, size_t depth)
     }
 }
 
+void knd_attr_stm_present_subj(void *obj, size_t depth)
+{
+    struct kndAttrStm *stm = obj;
+    struct kndClass *subj = stm->subj;
+    struct kndAttr *attr = stm->attr;
+
+    knd_log("{cls %.*s {%.*s %.*s}}", subj->name_size, subj->name,
+            stm->name_size, stm->name, stm->val_size, stm->val);
+
+    /*
+    switch (attr->type) {
+    case KND_ATTR_CLS_INNER:
+        break;
+    case KND_ATTR_CLS_REF:
+        break;
+    case KND_ATTR_UINT:
+        break;
+    case KND_ATTR_UREAL:
+        break;
+    case KND_ATTR_STR:
+        break;
+    default:
+        break;
+    }
+    */
+}
+
 int knd_cls_ref_attr_stm_new(struct kndClassRefAttrStm **result, struct kndMemPool *mempool)
 {
     void *page;

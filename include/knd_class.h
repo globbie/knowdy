@@ -404,3 +404,4 @@ int knd_class_link_base(struct kndClass *cls, struct kndClass *base, struct kndT
 
 int knd_facet_subclass_hash(void *val, void *elem,void **payload, size_t *hashval,
                             struct kndTask *task);
+void knd_facet_subclass_str(void *val, size_t depth);

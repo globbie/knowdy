@@ -319,3 +319,9 @@ int knd_facet_subclass_hash(void *val, void *elem, void **payload, size_t *hashv
     return knd_NO_MATCH;
 }
 
+void knd_facet_subclass_str(void *val, size_t depth)
+{
+    struct kndClassEntry *entry = val;
+
+    knd_log("{cls %.*s}", entry->name_size, entry->name);
+}

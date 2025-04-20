@@ -494,7 +494,6 @@ int knd_quant_uint_query_plan(struct kndQuantAttrStm *stm, struct kndFacet *face
 
     if (DEBUG_QUANT_SELECT_LEVEL_2) {
         knd_log(".. planning an uint query");
-        knd_facet_str(facet, 0);
     }
 
     switch (stm->type) {

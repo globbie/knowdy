@@ -160,6 +160,20 @@ static int decode_uint(struct kndAttrStm *stm, struct kndTask *task)
     return knd_OK;
 }
 
+static int decode_ureal(struct kndAttrStm *stm, struct kndTask *task)
+{
+    struct kndCharSeq *seq;
+    int err;
+
+    err = knd_charseq_decode(stm->val_id, stm->val_id_size, &seq, task);
+    KND_TASK_ERR("failed to decode a charseq");
+
+    stm->val = seq->val;
+    stm->val_size = seq->val_size;
+
+    return knd_OK;
+}
+
 static int decode_str(struct kndAttrStm *stm, struct kndTask *task)
 {
     struct kndCharSeq *seq;
@@ -203,9 +217,9 @@ static int decode_attr_stm(struct kndClass *base, struct kndAttrStm *stm, struct
                      stm->name_size, stm->name, stm->val_id_size, stm->val_id);
         break;
     case KND_ATTR_UREAL:
-        //err = decode_ureal(stm, task);
-        //KND_TASK_ERR("failed to decode {%.*s {val-id %.*s}}",
-        //             stm->name_size, stm->name, stm->val_id_size, stm->val_id);
+        err = decode_ureal(stm, task);
+        KND_TASK_ERR("failed to decode {%.*s {val-id %.*s}}",
+                     stm->name_size, stm->name, stm->val_id_size, stm->val_id);
         break;
     case KND_ATTR_STR:
         err = decode_str(stm, task);
@@ -256,7 +270,7 @@ int knd_decode_attr_stms(struct kndClass *base, struct kndAttrStm *attr_stms, st
     struct kndAttrRef *ref;
     int err;
 
-    if (DEBUG_ATTR_STM_DECODE_LEVEL_2) {
+    if (DEBUG_ATTR_STM_DECODE_LEVEL_TMP) {
         knd_log(".. decoding attr stms of {base %.*s}", base->name_size, base->name);
     }
 
@@ -264,11 +278,12 @@ int knd_decode_attr_stms(struct kndClass *base, struct kndAttrStm *attr_stms, st
         err = knd_set_get(base->attr_idx, stm->id, stm->id_size, (void**)&ref);
         KND_TASK_ERR("no {attr %.*s} in {cls %.*s}",
                      stm->id_size, stm->id, base->name_size, base->name);
-        stm->name = ref->name;
-        stm->name_size = ref->name_size;
-        stm->attr = ref->attr;
 
-        assert (stm->attr != NULL);
+        assert (ref->attr != NULL);
+
+        stm->attr = ref->attr;
+        stm->name = ref->attr->name;
+        stm->name_size = ref->attr->name_size;
 
         if (stm->attr->is_a_set) {
             err = decode_attr_stm_list(base, stm, task);

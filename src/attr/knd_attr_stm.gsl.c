@@ -201,8 +201,8 @@ int knd_attr_stms_export_GSL(struct kndAttrStm *stms, struct kndTask *task, size
         }
 
         if (DEBUG_ATTR_STM_GSL_LEVEL_3) {
-            knd_log(">> attr stm GSL export: %.*s",
-                    attr->name_size, attr->name);
+            knd_log(">> attr stm GSL export: {attr %.*s {stm %.*s}}",
+                    attr->name_size, attr->name, stm->name_size, stm->name);
         }
         task->ctx->depth = curr_depth;
 
@@ -264,7 +264,8 @@ int knd_attr_stm_export_GSL(struct kndAttrStm *stm, struct kndTask *task, size_t
 
     switch (stm->attr->type) {
     case KND_ATTR_UINT:
-        // fall through
+        OUT(stm->val, stm->val_size);
+        break;
     case KND_ATTR_UREAL:
         OUT(stm->val, stm->val_size);
         break;

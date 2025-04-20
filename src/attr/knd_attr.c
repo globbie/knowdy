@@ -208,7 +208,9 @@ int knd_cls_inner_attr_new(struct kndClassInnerAttr **result,
     inner->name = name;
     inner->name_size = name_size;
 
-    err = knd_facet_hash_spec_new(&spec, KND_FACET_SUBCLASS, knd_facet_subclass_hash, mempool);
+    err = knd_facet_hash_spec_new(&spec, KND_FACET_SUBCLASS,
+                                  knd_facet_subclass_hash, knd_facet_subclass_str,
+                                  mempool);
     if (err) return err;
     append_inner_hash_spec(inner, spec);
 
@@ -231,7 +233,9 @@ int knd_cls_ref_attr_new(struct kndClassRefAttr **result,
     refattr->name = name;
     refattr->name_size = name_size;
 
-    err = knd_facet_hash_spec_new(&spec, KND_FACET_SUBCLASS, knd_facet_subclass_hash, mempool);
+    err = knd_facet_hash_spec_new(&spec, KND_FACET_SUBCLASS,
+                                  knd_facet_subclass_hash, knd_facet_subclass_str,
+                                  mempool);
     if (err) return err;
 
     append_hash_spec(refattr, spec);
