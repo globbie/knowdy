@@ -168,7 +168,7 @@ static gsl_err_t set_lt_val(void *obj, const char *val, size_t val_size)
     /* check range validity */
     if (uint_range->gt) {
         if (uint_range->gt->numval > uint->numval) {
-            KND_TASK_LOG("invalid uint range given: GT limit (%zu) must be less than LT (%zu)",
+            KND_TASK_LOG("invalid uint range given: {gt %zu} must be less than {lt %zu}",
                          uint_range->gt->numval, uint->numval);
             return make_gsl_err_external(err);
         }
@@ -238,7 +238,7 @@ static gsl_err_t set_approx_val(void *obj, const char *val, size_t val_size)
     }
     stm->uint = uint;
 
-    knd_log(">> approx val: %zu", uint->numval);
+    knd_log(">> approx {uint %zu}", uint->numval);
 
     return make_gsl_err(gsl_OK);
 }
@@ -505,7 +505,8 @@ int knd_quant_uint_query_plan(struct kndQuantAttrStm *stm, struct kndFacet *face
         }
 
         err = elem_eq_lookup(facet, uint, uint->seq, uint->seq_size, &stm->match, task);
-        KND_TASK_ERR("failed to lookup an EQ value of uint %.*s", uint->seq_size, uint->seq);
+        KND_TASK_ERR("failed to lookup an EQ value of {uint %.*s}",
+                     uint->seq_size, uint->seq);
 
         break;
     case KND_QUANT_RANGE:
@@ -516,12 +517,14 @@ int knd_quant_uint_query_plan(struct kndQuantAttrStm *stm, struct kndFacet *face
         if (uint_range->gt) {
             uint = uint_range->gt;
             err = elem_gt_lookup(facet, uint, uint->seq, uint->seq_size, &stm->match, task);
-            KND_TASK_ERR("failed to lookup a GT value of uint %.*s", uint->seq_size, uint->seq);
+            KND_TASK_ERR("failed to lookup a GT value of {uint %.*s}",
+                         uint->seq_size, uint->seq);
             break;
         }
         uint = uint_range->lt;
         err = elem_lt_lookup(facet, uint, uint->seq, uint->seq_size, &stm->match, task);
-        KND_TASK_ERR("failed to lookup a LT value of uint %.*s", uint->seq_size, uint->seq);
+        KND_TASK_ERR("failed to lookup a LT value of {uint %.*s}",
+                     uint->seq_size, uint->seq);
         break;
     case KND_QUANT_APPROX:
 

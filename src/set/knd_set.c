@@ -32,11 +32,11 @@ static int compare_set_by_size_ascend(const void *a,
     return -1;
 }
 
-static int kndSet_traverse(struct kndSet *self,
-                           struct kndSetElemIdx *base_idx,
-                           struct kndSetElemIdx **idxs,
-                           size_t num_idxs,
-                           struct kndSetElemIdx *result_idx)
+static int traverse(struct kndSet *self,
+                    struct kndSetElemIdx *base_idx,
+                    struct kndSetElemIdx **idxs,
+                    size_t num_idxs,
+                    struct kndSetElemIdx *result_idx)
 {
     struct kndSetElemIdx *nested_idxs[KND_MAX_CLAUSES];
     struct kndSetElemIdx *idx, *sub_idx, *nested_idx;
@@ -90,7 +90,7 @@ static int kndSet_traverse(struct kndSet *self,
         }
         result_idx->idxs[i] = sub_idx;
 
-        err = kndSet_traverse(self, idx, nested_idxs, num_idxs, sub_idx);
+        err = traverse(self, idx, nested_idxs, num_idxs, sub_idx);
         if (err) return err;
     }
     
@@ -122,7 +122,7 @@ int knd_set_intersect(struct kndSet *self, struct kndSet **sets, size_t num_sets
         idxs[i] = sets[i]->idx;
     }
 
-    err = kndSet_traverse(self, base_idx, idxs, num_idxs, self->idx);
+    err = traverse(self, base_idx, idxs, num_idxs, self->idx);
     if (err) return err;
 
     return knd_OK;
@@ -217,7 +217,7 @@ int knd_set_get(struct kndSet *self, const char *key, size_t key_size, void **el
     return knd_OK;
 }
 
-static int kndSet_traverse_idx(struct kndSetElemIdx *parent_idx, map_cb_func cb, void *obj, size_t *count)
+static int traverse_idx(struct kndSetElemIdx *parent_idx, map_cb_func cb, void *ctx, size_t *count)
 {
     char buf[KND_ID_SIZE];
     size_t buf_size = 0;
@@ -232,7 +232,7 @@ static int kndSet_traverse_idx(struct kndSetElemIdx *parent_idx, map_cb_func cb,
         buf[buf_size] = obj_id_seq[i];
         buf_size = 1;
 
-        err = cb(obj, buf, buf_size, *count, elem);
+        err = cb(ctx, buf, buf_size, *count, elem);
         if (err) return err;
         (*count)++;
     }
@@ -241,14 +241,14 @@ static int kndSet_traverse_idx(struct kndSetElemIdx *parent_idx, map_cb_func cb,
         idx = parent_idx->idxs[i];
         if (!idx) continue;
 
-        err = kndSet_traverse_idx(idx, cb, obj, count);
+        err = traverse_idx(idx, cb, ctx, count);
         if (err) return err;
     }
 
     return knd_OK;
 }
 
-int knd_set_map(struct kndSet *self, map_cb_func cb, void *obj)
+int knd_set_map(struct kndSet *self, map_cb_func cb, void *ctx)
 {
     size_t count = 0;
     int err;
@@ -258,7 +258,7 @@ int knd_set_map(struct kndSet *self, map_cb_func cb, void *obj)
             knd_log("NB: -- set has no root idx");
         return knd_OK;
     }
-    err = kndSet_traverse_idx(self->idx, cb, obj, &count);
+    err = traverse_idx(self->idx, cb, ctx, &count);
     if (err) return err;
     return knd_OK;
 }

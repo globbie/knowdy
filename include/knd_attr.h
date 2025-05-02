@@ -256,3 +256,6 @@ int knd_cls_inst_ref_attr_new(struct kndClassInstRefAttr **result,
 
 int knd_attr_find(struct kndClass *cls, const char *name, size_t name_size,
                   struct kndAttr **result, struct kndTask *task);
+
+int knd_cls_attrs_select(struct kndQuery *query,
+                         const char *rec, size_t *total_size, struct kndTask *task);

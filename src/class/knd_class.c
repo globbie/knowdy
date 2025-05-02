@@ -95,7 +95,7 @@ void knd_class_str(struct kndClass *self, size_t depth)
     size_t name_size;
     int err;
 
-    knd_log("\n{class %.*s {id %.*s}  {numid %zu}",
+    knd_log("\n{cls %.*s {id %.*s}  {numid %zu}",
             self->entry->name_size, self->entry->name,
             self->entry->id_size, self->entry->id,
             self->entry->numid);

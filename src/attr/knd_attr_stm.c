@@ -97,7 +97,8 @@ void knd_attr_stm_present_subj(void *obj, size_t depth)
     struct kndClass *subj = stm->subj;
     struct kndAttr *attr = stm->attr;
 
-    knd_log("{cls %.*s {%.*s %.*s}}", subj->name_size, subj->name,
+    knd_log("%*s{cls %.*s {%.*s %.*s}}", depth * KND_OFFSET_SIZE, "",
+            subj->name_size, subj->name,
             stm->name_size, stm->name, stm->val_size, stm->val);
 
     /*

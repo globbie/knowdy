@@ -104,7 +104,8 @@ set(SOURCES src/attr/knd_attr.c src/attr/knd_attr.import.c src/attr/knd_attr.res
         src/class/knd_class_inst.json.c src/class/knd_class_inst.select.c
         src/class/knd_class_inst.resolve.c src/class/knd_class_inst.index.c
         src/dict/knd_dict.c src/dict/knd_shared_dict.c src/dict/knd_shared_dict.gsp.c
-        src/facet/knd_facet.c src/facet/knd_facet.index.c src/utils/knd_ignore.c
+        src/facet/knd_facet.c src/facet/knd_facet.index.c src/facet/knd_facet.select.c
+        src/utils/knd_ignore.c
         src/text/knd_logic.c src/text/knd_logic.import.c
         src/mem/knd_memblock.c src/mem/knd_mempool.c src/mem/knd_output.c
         src/proc/knd_proc.c src/proc/knd_proc.import.c

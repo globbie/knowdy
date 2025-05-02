@@ -323,5 +323,6 @@ void knd_facet_subclass_str(void *val, size_t depth)
 {
     struct kndClassEntry *entry = val;
 
-    knd_log("{cls %.*s}", entry->name_size, entry->name);
+    knd_log("%*s{cls %.*s}",  depth * KND_OFFSET_SIZE, "",
+            entry->name_size, entry->name);
 }

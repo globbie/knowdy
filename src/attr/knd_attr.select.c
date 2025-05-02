@@ -46,60 +46,34 @@
 
 struct LocalContext {
     struct kndQuery   *query;
-    struct kndClass   *class;
+    struct kndClass   *cls;
     struct kndTask    *task;
     struct kndRepo    *repo;
-
-    struct kndAttrStm *clauses;
-    struct kndAttrStm *attr_stm;
     struct kndAttr    *attr;
-    knd_logic_t logic;
 };
 
-int knd_attr_parse_query_stm(struct kndAttrStm *stm,
-                             const char *rec, size_t *total_size, struct kndTask *task)
+int knd_cls_attrs_select(struct kndQuery *query,
+                         const char *rec, size_t *total_size, struct kndTask *task)
 {
-    struct kndAttr *attr = stm->attr;
-    struct kndQuantAttrStm *quant_attr_stm;
-    struct kndClassRefAttrStm *cref;
-    struct kndClassInnerAttrStm *inner;
-    int err;
+    gsl_err_t parser_err;
 
-    if (DEBUG_ATTR_SELECT_LEVEL_TMP) {
-        knd_log(".. query by {attr %.*s}", attr->name_size, attr->name);
-    }
+    struct LocalContext ctx = {
+        .task = task,
+        .query = query
+    };
 
-    switch (attr->type) {
-    case KND_ATTR_CLS_INNER:
-        err = knd_cls_inner_attr_stm_new(&inner, task->mempool);
-        KND_TASK_ERR("failed to alloc a cls inner attr stm");
-        stm->subtype = inner;
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = NULL, //,
+          .obj = &ctx
+        }/*,
+        { .validate = select_cls_attr,
+          .obj = &ctx
+          }*/
+    };
 
-        break;
-    case KND_ATTR_CLS_REF:
-        err = knd_cls_ref_attr_stm_new(&cref, task->mempool);
-        KND_TASK_ERR("failed to alloc a cls ref attr stm");
-        stm->subtype = cref;
-
-        //err = knd_cls_ref_parse_stm(quant_attr_stm, rec, total_size, task);
-        //KND_TASK_ERR("failed to parse cls ref stm");
-        break;
-    case KND_ATTR_UINT:
-        err = knd_quant_attr_stm_new(&quant_attr_stm, task->mempool);
-        KND_TASK_ERR("failed to alloc a quant attr stm");
-        stm->subtype = quant_attr_stm;
-
-        err = knd_quant_uint_parse_stm(quant_attr_stm, rec, total_size, task);
-        KND_TASK_ERR("failed to parse uint stm");
-        break;
-    case KND_ATTR_UREAL:
-        // TODO
-        break;
-    default:
-        knd_log("-- no clause filtering in attr %.*s",
-                attr->name_size, attr->name);
-        return knd_FAIL;
-    }
-
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) return parser_err.code;
+    
     return knd_OK;
 }

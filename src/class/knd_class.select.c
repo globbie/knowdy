@@ -66,26 +66,26 @@ static gsl_err_t select_class_attr(void *obj, const char *name, size_t name_size
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndClass *query_class = ctx->base_cls;
+    struct kndClass *bc = ctx->base_cls;
     struct kndAttr *attr;
     struct kndAttrStm *stm;
     int err;
 
-    if (!query_class) {
+    if (!bc) {
         KND_TASK_LOG("no base class selected");
         return *total_size = 0, make_gsl_err_external(knd_FAIL);
     }
 
-    err = knd_attr_find(query_class, name, name_size, &attr, task);
+    err = knd_attr_find(bc, name, name_size, &attr, task);
     if (err) {
         KND_TASK_LOG("{attr %.*s} is not applicable to {cls %.*s}",
-                     name_size, name, query_class->name_size, query_class->name);
+                     name_size, name, bc->name_size, bc->name);
         return make_gsl_err(gsl_FAIL);
     }
 
     if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
         knd_log("{cls %.*s {attr %.*s}} confirmed by owner {cls %.*s}",
-                query_class->name_size, query_class->name, name_size, name,
+                bc->name_size, bc->name, name_size, name,
                 attr->owner->name_size, attr->owner->name);
 
         if (attr->facet) {
@@ -93,7 +93,7 @@ static gsl_err_t select_class_attr(void *obj, const char *name, size_t name_size
         }
     }
 
-    err = knd_attr_stm_new(&stm, query_class, task->mempool);
+    err = knd_attr_stm_new(&stm, bc, task->mempool);
     if (err) return make_gsl_err_external(err);   
     stm->attr = attr;
 
@@ -105,7 +105,7 @@ static gsl_err_t select_class_attr(void *obj, const char *name, size_t name_size
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t get_class(void *obj, const char *name, size_t name_size)
+static gsl_err_t get_cls_by_name(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
@@ -135,7 +135,7 @@ static gsl_err_t get_class(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t get_baseclass(void *obj, const char *name, size_t name_size)
+static gsl_err_t get_base_class(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
@@ -175,7 +175,7 @@ static gsl_err_t get_baseclass(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t get_subj_baseclass(void *obj, const char *name, size_t name_size)
+static gsl_err_t get_subj_base_class(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
@@ -212,7 +212,7 @@ static gsl_err_t select_inverse_attr(void *obj, const char *rec, size_t *total_s
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = get_subj_baseclass,
+          .run = get_subj_base_class,
           .obj = obj
         },
         { .validate = select_class_attr,
@@ -226,16 +226,26 @@ static gsl_err_t select_inverse_attr(void *obj, const char *rec, size_t *total_s
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t select_by_baseclass(void *obj, const char *rec, size_t *total_size)
+static gsl_err_t select_by_base_class(void *obj, const char *rec, size_t *total_size)
 {
+    struct LocalContext *ctx = obj;
+    struct kndQuery *query = ctx->query;
+    struct kndTask *task = ctx->task;
+    struct kndClass *c = query->cls;
     gsl_err_t err;
 
+    if (c) {
+        KND_TASK_LOG("single choice already made for {cls %.*s}", c->name_size, c->name);
+        return *total_size = 0, make_gsl_err_external(knd_FORMAT);
+    }
+ 
     if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
         knd_log(".. select by base {cls %.*s}", 64, rec);
     }
+
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = get_baseclass,
+          .run = get_base_class,
           .obj = obj
         },
         { .name = "of",
@@ -332,10 +342,33 @@ static gsl_err_t select_class_inst(void *obj, const char *rec, size_t *total_siz
     struct kndTask *task = ctx->task;
     struct kndClass *c = ctx->cls;
     if (!c) {
-        KND_TASK_LOG("no class selected");
+        KND_TASK_LOG("no cls selected");
         return *total_size = 0, make_gsl_err_external(knd_FAIL);
     }
-    return knd_select_class_inst(c, rec, total_size, ctx->task);
+    /*err = knd_select_class_inst(c, rec, total_size, ctx->task);
+    if (err) {
+        knd_log("-- class state export failed");
+        return make_gsl_err_external(err);
+        }*/
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t select_cls_attrs(void *obj, const char *rec, size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    int err;
+
+    if (!ctx->cls) {
+        KND_TASK_LOG("no cls selected");
+        return *total_size = 0, make_gsl_err_external(knd_FAIL);
+    }
+    /*err = knd_select_cls_attrs(ctx->query, rec, total_size, task);
+    if (err) {
+        KND_TASK_LOG("failed to select attrs of {cls %.*s}", ctx->cls->name_size, ctx->cls->name);
+        return make_gsl_err_external(err);
+        }*/
+    return make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t import_class_inst(void *obj, const char *rec, size_t *total_size)
@@ -436,7 +469,7 @@ gsl_err_t knd_class_select(struct kndRepo *repo, const char *rec, size_t *total_
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = get_class,
+          .run = get_cls_by_name,
           .obj = &ctx
         },
         { .name = "state",
@@ -447,6 +480,11 @@ gsl_err_t knd_class_select(struct kndRepo *repo, const char *rec, size_t *total_
         { .name = "del",
           .name_size = strlen("del"),
           .run = remove_class,
+          .obj = &ctx
+        },
+        { .name = "attr",
+          .name_size = strlen("attr"),
+          .parse = select_cls_attrs,
           .obj = &ctx
         },
         { .type = GSL_SET_STATE,
@@ -462,7 +500,7 @@ gsl_err_t knd_class_select(struct kndRepo *repo, const char *rec, size_t *total_
         },
         { .name = "is",
           .name_size = strlen("is"),
-          .parse = select_by_baseclass,
+          .parse = select_by_base_class,
           .obj = &ctx
         },
         { .is_default = true,

@@ -45,7 +45,8 @@ struct kndClassInnerAttrStm
     size_t cls_name_size;
     struct kndClassEntry *cls_entry;
 
-    //int (*knd_facet_hash_fn)(void *obj, size_t *numval, struct kndTask *task);
+    struct kndClass *cls;
+    struct kndClass *template_cls;
 
     const char *cls_inst_name;
     size_t cls_inst_name_size;
