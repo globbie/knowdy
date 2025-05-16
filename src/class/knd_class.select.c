@@ -179,9 +179,6 @@ static gsl_err_t get_subj_base_class(void *obj, const char *name, size_t name_si
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndMemPool *mempool = task->mempool;
-    struct kndQuery *query = ctx->query;
-    struct kndClassBasePred *base_pred;
     struct kndClassEntry *entry;
     struct kndClass *c;
     int err;
@@ -200,7 +197,6 @@ static gsl_err_t get_subj_base_class(void *obj, const char *name, size_t name_si
         KND_TASK_LOG("failed to acquire {cls %.*s}", entry->name_size, entry->name);
         return make_gsl_err_external(err);
     }
-
     ctx->base_subj_cls = c;
 
     return make_gsl_err(gsl_OK);
@@ -336,7 +332,7 @@ static gsl_err_t select_class_state(void *obj, const char *rec, size_t *total_si
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static gsl_err_t select_class_inst(void *obj, const char *rec, size_t *total_size)
+static gsl_err_t select_class_inst(void *obj, const char *unused_var(rec), size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
@@ -353,11 +349,11 @@ static gsl_err_t select_class_inst(void *obj, const char *rec, size_t *total_siz
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t select_cls_attrs(void *obj, const char *rec, size_t *total_size)
+static gsl_err_t select_cls_attrs(void *obj, const char *unused_var(rec), size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    int err;
+    //int err;
 
     if (!ctx->cls) {
         KND_TASK_LOG("no cls selected");

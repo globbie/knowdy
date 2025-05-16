@@ -270,7 +270,7 @@ int knd_decode_attr_stms(struct kndClass *base, struct kndAttrStm *attr_stms, st
     struct kndAttrRef *ref;
     int err;
 
-    if (DEBUG_ATTR_STM_DECODE_LEVEL_TMP) {
+    if (DEBUG_ATTR_STM_DECODE_LEVEL_2) {
         knd_log(".. decoding attr stms of {base %.*s}", base->name_size, base->name);
     }
 

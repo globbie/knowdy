@@ -50,7 +50,7 @@ int knd_attr_stm_get_elem_key(void *obj, const char **key, size_t *key_size)
 
     assert (cls != NULL);
 
-    if (DEBUG_ATTR_STM_IDX_LEVEL_TMP) {
+    if (DEBUG_ATTR_STM_IDX_LEVEL_3) {
         knd_log(".. get a key of {cls %.*s {id %.*s}}",
                 cls->name_size, cls->name, cls->entry->id_size, cls->entry->id);
     }
@@ -96,8 +96,8 @@ int knd_index_attr_stm(struct kndClassEntry *entry, struct kndAttr *attr,
     struct kndClassRefAttr *cls_ref_attr;
     int err;
 
-    if (DEBUG_ATTR_STM_IDX_LEVEL_TMP) {
-        knd_log(".. {cls %.*s} to index {%s %.*s} {list-item %d}",
+    if (DEBUG_ATTR_STM_IDX_LEVEL_2) {
+        knd_log(".. {cls %.*s} to index {%s %.*s} {is-list-item %d}",
                 entry->name_size, entry->name,
                 knd_attr_names[attr->type], attr->name_size, attr->name,
                 stm->is_list_item);
@@ -159,7 +159,7 @@ int knd_index_attr_stm(struct kndClassEntry *entry, struct kndAttr *attr,
 int knd_index_inst_attr_stm(struct kndClassInstEntry *topic_inst, struct kndAttr *attr,
                             struct kndAttrStm *unused_var(stm), struct kndTask *unused_var(task))
 {
-    if (DEBUG_ATTR_STM_IDX_LEVEL_TMP) {
+    if (DEBUG_ATTR_STM_IDX_LEVEL_2) {
         knd_log(".. {cls %.*s {inst %.*s}} to index {%s %.*s}",
                 topic_inst->is_a->name_size, topic_inst->is_a->name,
                 topic_inst->name_size, topic_inst->name,

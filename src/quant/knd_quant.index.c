@@ -153,11 +153,10 @@ int knd_quant_seq_len_hash(void *curr_val, void *obj, void **val, size_t *numval
     struct kndQuantUInt *uint = quant_attr_stm->uint;
     size_t pos = 0;
 
-    if (DEBUG_QUANT_INDEX_LEVEL_TMP) {
+    if (DEBUG_QUANT_INDEX_LEVEL_3) {
         knd_log(".. hash quant {seq %.*s {len %zu}}",
                 uint->seq_size, uint->seq, uint->seq_size);
     }
-
     *numval = uint->seq_size;
     *val = uint;
 
@@ -181,7 +180,7 @@ int knd_quant_hash(void *curr_val, void *obj, void **val, size_t *numval,
     struct kndQuantUInt *uint = quant_attr_stm->uint;
     size_t pos = 0;
 
-    if (DEBUG_QUANT_INDEX_LEVEL_TMP) {
+    if (DEBUG_QUANT_INDEX_LEVEL_3) {
         knd_log(".. hash seq {uint %zu}", uint->numval);
     }
 

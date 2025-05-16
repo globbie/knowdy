@@ -44,12 +44,7 @@ static int attr_stm_list_export_GSL(struct kndAttrStm *parent_item, struct kndTa
 
 static int inner_stm_export_GSL(struct kndAttrStm *stm, struct kndTask *task, size_t depth)
 {
-    struct kndOutput *out = task->out;
-    struct kndAttr *attr = stm->attr;
     struct kndAttrStm *item;
-    struct kndClassEntry *entry;
-    struct kndClass *c;
-    struct kndClassRefAttrStm *cref;
     int err;
 
     if (DEBUG_ATTR_STM_GSL_LEVEL_2) {
@@ -76,8 +71,6 @@ extern int knd_export_inherited_attr_GSL(void *obj,
     struct kndAttr *attr = ref->attr;
     struct kndAttrStm *attr_stm = ref->attr_stm;
     struct kndOutput *out = task->out;
-    struct kndMemPool *mempool = task->mempool;
-    size_t numval = 0;
     size_t depth = 1;
     int err;
 

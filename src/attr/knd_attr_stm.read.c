@@ -126,8 +126,6 @@ static gsl_err_t read_nested_attr_stm_list(void *obj, const char *id, size_t id_
     struct kndAttrStm *attr_stm;
     struct kndAttrRef *ref;
     struct kndAttr *attr;
-    struct kndClassInnerAttr *cls_inner_attr;
-    struct kndClassEntry *entry;
     int err;
 
     if (DEBUG_ATTR_STM_READ_LEVEL_2) {

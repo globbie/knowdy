@@ -45,10 +45,6 @@ static int attr_stm_list_export_JSON(struct kndAttrStm *parent_var, struct kndTa
 static int inner_stm_export_JSON(struct kndAttrStm *stm, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
-    struct kndAttr *attr = stm->attr;
-    struct kndClass *c;
-    struct kndClassEntry *entry;
-    struct kndClassRefAttrStm *cref;
     struct kndAttrStm *item;
     size_t count = 0;
     size_t indent_size = task->ctx->format_indent;

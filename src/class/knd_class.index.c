@@ -166,13 +166,13 @@ static int register_desc(struct kndClass *base, struct kndClass *sub, struct knd
 }
 
 int knd_class_update_indices(struct kndRepo *repo, struct kndClassEntry *self,
-                             struct kndState *unused_var(state), struct kndTask *task)
+                             struct kndState *unused_var(state), struct kndTask *unused_var(task))
 {
-    struct kndSharedSet *idx = task->idxs->class_idx;
+    //struct kndSharedSet *idx = task->idxs->class_idx;
     //struct kndStateRef *ref;
     //int err;
 
-    knd_log(".. update {repo %.*s {class %.*s}} indices",
+    knd_log(".. update {repo %.*s {cls %.*s}} indices",
             repo->name_size, repo->name, self->name_size, self->name);
 
     return knd_OK;
@@ -220,7 +220,6 @@ static int find_direct_child(struct kndClassEntry *base, struct kndClassEntry *t
                              struct kndTask *task)
 {
     struct kndClass *base_c, *sub_c, *term_c;
-    struct kndClassEntry *child;
     struct kndClassRef *ref;
     int err;
 
@@ -230,10 +229,6 @@ static int find_direct_child(struct kndClassEntry *base, struct kndClassEntry *t
     if (!base_c->num_children) return knd_NO_MATCH;
 
     FOREACH (ref, base_c->children) {
-
-        knd_log(">> child {cls %.*s {child-id %zu}}",
-                ref->entry->name_size, ref->entry->name, ref->numid);
-
         if (ref->entry == term) {
             *result = term;
             *numval = ref->numid;
@@ -254,7 +249,6 @@ static int find_direct_child(struct kndClassEntry *base, struct kndClassEntry *t
         *numval = ref->numid;
         return knd_OK;
     }
-
     return knd_NO_MATCH;
 }
 
@@ -271,7 +265,6 @@ int knd_facet_subclass_hash(void *val, void *elem, void **payload, size_t *hashv
 
     struct kndClassEntry *entry, *result;
     struct kndClassEntry *curr_entry = val;
-    size_t numval;
     int err;
 
     assert (curr_entry != NULL);
@@ -283,7 +276,7 @@ int knd_facet_subclass_hash(void *val, void *elem, void **payload, size_t *hashv
 
         entry = inner_stm->cls_entry ? inner_stm->cls_entry : cls_inner_attr->template_cls;
 
-        if (DEBUG_CLASS_INDEX_LEVEL_TMP) {
+        if (DEBUG_CLASS_INDEX_LEVEL_3) {
             knd_log(".. subclass hash of {inner %.*s} {facet-cls %.*s}",
                     entry->name_size, entry->name,
                     curr_entry->name_size, curr_entry->name);
@@ -301,7 +294,7 @@ int knd_facet_subclass_hash(void *val, void *elem, void **payload, size_t *hashv
         ref_stm = stm->subtype;
         entry = ref_stm->cls_entry ? ref_stm->cls_entry : cls_ref_attr->template_cls;
 
-        if (DEBUG_CLASS_INDEX_LEVEL_TMP) {
+        if (DEBUG_CLASS_INDEX_LEVEL_3) {
             knd_log(".. subclass hash of {cls-ref %.*s} {facet-cls %.*s}",
                     entry->name_size, entry->name,
                     curr_entry->name_size, curr_entry->name);

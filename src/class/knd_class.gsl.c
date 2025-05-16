@@ -78,27 +78,6 @@ int knd_export_class_state_GSL(struct kndClass *self, struct kndTask *task)
     return knd_OK;
 }
 
-static int export_class_inst_state_GSL(struct kndClass *self, struct kndTask *task)
-{
-    struct kndOutput *out = task->out;
-    size_t latest_state_id = 0;
-    int err;
-
-    if (self->inst_states)
-        latest_state_id = self->inst_states->numid;
-
-    err = out->write(out, "\"_state\":", strlen("\"_state\":"));                                      RET_ERR();
-    err = out->writef(out, "%zu", latest_state_id);                               RET_ERR();
-
-    if (self->inst_idx) {
-        err = out->write(out, ",\"_tot\":", strlen(",\"_tot\":"));                  RET_ERR();
-        err = out->writef(out, "%zu", self->inst_idx->num_elems);      RET_ERR();
-    } else {
-        err = out->write(out, ",\"_tot\":0", strlen(",\"_tot\":"));                  RET_ERR();
-    }
-    return knd_OK;
-}
-
 static int export_conc_elem_GSL(void *obj, const char *elem_id, size_t elem_id_size,
                                 size_t count, void *elem)
 {

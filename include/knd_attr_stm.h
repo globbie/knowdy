@@ -23,6 +23,18 @@ struct kndClass;
 struct kndClassEntry;
 struct kndClassBasePred;
 
+typedef enum knd_attr_stm_t {
+    KND_ATTR_STM_DEFAULT,
+    KND_ATTR_STM_QUERY_RANGE,
+    KND_ATTR_STM_QUERY_SINGLE
+} knd_attr_stm_t;
+
+typedef enum knd_attr_stm_phase_t {
+    KND_ATTR_STM_INIT,
+    KND_ATTR_STM_RESOLVE_IN_PROGRESS,
+    KND_ATTR_STM_RESOLVED
+} knd_attr_stm_phase_t;
+
 struct kndAttrStmCtx
 {
     struct kndAttrStm *parent_stm;
@@ -47,10 +59,6 @@ struct kndClassInnerAttrStm
 
     struct kndClass *cls;
     struct kndClass *template_cls;
-
-    const char *cls_inst_name;
-    size_t cls_inst_name_size;
-    struct kndClassInstEntry *cls_inst_entry;
 };
 
 struct kndClassRefAttrStm
@@ -59,20 +67,20 @@ struct kndClassRefAttrStm
     size_t cls_name_size;
     struct kndClassEntry *cls_entry;
 
-    //int (*knd_facet_hash_fn)(void *obj, size_t *numval, struct kndTask *task);
-
-    const char *cls_inst_name;
-    size_t cls_inst_name_size;
-    struct kndClassInstEntry *cls_inst_entry;
+    struct kndClass *cls;
+    struct kndClass *template_cls;
 };
 
 struct kndAttrStm
 {
-    char id[KND_ID_SIZE];
-    size_t id_size;
+    knd_attr_stm_t type;
+    knd_attr_stm_phase_t phase;
+
     struct kndAttr *attr;
     struct kndClass *subj;
 
+    char id[KND_ID_SIZE];
+    size_t id_size;
     const char *name;
     size_t name_size;
 
@@ -136,13 +144,13 @@ int knd_resolve_attr_stm(struct kndClass *cls, struct kndAttrStm *stm, struct kn
 // knd_attr_stm.index.c
 int knd_index_attr_stm(struct kndClassEntry *topic, struct kndAttr *attr,
                        struct kndAttrStm *stm, struct kndTask *task);
-int knd_index_inst_attr_stm(struct kndClassInstEntry *topic_inst,
-                            struct kndAttr *attr, struct kndAttrStm *stm, struct kndTask *task);
+//int knd_index_inst_attr_stm(struct kndClassInstEntry *topic_inst,
+//                            struct kndAttr *attr, struct kndAttrStm *stm, struct kndTask *task);
 
 int knd_index_attr_stm_list(struct kndClassEntry *topic, struct kndAttr *attr,
                             struct kndAttrStm *stm, struct kndTask *task);
-int knd_index_inst_attr_stm_list(struct kndClassInstEntry *topic_inst, struct kndAttr *attr,
-                                 struct kndAttrStm *stm, struct kndTask *task);
+//int knd_index_inst_attr_stm_list(struct kndClassInstEntry *topic_inst, struct kndAttr *attr,
+//                                 struct kndAttrStm *stm, struct kndTask *task);
 
 int knd_attr_stm_inner_idx(struct kndClassEntry *topic, struct kndAttr *attr,
                            struct kndAttrStm *stm, struct kndTask *task);

@@ -27,7 +27,7 @@ static int update_index(struct kndFacet *facet, void *elem, struct kndTask *task
     err = facet->elem_key_fn(elem, &key, &key_size);
     KND_TASK_ERR("failed to get facet elem key");
 
-    if (DEBUG_FACET_IDX_LEVEL_TMP) {
+    if (DEBUG_FACET_IDX_LEVEL_2) {
         knd_log(">> facet idx elem {id %.*s}", key_size, key);
     }
 
@@ -59,8 +59,6 @@ static int facetize_elem(struct kndFacet *facet, void *elem, struct kndTask *tas
     if (err) {
         switch (err) {
         case knd_NO_MATCH:
-            knd_log("== elem should stay in curr facet");
-
             err = update_index(facet, elem, task);
             KND_TASK_ERR("failed to update a facet index");
             
@@ -69,8 +67,6 @@ static int facetize_elem(struct kndFacet *facet, void *elem, struct kndTask *tas
             KND_TASK_ERR("failed to apply a facet hash func {err %d}", err);
         }
     }
-
-    knd_log(">> subfacet {numval %zu}", numval);
 
     if (numval >= KND_MAX_FACETS) {
         return knd_LIMIT;

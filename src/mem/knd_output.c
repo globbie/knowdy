@@ -97,8 +97,8 @@ static int kndOutput_write_escaped(struct kndOutput *self, const char *buf, size
             return knd_NOMEM;
 
         switch (*b) {
-        case '{':
-        case '}':
+            //case '{':
+            //case '}':
         case '"':
         case '\'':
             break;

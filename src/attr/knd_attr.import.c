@@ -318,7 +318,7 @@ gsl_err_t knd_attr_import(struct kndAttr *self, struct kndTask *task,
     if (err.code) {
         switch (err.code) {
         case gsl_NO_MATCH:
-            KND_TASK_LOG("unknown \"%.*s\" tag in {class %.*s {attr %.*s}}",
+            KND_TASK_LOG("unknown {tag %.*s} in {class %.*s {attr %.*s}}",
                          err.val_size, err.val,
                          self->owner->name_size, self->owner->name,
                          self->name_size, self->name);
@@ -338,7 +338,7 @@ gsl_err_t knd_attr_import(struct kndAttr *self, struct kndTask *task,
     switch (self->type) {
     case KND_ATTR_CLS_INNER:
         if (!self->cls_name_size) {
-            KND_TASK_LOG("inner class not specified in %.*s", self->name_size, self->name);
+            KND_TASK_LOG("class not specified in {inner %.*s}", self->name_size, self->name);
             return make_gsl_err_external(knd_FORMAT);
         }
         break;

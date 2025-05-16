@@ -249,9 +249,7 @@ static int decode_baseclasses(struct kndClass *c, struct kndTask *task)
 static int register_attr(struct kndClass *self, struct kndAttr *attr, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
-    struct kndSharedDict *attr_name_idx = task->idxs->attr_name_idx;
-    struct kndSharedSet *attr_idx = task->idxs->attr_idx;
-    struct kndAttrRef *attr_ref, *attr_refs;
+    struct kndAttrRef *attr_ref;
     int err;
 
     if (DEBUG_CLASS_DECODE_LEVEL_2) {

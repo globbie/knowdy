@@ -92,7 +92,7 @@ static int resolve_inner_cls(struct kndAttrStm *stm, struct kndTask *task)
             KND_TASK_ERR("no such {cls %.*s}", stm->val_size, stm->val);
         }
 
-        if (DEBUG_ATTR_STM_RESOLVE_LEVEL_TMP) {
+        if (DEBUG_ATTR_STM_RESOLVE_LEVEL_3) {
             knd_log(".. {inner %.*s {template %.*s}}"
                     " with explicit subclass {cls %.*s}",
                     attr->name_size, attr->name, attr->cls_name_size, attr->cls_name,
@@ -115,9 +115,11 @@ static int resolve_inner_cls(struct kndAttrStm *stm, struct kndTask *task)
     }
 
     FOREACH (item, stm->children) {
-        err = knd_resolve_attr_stm(c, item, task);
-        KND_TASK_ERR("failed to resolve attr stm {cls %.*s {%.*s}}",
-                     c->name_size, c->name, item->name_size, item->name);
+        if (item->phase < KND_ATTR_STM_RESOLVED) {
+            err = knd_resolve_attr_stm(c, item, task);
+            KND_TASK_ERR("failed to resolve attr stm {cls %.*s {%.*s}}",
+                         c->name_size, c->name, item->name_size, item->name);
+        }
     }
     return knd_OK;
 }
@@ -166,6 +168,14 @@ int knd_resolve_attr_stm(struct kndClass *cls, struct kndAttrStm *stm, struct kn
     struct kndQuantUInt *uint;
     struct kndQuantUReal *ureal;
     int err;
+
+    if (stm->phase >= KND_ATTR_STM_RESOLVE_IN_PROGRESS) {
+        err = knd_CONFLICT;
+        KND_TASK_ERR("vicious circle detected while resolving attr {stm %.*s}",
+                     stm->name_size, stm->name);
+    }
+
+    stm->phase = KND_ATTR_STM_RESOLVE_IN_PROGRESS;
 
     if (stm->is_list_item) {
         attr = stm->attr;
@@ -245,5 +255,7 @@ int knd_resolve_attr_stm(struct kndClass *cls, struct kndAttrStm *stm, struct kn
     default:
         break;
     }
+
+    stm->phase = KND_ATTR_STM_RESOLVED;
     return knd_OK;
 }
