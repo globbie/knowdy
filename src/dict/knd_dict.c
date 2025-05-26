@@ -116,17 +116,15 @@ int knd_dict_remove(struct kndDict *self, const char *key, size_t key_size)
     return knd_OK;
 }
 
-int knd_dict_map(struct kndDict *idx, map_cb_func cb, void *obj)
+int knd_dict_map(struct kndDict *idx, map_cb_func cb, void *ctx)
 {
     struct kndDictItem *item;
-    size_t count = 0;
     int err;
 
     for (size_t i = 0; i < idx->size; i++) {
         item = idx->hash_array[i];
         for (; item; item = item->next) {
-            count++;
-            err = cb(obj, item->key, item->key_size, count, item->data);
+            err = cb(item->data, ctx);
             if (err) return err;
         }
     }

@@ -205,6 +205,144 @@ static gsl_err_t knd_parse_mem_main_config(void *obj, const char *rec, size_t *t
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
+static gsl_err_t set_storage_quota_unit(void *obj, const char *name, size_t name_size)
+{
+    struct kndSteward *self = obj;
+
+    for (size_t i = 0; i < sizeof knd_storage_unit_names / sizeof knd_storage_unit_names[0]; i++) {
+        const char *unit_str = knd_storage_unit_names[i];
+        assert(unit_str != NULL);
+
+        size_t unit_str_size = strlen(unit_str);
+        if (name_size != unit_str_size) continue;
+
+        if (!memcmp(unit_str, name, name_size)) {
+            self->storage_config.quota_unit = (knd_storage_unit_type)i;
+            return make_gsl_err(gsl_OK);
+        }
+    }
+    return make_gsl_err(gsl_FORMAT);
+}
+
+static gsl_err_t parse_storage_quota(void *obj, const char *rec, size_t *total_size)
+{
+    struct kndSteward *self = obj;
+
+    struct gslTaskSpec specs[] = {
+        {   .name = "unit",
+            .name_size = strlen("unit"),
+            .run = set_storage_quota_unit,
+            .obj = obj
+        },
+        {   .name = "total",
+            .name_size = strlen("total"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->storage_config.quota_total
+        }
+    };
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
+static gsl_err_t set_storage_leaf_unit(void *obj, const char *name, size_t name_size)
+{
+    struct kndSteward *self = obj;
+
+    for (size_t i = 0; i < sizeof knd_storage_unit_names / sizeof knd_storage_unit_names[0]; i++) {
+        const char *unit_str = knd_storage_unit_names[i];
+        assert(unit_str != NULL);
+
+        size_t unit_str_size = strlen(unit_str);
+        if (name_size != unit_str_size) continue;
+
+        if (!memcmp(unit_str, name, name_size)) {
+            self->storage_config.leaf_storage_unit = (knd_storage_unit_type)i;
+            return make_gsl_err(gsl_OK);
+        }
+    }
+    return make_gsl_err(gsl_FORMAT);
+}
+
+static gsl_err_t parse_storage_leaf(void *obj, const char *rec, size_t *total_size)
+{
+    struct kndSteward *self = obj;
+
+    struct gslTaskSpec specs[] = {
+        {   .name = "unit",
+            .name_size = strlen("unit"),
+            .run = set_storage_leaf_unit,
+            .obj = obj
+        },
+        {   .name = "min",
+            .name_size = strlen("min"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->storage_config.leaf_min_size
+        },
+        {   .name = "max",
+            .name_size = strlen("max"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->storage_config.leaf_max_size
+        }
+    };
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
+static gsl_err_t set_storage_snapshot_threshold(void *obj, const char *val, size_t val_size)
+{
+    struct kndSteward *self = obj;
+    char buf[KND_NUMFIELD_MAX_SIZE + 1] = { 0 };
+    long double numval;
+    int err;
+
+    if (val_size > KND_NUMFIELD_MAX_SIZE) {
+        knd_log("threshold value exceeds current num field limit");
+        return make_gsl_err(gsl_FORMAT);
+    }
+    memcpy(buf, val, val_size);
+
+    err = knd_parse_real(buf, &numval);
+    if (err) return make_gsl_err(gsl_FORMAT);
+
+    if (numval <= 0) return make_gsl_err(gsl_FORMAT);
+    if (numval > 1) return make_gsl_err(gsl_FORMAT);
+
+    self->storage_config.snapshot_threshold_ratio = numval;
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_storage_snapshot(void *obj, const char *rec, size_t *total_size)
+{
+    struct gslTaskSpec specs[] = {
+        {   .name = "threshold",
+            .name_size = strlen("threshold"),
+            .run = set_storage_snapshot_threshold,
+            .obj = obj
+        }
+    };
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
+static gsl_err_t parse_storage_config(void *obj, const char *rec, size_t *total_size)
+{
+    struct gslTaskSpec specs[] = {
+       {   .name = "quota",
+           .name_size = strlen("quota"),
+           .parse = parse_storage_quota,
+           .obj = obj
+       },
+       {   .name = "leaf",
+           .name_size = strlen("leaf"),
+           .parse = parse_storage_leaf,
+           .obj = obj
+       },
+       {   .name = "snapshot",
+           .name_size = strlen("snapshot"),
+           .parse = parse_storage_snapshot,
+           .obj = obj
+       }
+    };
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
 static gsl_err_t set_steward_role(void *obj, const char *name, size_t name_size)
 {
     struct kndSteward *self = obj;
@@ -329,6 +467,11 @@ static gsl_err_t parse_steward_config(void *obj, const char *rec, size_t *total_
             .parse = knd_parse_mem_main_config,
             .obj = obj,
         },
+        {   .name = "storage",
+            .name_size = strlen("storage"),
+            .parse = parse_storage_config,
+            .obj = obj,
+        },
         { .validate = reject_unrec_tag,
           .obj = obj
         }
@@ -449,7 +592,6 @@ static int steward_init(struct kndSteward *steward)
 
     steward->mem_ctx_config.memtype = KND_ALLOC_INCR;
 
-    /* repos */
     err = knd_set_new(&steward->repo_idx, steward->mempool_write);
     KND_STEWARD_ERR("failed to create a set idx");
 
@@ -458,7 +600,7 @@ static int steward_init(struct kndSteward *steward)
 
     err = knd_repo_new(&repo, "/", 1, steward->path, steward->path_size,
                        steward->schema_path, steward->schema_path_size);
-    KND_STEWARD_ERR("failed to create a repo");
+    KND_STEWARD_ERR("failed to create the root repo");
     steward->repo = repo;
 
     if (steward->data_path_size) {

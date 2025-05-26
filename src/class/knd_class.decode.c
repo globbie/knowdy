@@ -54,16 +54,14 @@ struct LocalContext {
     struct kndClassBasePred *base_pred;
 };
 
-static int inherit_attr(void *obj,
-                        const char *unused_var(elem_id), size_t unused_var(elem_id_size),
-                        size_t unused_var(count), void *elem)
+static int inherit_attr(void *elem, void *ctx_obj)
 {
-    struct LocalContext *ctx = obj;
+    struct kndAttrRef *src_ref = elem;
+    struct LocalContext *ctx = ctx_obj;
     struct kndTask    *task = ctx->task;
     struct kndMemPool *mempool = task->mempool;
     struct kndClass   *self = ctx->class;
     struct kndSet     *attr_idx = self->attr_idx;
-    struct kndAttrRef *src_ref = elem;
     struct kndAttr    *attr    = src_ref->attr;
     struct kndAttrRef *ref = NULL;
     int err;

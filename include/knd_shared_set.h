@@ -21,6 +21,7 @@
 
 #include "knd_config.h"
 #include "knd_memblock.h"
+#include "knd_set.h"
 #include "knd_mempool.h"
 
 struct kndRepoSnapshot;
@@ -35,8 +36,6 @@ typedef int (*elem_unmarshall_cb)(const char *elem_id, size_t elem_id_size,
                                   void *ctx, void **result, struct kndTask *task);
 typedef int (*leaf_unmarshall_cb)(const char *elem_id, size_t elem_id_size,
                                   const char *rec, size_t rec_size, struct kndTask *task);
-typedef int (*map_cb_func)(void *obj, const char *elem_id, size_t elem_id_size,
-                           size_t count, void *elem);
 
 struct kndSharedSetDirIdx {
     size_t elem_block_sizes[KND_RADIX_BASE];

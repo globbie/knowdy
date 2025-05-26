@@ -57,8 +57,8 @@ struct kndUser
     size_t classname_size;
     struct kndClass *class;
 
-    const char *reponame;
-    size_t reponame_size;
+    const char *repo_name;
+    size_t repo_name_size;
     struct kndRepo *repo;
 
     const char *schema_path;
@@ -78,7 +78,7 @@ struct kndUser
 };
 
 int knd_user_new(struct kndUser **self, const char *classname, size_t classname_size,
-                 const char *path, size_t path_size, const char *reponame, size_t reponame_size,
+                 const char *path, size_t path_size, const char *repo_name, size_t repo_name_size,
                  const char *schema_path, size_t schema_path_size,
                  struct kndSteward *steward, struct kndTask *task);
 void knd_user_del(struct kndUser *self);

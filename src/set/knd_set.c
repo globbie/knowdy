@@ -217,10 +217,8 @@ int knd_set_get(struct kndSet *self, const char *key, size_t key_size, void **el
     return knd_OK;
 }
 
-static int traverse_idx(struct kndSetElemIdx *parent_idx, map_cb_func cb, void *ctx, size_t *count)
+static int traverse_idx(struct kndSetElemIdx *parent_idx, map_cb_func cb, void *ctx)
 {
-    char buf[KND_ID_SIZE];
-    size_t buf_size = 0;
     struct kndSetElemIdx *idx;
     void *elem;
     int err;
@@ -228,29 +226,22 @@ static int traverse_idx(struct kndSetElemIdx *parent_idx, map_cb_func cb, void *
     for (size_t i = 0; i < KND_RADIX_BASE; i++) {
         elem = parent_idx->elems[i];
         if (!elem) continue;
-        buf_size = 0;
-        buf[buf_size] = obj_id_seq[i];
-        buf_size = 1;
-
-        err = cb(ctx, buf, buf_size, *count, elem);
+        err = cb(elem, ctx);
         if (err) return err;
-        (*count)++;
     }
 
     for (size_t i = 0; i < KND_RADIX_BASE; i++) {
         idx = parent_idx->idxs[i];
         if (!idx) continue;
 
-        err = traverse_idx(idx, cb, ctx, count);
+        err = traverse_idx(idx, cb, ctx);
         if (err) return err;
     }
-
     return knd_OK;
 }
 
 int knd_set_map(struct kndSet *self, map_cb_func cb, void *ctx)
 {
-    size_t count = 0;
     int err;
 
     if (!self->idx) {
@@ -258,8 +249,9 @@ int knd_set_map(struct kndSet *self, map_cb_func cb, void *ctx)
             knd_log("NB: -- set has no root idx");
         return knd_OK;
     }
-    err = traverse_idx(self->idx, cb, ctx, &count);
+    err = traverse_idx(self->idx, cb, ctx);
     if (err) return err;
+
     return knd_OK;
 }
 
@@ -318,12 +310,8 @@ static int build_dir_footer(struct kndSetDir *dir,
 }
 
 static int traverse_sync(struct kndSetElemIdx *parent_idx,
-                         map_cb_func cb,
-                         void *obj,
-                         struct kndSetDir **result_dir)
+                         map_cb_func cb, void *obj, struct kndSetDir **result_dir)
 {
-    char buf[KND_ID_SIZE];
-    size_t buf_size = 0;
     struct kndTask *task = obj;
     struct kndSetElemIdx *idx;
     struct kndSetDir *dir, *subdir;
@@ -366,11 +354,7 @@ static int traverse_sync(struct kndSetElemIdx *parent_idx,
             continue;
         }
 
-        buf_size = 0;
-        buf[buf_size] = obj_id_seq[i];
-        buf_size = 1;
-
-        err = cb(obj, buf, buf_size, 0, elem);
+        err = cb(elem, obj);
         if (err) return err;
 
         entry = &dir->entries[i];

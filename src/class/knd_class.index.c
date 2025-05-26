@@ -276,15 +276,18 @@ int knd_facet_subclass_hash(void *val, void *elem, void **payload, size_t *hashv
 
         entry = inner_stm->cls_entry ? inner_stm->cls_entry : cls_inner_attr->template_cls;
 
-        if (DEBUG_CLASS_INDEX_LEVEL_3) {
+        if (DEBUG_CLASS_INDEX_LEVEL_2) {
             knd_log(".. subclass hash of {inner %.*s} {facet-cls %.*s}",
                     entry->name_size, entry->name,
                     curr_entry->name_size, curr_entry->name);
         }
 
         err = find_direct_child(curr_entry, entry, &result, hashval, task);
-        KND_TASK_ERR("failed to match a direct child of {cls %.*s}",
-                     curr_entry->name_size, curr_entry->name);
+
+        // TODO vicious circle?
+        if (err) return err;
+        //KND_TASK_ERR("failed to match a direct child of {cls %.*s}",
+        //             curr_entry->name_size, curr_entry->name);
 
         *payload = result;
         // TODO

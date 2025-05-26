@@ -4,6 +4,7 @@
 
 #include "knd_facet.h"
 #include "knd_task.h"
+#include "knd_class.h"
 #include "knd_mempool.h"
 #include "knd_set.h"
 #include "knd_output.h"
@@ -37,7 +38,10 @@ static int update_index(struct kndFacet *facet, void *elem, struct kndTask *task
     }
 
     err = knd_set_add(facet->idx, key, key_size, elem);
-    KND_TASK_ERR("failed to add an elem to facet idx");
+    // TODO multiple recs
+    if (err && err == knd_CONFLICT) return knd_OK;
+
+    KND_TASK_ERR("failed to add an elem to facet idx {err %d}", err);
 
     return knd_OK;
 }
@@ -58,10 +62,11 @@ static int facetize_elem(struct kndFacet *facet, void *elem, struct kndTask *tas
     err = spec->hash_fn(facet->val, elem, &hashval, &numval, task);
     if (err) {
         switch (err) {
+        case knd_NOMEM:
+            KND_TASK_ERR("insufficient memory when calling a hash fn");
         case knd_NO_MATCH:
             err = update_index(facet, elem, task);
             KND_TASK_ERR("failed to update a facet index");
-            
             return knd_OK;
         default:
             KND_TASK_ERR("failed to apply a facet hash func {err %d}", err);

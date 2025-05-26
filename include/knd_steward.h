@@ -15,6 +15,20 @@ typedef enum knd_agent_role_type {
     KND_AGENT_AUX
 } knd_agent_role_type;
 
+typedef enum knd_storage_unit_type {
+    KND_STORAGE_UNIT_DEFAULT,
+    KND_STORAGE_UNIT_MB,
+    KND_STORAGE_UNIT_GB,
+    KND_STORAGE_UNIT_TB
+} knd_storage_unit_type;
+
+static const char* const knd_storage_unit_names[] = {
+    [KND_STORAGE_UNIT_DEFAULT] = "default unit",
+    [KND_STORAGE_UNIT_MB] = "M",
+    [KND_STORAGE_UNIT_GB] = "G",
+    [KND_STORAGE_UNIT_TB] = "T"
+};
+
 static const char* const knd_agent_role_names[] = {
     [KND_AGENT_READER] = "READER",
     [KND_AGENT_WRITER] = "WRITER",
@@ -26,6 +40,19 @@ struct kndResourceReport {
     size_t mem_usage;
     size_t disk_usage;
     bool mem_threshold_alert;
+};
+
+struct kndStorageConfig {
+    knd_storage_unit_type quota_unit;
+    size_t quota_total;
+
+    // gt 0  lte 1
+    long double snapshot_threshold_ratio;
+    size_t max_snapshots;
+
+    knd_storage_unit_type leaf_storage_unit;
+    size_t leaf_max_size;
+    size_t leaf_min_size;
 };
 
 struct kndSteward
@@ -57,6 +84,8 @@ struct kndSteward
     struct kndMemConfig mem_cache_config;
     struct kndMemConfig mem_user_config;
     struct kndMemConfig mem_ctx_config;
+
+    struct kndStorageConfig storage_config;
 
     /* aux task */
     struct kndTask *task;

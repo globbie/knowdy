@@ -44,10 +44,9 @@
 
 #include "knd_query.h"
 
-static int export_class_entry_GSL(void *obj, const char *elem_id, size_t elem_id_size,
-                                  size_t unused_var(count), void *elem)
+static int export_class_entry_GSL(void *elem, void *ctx)
 {
-    struct kndTask *task = obj;
+    struct kndTask *task = ctx;
     //struct kndQueryView *view = task->ctx->query->view;
     //struct kndBatchLimits *batch = view->batch;
     //if (count < batch->from) return knd_OK;
@@ -56,11 +55,6 @@ static int export_class_entry_GSL(void *obj, const char *elem_id, size_t elem_id
     struct kndClass *c;
     size_t curr_depth = 0;
     int err;
-
-    if (DEBUG_QUERY_GSL_LEVEL_2) {
-        knd_log(".. Query GSL export {class %.*s {id %.*s}}",
-                entry->name_size, entry->name, elem_id_size, elem_id);
-    }
 
     err = knd_class_acquire(entry, &c, task);
     KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);

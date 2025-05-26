@@ -83,7 +83,7 @@ int knd_create_user_repo(struct kndTask *task)
 
     err = knd_repo_read(repo, task);
     if (err) {
-        KND_TASK_LOG("failed to open repo: %.*s", repo->name_size, repo->name);
+        KND_TASK_LOG("failed to open {repo %.*s}", repo->name_size, repo->name);
         ctx->repo = NULL;
         knd_repo_del(repo);
         return err;
@@ -118,7 +118,8 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
         err = knd_commit_new(task->mempool, &task->ctx->commit);
         if (err) return make_gsl_err_external(err);
         
-        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->snapshot->num_commits, memory_order_relaxed);
+        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->snapshot->num_commits,
+                                                                memory_order_relaxed);
     }
 
     return knd_class_import(user_ctx->repo, rec, total_size, task);
@@ -466,7 +467,7 @@ static int init_mempool(struct kndSteward *steward, knd_mempool_t memtype, size_
 int knd_user_new(struct kndUser **user,
                  const char *classname,   size_t classname_size,
                  const char *path,        size_t path_size,
-                 const char *reponame,    size_t reponame_size,
+                 const char *repo_name,    size_t repo_name_size,
                  const char *schema_path, size_t schema_path_size,
                  struct kndSteward *steward, struct kndTask *task)
 {
@@ -485,7 +486,7 @@ int knd_user_new(struct kndUser **user,
 
     err = knd_get_class_by_name(repo, classname, classname_size, &self->class, task);
     if (err) {
-        KND_TASK_LOG("no such user class: %.*s", classname_size, classname);
+        KND_TASK_LOG("no such user {cls %.*s}", classname_size, classname);
         goto error;
     }
     self->schema_path = schema_path;
@@ -518,15 +519,15 @@ int knd_user_new(struct kndUser **user,
 
     /* base repo for all users */
     mempool = self->mempool_write;
-    self->reponame = reponame;
-    self->reponame_size = reponame_size;
-    err = knd_repo_new(&self->repo, reponame, reponame_size,
+    self->repo_name = repo_name;
+    self->repo_name_size = repo_name_size;
+    err = knd_repo_new(&self->repo, repo_name, repo_name_size,
                        path, path_size, schema_path, schema_path_size);
     if (err) goto error;
 
-    //err = knd_shared_dict_set(steward->repo_name_idx, reponame, reponame_size,
+    //err = knd_shared_dict_set(steward->repo_name_idx, repo_name, repo_name_size,
     //                          (void*)self->repo, NULL, true);
-    //KND_TASK_ERR("failed to register repo name \"%.*s\"", reponame_size, reponame);
+    //KND_TASK_ERR("failed to register repo name \"%.*s\"", repo_name_size, repo_name);
 
     /* default acl */
     err = knd_repo_access_new(mempool, &acl);
@@ -536,7 +537,6 @@ int knd_user_new(struct kndUser **user,
     acl->allow_write = true;
     self->default_acls = acl;
 
-    task->repo = self->repo;
     task->user_ctx->repo = self->repo;
     task->user_ctx->mempool = self->mempool_write;
     task->user_ctx->acls = self->default_acls;

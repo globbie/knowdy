@@ -2,6 +2,7 @@
 
 #include <stdatomic.h>
 #include "knd_config.h"
+#include "knd_set.h"
 #include "knd_shared_set.h"
 
 struct kndCommit;
@@ -11,7 +12,6 @@ struct kndMemPool;
 typedef enum knd_shared_dict_item_phase { KND_SHARED_DICT_VALID,
                                           KND_SHARED_DICT_PENDING,
                                           KND_SHARED_DICT_REMOVED } knd_shared_dict_item_phase;
-typedef int (*map_cb_func)(void *obj, const char *elem_id, size_t elem_id_size, size_t count, void *elem);
 
 struct kndSharedDictItem
 {

@@ -23,13 +23,12 @@ struct LocalContext {
     struct kndProc *base;
 };
 
-static int inherit_arg(void *obj, const char *unused_var(elem_id), size_t unused_var(elem_id_size),
-                       size_t unused_var(count), void *elem)
+static int inherit_arg(void *elem, void *ctx_obj)
 {
-    struct LocalContext  *ctx = obj;
+    struct kndProcArgRef *src_ref = elem;
+    struct LocalContext  *ctx = ctx_obj;
     struct kndTask       *task = ctx->task;
     struct kndProc       *self = ctx->proc;
-    struct kndProcArgRef *src_ref = elem;
     struct kndProcArg    *arg    = src_ref->arg;
     struct kndProc       *base = arg->parent;
     struct kndProcArgRef *ref = NULL;
@@ -55,7 +54,7 @@ static int inherit_arg(void *obj, const char *unused_var(elem_id), size_t unused
     KND_TASK_ERR("failed to idx a proc arg ref");
 
     if (DEBUG_PROC_RESOLVE_LEVEL_3) {
-        knd_log("..  \"%.*s\" of \"%.*s\" inherited by \"%.*s\"",
+        knd_log("..  \"%.*s\" of \"%.*s\" inherited by {proc %.*s}",
                 arg->name_size, arg->name,
                 base->name_size, base->name, self->name_size, self->name);
     }

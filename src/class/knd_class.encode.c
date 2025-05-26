@@ -206,15 +206,11 @@ static int export_children(struct kndClass *self, struct kndTask *task)
     return knd_OK;
 }
 
-static int export_class_ref(void *obj,
-                            const char *unused_var(elem_id),
-                            size_t unused_var(elem_id_size),
-                            size_t unused_var(count),
-                            void *elem)
+static int export_class_ref(void *elem, void *ctx)
 {
-    struct kndTask *task = obj;
-    struct kndOutput *out = task->out;
     struct kndClassEntry *entry = elem;
+    struct kndTask *task = ctx;
+    struct kndOutput *out = task->out;
     OUT("{", 1);
     OUT(entry->id, entry->id_size);
     OUT("}", 1);

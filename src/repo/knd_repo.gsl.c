@@ -398,12 +398,10 @@ static int read_GSL_file(struct kndRepo *repo, struct kndConcFolder *parent_fold
     return knd_OK;
 }
 
-static int resolve_class(void *obj, const char *unused_var(elem_id),
-                         size_t unused_var(elem_id_size),
-                         size_t unused_var(count), void *elem)
+static int resolve_class(void *elem, void *ctx)
 {
-    struct kndTask *task = obj;
     struct kndClassEntry *entry = elem;
+    struct kndTask *task = ctx;
     struct kndClass *c;
     int err;
 
@@ -418,30 +416,27 @@ static int resolve_class(void *obj, const char *unused_var(elem_id),
     return knd_OK;
 }
 
-static int index_class(void *obj, const char *unused_var(elem_id),
-                       size_t unused_var(elem_id_size),
-                       size_t unused_var(count), void *elem)
+static int index_class(void *elem, void *ctx)
 {
-    struct kndTask *task = obj;
     struct kndClassEntry *entry = elem;
+    struct kndTask *task = ctx;
     struct kndClass *c;
     struct kndSharedSet *class_idx = task->idxs->class_idx;
     int err;
 
     err = knd_class_acquire(entry, &c, task);
-    KND_TASK_ERR("failed to acquire {class %.*s}", entry->name_size, entry->name);
+    KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);
 
     if (c->phase >= KND_CLASS_INDEXED) return knd_OK;
 
     err = knd_class_index(c, task);
-    KND_TASK_ERR("failed to index {class %.*s}", entry->name_size, entry->name);
+    KND_TASK_ERR("failed to index {cls %.*s}", entry->name_size, entry->name);
 
     err = knd_shared_set_add(class_idx, entry->id, entry->id_size, (void*)entry);
-    KND_TASK_ERR("failed to register {class %.*s} in class idx",
+    KND_TASK_ERR("failed to register {cls %.*s} in class idx",
                  entry->name_size, entry->name);
     return knd_OK;
 }
-
 
 #if 0
 static int index_class_insts(struct kndClass *c, struct kndTask *task)

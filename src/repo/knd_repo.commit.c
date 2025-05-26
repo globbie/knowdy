@@ -397,13 +397,12 @@ int knd_confirm_commit(struct kndRepo *self, struct kndTask *task)
     return knd_OK;
 }
 
-int knd_apply_commit(void *obj, const char *unused_var(elem_id), size_t unused_var(elem_id_size),
-                        size_t unused_var(count), void *elem)
+int knd_apply_commit(void *elem, void *ctx)
 {
-    struct kndTask *task = obj;
+    struct kndCommit *commit = elem;
+    struct kndTask *task = ctx;
     struct kndUserContext *user_ctx = task->user_ctx;
     struct kndMemPool *mempool = task->mempool;
-    struct kndCommit *commit = elem;
     struct kndCommit *head_commit;
     struct kndRepo *repo = task->repo;
     struct kndRepoSnapshot *snapshot = task->snapshot;
@@ -411,9 +410,9 @@ int knd_apply_commit(void *obj, const char *unused_var(elem_id), size_t unused_v
     size_t total_size = commit->rec_size;
     int err;
 
-    if (DEBUG_REPO_COMMIT_LEVEL_2)
+    if (DEBUG_REPO_COMMIT_LEVEL_2) {
         knd_log(".. applying commit #%zu: %.*s", commit->numid, commit->rec_size, commit->rec);
-
+    }
     task->mempool = NULL;
     knd_task_reset(task);
 

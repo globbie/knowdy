@@ -78,25 +78,18 @@ int knd_export_class_state_GSL(struct kndClass *self, struct kndTask *task)
     return knd_OK;
 }
 
-static int export_conc_elem_GSL(void *obj, const char *elem_id, size_t elem_id_size,
-                                size_t count, void *elem)
+static int export_conc_elem_GSL(void *elem, void *ctx)
 {
-    struct kndTask *task = obj;
+    struct kndClassEntry *entry = elem;
+    struct kndTask *task = ctx;
     struct kndQueryView *view = task->ctx->query->view;
     struct kndBatchLimits *batch = view->batch;
-    if (count < batch->from) return knd_OK;
     if (batch->size >= batch->max_items) return knd_RANGE;
     struct kndOutput *out = task->out;
-    struct kndClassEntry *entry = elem;
     struct kndClass *c;
     struct kndState *state;
     size_t curr_depth = 0;
     int err;
-
-    if (DEBUG_GSL_LEVEL_2) {
-        knd_log(".. GSL export class set elem: %.*s",
-                elem_id_size, elem_id);
-    }
 
     err = knd_class_acquire(entry, &c, task);
     KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
@@ -378,131 +371,6 @@ static int export_base_preds(struct kndClass *self, struct kndTask *task, size_t
     OUT("]", 1);
     return knd_OK;
 }
-
-#if 0
-static int export_inverse_rels(struct kndClass *self, struct kndTask *task, size_t depth)
-{
-    struct kndAttrHub *attr_hub;
-    struct kndAttr *attr;
-    struct kndOutput *out = task->out;
-    bool in_list = false;
-    size_t curr_depth = 0;
-    size_t indent_size = task->ctx->format_indent;
-    int err;
-
-    OUT(",", 1);
-    if (indent_size) {
-        OUT("\n", 1);
-        err = knd_print_offset(out, (depth) * indent_size);
-        RET_ERR();
-    }
-
-    OUT("\"rels\":", strlen("\"rels\":"));
-    if (indent_size) {
-        OUT(" ", 1);
-    }
-    OUT("[", 1);
-    
-    FOREACH (attr_hub, self->attr_hubs) {
-        if (in_list) {
-            OUT(",", 1);
-        }
-        if (!attr_hub->attr) {
-            err = knd_attr_hub_resolve(attr_hub, task);
-            KND_TASK_ERR("failed to resolve attr hub");
-        }
-        attr = attr_hub->attr;
-        if (indent_size) {
-            OUT("\n", 1);
-            err = knd_print_offset(out, (depth + 1) * indent_size);
-            RET_ERR();
-        }
-
-        OUT("{", 1);
-        if (indent_size) {
-            OUT("\n", 1);
-            err = knd_print_offset(out, (depth + 2) * indent_size);
-            RET_ERR();
-        }
-        OUT("\"cls\":", strlen("\"cls\":"));
-        if (indent_size) {
-            OUT(" ", 1);
-        }
-        OUT("\"", 1);
-        OUT(attr->parent->name, attr->parent->name_size);
-        OUT("\"", 1);
-
-        OUT(",", 1);
-        if (indent_size) {
-            OUT("\n", 1);
-            err = knd_print_offset(out, (depth + 2) * indent_size);
-            RET_ERR();
-        }
-        OUT("\"attr\":", strlen("\"attr\":"));
-        if (indent_size) {
-            OUT(" ", 1);
-        }
-        OUT("\"", 1);
-        OUT(attr->name, attr->name_size);
-        OUT("\"", 1);
-        
-        if (attr_hub->topics) {
-            OUT(",", 1);
-            if (indent_size) {
-                OUT("\n", 1);
-                err = knd_print_offset(out, (depth + 2) * indent_size);
-                RET_ERR();
-            }
-            OUT("\"total\":", strlen("\"total\":"));
-            if (indent_size) {
-                OUT(" ", 1);
-            }
-            OUTF("%zu", attr_hub->topics->num_valid_elems);
-        
-            curr_depth = task->ctx->max_depth;
-            task->ctx->max_depth = 0;
-            task->depth = depth + 3;
-            task->view->batch->batch_size = 0;
-            OUT(",", 1);
-            if (indent_size) {
-                OUT("\n", 1);
-                err = knd_print_offset(out, (depth + 2) * indent_size);
-                RET_ERR();
-            }
-            OUT("\"topics\":", strlen("\"topics\":"));
-            if (indent_size) {
-                OUT(" ", 1);
-            }
-            OUT("[", 1);
-            err = knd_set_map(attr_hub->topics, export_class_ref, (void*)task);
-            if (err && err != knd_RANGE) return err;
-
-            if (indent_size) {
-                OUT("\n", 1);
-                err = knd_print_offset(out, (depth + 2) * indent_size);
-                RET_ERR();
-            }
-            OUT("]", 1);
-            task->ctx->max_depth = curr_depth;
-        }
-
-        if (indent_size) {
-            OUT("\n", 1);
-            err = knd_print_offset(out, (depth + 1) * indent_size);
-            RET_ERR();
-        }
-        OUT("}", 1);
-        in_list = true;
-    }
-    if (indent_size) {
-        OUT("\n", 1);
-        err = knd_print_offset(out, (depth) * indent_size);
-        RET_ERR();
-    }
-    OUT("]", 1);
-    return knd_OK;
-}
-#endif
 
 int knd_class_export_GSL(struct kndClass *self, struct kndTask *task,
                          bool is_list_item, size_t depth)

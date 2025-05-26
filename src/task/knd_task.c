@@ -396,7 +396,7 @@ int knd_task_new(struct kndTask **result,
     err = knd_output_new(&task->out, NULL, KND_LARGE_BUF_SIZE);
     if (err) goto error;
 
-    err = knd_output_new(&task->log, NULL, KND_TEMP_BUF_SIZE);
+    err = knd_output_new(&task->log, NULL, KND_LOG_BUF_SIZE);
     if (err) goto error;
 
     err = knd_output_new(&task->file_out, NULL, KND_FILE_BUF_SIZE);

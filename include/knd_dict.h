@@ -2,11 +2,11 @@
 
 #include "knd_config.h"
 #include "knd_mempool.h"
+#include "knd_set.h"
 
 typedef enum knd_dict_item_phase { KND_DICT_VALID,
                                    KND_DICT_PENDING,
                                    KND_DICT_REMOVED } knd_dict_item_phase;
-typedef int (*map_cb_func)(void *obj, const char *elem_id, size_t elem_id_size, size_t count, void *elem);
 
 struct kndDictItem
 {

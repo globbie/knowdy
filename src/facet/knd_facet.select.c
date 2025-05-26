@@ -18,25 +18,6 @@
 #define DEBUG_FACET_SELECT_LEVEL_5 0
 #define DEBUG_FACET_SELECT_LEVEL_TMP 1
 
-struct LocalContext {
-    struct kndTask *task;
-    knd_facet_map_fn cb;
-};
-
-static int process_elem(void *obj, const char *unused_var(elem_id), size_t unused_var(elem_id_size),
-                        size_t unused_var(count), void *elem)
-{
-    struct LocalContext *ctx = obj;
-    knd_facet_map_fn cb = ctx->cb;
-    struct kndTask *task = ctx->task;
-    int err;
-
-    err = cb(elem, task);
-    KND_TASK_ERR("failed to call a facet cb func to a set elem");
-
-    return knd_OK;
-}
-
 #if 0
 static int compare_set_by_size_ascend(const void *a, const void *b)
 {
@@ -170,29 +151,25 @@ static int get_elem(struct kndFacet *self, struct kndFacetElemIdx *parent_idx,
 int knd_facet_map(struct kndFacet *facet, void *val,
                   const char *range_from, size_t range_from_size,
                   const char *range_to, size_t range_to_size,
-                  knd_facet_map_fn cb, struct kndTask *task)
+                  knd_facet_map_fn cb, void *ctx, struct kndTask *task)
 {
-    struct LocalContext ctx = {
-           .cb = cb,
-           .task = task
-    };
     int err;
 
     if (facet->cache_size) {
         for (size_t i = 0; i < facet->cache_size; i++) {
-            err = cb(facet->cache[i], task);
+            err = cb(facet->cache[i], ctx);
             KND_TASK_ERR("failed to call a facet cb func to a cached elem");
         }
     }
 
     if (facet->idx) {
-        err = knd_set_map(facet->idx, process_elem, &ctx);
+        err = knd_set_map(facet->idx, cb, ctx);
         KND_TASK_ERR("failed to apply a facet cb func to an idx");
     }
 
     for (size_t i = 0; i < facet->num_children; i++) {
         err = knd_facet_map(facet->children[i], val, range_from, range_from_size,
-                            range_to, range_to_size, cb, task);
+                            range_to, range_to_size, cb, ctx, task);
         KND_TASK_ERR("failed to iterate a subfacet");
     }
 

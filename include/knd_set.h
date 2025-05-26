@@ -41,8 +41,7 @@ typedef enum knd_set_dir_type { KND_SET_DIR_FIXED,
 struct kndSet;
 struct kndSetFooter;
 
-typedef int (*map_cb_func)(void *obj, const char *elem_id, size_t elem_id_size,
-                           size_t count, void *elem);
+typedef int (*map_cb_func)(void *elem, void *ctx);
 
 struct kndSetDirEntry
 {

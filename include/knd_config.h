@@ -128,17 +128,27 @@ static const char *const knd_format_names[] = {
     if (err) { \
         task->out->reset(task->out);\
         int e = task->out->writef(task->out, "" __VA_ARGS__); \
-        if (e) return e; \
+        if (e) { \
+            knd_log("no memory in task output"); \
+            return e;                   \
+        } \
         if (task->log->buf_size != 0) { \
             e = task->out->write(task->out,      \
                       " <= ", strlen(" <= "));  \
-            if (e) return e; \
+            if (e) { \
+               knd_log("no memory in  task output"); \
+               return e;                                                               \
+            } \
             e = task->out->write(task->out, task->log->buf, task->log->buf_size); \
             if (e) return e; \
         }\
         task->log->reset(task->log); \
         e = task->log->write(task->log, task->out->buf, task->out->buf_size); \
-        if (e) return e; \
+        if (e) { \
+             knd_log("%.*s {size %zu}", task->out->buf_size, task->out->buf, task->out->buf_size);    \
+             knd_log("log sys out of memory"); \
+             return e;                  \
+        } \
         task->output = task->log->buf; \
         task->output_size = task->log->buf_size; \
         return err;\
@@ -213,10 +223,11 @@ static const char *const knd_format_names[] = {
 #define KND_MAX_JOURNALS 64
 #define KND_MAX_JOURNAL_SIZE 10 * 1024 * 1024
 
+/* default values, overriden by config  */
 #define KND_MAX_SNAPSHOTS 32
-#define KND_SNAPSHOT_LEAF_MAX_THRESHOLD 1024 * 2
+#define KND_SNAPSHOT_LEAF_MAX_THRESHOLD 1024 * 1024 * 100
 #define KND_SNAPSHOT_LEAF_MIN_THRESHOLD 1024
-#define KND_SNAPSHOT_MEM_THRESHOLD_RATIO 0.6
+#define KND_SNAPSHOT_MEM_THRESHOLD_RATIO 0.8
 
 #define KND_MAX_FACETS 64
 #define KND_FACET_MAX_ELEM_CACHE 3
@@ -269,7 +280,6 @@ static const char *const knd_format_names[] = {
 
 #define KND_MAX_FLAT_ROWS 256
 #define KND_MAX_FLAT_COLS 64
-
 
 #define KND_NUMFIELD_MAX_SIZE 8
 
@@ -357,6 +367,7 @@ static const char *const knd_format_names[] = {
 
 #define KND_SET_MAX_DEPTH 10
 #define KND_TEMP_BUF_SIZE 1024
+#define KND_LOG_BUF_SIZE 1024 * 10
 #define KND_MED_BUF_SIZE 1024 * 5
 
 #define KND_MEMBLOCK_BUF_SIZE 1024 * 1024

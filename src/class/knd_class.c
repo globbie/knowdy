@@ -52,10 +52,9 @@ struct LocalContext {
     size_t name_size;
 };
 
-static int match_attr(void *obj, const char *unused_var(elem_id), size_t unused_var(elem_id_size),
-                      size_t unused_var(count), void *elem)
+static int match_attr(void *elem, void *ctx_obj)
 {
-    struct LocalContext *ctx = obj;
+    struct LocalContext *ctx = ctx_obj;
     struct kndAttrRef *ref = elem;
     const char *name = ctx->name;
     size_t name_size = ctx->name_size;
@@ -67,16 +66,9 @@ static int match_attr(void *obj, const char *unused_var(elem_id), size_t unused_
     return knd_EXISTS;
 }
 
-static int str_attr_idx_rec(void *unused_var(obj),
-                            const char *unused_var(elem_id),
-                            size_t unused_var(elem_id_size),
-                            size_t unused_var(count),
-                            void *elem)
+static int str_attr_idx_rec(void *elem, void *unused_var(ctx))
 {
     struct kndAttrRef *src_ref = elem;
-
-    //knd_log("   + %.*s => %p",
-    //        src_ref->attr->name_size, src_ref->attr->name, src_ref->attr_stm);   
 
     if (!src_ref->attr_stm) return knd_OK;
     knd_attr_stm_str(src_ref->attr_stm, 2);

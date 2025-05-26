@@ -40,12 +40,10 @@ static bool detect_if_cacheable(struct kndClassEntry *unused_var(entry))
     return true;
 }
 
-static int build_cache_item(void *obj, const char *unused_var(elem_id),
-                            size_t unused_var(elem_id_size),
-                            size_t unused_var(count), void *elem)
+static int build_cache_item(void *elem, void *ctx)
 {
-    struct kndTask *task = obj;
     struct kndClassEntry *entry = elem;
+    struct kndTask *task = ctx;
     struct kndClass *c;
     int err;
 
