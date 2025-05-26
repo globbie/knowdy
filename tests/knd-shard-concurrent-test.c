@@ -1,4 +1,4 @@
-#include <knd_shard.h>
+#include <knd_steward.h>
 #include <knd_queue.h>
 #include <knd_task.h>
 #include <knd_utils.h>
@@ -17,7 +17,7 @@
 #define MIN_CLASSNAME_SIZE 16
 #define MAX_CLASSNAME_SIZE 64
 
-static const char *shard_config =
+static const char *steward_config =
 "{schema knd"
 "  {agent 007 {role Reader}}"
 "  {db-path ./}"
@@ -72,7 +72,7 @@ static void *agent_runner(void *ptr)
     struct kndMemBlock *block;
     int err;
 
-    for (block = task->blocks; block; block = block->next) {
+    FOREACH (block, task->blocks) {
         //knd_log(".. agent #%d to run task: \"%.*s\"..",
         //        task->id, block->buf_size, block->buf);
         knd_task_reset(task);
@@ -120,7 +120,7 @@ void shuffle_classnames(const char **classnames,
 /**
  *  make sure every class name is present in the current state of DB 
  */
-int check_final_results(struct kndShard *shard,
+int check_final_results(struct kndSteward *steward,
                         const char **classnames,
                         size_t num_classnames)
 {
@@ -132,7 +132,7 @@ int check_final_results(struct kndShard *shard,
     size_t total_matches = 0;
     int err;
 
-    err = knd_task_new(shard, NULL, 1, &task);
+    err = knd_task_new(steward, NULL, 1, &task);
     if (err) return err;
 
     task->ctx = calloc(1, sizeof(struct kndTaskContext));
@@ -162,9 +162,9 @@ int check_final_results(struct kndShard *shard,
     return knd_OK;
 }
 
-START_TEST(shard_concurrent_update_test)
+START_TEST(steward_concurrent_update_test)
 {
-    struct kndShard *shard;
+    struct kndSteward *steward;
     struct kndTask *task;
     pthread_t agents[TEST_NUM_AGENTS];
     struct class_test tests[TEST_NUM_AGENTS];
@@ -181,7 +181,7 @@ START_TEST(shard_concurrent_update_test)
     clock_t from;
     int err;
     
-    err = knd_shard_new(&shard, shard_config, strlen(shard_config));
+    err = knd_steward_new(&steward, steward_config, strlen(steward_config));
     ck_assert_int_eq(err, knd_OK);
 
     /* generate an array of random strings as classnames */
@@ -200,7 +200,7 @@ START_TEST(shard_concurrent_update_test)
         t = &tests[i];
         memset(t, 0, sizeof(struct class_test));
 
-        err = knd_task_new(shard, NULL, 1, &task);
+        err = knd_task_new(steward, NULL, 1, &task);
         ck_assert_int_eq(err, knd_OK);
         task->ctx = calloc(1, sizeof(struct kndTaskContext));
         ck_assert(task->ctx != NULL);
@@ -219,17 +219,13 @@ START_TEST(shard_concurrent_update_test)
             classname_size = strlen(c);
             buf_size = snprintf(buf, 2048,
                                 "{task{!class %.*s {is User}}}",
-                                //"{!class %d__02__%.*s {is User}}}",
-                                //task->id, (int)classname_size, c,
                                 (int)classname_size, c);
 
             /* NB: Writer's tasks must be permanently allocated 
                before submitting.
                No string copy allocations will take place within the DB!
             */
-            err = knd_task_copy_block(task,
-                                      buf, buf_size,
-                                      &block, &block_size);
+            err = knd_task_copy_block(task, buf, buf_size, &block, &block_size);
             ck_assert_int_eq(err, knd_OK);
 
             /* unique to agent */
@@ -241,16 +237,13 @@ START_TEST(shard_concurrent_update_test)
                before submitting.
                No string copy allocations will take place within the DB!
             */
-            err = knd_task_copy_block(task,
-                                      buf, buf_size,
-                                      &block, &block_size);
+            err = knd_task_copy_block(task, buf, buf_size, &block, &block_size);
             ck_assert_int_eq(err, knd_OK);
             
         }
     }
 
     from = clock();
-
     /* start threads */
     for (int i = 0; i < TEST_NUM_AGENTS; i++) {
         t = &tests[i];
@@ -272,22 +265,22 @@ START_TEST(shard_concurrent_update_test)
                 t->task->id, t->total_jobs, t->success_jobs);
     }
 
-    err = check_final_results(shard, (const char**)classnames, num_classnames);
+    err = check_final_results(steward, (const char**)classnames, num_classnames);
     ck_assert_int_eq(err, knd_OK);
 
-    knd_shard_del(shard);
+    knd_steward_del(steward);
 }
 END_TEST
 
 int main(void) {
     srand(time(NULL));
-    Suite *s = suite_create("suite");
+    Suite *s = suite_create("multiagent");
 
-    TCase *tc_shard_concurrent = tcase_create("concurrent shard");
-    tcase_set_timeout(tc_shard_concurrent, 100);
+    TCase *tc_steward_concurrent = tcase_create("concurrent steward");
+    tcase_set_timeout(tc_steward_concurrent, 100);
 
-    tcase_add_test(tc_shard_concurrent, shard_concurrent_update_test);
-    suite_add_tcase(s, tc_shard_concurrent);
+    tcase_add_test(tc_steward_concurrent, steward_concurrent_update_test);
+    suite_add_tcase(s, tc_steward_concurrent);
 
     SRunner* sr = srunner_create(s);
     srunner_run_all(sr, CK_NORMAL);
