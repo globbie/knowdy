@@ -93,7 +93,9 @@ func main() {
 	defer proc.Del()
 
 	router := http.NewServeMux()
-	router.Handle("/gsl", limiter(gslHandler(proc),
+	router.Handle("/query", limiter(queryHandler(proc),
+		cfg.RequestsMax, cfg.SlotAwaitDuration))
+	router.Handle("/command", limiter(commandHandler(proc),
 		cfg.RequestsMax, cfg.SlotAwaitDuration))
 	// router.Handle("/metrics", metricsHandler)
 
@@ -157,7 +159,7 @@ func limiter(h http.Handler, requestsMax int, duration time.Duration) http.Handl
 	})
 }
 
-func gslHandler(proc *kndProc) http.Handler {
+func queryHandler(proc *kndProc) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -169,7 +171,33 @@ func gslHandler(proc *kndProc) http.Handler {
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
-		result, _, err := proc.RunTask(string(body), len(body))
+
+		result, _, err := proc.QueryTask(string(body), len(body))
+		if err != nil {
+			log.Println(err.Error())
+			// TODO HTTP error mapping
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, result)
+	})
+}
+
+func commandHandler(proc *kndProc) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		defer r.Body.Close()
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		result, _, err := proc.CommandTask(string(body), len(body))
 		if err != nil {
 			log.Println(err.Error())
 			// TODO HTTP error mapping

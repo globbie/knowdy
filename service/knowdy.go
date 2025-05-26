@@ -8,12 +8,12 @@ package main
 // #cgo CFLAGS: -I../libs/gsl-parser/include
 // #cgo LDFLAGS: -L../build/lib/ -lknowdy_static
 // #cgo LDFLAGS: -L../build/libs/gsl-parser/lib/ -lgsl-parser_static
-// #include <knd_shard.h>
+// #include <knd_steward.h>
 // #include <knd_task.h>
-// static void kndShard_del__(struct kndShard *shard)
+// static void kndSteward_del__(struct kndSteward *steward)
 // {
-//     if (shard) {
-//         knd_shard_del(shard);
+//     if (steward) {
+//         knd_steward_del(steward);
 //     }
 // }
 import "C"
@@ -26,25 +26,30 @@ import (
 type kndProc struct {
 	Name          string
 	Role          string
-	shard         *C.struct_kndShard
+	steward         *C.struct_kndSteward
 	parentAddress string
-	workers       chan *C.struct_kndTask
+	writers       chan *C.struct_kndTask
+	writersWait   chan *C.struct_kndTask
+	readers       chan *C.struct_kndTask
+	readersWait   chan *C.struct_kndTask
 }
 
 func New(conf string, parentAddress string, concurrencyFactor int) (*kndProc, error) {
-	var shard *C.struct_kndShard = nil
-	errCode := C.knd_shard_new((**C.struct_kndShard)(&shard), C.CString(conf), C.size_t(len(conf)))
+	var steward *C.struct_kndSteward = nil
+	errCode := C.knd_steward_new((**C.struct_kndSteward)(&steward),\
+		C.CString(conf), C.size_t(len(conf)))
 	if errCode != C.int(0) {
-		return nil, errors.New("failed to create a shard")
+		return nil, errors.New("failed to create a steward")
 	}
 
 	proc := kndProc{
-		shard:         shard,
+		steward:         steward,
 		parentAddress: parentAddress,
-		workers:       make(chan *C.struct_kndTask, concurrencyFactor),
+		writers:       make(chan *C.struct_kndTask, concurrencyFactor),
+		readers:       make(chan *C.struct_kndTask, concurrencyFactor),
 	}
-	proc.Name = C.GoStringN(&shard.name[0], C.int(shard.name_size))
-        switch C.int(shard.role) {
+	proc.Name = C.GoStringN(&steward.name[0], C.int(steward.name_size))
+        switch C.int(steward.role) {
 	case C.KND_ARBITER:
 		proc.Role = "Arbiter"
 		break
@@ -58,14 +63,11 @@ func New(conf string, parentAddress string, concurrencyFactor int) (*kndProc, er
 	
 	for i := 0; i < concurrencyFactor; i++ {
 		var task *C.struct_kndTask
-		errCode := C.knd_task_new(shard, nil, C.int(i + 1), &task)
+		errCode := C.knd_task_new(steward, nil, C.int(i + 1), &task)
 		if errCode != C.int(0) {
 			proc.Del()
-			return nil, errors.New("could not create kndTask")
+			return nil, errors.New("failed to create kndTask")
 		}
-		var ctx C.struct_kndTaskContext
-		task.ctx = &ctx
-
 		proc.workers <- task
 	}
 	return &proc, nil
@@ -77,13 +79,13 @@ func (p *kndProc) Del() error {
 		t := <-p.workers
 		C.knd_task_del(t)
 	}
-	C.kndShard_del__(p.shard)
+	C.kndSteward_del__(p.steward)
 	return nil
 }
 
-func (p *kndProc) RunTask(task string, task_len int) (string, string, error) {
-	worker := <-p.workers
-	defer func() { p.workers <- worker }()
+func (p *kndProc) CommandTask(task string, task_len int) (string, string, error) {
+	writer := <-p.writers
+	defer func() { p.writers <- writer }()
 
 	var block *C.char = nil
 	var block_size C.size_t = 0
