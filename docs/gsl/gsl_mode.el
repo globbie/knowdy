@@ -42,7 +42,7 @@
   (list
    '("\\[\\(gloss\\)" . (1 font-lock-string-face))
    '("{[!]?\\(proc\\)" . (1 font-lock-keyword-face))
-   '("{[!]?\\(class\\)" . (1 font-lock-keyword-face))
+   '("{[!]?\\(cls\\)" . (1 font-lock-keyword-face))
    '("{\\(is\\)[\s]+" . (1 font-lock-keyword-face))
    '("{\\(cls\\)[\s]+" . (1 font-lock-keyword-face))
    '("{\\(do\\)[\s]+" . (1 font-lock-keyword-face))
@@ -54,7 +54,7 @@
    '("{\\(str\\)[\s]+" . (1 font-lock-keyword-face))
    '("{str[\s]+\\([^{}]+\\)" . (1 font-lock-variable-name-face))
    '("{\\(num\\)[\s]+" . (1 font-lock-keyword-face))
-   '("{num[\s]+\\([^{}]+\\)" . (1 font-lock-variable-name-face))
+   '("{uint[\s]+\\([^{}]+\\)" . (1 font-lock-variable-name-face))
    '("{\\(bool\\)[\s]+" . (1 font-lock-keyword-face))
    '("{bool[\s]+\\([^{}]+\\)" . (1 font-lock-variable-name-face))
    '("{\\(date\\)[\s]+" . (1 font-lock-keyword-face))
