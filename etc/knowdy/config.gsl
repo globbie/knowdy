@@ -3,8 +3,8 @@
       {db-path /var/lib/knowdy/db}
       {schema-path /etc/knowdy/schema
            {user User
-               {base-repo knd-base
-                   {schema-path /etc/knowdy/schema}}}}
+                 {base-repo knd-base
+                       {schema-path /Users/dmitrid/glottie/schemas}}}}
       {-- init-data-path /etc/knowdy/data --}
       {memory
          {main
@@ -13,7 +13,8 @@
             {max-small-x4-pages    1000}
             {max-small-x2-pages    1000}
             {max-small-pages       4000}
-            {max-tiny-pages        10000}}
+            {max-tiny-pages        10000}
+         }
          {cache
             {max-large-pages       300}
             {max-base-pages        5000}
@@ -22,12 +23,11 @@
             {max-small-pages       6000}
             {max-tiny-pages        20000}}
          {user
-            {max-large-pages       10}
-            {max-base-pages        5000}
-            {max-small-x4-pages    20000}
-            {max-small-x2-pages    31000}
-            {max-small-pages       90000}
-            {max-tiny-pages        20000}}
+            {max-base-pages        300000  }
+            {max-small-x4-pages    400000  }
+            {max-small-x2-pages    80000   }
+            {max-small-pages       4000000 }
+            {max-tiny-pages        1300000 }}
          {ctx
             {max-large-pages        10}
             {max-base-pages        1000}
@@ -36,8 +36,11 @@
             {max-small-pages       3000}
             {max-tiny-pages        10000}}
       }
-      {-- storage   quota-limit-total
-                    max-leaf min-leaf
-                    snapshot threshhold  min --}
-      {-- network --}
+      {storage
+          {quota {unit M}
+                 {total 200}}
+          {leaf {unit M}
+                {max 100} {min 20}}
+          {snapshot
+                {threshold 0.75}}}
 }
