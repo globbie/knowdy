@@ -68,7 +68,7 @@ static gsl_err_t parse_text(void *obj, const char *rec, size_t *total_size)
     gsl_err_t parser_err;
     int err;
 
-    err = knd_text_new(mempool, &text);
+    err = knd_text_new(&text, mempool);
     if (err) return *total_size = 0, make_gsl_err_external(knd_NOMEM);
 
     parser_err = knd_text_read(text, rec, total_size, task);
@@ -148,6 +148,7 @@ static gsl_err_t read_nested_attr_stm_list(void *obj, const char *id, size_t id_
         knd_log(">> list attr decoded: %.*s  {type %s}",
                 attr->name_size, attr->name, knd_attr_names[attr->type]);
     }
+
     err = knd_attr_stm_new(&attr_stm, parent_attr_stm->subj, mempool);
     if (err) return make_gsl_err(err);
     attr_stm->attr = attr;

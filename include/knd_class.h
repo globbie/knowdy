@@ -309,7 +309,7 @@ int knd_class_entry_new(struct kndClassEntry **result, struct kndMemPool *mempoo
 int knd_class_new(struct kndClass **result, struct kndMemPool *mempool);
 int knd_class_idx_new(struct kndClassIdx **result, struct kndMemPool *mempool);
 
-int knd_inner_class_new(struct kndClass **self, struct kndMemPool *mempool);
+int knd_inner_class_new(struct kndClass **result, struct kndMemPool *mempool);
 
 int knd_class_base_pred_new(struct kndClassBasePred **result, struct kndClass *cls,
                             struct kndMemPool *mempool);

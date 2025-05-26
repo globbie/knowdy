@@ -284,7 +284,7 @@ static int commit_state(struct kndProc *self,
     struct kndState *head, *state;
     int err;
 
-    err = knd_state_new(mempool, &state);
+    err = knd_state_new(&state, mempool);
     KND_TASK_ERR("proc state alloc failed");
     state->phase = phase;
     state->commit = task->ctx->commit;
@@ -315,7 +315,7 @@ int knd_proc_entry_clone(struct kndProcEntry *self, struct kndRepo *repo,
                 self->name_size, self->name, self->repo->name_size, self->repo->name,
                 repo->name_size, repo->name);
     }
-    err = knd_proc_entry_new(mempool, &entry);
+    err = knd_proc_entry_new(&entry, mempool);
     KND_TASK_ERR("failed to alloc a proc entry");
 
     entry->repo = repo;
@@ -364,7 +364,7 @@ int knd_proc_commit_state(struct kndProc *self,
         }*/
 
     /* register state */
-    err = knd_state_ref_new(mempool, &state_ref);                                 RET_ERR();
+    err = knd_state_ref_new(&state_ref, mempool);                                 RET_ERR();
     state_ref->state = state;
     state_ref->type = KND_STATE_PROC;
     state_ref->obj = self->entry;
@@ -374,7 +374,7 @@ int knd_proc_commit_state(struct kndProc *self,
     return knd_OK;
 }
 
-int knd_proc_var_new(struct kndMemPool *mempool, struct kndProcVar **result)
+int knd_proc_var_new(struct kndProcVar **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
@@ -386,7 +386,7 @@ int knd_proc_var_new(struct kndMemPool *mempool, struct kndProcVar **result)
     return knd_OK;
 }
 
-int knd_proc_idx_new(struct kndMemPool *mempool, struct kndProcIdx **result)
+int knd_proc_idx_new(struct kndProcIdx **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
@@ -398,7 +398,7 @@ int knd_proc_idx_new(struct kndMemPool *mempool, struct kndProcIdx **result)
     return knd_OK;
 }
 
-int knd_proc_entry_new(struct kndMemPool *mempool, struct kndProcEntry **result)
+int knd_proc_entry_new(struct kndProcEntry **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
@@ -410,7 +410,7 @@ int knd_proc_entry_new(struct kndMemPool *mempool, struct kndProcEntry **result)
     return knd_OK;
 }
 
-int knd_proc_ref_new(struct kndMemPool *mempool, struct kndProcRef **result)
+int knd_proc_ref_new(struct kndProcRef **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
@@ -422,7 +422,7 @@ int knd_proc_ref_new(struct kndMemPool *mempool, struct kndProcRef **result)
     return knd_OK;
 }
 
-int knd_proc_new(struct kndMemPool *mempool, struct kndProc **result)
+int knd_proc_new(struct kndProc **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;

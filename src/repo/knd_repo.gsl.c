@@ -50,7 +50,7 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
     if (task->type != KND_BULK_LOAD_STATE) {
         task->type = KND_COMMIT_STATE;
         if (!commit) {
-            err = knd_commit_new(task->mempool, &commit);
+            err = knd_commit_new(&commit, task->mempool);
             if (err) return make_gsl_err_external(err);
 
             commit->orig_state_id = atomic_load_explicit(&task->snapshot->num_commits,
@@ -82,7 +82,7 @@ static gsl_err_t parse_proc_import(void *obj, const char *rec, size_t *total_siz
         task->type = KND_COMMIT_STATE;
 
         if (!task->ctx->commit) {
-            err = knd_commit_new(task->mempool, &task->ctx->commit);
+            err = knd_commit_new(&task->ctx->commit, task->mempool);
             if (err) return make_gsl_err_external(err);
 
             task->ctx->commit->orig_state_id = atomic_load_explicit(&task->snapshot->num_commits,
@@ -155,7 +155,7 @@ static gsl_err_t parse_logic_clause(void *obj, const char *rec, size_t *total_si
     if (DEBUG_REPO_GSL_LEVEL_2)
         knd_log(".. parsing logic clause: \"%.*s\"", 32, rec);
 
-    err = knd_logic_clause_new(mempool, &clause);
+    err = knd_logic_clause_new(&clause, mempool);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
     err = knd_logic_clause_parse(clause, rec, total_size, task);
@@ -208,7 +208,7 @@ static gsl_err_t run_read_include(void *obj, const char *name, size_t name_size)
     if (DEBUG_REPO_GSL_LEVEL_2)
         knd_log(".. include {file %.*s}", name_size, name);
 
-    err = knd_conc_folder_new(mempool, &folder);
+    err = knd_conc_folder_new(&folder, mempool);
     if (err) {
         knd_log("failed to alloc a conc folder");
         return make_gsl_err_external(knd_NOMEM);

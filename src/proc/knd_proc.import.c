@@ -39,7 +39,7 @@ static gsl_err_t parse_proc_arg_item(void *obj, const char *rec, size_t *total_s
     int err;
     gsl_err_t parser_err;
 
-    err = knd_proc_arg_new(ctx->task->user_ctx->mempool, &arg);
+    err = knd_proc_arg_new(&arg, ctx->task->user_ctx->mempool);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
     parser_err = knd_proc_arg_parse(arg, rec, total_size, ctx->task);
@@ -59,7 +59,7 @@ static gsl_err_t parse_proc_effect_item(void *obj, const char *rec, size_t *tota
     int err;
     gsl_err_t parser_err;
 
-    err = knd_proc_arg_new(ctx->task->user_ctx->mempool, &arg);
+    err = knd_proc_arg_new(&arg, ctx->task->user_ctx->mempool);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
     parser_err = knd_proc_arg_parse(arg, rec, total_size, ctx->task);
@@ -79,7 +79,7 @@ static gsl_err_t parse_proc_call_item(void *obj, const char *rec, size_t *total_
     int err;
     gsl_err_t parser_err;
 
-    err = knd_proc_call_new(ctx->task->user_ctx->mempool, &call);
+    err = knd_proc_call_new(&call, ctx->task->user_ctx->mempool);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
     parser_err = knd_proc_call_parse(call, rec, total_size, ctx->task);
@@ -122,7 +122,7 @@ static gsl_err_t validate_base_arg(void *obj, const char *name, size_t name_size
     struct kndProcArgVar *proc_arg_var;
     int err;
 
-    err = knd_proc_arg_var_new(mempool, &proc_arg_var);
+    err = knd_proc_arg_var_new(&proc_arg_var, mempool);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     proc_arg_var->name = name;
     proc_arg_var->name_size = name_size;
@@ -167,7 +167,7 @@ static gsl_err_t parse_base(void *obj, const char *rec, size_t *total_size)
     struct kndProcVar *proc_var;
     int err;
 
-    err = knd_proc_var_new(ctx->task->user_ctx->mempool, &proc_var);
+    err = knd_proc_var_new(&proc_var, ctx->task->user_ctx->mempool);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     proc_var->parent = self->entry;
     ctx->proc_var = proc_var;
@@ -343,14 +343,14 @@ gsl_err_t knd_proc_import(struct kndRepo *repo, const char *rec, size_t *total_s
     if (DEBUG_PROC_IMPORT_LEVEL_2)
         knd_log(".. import {proc %.*s}", 32, rec);
 
-    err = knd_proc_entry_new(mempool, &entry);
+    err = knd_proc_entry_new(&entry, mempool);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
     entry->name = "/";
     entry->name_size = 1;
     entry->repo = repo;
 
-    err = knd_proc_new(mempool, &proc);
+    err = knd_proc_new(&proc, mempool);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
     proc->name = entry->name;

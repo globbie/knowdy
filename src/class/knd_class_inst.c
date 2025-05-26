@@ -86,7 +86,7 @@ int knd_class_inst_commit_state(struct kndClass *self, struct kndStateRef *child
     struct kndState *state, *head;
     int err;
 
-    err = knd_state_new(mempool, &state);
+    err = knd_state_new(&state, mempool);
     KND_TASK_ERR("class inst state alloc failed");
     state->phase = KND_SELECTED;
     state->children = children;
@@ -100,7 +100,7 @@ int knd_class_inst_commit_state(struct kndClass *self, struct kndStateRef *child
     } while (!atomic_compare_exchange_weak(&self->inst_states, &head, state));
 
     /* inform our repo */
-    err = knd_state_ref_new(mempool, &ref);                                 RET_ERR();
+    err = knd_state_ref_new(&ref, mempool);                                 RET_ERR();
     ref->state = state;
     ref->type = KND_STATE_CLASS;
     ref->obj = self->entry;

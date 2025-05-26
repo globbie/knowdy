@@ -187,8 +187,8 @@ int knd_class_inst_index(struct kndClassInst *self, struct kndTask *task)
             continue;
             }*/
 
-        err = knd_index_inst_attr_stm(self->entry, attr, stm, task);
-        KND_TASK_ERR("failed to index inst attr stm %.*s", attr->name_size, attr->name);
+        //err = knd_index_inst_attr_stm(self->entry, attr, stm, task);
+        //KND_TASK_ERR("failed to index inst attr stm %.*s", attr->name_size, attr->name);
     }
     return knd_OK;
 }

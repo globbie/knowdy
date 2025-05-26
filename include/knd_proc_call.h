@@ -82,14 +82,9 @@ static inline void knd_proc_call_declare_arg(struct kndProcCall *proc_call,
     proc_call->num_args++;
 }
 
-int knd_proc_call_arg_new(struct kndMemPool *mempool,
-                          struct kndProcCallArg **result);
-int knd_proc_call_new(struct kndMemPool *mempool,
-                      struct kndProcCall **result);
+int knd_proc_call_arg_new(struct kndProcCallArg **result, struct kndMemPool *mempool);
+int knd_proc_call_new(struct kndProcCall **result, struct kndMemPool *mempool);
 
 gsl_err_t knd_proc_call_parse(struct kndProcCall *self,
-                              const char *rec,
-                              size_t *total_size,
-                              struct kndTask *task);
-void knd_proc_call_str(struct kndProcCall *self,
-                       size_t depth);
+                              const char *rec, size_t *total_size, struct kndTask *task);
+void knd_proc_call_str(struct kndProcCall *self, size_t depth);

@@ -92,7 +92,7 @@ static gsl_err_t read_gloss_item(void *obj, const char *rec, size_t *total_size)
     struct kndText *t;
     int err;
 
-    err = knd_text_new(task->user_ctx->mempool, &t);
+    err = knd_text_new(&t, task->user_ctx->mempool);
     if (err) {
         KND_TASK_LOG("failed to alloc a text");
         return *total_size = 0, make_gsl_err_external(err);
@@ -259,7 +259,7 @@ static gsl_err_t parse_synode_spec(void *obj, const char *rec, size_t *total_siz
     gsl_err_t parser_err;
     int err;
 
-    err = knd_synode_spec_new(mempool, &spec);
+    err = knd_synode_spec_new(&spec, mempool);
     if (err) return make_gsl_err_external(err);
     ctx->synode_spec = spec;
     ctx->synode = NULL;
@@ -295,7 +295,7 @@ static gsl_err_t parse_term_synode(void *obj, const char *rec, size_t *total_siz
     gsl_err_t parser_err;
     int err;
 
-    err = knd_synode_new(mempool, &synode);
+    err = knd_synode_new(&synode, mempool);
     if (err) return make_gsl_err_external(err);
     synode->is_terminal = true;
     base_synode->topic = synode;
@@ -338,7 +338,7 @@ static gsl_err_t parse_synode(void *obj, const char *rec, size_t *total_size)
     gsl_err_t parser_err;
     int err;
 
-    err = knd_synode_new(mempool, &synode);
+    err = knd_synode_new(&synode, mempool);
     if (err) return make_gsl_err_external(err);
     ctx->synode = synode;
     ctx->synode_spec = NULL;
@@ -398,7 +398,7 @@ static gsl_err_t parse_subj(void *obj, const char *rec, size_t *total_size)
     gsl_err_t parser_err;
     int err;
 
-    err = knd_synode_new(mempool, &synode);
+    err = knd_synode_new(&synode, mempool);
     if (err) return make_gsl_err_external(err);
     ctx->synode = synode;
     ctx->synode_spec = NULL;
@@ -446,7 +446,7 @@ static gsl_err_t parse_pred(void *obj, const char *rec, size_t *total_size)
     gsl_err_t parser_err;
     int err;
 
-    err = knd_synode_new(mempool, &synode);
+    err = knd_synode_new(&synode, mempool);
     if (err) return make_gsl_err_external(err);
     ctx->synode = synode;
     ctx->synode_spec = NULL;
@@ -483,7 +483,7 @@ static gsl_err_t parse_clause(void *obj, const char *rec, size_t *total_size)
     gsl_err_t parser_err;
     int err;
 
-    err = knd_clause_new(mempool, &clause);
+    err = knd_clause_new(&clause, mempool);
     if (err) return make_gsl_err_external(err);
     if (!sent->clause)
         sent->clause = clause;
@@ -572,7 +572,7 @@ static gsl_err_t parse_statement(void *obj, const char *rec, size_t *total_size)
     gsl_err_t parser_err;
     int err;
 
-    err = knd_statement_new(mempool, &stm);
+    err = knd_statement_new(&stm, mempool);
     if (err) return make_gsl_err_external(err);
     sent->stm = stm;
 
@@ -598,7 +598,7 @@ static gsl_err_t parse_sentence(void *obj, const char *rec, size_t *total_size)
     gsl_err_t parser_err;
     int err;
 
-    err = knd_sentence_new(mempool, &sent);
+    err = knd_sentence_new(&sent, mempool);
     if (err) return make_gsl_err_external(err);
     ctx->sent = sent;
 
@@ -716,7 +716,7 @@ static gsl_err_t parse_par(void *obj, const char *rec, size_t *total_size)
         }
     };
 
-    err = knd_par_new(mempool, &par);
+    err = knd_par_new(&par, mempool);
     if (err) return make_gsl_err_external(err);
     ctx->par = par;
     ctx->sent = NULL;
@@ -769,7 +769,7 @@ static gsl_err_t parse_translation(void *obj, const char *rec, size_t *total_siz
     gsl_err_t parser_err;
     int err;
 
-    err = knd_text_new(mempool, &trn);
+    err = knd_text_new(&trn, mempool);
     if (err) {
         KND_TASK_LOG("failed to alloc a text");
         return *total_size = 0, make_gsl_err_external(err);

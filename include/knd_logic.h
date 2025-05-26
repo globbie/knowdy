@@ -42,8 +42,8 @@ struct kndLogicClause
     struct kndSituation *sit;
 };
 
-int knd_situation_new(struct kndMemPool *mempool, struct kndSituation **self);
-int knd_logic_clause_new(struct kndMemPool *mempool, struct kndLogicClause **result);
+int knd_situation_new(struct kndSituation **self, struct kndMemPool *mempool);
+int knd_logic_clause_new(struct kndLogicClause **result, struct kndMemPool *mempool);
 
 // knd_logic.import.c
 int knd_logic_clause_parse(struct kndLogicClause *clause, const char *rec, size_t *total_size, struct kndTask *task);

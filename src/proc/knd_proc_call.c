@@ -197,7 +197,7 @@ static gsl_err_t validate_do_arg(void *obj,
         knd_log(".. Proc Call Arg \"%.*s\" to parse: \"%.*s\"..",
                 name_size, name, 32, rec);
     }
-    err.code = knd_proc_call_arg_new(ctx->task->mempool, &call_arg);
+    err.code = knd_proc_call_arg_new(&call_arg, ctx->task->mempool);
     if (err.code) return *total_size = 0, make_gsl_err_external(err.code);
 
     call_arg->name = name;
@@ -298,7 +298,7 @@ static int proc_call_arg_export_GSP(struct kndProcArg *unused_var(self),
 }
 */
 
-int knd_proc_call_arg_new(struct kndMemPool *mempool, struct kndProcCallArg **result)
+int knd_proc_call_arg_new(struct kndProcCallArg **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
@@ -310,7 +310,7 @@ int knd_proc_call_arg_new(struct kndMemPool *mempool, struct kndProcCallArg **re
     return knd_OK;
 }
 
-int knd_proc_call_new(struct kndMemPool *mempool, struct kndProcCall **result)
+int knd_proc_call_new(struct kndProcCall **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;

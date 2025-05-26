@@ -198,7 +198,7 @@ static int commit_state(struct kndStateRef *children, knd_state_phase phase,
     struct kndState *state;
     int err;
 
-    err = knd_state_new(mempool, &state);
+    err = knd_state_new(&state, mempool);
     if (err) {
         KND_TASK_ERR("class state alloc failed");
     }
@@ -254,7 +254,7 @@ int knd_class_commit_state(struct kndClassEntry *self, knd_state_phase phase, st
         state->num_children = task->ctx->num_class_inst_state_refs;
     }
 
-    err = knd_state_ref_new(mempool, &state_ref);                                 RET_ERR();
+    err = knd_state_ref_new(&state_ref, mempool);                                 RET_ERR();
     state_ref->state = state;
     state_ref->type = KND_STATE_CLASS;
     state_ref->obj = self;

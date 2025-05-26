@@ -82,10 +82,6 @@ struct kndStateRef
     struct kndStateRef *next;
 };
 
-int knd_state_new(struct kndMemPool *mempool, struct kndState **result);
-int knd_state_mem(struct kndMemPool *mempool, struct kndState **result);
-
-int knd_state_ref_new(struct kndMemPool *mempool,
-                      struct kndStateRef **result);
-int knd_state_val_new(struct kndMemPool *mempool,
-                      struct kndStateVal **result);
+int knd_state_new(struct kndState **result, struct kndMemPool *mempool);
+int knd_state_ref_new(struct kndStateRef **result, struct kndMemPool *mempool);
+int knd_state_val_new(struct kndStateVal **result, struct kndMemPool *mempool);

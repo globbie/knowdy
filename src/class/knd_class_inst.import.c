@@ -345,7 +345,7 @@ int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *
             if (declar->entry == c->entry) break;
         }
         if (!declar) {
-            err = knd_class_declar_new(mempool, &declar);
+            err = knd_class_declar_new(&declar, mempool);
             KND_TASK_ERR("failed to alloc class declar");
             declar->entry = c->entry;
             declar->next = task->ctx->declars;
@@ -359,14 +359,14 @@ int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *
         break;
     }
 
-    err = knd_state_new(mempool, &state);
+    err = knd_state_new(&state, mempool);
     KND_TASK_ERR("state alloc failed");
     state->phase = KND_CREATED;
     state->numid = 1;
     inst->states = state;
     inst->num_states = 1;
 
-    err = knd_state_ref_new(mempool, &state_ref);
+    err = knd_state_ref_new(&state_ref, mempool);
     KND_TASK_ERR("failed to alloc a state ref");
     state_ref->state = state;
     state_ref->type = KND_STATE_CLASS_INST;

@@ -88,4 +88,4 @@ int knd_create_user_repo(struct kndTask *task);
 gsl_err_t knd_parse_select_user(void *obj, const char *rec, size_t *total_size);
 
 int knd_user_context_new(struct kndUserContext **result);
-int knd_repo_access_new(struct kndMemPool *mempool, struct kndRepoAccess **result);
+int knd_repo_access_new(struct kndRepoAccess **result, struct kndMemPool *mempool);

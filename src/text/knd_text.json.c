@@ -513,7 +513,7 @@ int knd_text_build_JSON(const char *rec, size_t rec_size, struct kndTask *task)
 
     out->reset(out);
 
-    err = knd_text_new(mempool, &text);
+    err = knd_text_new(&text, mempool);
     KND_TASK_ERR("failed to alloc text");
 
     parser_err = knd_text_import(text, rec, &rec_size, task);

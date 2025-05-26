@@ -233,9 +233,9 @@ static gsl_err_t remove_inst(void *obj, const char *unused_var(name), size_t unu
         knd_log("== class inst to be deleted: \"%.*s\"",
                 self->name_size, self->name);
 
-    err = knd_state_new(mempool, &state);
+    err = knd_state_new(&state, mempool);
     if (err) return make_gsl_err_external(err);
-    err = knd_state_ref_new(mempool, &state_ref);
+    err = knd_state_ref_new(&state_ref, mempool);
     if (err) return make_gsl_err_external(err);
     state_ref->state = state;
 

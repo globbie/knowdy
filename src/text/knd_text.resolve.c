@@ -59,7 +59,7 @@ static gsl_err_t parse_text(void *obj, const char *rec, size_t *total_size)
     gsl_err_t parser_err;
     int err;
 
-    err = knd_text_new(mempool, &text);
+    err = knd_text_new(&text, mempool);
     if (err) return *total_size = 0, make_gsl_err_external(knd_NOMEM);
 
     parser_err = knd_text_import(text, rec, total_size, task);
@@ -86,7 +86,7 @@ int knd_text_resolve(struct kndAttrStm *attr_stm, struct kndTask *task)
                 attr_stm->attr->owner->name_size,
                 attr_stm->attr->owner->name);
     }
-    err = knd_text_new(mempool, &text);
+    err = knd_text_new(&text, mempool);
     KND_TASK_ERR("failed to alloc a text field %.*s", attr_stm->name_size, attr_stm->name);
 
     err = knd_charseq_fetch(task->repo, attr_stm->val, attr_stm->val_size, &text->seq, task);

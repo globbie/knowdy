@@ -6,7 +6,7 @@
 #include "knd_mempool.h"
 #include "knd_state.h"
 
-int knd_state_new(struct kndMemPool *mempool, struct kndState **result)
+int knd_state_new(struct kndState **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
@@ -18,7 +18,7 @@ int knd_state_new(struct kndMemPool *mempool, struct kndState **result)
     return knd_OK;
 }
 
-int knd_state_ref_new(struct kndMemPool *mempool, struct kndStateRef **result)
+int knd_state_ref_new(struct kndStateRef **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
@@ -30,7 +30,7 @@ int knd_state_ref_new(struct kndMemPool *mempool, struct kndStateRef **result)
     return knd_OK;
 }
 
-int knd_state_val_new(struct kndMemPool *mempool, struct kndStateVal **result)
+int knd_state_val_new(struct kndStateVal **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;

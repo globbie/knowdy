@@ -223,13 +223,13 @@ struct kndProc
     struct kndProc *next;
 };
 
-int knd_proc_new(struct kndMemPool *mempool, struct kndProc **result);
-int knd_proc_entry_new(struct kndMemPool *mempool, struct kndProcEntry **result);
-int knd_proc_ref_new(struct kndMemPool *mempool, struct kndProcRef **result);
-int knd_proc_idx_new(struct kndMemPool *mempool, struct kndProcIdx **result);
-int knd_proc_var_new(struct kndMemPool *mempool, struct kndProcVar **result);
-int knd_proc_inst_new(struct kndMemPool *mempool, struct kndProcInst **result);
-int knd_proc_inst_entry_new(struct kndMemPool *mempool, struct kndProcInstEntry **result);
+int knd_proc_new(struct kndProc **result, struct kndMemPool *mempool);
+int knd_proc_entry_new(struct kndProcEntry **result, struct kndMemPool *mempool);
+int knd_proc_ref_new(struct kndProcRef **result, struct kndMemPool *mempool);
+int knd_proc_idx_new(struct kndProcIdx **result, struct kndMemPool *mempool);
+int knd_proc_var_new(struct kndProcVar **result, struct kndMemPool *mempool);
+int knd_proc_inst_new(struct kndProcInst **result, struct kndMemPool *mempool);
+int knd_proc_inst_entry_new(struct kndProcInstEntry **result, struct kndMemPool *mempool);
 
 void knd_proc_str(struct kndProc *self, size_t depth);
 void knd_proc_inst_str(struct kndProcInst *self, size_t depth);

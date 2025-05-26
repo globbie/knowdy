@@ -39,10 +39,7 @@ struct kndCommit
     struct kndCommit *prev;
 };
 
-int knd_commit_new(struct kndMemPool *mempool,
-                   struct kndCommit **result);
-int knd_commit_mem(struct kndMemPool *mempool,
-                   struct kndCommit **result);
+int knd_commit_new(struct kndCommit **result, struct kndMemPool *mempool);
 int knd_resolve_commit(struct kndCommit *self, struct kndTask *task);
 int knd_dedup_commit(struct kndCommit *commit, struct kndTask *task);
 

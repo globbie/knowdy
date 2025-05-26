@@ -44,7 +44,7 @@ static int inherit_arg(void *elem, void *ctx_obj)
         return knd_OK;
     }
 
-    err = knd_proc_arg_ref_new(task->mempool, &ref);
+    err = knd_proc_arg_ref_new(&ref, task->mempool);
     KND_TASK_ERR("failed to alloc a proc arg ref");
     ref->arg = arg;
     ref->var = src_ref->var;
@@ -143,7 +143,7 @@ static int link_ancestor(struct kndProc *self, struct kndProcEntry *base_entry, 
     */
 
     /* add an ancestor */
-    err = knd_proc_ref_new(mempool, &ref);                                       RET_ERR();
+    err = knd_proc_ref_new(&ref, mempool);                                       RET_ERR();
     ref->proc = base;
     ref->entry = base->entry;
     ref->next = entry->ancestors;
@@ -182,7 +182,7 @@ static int link_base(struct kndProc *self, struct kndProc *base, struct kndTask 
 
     if (!parent_linked) {
         /* register a parent */
-        err = knd_proc_ref_new(mempool, &ref);
+        err = knd_proc_ref_new(&ref, mempool);
         KND_TASK_ERR("mempool failed to alloc kndProcRef");
         ref->proc = base;
         ref->entry = base->entry;
@@ -253,7 +253,7 @@ int knd_proc_resolve(struct kndProc *self, struct kndTask *task)
         KND_TASK_ERR("failed to register a proc arg");
 
         // local index 
-        err = knd_proc_arg_ref_new(task->mempool, &arg_ref);
+        err = knd_proc_arg_ref_new(&arg_ref, task->mempool);
         KND_TASK_ERR("failed to alloc an arg ref");
         arg_ref->arg = arg;
         arg_ref->proc = self;

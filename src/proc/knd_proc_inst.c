@@ -62,7 +62,7 @@ int knd_proc_inst_export(struct kndProcInst *self, knd_format format, bool is_li
     }
 }
 
-int knd_proc_inst_entry_new(struct kndMemPool *mempool, struct kndProcInstEntry **result)
+int knd_proc_inst_entry_new(struct kndProcInstEntry **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
@@ -74,7 +74,7 @@ int knd_proc_inst_entry_new(struct kndMemPool *mempool, struct kndProcInstEntry 
     return knd_OK;
 }
 
-int knd_proc_inst_new(struct kndMemPool *mempool, struct kndProcInst **result)
+int knd_proc_inst_new(struct kndProcInst **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;

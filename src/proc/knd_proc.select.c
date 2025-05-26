@@ -109,7 +109,7 @@ static gsl_err_t remove_proc(void *obj, const char *name, size_t name_size)
 
     task->type = KND_COMMIT_STATE;
     if (!task->ctx->commit) {
-        err = knd_commit_new(task->mempool, &task->ctx->commit);
+        err = knd_commit_new(&task->ctx->commit, task->mempool);
         if (err) return make_gsl_err_external(err);
 
         task->ctx->commit->orig_state_id = atomic_load_explicit(&task->snapshot->num_commits,
@@ -151,7 +151,7 @@ static gsl_err_t parse_proc_inst_import(void *obj, const char *rec, size_t *tota
     switch (task->type) {
     case KND_GET_STATE:
         if (!commit) {
-            err = knd_commit_new(mempool, &commit);
+            err = knd_commit_new(&commit, mempool);
             if (err) return make_gsl_err_external(err);
             commit->orig_state_id = atomic_load_explicit(&task->snapshot->num_commits, memory_order_relaxed);
             task->ctx->commit = commit;

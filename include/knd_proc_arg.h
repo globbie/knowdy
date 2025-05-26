@@ -125,6 +125,6 @@ int knd_proc_arg_compute(struct kndProcArg *self, struct kndTask *task);
 void knd_proc_arg_str(struct kndProcArg *self, size_t depth);
 
 /* allocators */
-int knd_proc_arg_ref_new(struct kndMemPool *mempool, struct kndProcArgRef **self);
-int knd_proc_arg_new(struct kndMemPool *mempool, struct kndProcArg **self);
-int knd_proc_arg_var_new(struct kndMemPool *mempool, struct kndProcArgVar **result);
+int knd_proc_arg_ref_new(struct kndProcArgRef **self, struct kndMemPool *mempool);
+int knd_proc_arg_new(struct kndProcArg **self, struct kndMemPool *mempool);
+int knd_proc_arg_var_new(struct kndProcArgVar **result, struct kndMemPool *mempool);

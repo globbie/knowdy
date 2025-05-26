@@ -312,20 +312,20 @@ int knd_charseq_unmarshall(const char *elem_id, size_t elem_id_size, const char 
 int knd_charseq_decode(const char *id, size_t id_size,
                        struct kndCharSeq **result, struct kndTask *task);
 
-int knd_text_new(struct kndMemPool *mempool, struct kndText **result);
-int knd_synode_new(struct kndMemPool *mempool, struct kndSyNode **result);
-int knd_synode_spec_new(struct kndMemPool *mempool, struct kndSyNodeSpec **result);
+int knd_text_new(struct kndText **result, struct kndMemPool *mempool);
+int knd_synode_new(struct kndSyNode **result, struct kndMemPool *mempool);
+int knd_synode_spec_new(struct kndSyNodeSpec **result, struct kndMemPool *mempool);
 
-int knd_par_new(struct kndMemPool *mempool, struct kndPar **result);
-int knd_class_declar_new(struct kndMemPool *mempool, struct kndClassDeclar **result);
-int knd_sentence_new(struct kndMemPool *mempool, struct kndSentence **result);
-int knd_clause_new(struct kndMemPool *mempool, struct kndClause **result);
-int knd_statement_new(struct kndMemPool *mempool, struct kndStatement **result);
-int knd_proposition_new(struct kndMemPool *mempool, struct kndProposition **result);
-int knd_text_repr_new(struct kndMemPool *mempool, struct kndTextRepr **result);
+int knd_par_new(struct kndPar **result, struct kndMemPool *mempool);
+int knd_class_declar_new(struct kndClassDeclar **result, struct kndMemPool *mempool);
+int knd_sentence_new(struct kndSentence **result,struct kndMemPool *mempool);
+int knd_clause_new(struct kndClause **result, struct kndMemPool *mempool);
+int knd_statement_new(struct kndStatement **result, struct kndMemPool *mempool);
+int knd_proposition_new(struct kndProposition **result, struct kndMemPool *mempool);
+int knd_text_repr_new(struct kndTextRepr **result, struct kndMemPool *mempool);
 
-int knd_text_loc_new(struct kndMemPool *mempool, struct kndTextLoc **result);
-int knd_text_search_report_new(struct kndMemPool *mempool, struct kndTextSearchReport **result);
+int knd_text_loc_new(struct kndTextLoc **result, struct kndMemPool *mempool);
+int knd_text_search_report_new(struct kndTextSearchReport **result, struct kndMemPool *mempool);
 
 gsl_err_t knd_parse_gloss_array(void *obj, const char *rec, size_t *total_size);
 gsl_err_t knd_parse_summary_array(void *obj, const char *rec, size_t *total_size);

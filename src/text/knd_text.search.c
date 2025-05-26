@@ -91,7 +91,7 @@ static gsl_err_t build_search_plan(void *obj, const char *unused_var(name), size
                 pref->num_locs = ref->idx->num_locs;
                 continue;
             }
-            err = knd_text_search_report_new(task->mempool, &report);
+            err = knd_text_search_report_new(&report, task->mempool);
             if (err) {
                 KND_TASK_LOG("failed to alloc text idx");
                 return make_gsl_err_external(err);
@@ -125,7 +125,7 @@ static gsl_err_t set_text_src(void *obj, const char *name, size_t name_size)
                      name_size, name, repo->name_size, repo->name);
         return make_gsl_err_external(err);
     }
-    err = knd_text_search_report_new(task->mempool, &report);
+    err = knd_text_search_report_new(&report, task->mempool);
     if (err) {
         KND_TASK_LOG("failed to alloc text search report");
         return make_gsl_err_external(err);
@@ -194,7 +194,7 @@ static gsl_err_t parse_text_stm(void *obj, const char *rec, size_t *total_size)
     gsl_err_t parser_err;
     int err;
 
-    err = knd_statement_new(mempool, &stm);
+    err = knd_statement_new(&stm, mempool);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     ctx->stm = stm;
 

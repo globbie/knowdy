@@ -184,7 +184,7 @@ static gsl_err_t parse_logic_clause(void *obj, const char *rec, size_t *total_si
     if (DEBUG_CLASS_IMPORT_LEVEL_2) {
         knd_log(".. parsing logic clause: \"%.*s\"", 32, rec);
     }
-    err = knd_logic_clause_new(mempool, &clause);
+    err = knd_logic_clause_new(&clause, mempool);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
     err = knd_logic_clause_parse(clause, rec, total_size, task);

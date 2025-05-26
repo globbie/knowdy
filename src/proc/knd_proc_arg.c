@@ -273,7 +273,7 @@ static gsl_err_t parse_proc_call(void *obj,
         knd_log(".. proc call parsing: \"%.*s\"..", 32, rec);
 
     if (!self->proc_call) {
-        int e = knd_proc_call_new(ctx->task->mempool, &self->proc_call);
+        int e = knd_proc_call_new(&self->proc_call, ctx->task->mempool);
         if (e) return *total_size = 0, make_gsl_err_external(e);
     }
 
@@ -563,7 +563,7 @@ int knd_proc_arg_compute(struct kndProcArg *self, struct kndTask *unused_var(tas
     return knd_OK;
 }
 
-int knd_proc_arg_ref_new(struct kndMemPool *mempool, struct kndProcArgRef **result)
+int knd_proc_arg_ref_new(struct kndProcArgRef **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
@@ -575,7 +575,7 @@ int knd_proc_arg_ref_new(struct kndMemPool *mempool, struct kndProcArgRef **resu
     return knd_OK;
 }
 
-int knd_proc_arg_var_new(struct kndMemPool *mempool, struct kndProcArgVar **result)
+int knd_proc_arg_var_new(struct kndProcArgVar **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
@@ -587,7 +587,7 @@ int knd_proc_arg_var_new(struct kndMemPool *mempool, struct kndProcArgVar **resu
     return knd_OK;
 }
 
-int knd_proc_arg_new(struct kndMemPool *mempool, struct kndProcArg **result)
+int knd_proc_arg_new(struct kndProcArg **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;

@@ -390,7 +390,7 @@ static gsl_err_t import_class_inst(void *obj, const char *rec, size_t *total_siz
     switch (task->type) {
     case KND_GET_STATE:
         if (!commit) {
-            err = knd_commit_new(mempool, &commit);
+            err = knd_commit_new(&commit, mempool);
             if (err) return make_gsl_err_external(err);
             commit->orig_state_id = atomic_load_explicit(&snapshot->num_commits, memory_order_relaxed);
             task->ctx->commit = commit;

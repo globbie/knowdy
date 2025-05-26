@@ -24,7 +24,7 @@
 #define DEBUG_LOGIC_LEVEL_5 0
 #define DEBUG_LOGIC_LEVEL_TMP 1
 
-int knd_situation_new(struct kndMemPool *mempool, struct kndSituation **result)
+int knd_situation_new(struct kndSituation **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
@@ -36,7 +36,7 @@ int knd_situation_new(struct kndMemPool *mempool, struct kndSituation **result)
     return knd_OK;
 }
 
-int knd_logic_clause_new(struct kndMemPool *mempool, struct kndLogicClause **result)
+int knd_logic_clause_new(struct kndLogicClause **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;

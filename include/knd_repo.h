@@ -190,7 +190,7 @@ int knd_repo_snapshot_new(struct kndRepoSnapshot **result, size_t numid, size_t 
 int knd_snapshot_build_path(struct kndRepoSnapshot *s, struct kndTask *task);
 
 
-int knd_conc_folder_new(struct kndMemPool *mempool, struct kndConcFolder **result);
+int knd_conc_folder_new(struct kndConcFolder **result, struct kndMemPool *mempool);
 
 int knd_repo_transfer_commits(struct kndRepo *repo, struct kndTask *task);
 

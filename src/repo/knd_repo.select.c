@@ -116,7 +116,7 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
     if (task->type != KND_BULK_LOAD_STATE) {
         task->type = KND_COMMIT_STATE;
         if (!task->ctx->commit) {
-            err = knd_commit_new(task->mempool, &task->ctx->commit);
+            err = knd_commit_new(&task->ctx->commit, task->mempool);
             if (err) return make_gsl_err_external(err);
 
             task->ctx->commit->orig_state_id =\

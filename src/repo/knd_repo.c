@@ -52,7 +52,7 @@ int knd_repo_index_proc_arg(struct kndRepo *repo, struct kndProc *proc,
     arg->numid++;
     knd_uid_create(arg->numid, arg->id, &arg->id_size);
 
-    err = knd_proc_arg_ref_new(mempool, &arg_ref);
+    err = knd_proc_arg_ref_new(&arg_ref, mempool);
     if (err) {
         return err;
     }
@@ -93,7 +93,7 @@ int knd_repo_index_proc_arg(struct kndRepo *repo, struct kndProc *proc,
     return knd_OK;
 }
 
-int knd_conc_folder_new(struct kndMemPool *mempool, struct kndConcFolder **result)
+int knd_conc_folder_new(struct kndConcFolder **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;

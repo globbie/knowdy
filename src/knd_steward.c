@@ -552,7 +552,7 @@ static int init_user_space(struct kndSteward *steward, struct kndTask *task)
                        steward, task);
     KND_TASK_ERR("failed to create a user manager");
 
-    err = knd_repo_access_new(task->mempool, &acl);
+    err = knd_repo_access_new(&acl, task->mempool);
     KND_TASK_ERR("failed to alloc repo acl");
 
     acl->repo = steward->repo;

@@ -115,7 +115,7 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
 
     task->type = KND_COMMIT_STATE;
     if (!task->ctx->commit) {
-        err = knd_commit_new(task->mempool, &task->ctx->commit);
+        err = knd_commit_new(&task->ctx->commit, task->mempool);
         if (err) return make_gsl_err_external(err);
         
         task->ctx->commit->orig_state_id = atomic_load_explicit(&task->snapshot->num_commits,
@@ -422,7 +422,7 @@ gsl_err_t knd_create_user(void *obj, const char *rec, size_t *total_size)
     int err;
 
     if (!task->ctx->commit) {
-        err = knd_commit_new(task->mempool, &task->ctx->commit);
+        err = knd_commit_new(&task->ctx->commit, task->mempool);
         if (err) return make_gsl_err_external(err);
         task->ctx->commit->orig_state_id = atomic_load_explicit(&task->snapshot->num_commits,
                                                                 memory_order_relaxed);
@@ -530,7 +530,7 @@ int knd_user_new(struct kndUser **user,
     //KND_TASK_ERR("failed to register repo name \"%.*s\"", repo_name_size, repo_name);
 
     /* default acl */
-    err = knd_repo_access_new(mempool, &acl);
+    err = knd_repo_access_new(&acl, mempool);
     KND_TASK_ERR("failed to alloc repo acl");
     acl->repo = self->repo;
     acl->allow_read = true;
@@ -564,7 +564,7 @@ int knd_user_context_new(struct kndUserContext **result)
     return knd_OK;
 }
 
-int knd_repo_access_new(struct kndMemPool *mempool, struct kndRepoAccess **result)
+int knd_repo_access_new(struct kndRepoAccess **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
