@@ -153,8 +153,6 @@ int knd_facet_hash_spec_new(struct kndFacetHashSpec **result, knd_facet_type fac
 int knd_facet_add(struct kndFacet *facet, void *elem, struct kndTask *task);
 
 int knd_facet_map(struct kndFacet *facet, void *val,
-                  const char *range_from, size_t range_from_size,
-                  const char *range_to, size_t range_to_size,
                   knd_facet_map_fn cb, void *ctx, struct kndTask *task);
 
 void knd_facet_str(struct kndFacet *facet, knd_facet_elem_str_fn cb, size_t depth);
