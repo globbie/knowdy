@@ -220,7 +220,7 @@ static int restore_commits(struct kndRepo *repo, struct kndMemBlock *memblock, s
     };
     gsl_err_t parser_err;
 
-    task->type = KND_RESTORE_STATE;
+    task->type = KND_TASK_RESTORE;
     total_size = memblock->buf_size;
 
     parser_err = gsl_parse_task(memblock->buf, &total_size, specs, sizeof specs / sizeof specs[0]);
@@ -911,11 +911,11 @@ int knd_repo_read(struct kndRepo *self, struct kndTask *task)
         break;
     }
 
-    task->type = KND_READ_SNAPSHOT_STATE;
+    task->type = KND_TASK_READ_SNAPSHOT;
     err = knd_repo_snapshot_read(snapshot, task);
     KND_TASK_ERR("failed to read the latest snapshot");
 
-    task->type = KND_RESTORE_STATE;
+    task->type = KND_TASK_RESTORE;
     err = knd_repo_restore(self, snapshot, task);
     KND_TASK_ERR("failed to restore {repo %.*s}", self->name_size, self->name);
     return knd_OK;

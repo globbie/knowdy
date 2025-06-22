@@ -371,10 +371,10 @@ int knd_confirm_commit(struct kndRepo *self, struct kndTask *task)
     }
     commit->repo = self;
 
-    err = knd_resolve_commit(commit, task);
+    err = knd_commit_resolve(commit, task);
     KND_TASK_ERR("failed to resolve commit #%zu", commit->numid);
 
-    err = knd_dedup_commit(commit, task);
+    err = knd_commit_dedup(commit, task);
     KND_TASK_ERR("failed to dedup commit #%zu", commit->numid);
 
     switch (task->role) {
@@ -411,20 +411,20 @@ int knd_apply_commit(void *elem, void *ctx)
     int err;
 
     if (DEBUG_REPO_COMMIT_LEVEL_2) {
-        knd_log(".. applying commit #%zu: %.*s", commit->numid, commit->rec_size, commit->rec);
+        knd_log(".. applying {commit #%zu}", commit->numid);
     }
     task->mempool = NULL;
     knd_task_reset(task);
 
-    task->type = KND_RESTORE_STATE;
+    task->type = KND_TASK_RESTORE;
     task->ctx->commit = commit;
     task->user_ctx = user_ctx;
     task->mempool = mempool;
 
     struct gslTaskSpec specs[] = {
-        { .name = "task",
-          .name_size = strlen("task"),
-          .parse = knd_parse_task,
+        { .name = "commit",
+          .name_size = strlen("commit"),
+          .parse = knd_commit_run,
           .obj = task
         }
     };
@@ -432,8 +432,8 @@ int knd_apply_commit(void *elem, void *ctx)
     parser_err = gsl_parse_task(commit->rec, &total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
 
-    err = knd_resolve_commit(commit, task);
-    KND_TASK_ERR("failed to resolve commit #%zu", commit->numid);
+    err = knd_commit_resolve(commit, task);
+    KND_TASK_ERR("failed to resolve {commit #%zu}", commit->numid);
 
     err = update_indices(repo, commit, task);
     KND_TASK_ERR("index update failed");

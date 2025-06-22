@@ -21,6 +21,84 @@
 #define DEBUG_COMMIT_LEVEL_3 0
 #define DEBUG_COMMIT_LEVEL_TMP 1
 
+gsl_err_t knd_commit_run(void *obj, const char *rec, size_t *total_size)
+{
+    struct kndTask *task = obj;
+    struct kndCommit *commit;
+    gsl_err_t parser_err;
+    int err;
+
+    task->type = KND_TASK_QUERY;
+    task->ctx->commit = commit;
+
+    /*    struct gslTaskSpec specs[] = {
+        { .name = "locale",
+          .name_size = strlen("locale"),
+          .parse = parse_locale,
+          .obj = task
+        },
+        { .name = "format",
+          .name_size = strlen("format"),
+          .parse = parse_format,
+          .obj = task
+        },
+        { .name = "user",
+          .name_size = strlen("user"),
+          .parse = knd_parse_select_user,
+          .obj = task
+        },
+        { .name = "repo",
+          .name_size = strlen("repo"),
+          .parse = knd_parse_repo_select,
+          .obj = task
+        }
+    };
+
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    switch (parser_err.code) {
+    case gsl_OK:
+        break;
+    case gsl_NO_MATCH:
+        KND_TASK_LOG("unknown {tag %.*s}", parser_err.val_size, parser_err.val);
+        return make_gsl_err(gsl_NO_MATCH);
+    default:
+        return parser_err;
+    }
+
+    switch (query->type) {
+    case KND_QUERY_GET:
+        err = knd_query_obj_export(query, task);
+        if (err) {
+            KND_TASK_LOG("failed to present a requested object");
+            return make_gsl_err_external(err);
+        }
+        break;
+    case KND_QUERY_SELECT:
+        err = query_plan(query, task);
+        if (err) {
+            KND_TASK_LOG("failed to plan a query");
+            return make_gsl_err_external(err);
+        }
+
+        if (query->complexity < query->max_complexity) {
+            err = knd_query_match_export(query, task);
+            if (err) {
+                KND_TASK_LOG("failed to present the matching results of a query");
+                return make_gsl_err_external(err);
+            }
+            return make_gsl_err(gsl_OK);
+        }
+
+        // TODO: signal the need for a long-running task
+
+        break;
+    default:
+        break;
+    }
+    */   
+    return make_gsl_err(gsl_OK);
+}
+
 int knd_commit_new(struct kndCommit **result, struct kndMemPool *mempool)
 {
     void *page;
@@ -62,7 +140,7 @@ static int resolve_class_inst_commit(struct kndStateRef *state_refs, struct kndC
     return knd_OK;
 }
 
-int knd_dedup_commit(struct kndCommit *commit, struct kndTask *unused_var(task))
+int knd_commit_dedup(struct kndCommit *commit, struct kndTask *unused_var(task))
 {
     // struct kndState *state;
     struct kndClassEntry *entry;
@@ -91,15 +169,16 @@ int knd_dedup_commit(struct kndCommit *commit, struct kndTask *unused_var(task))
     return knd_OK;
 }
 
-int knd_resolve_commit(struct kndCommit *commit, struct kndTask *task)
+int knd_commit_resolve(struct kndCommit *commit, struct kndTask *task)
 {
     struct kndState *state;
     struct kndProcEntry *proc_entry;
     struct kndStateRef *ref;
     int err;
 
-    if (DEBUG_COMMIT_LEVEL_TMP)
-        knd_log(".. resolving commit #%zu", commit->numid);
+    if (DEBUG_COMMIT_LEVEL_TMP) {
+        knd_log(".. resolving {commit #%zu}", commit->numid);
+    }
 
     FOREACH (ref, commit->class_state_refs) {
         if (ref->state->phase == KND_REMOVED) {

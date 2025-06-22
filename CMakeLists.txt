@@ -124,7 +124,7 @@ set(SOURCES src/attr/knd_attr.c src/attr/knd_attr.import.c src/attr/knd_attr.res
         src/set/knd_set.c src/set/knd_shared_set.c src/set/knd_shared_set.gsp.c
         src/set/knd_shared_set.read.c src/set/knd_set_idx.c
         src/knd_steward.c
-        src/repo/knd_state.c src/repo/knd_commit.c
+        src/state/knd_state.c src/state/knd_commit.c
         src/task/knd_task.c src/task/knd_task.select.c
         src/text/knd_text.c src/text/knd_text.import.c src/text/knd_text.resolve.c
         src/text/knd_text.read.c src/text/knd_text.decode.c

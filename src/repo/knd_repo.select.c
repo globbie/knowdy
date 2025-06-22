@@ -24,8 +24,7 @@
 #define DEBUG_REPO_SELECT_LEVEL_5 0
 #define DEBUG_REPO_SELECT_LEVEL_TMP 1
 
-static int find_repo(struct kndRepo **result, const char *name, size_t name_size,
-                     struct kndTask *task)
+static int find_repo(struct kndRepo **result, const char *name, size_t name_size, struct kndTask *task)
 {
     struct kndRepo *repo;
     assert (task->repo_name_idx != NULL);
@@ -65,6 +64,7 @@ static gsl_err_t get_repo(void *obj, const char *name, size_t name_size)
             break;
         }
     }
+
     if (!repo) {
         err = find_repo(&repo, name, name_size, task);
         if (err) {
@@ -93,8 +93,15 @@ static gsl_err_t confirm_selection(void *obj,
                                    size_t unused_var(name_size))
 {
     struct kndTask *task = obj;
-    // show a list of repos
-    task->type = KND_SELECT_STATE;
+    struct kndQuery *query = task->ctx->query;
+
+    switch (task->type) {
+    case KND_TASK_QUERY:
+        query->type = KND_QUERY_SELECT;
+        break;
+    default:
+        break;
+    }
     return make_gsl_err(gsl_OK);
 }
 
@@ -113,8 +120,8 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
     struct kndRepo *repo = ctx->repo ? ctx->repo : task->repo;
     int err;
 
-    if (task->type != KND_BULK_LOAD_STATE) {
-        task->type = KND_COMMIT_STATE;
+    if (task->type != KND_TASK_BULK_LOAD) {
+        task->type = KND_TASK_COMMIT;
         if (!task->ctx->commit) {
             err = knd_commit_new(&task->ctx->commit, task->mempool);
             if (err) return make_gsl_err_external(err);
@@ -126,63 +133,11 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
     return knd_class_import(repo, rec, total_size, task);
 }
 
-static int get_by_id(struct kndQuery *query, struct kndTask *task)
-{
-    struct kndRepo *repo = query->repo;
-    int err;
-
-    // TODO check view settings
-    // knd_log(">> {repo %.*s {query {type GET}}", repo->name_size, repo->name);
-
-    switch (query->obj_type) {
-    case KND_QUERY_OBJ_REPO:
-
-        knd_log(".. presenting {repo %.*s}", repo->name_size, repo->name);
-
-        break;
-    case KND_QUERY_OBJ_CLASS:
-        err = knd_class_export(query->cls, task->ctx->format, task);
-        KND_TASK_ERR("class export failed");
-    default:
-        break;
-    }
-    return knd_OK;
-}
-
-static int select_by_attr_stms(struct kndQuery *query, struct kndTask *task)
-{
-    int err;
-
-    err = knd_query_plan(query, task);
-    KND_TASK_ERR("failed to plan a query");
-
-    // plan execution or async queue?
-
-
-    knd_log(">> SELECT query plan\n%.*s",
-            task->out->buf_size, task->out->buf);
-
-    // if async: export query to GSP, return a ref
-
-    err = knd_query_run(query, task);
-    KND_TASK_ERR("failed to run a query");
-
-    //err = knd_query_result_export_GSP(query, task);
-    //KND_TASK_ERR("failed to present results of a query");
-
-    return knd_OK;
-}
-
 gsl_err_t knd_parse_repo_select(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
-    struct kndQuery *query;
     gsl_err_t parser_err;
     int err;
-
-    err = knd_query_new(&query, task->mempool);
-    if (err) return make_gsl_err_external(err);
-    task->ctx->query = query;
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -209,33 +164,5 @@ gsl_err_t knd_parse_repo_select(void *obj, const char *rec, size_t *total_size)
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return parser_err;
 
-    switch (query->type) {
-    case KND_QUERY_GET:
-        err = get_by_id(query, task);
-        if (err) {
-            KND_TASK_LOG("failed to run a query");
-            return make_gsl_err_external(err);
-        }
-        break;
-    case KND_QUERY_SELECT:
-        err = select_by_attr_stms(query, task);
-        if (err) {
-            KND_TASK_LOG("failed to select by attr stms");
-            return make_gsl_err_external(err);
-        }
-        break;
-    /* any commits happened? */
-    case KND_QUERY_CREATE:
-        // fall through
-    case KND_QUERY_UPDATE:
-        //err = knd_class_commit_state(ctx.cls->entry, task->phase, task);
-        //KND_TASK_ERR("class commit failed");
-
-        //err = knd_confirm_commit(repo, task);
-        //KND_TASK_ERR("repo failed to confirm a commit");
-        break;
-    default:
-        break;
-    }
     return make_gsl_err(gsl_OK);    
 }

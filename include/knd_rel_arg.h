@@ -58,7 +58,6 @@ struct kndRelArgInstRef
 
 struct kndRelArgInstance
 {
-    knd_task_spec_type type;
     struct kndRelArg *relarg;
     struct kndRelInstance *rel_inst;
 

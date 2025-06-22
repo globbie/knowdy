@@ -20,26 +20,15 @@
 
 #pragma once
 
-struct kndClass;
-struct kndClassEntry;
-struct kndObjEntry;
-struct kndTask;
-struct kndAttr;
-struct kndFacet;
-struct ooDict;
-struct kndTask;
-
 #include "knd_config.h"
 
-typedef enum knd_set_type { KND_SET_CLASS,
-			    KND_SET_CLASS_INST,
-			    KND_SET_STATE_UPDATE } knd_set_type;
+typedef enum knd_set_type { KND_SET_UNIQUE_VALUES,
+			    KND_SET_MULTIPLE_VALUES } knd_set_type;
 
 typedef enum knd_set_dir_type { KND_SET_DIR_FIXED,
                                 KND_SET_DIR_VAR } knd_set_dir_type;
 
 struct kndSet;
-struct kndSetFooter;
 
 typedef int (*map_cb_func)(void *elem, void *ctx);
 
@@ -73,28 +62,27 @@ struct kndSetElemIdx
     void *elems[KND_RADIX_BASE];
 };
 
+struct kndSetElem
+{
+    void *val;
+    struct kndSetElem *next;
+};
+
 struct kndSet
 {
     knd_set_type type;
+
     struct kndSetElemIdx *idx;
     size_t num_elems;
-    size_t num_valid_elems;
     
     struct kndMemPool *mempool;
-
-    bool allow_overwrite;
 };
 
-int knd_set_new(struct kndSet **result, struct kndMemPool *mempool);
-int knd_set_dir_new(struct kndSetDir **result, struct kndMemPool *mempool);
-int knd_set_dir_entry_new(struct kndSetDirEntry **result, struct kndMemPool *mempool);
+int knd_set_new(struct kndSet **result, knd_set_type type, struct kndMemPool *mempool);
+int knd_set_elem_new(struct kndSetElem **result, struct kndMemPool *mempool);
 int knd_set_elem_idx_new(struct kndSetElemIdx **result, struct kndMemPool *mempool);
 
-int knd_set_init(struct kndSet *self);
-
-int knd_set_intersect(struct kndSet *self, struct kndSet **sets, size_t num_sets);
-
 int knd_set_add(struct kndSet *self, const char *key, size_t key_size, void *elem);
-int knd_set_sync(struct kndSet *self, map_cb_func cb, size_t *total_size, struct kndTask *task);
 int knd_set_map(struct kndSet *self, map_cb_func cb, void *ctx);
 int knd_set_get(struct kndSet *self, const char *key, size_t key_size, void **elem);
+int knd_set_intersect(struct kndSet *self, struct kndSet **sets, size_t num_sets);

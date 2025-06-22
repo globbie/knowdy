@@ -55,8 +55,6 @@ static gsl_err_t parse_proc_import(void *obj, const char *rec, size_t *total_siz
         if (err) return make_gsl_err_external(err);
     }
 
-    task->type = KND_COMMIT_STATE;
-
     if (!task->ctx->commit->orig_state_id)
         task->ctx->commit->orig_state_id = atomic_load_explicit(&task->snapshot->num_commits,
                                                                 memory_order_relaxed);
@@ -113,7 +111,6 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
         if (err) return make_gsl_err_external(err);
     }
 
-    task->type = KND_COMMIT_STATE;
     if (!task->ctx->commit) {
         err = knd_commit_new(&task->ctx->commit, task->mempool);
         if (err) return make_gsl_err_external(err);
@@ -141,7 +138,7 @@ static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_si
             return parser_err;
         }
         // failed import? 
-        if (task->type == KND_COMMIT_STATE) {
+        if (task->type == KND_TASK_COMMIT) {
             return make_gsl_err(gsl_FAIL);
         }
     }
@@ -314,7 +311,7 @@ static gsl_err_t parse_snapshot_task(void *obj, const char *unused_var(rec), siz
     struct kndRepo *repo = task->user_ctx ? task->user_ctx->repo : task->steward->user->repo;
     int err;
 
-    task->type = KND_BUILD_SNAPSHOT_STATE;
+    task->type = KND_TASK_BUILD_SNAPSHOT;
     err = knd_repo_snapshot_create(repo, task);
     if (err) {
         KND_TASK_LOG("failed to build a snapshot of user repo");
@@ -329,11 +326,11 @@ gsl_err_t knd_parse_select_user(void *obj, const char *rec, size_t *total_size)
     gsl_err_t parser_err;
 
     switch (task->type) {
-    case KND_RESTORE_STATE:
+    case KND_TASK_RESTORE:
         break;
     default:
         task->user_ctx   = NULL;
-        task->type = KND_GET_STATE;
+        task->type = KND_TASK_QUERY;
     }
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -407,7 +404,7 @@ gsl_err_t knd_parse_select_user(void *obj, const char *rec, size_t *total_size)
     }
 
     switch (task->type) {
-    case KND_RESTORE_STATE:
+    case KND_TASK_RESTORE:
         return parser_err;
     default:
         break;
@@ -503,17 +500,19 @@ int knd_user_new(struct kndUser **user,
 
     err = knd_mkpath(self->path, self->path_size, 0755, false);
     if (err != knd_OK) {
-        knd_log("-- failed to make path: \"%.*s\"", self->path_size, self->path);
+        knd_log("-- failed to make {path %.*s}", self->path_size, self->path);
         goto error;
     }
 
     err = init_mempool(steward, KND_ALLOC_INCR, 1, &self->mempool_read);
     KND_STEWARD_ERR("failed to init a read mempool");
+
     err = init_mempool(steward, KND_ALLOC_INCR, 2, &self->mempool_read_temp);
     KND_STEWARD_ERR("failed to init a temp read mempool");
 
     err = init_mempool(steward, KND_ALLOC_SHARED, 3, &self->mempool_write);
     KND_STEWARD_ERR("failed to init a shared mempool");
+
     err = init_mempool(steward, KND_ALLOC_SHARED, 4, &self->mempool_write_temp);
     KND_STEWARD_ERR("failed to init a shared mempool");
 
@@ -525,9 +524,8 @@ int knd_user_new(struct kndUser **user,
                        path, path_size, schema_path, schema_path_size);
     if (err) goto error;
 
-    //err = knd_shared_dict_set(steward->repo_name_idx, repo_name, repo_name_size,
-    //                          (void*)self->repo, NULL, true);
-    //KND_TASK_ERR("failed to register repo name \"%.*s\"", repo_name_size, repo_name);
+    err = knd_dict_set(steward->repo_name_idx, repo_name, repo_name_size, (void*)self->repo);
+    KND_TASK_ERR("failed to register {repo %.*s}", repo_name_size, repo_name);
 
     /* default acl */
     err = knd_repo_access_new(&acl, mempool);
@@ -545,7 +543,7 @@ int knd_user_new(struct kndUser **user,
     err = knd_repo_read(self->repo, task);
     if (err) goto error;
 
-    err = knd_set_new(&self->user_idx, mempool);
+    err = knd_set_new(&self->user_idx, KND_SET_UNIQUE_VALUES, mempool);
     if (err) goto error;
 
     *user = self;

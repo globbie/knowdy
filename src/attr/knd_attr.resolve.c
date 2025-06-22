@@ -67,9 +67,9 @@ static int register_attr(struct kndClass *self, struct kndAttr *attr, struct knd
     knd_uid_create(attr->numid, attr->id, &attr->id_size);
 
     switch (task->type) {
-    case KND_RESTORE_STATE:
+    case KND_TASK_RESTORE:
         // fall through
-    case KND_BULK_LOAD_STATE:
+    case KND_TASK_BULK_LOAD:
         attr_refs = knd_shared_dict_get(attr_name_idx, name, name_size);
         if (!attr_refs) {
             err = knd_shared_dict_set(attr_name_idx, attr->name, attr->name_size,

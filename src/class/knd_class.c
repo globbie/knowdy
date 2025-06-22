@@ -753,12 +753,13 @@ int knd_class_new(struct kndClass **result, struct kndMemPool *mempool)
     struct kndSet *attr_idx;
     void *page;
     int err;
+
     assert(mempool->small_x4_page_size >= sizeof(struct kndClass));
     err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL_X4, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndClass));
 
-    err = knd_set_new(&attr_idx, mempool);
+    err = knd_set_new(&attr_idx, KND_SET_UNIQUE_VALUES, mempool);
     if (err) return err;
 
     *result = page;

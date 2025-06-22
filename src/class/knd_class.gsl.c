@@ -167,13 +167,8 @@ int knd_class_set_export_GSL(struct kndSet *set, struct kndTask *task)
     err = out->write(out, "{set",
                      strlen("{set"));                                            RET_ERR();
 
-    if (view->show_removed_objs) {
-        err = out->writef(out, "{total %lu",
-                          (unsigned long)set->num_elems);                         RET_ERR();
-    } else {
-        err = out->writef(out, "{total %lu",
-                          (unsigned long)set->num_valid_elems);                   RET_ERR();
-    }
+    err = out->writef(out, "{total %lu",
+                      (unsigned long)set->num_elems);                   RET_ERR();
 
     if (task->ctx->format_indent) {
         err = out->writec(out, '\n');                                             RET_ERR();

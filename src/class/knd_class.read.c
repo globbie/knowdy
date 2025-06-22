@@ -442,7 +442,7 @@ static gsl_err_t parse_descendant_array(void *obj, const char *rec, size_t *tota
     int err;
 
     if (!c->descendants) {
-        err = knd_set_new(&c->descendants, mempool);
+        err = knd_set_new(&c->descendants, KND_SET_UNIQUE_VALUES, mempool);
         if (err) return *total_size = 0, make_gsl_err_external(err);
     }
 
@@ -547,9 +547,9 @@ static gsl_err_t read_attr(void *obj, const char *name, size_t name_size,
     knd_class_append_attr(self, attr);
 
     switch (task->type) {
-    case KND_READ_SNAPSHOT_STATE:
+    case KND_TASK_READ_SNAPSHOT:
         // fall through
-    case KND_BUILD_SNAPSHOT_STATE:
+    case KND_TASK_BUILD_SNAPSHOT:
         err = update_attr_idx_cache(attr, task);
         if (err) {
             KND_TASK_LOG("failed to update attr idx cache with {attr %.*s}",
@@ -707,9 +707,9 @@ int knd_class_unmarshall(const char *unused_var(elem_id), size_t unused_var(elem
     KND_TASK_ERR("failed to read GSP of %.*s", c->name_size, c->name);
 
     switch (task->type) {
-    case KND_READ_SNAPSHOT_STATE:
+    case KND_TASK_READ_SNAPSHOT:
         // fall through
-    case KND_BUILD_SNAPSHOT_STATE:
+    case KND_TASK_BUILD_SNAPSHOT:
         entry->cached_version = c;
         break;
     default:

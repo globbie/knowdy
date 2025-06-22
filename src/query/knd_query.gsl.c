@@ -102,25 +102,73 @@ static int export_attr_stms(struct kndQuery *query, struct kndTask *task, size_t
     return knd_OK;
 }
 
-int knd_query_export_GSL(struct kndQuery *query, struct kndTask *task)
+int knd_query_obj_export_GSL(struct kndQuery *query, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
-    //size_t indent_size = task->ctx->format_indent;
+    size_t indent_size = task->ctx->format_indent;
+    struct kndClass *c;
     int err;
 
-    if (DEBUG_QUERY_GSL_LEVEL_2) {
-        knd_log(".. GSL export {repo %.*s {query {type %d}}",
-                query->repo->name_size, query->repo->name, query->type);
-    }
+    out->reset(out);
+
     OUT("{", 1);
-    OUT("query", strlen("query"));
-    OUT(" ", 1);
+    OUT("result", strlen("result"));
 
-    if (query->num_attr_stms) {
-        err = export_attr_stms(query, task, 0);
-        KND_TASK_ERR("failed to export attr stms to GSL");
+    if (indent_size) {
+        OUT("\n", 1);
+        err = knd_print_offset(out, depth * indent_size);
+        KND_TASK_ERR("failed to output an offset");
     }
 
+    switch (query->obj_type) {
+    case KND_QUERY_OBJ_REPO:
+        // present repo
+        
+        break;
+    case KND_QUERY_OBJ_CLASS:
+        // present cls
+        assert (query->cls != NULL);
+        c = query->cls;
+
+        err = knd_class_export_GSL(c, task, true, 1);
+        KND_TASK_ERR("failed to export GSL {cls %.*s}", c->name_size, c->name);
+
+        break;
+    default:
+        break;
+    }
+    return knd_OK;
+}
+
+int knd_query_match_export_GSL(struct kndQuery *query, struct kndTask *task, size_t depth)
+{
+    struct kndOutput *out = task->out;
+    size_t indent_size = task->ctx->format_indent;
+    int err;
+
+    out->reset(out);
+
+    OUT("{", 1);
+    OUT("match", strlen("match"));
+
+    if (indent_size) {
+        OUT("\n", 1);
+        err = knd_print_offset(out, depth * indent_size);
+        KND_TASK_ERR("failed to output an offset");
+    }
+
+    switch (query->obj_type) {
+    case KND_QUERY_OBJ_REPO:
+
+        knd_log(".. matching repos..");
+
+        break;
+    case KND_QUERY_OBJ_CLASS:
+        knd_log(".. matching classes..");
+    default:
+        break;
+    }
+    
     OUT("}", 1);
     return knd_OK;
 }

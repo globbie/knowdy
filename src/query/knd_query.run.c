@@ -123,7 +123,43 @@ static gsl_err_t parse_locale(void *obj, const char *rec, size_t *total_size)
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-int knd_query_run(struct kndQuery *query, struct kndTask *task)
+/* 
+ * query complexity assessment 
+ */
+static int query_plan(struct kndQuery *query, struct kndTask *task)
+{
+    struct kndAttrStm *stm;
+    size_t min_ops = 0;
+    int err;
+
+    // TODO query cache lookup
+
+    FOREACH (stm, query->attr_stms) {
+        err = knd_attr_stm_plan(stm, task);
+        switch (err) {
+        case knd_OK:
+            break;
+        case knd_NO_MATCH:
+            knd_log("no matches for attr stm");
+
+            break;
+        default:
+            KND_TASK_ERR("failed to plan attr stm query");
+            break;
+        }
+
+        if (stm->min_query_ops < min_ops) {
+            min_ops = stm->min_query_ops;
+        }
+    }
+
+    // < KND_QUERY_MIN_OPERS ?
+
+    return knd_OK;
+}
+
+/* long-running task */
+int knd_query_exec(struct kndQuery *query, struct kndTask *task)
 {
     struct kndSet *set;
     //struct kndAttrStm *stm;
@@ -133,7 +169,7 @@ int knd_query_run(struct kndQuery *query, struct kndTask *task)
         
     //}
 
-    err = knd_set_new(&set, task->mempool);
+    err = knd_set_new(&set, KND_SET_UNIQUE_VALUES, task->mempool);
     KND_TASK_ERR("failed to alloc a set");
 
     //err = knd_set_intersect(set, sets, num_sets);
@@ -144,12 +180,18 @@ int knd_query_run(struct kndQuery *query, struct kndTask *task)
     return knd_OK;
 }
 
-gsl_err_t knd_parse_query(void *obj, const char *rec, size_t *total_size)
+gsl_err_t knd_query_run(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
     struct kndQuery *query;
     gsl_err_t parser_err;
     int err;
+
+    err = knd_query_new(&query, task->mempool);
+    if (err) return make_gsl_err_external(err);
+
+    task->type = KND_TASK_QUERY;
+    task->ctx->query = query;
 
     struct gslTaskSpec specs[] = {
         { .name = "locale",
@@ -179,22 +221,45 @@ gsl_err_t knd_parse_query(void *obj, const char *rec, size_t *total_size)
     case gsl_OK:
         break;
     case gsl_NO_MATCH:
-        KND_TASK_LOG("unknown tag: %.*s", parser_err.val_size, parser_err.val);
-        // fall through
+        KND_TASK_LOG("unknown {tag %.*s}", parser_err.val_size, parser_err.val);
+        return make_gsl_err(gsl_NO_MATCH);
     default:
         return parser_err;
     }
 
-    knd_log(".. present query results..");
+    switch (query->type) {
+    case KND_QUERY_GET:
+        err = knd_query_obj_export(query, task);
+        if (err) {
+            KND_TASK_LOG("failed to present a requested object");
+            return make_gsl_err_external(err);
+        }
+        break;
+    case KND_QUERY_SELECT:
+        err = query_plan(query, task);
+        if (err) {
+            KND_TASK_LOG("failed to plan a query");
+            return make_gsl_err_external(err);
+        }
 
-    query = task->ctx->query;
+        if (query->complexity < query->max_complexity) {
+            // perform query ops
 
-    err = knd_query_export_GSL(query, task);
-    if (err) {
-        KND_TASK_LOG("failed to present a query");
-        return make_gsl_err_external(err);
+            err = knd_query_match_export(query, task);
+            if (err) {
+                KND_TASK_LOG("failed to present the matching results of a query");
+                return make_gsl_err_external(err);
+            }
+            return make_gsl_err(gsl_OK);
+        }
+
+        // TODO: signal the need for a long-running task
+
+        break;
+    default:
+        break;
     }
-
+    
     return make_gsl_err(gsl_OK);
 }
 

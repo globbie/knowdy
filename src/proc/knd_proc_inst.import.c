@@ -216,13 +216,13 @@ int knd_import_proc_inst(struct kndProcEntry *self, const char *rec, size_t *tot
         knd_log(".. import proc inst");
 
     switch (task->type) {
-    case KND_INNER_COMMIT_STATE:
+    case KND_TASK_INNER_COMMIT:
         // fall through
-    case KND_INNER_STATE:
-        task->type = KND_INNER_COMMIT_STATE;
+    case KND_TASK_INNER:
+        task->type = KND_TASK_INNER_COMMIT;
         break;
     default:
-        task->type = KND_COMMIT_STATE;
+        task->type = KND_TASK_COMMIT;
     }
 
     err = knd_proc_inst_new(&inst, mempool);
@@ -283,7 +283,7 @@ int knd_import_proc_inst(struct kndProcEntry *self, const char *rec, size_t *tot
     err = knd_state_ref_new(&state_ref, mempool);
     KND_TASK_ERR("state ref alloc for imported inst failed");
     state_ref->state = state;
-    state_ref->type = KND_STATE_PROC_INST;
+    //state_ref->type = KND_STATE_PROC_INST;
     state_ref->obj = (void*)entry;
 
     state_ref->next = ctx->proc_inst_state_refs;
@@ -301,8 +301,6 @@ int knd_import_proc_inst(struct kndProcEntry *self, const char *rec, size_t *tot
                         (void*)entry);
     */
     // err = knd_register_proc_inst(self, entry, mempool);
-
-    task->type = KND_COMMIT_STATE;
 
     if (!ctx->commit) {
         err = knd_commit_new(&ctx->commit, task->mempool);

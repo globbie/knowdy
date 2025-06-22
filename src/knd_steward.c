@@ -592,11 +592,11 @@ static int steward_init(struct kndSteward *steward)
 
     steward->mem_ctx_config.memtype = KND_ALLOC_INCR;
 
-    err = knd_set_new(&steward->repo_idx, steward->mempool_write);
+    err = knd_set_new(&steward->repo_idx, KND_SET_UNIQUE_VALUES, steward->mempool_write);
     KND_STEWARD_ERR("failed to create a set idx");
 
-    err = knd_shared_dict_new(&steward->repo_name_idx, KND_MEDIUM_DICT_SIZE, steward->mempool_write, false);
-    KND_STEWARD_ERR("failed to create a dict idx");
+    err = knd_dict_new(&steward->repo_name_idx, steward->mempool_write, KND_SMALL_DICT_SIZE);
+    KND_STEWARD_ERR("failed to create a repo name idx");
 
     err = knd_repo_new(&repo, "/", 1, steward->path, steward->path_size,
                        steward->schema_path, steward->schema_path_size);
@@ -701,7 +701,7 @@ int knd_steward_snapshot_create(struct kndSteward *steward)
     err = knd_mempool_create(&steward->mempool_write_temp, &steward->mem_main_config, 1);
     KND_STEWARD_ERR("failed to init a write mempool");
 
-    task->type = KND_BUILD_SNAPSHOT_STATE;
+    task->type = KND_TASK_BUILD_SNAPSHOT;
     task->mempool = steward->mempool_write_temp;
     repo = steward->repo;
 

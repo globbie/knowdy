@@ -141,7 +141,7 @@ int knd_export_class_inst_state_JSON(struct kndClass *self, struct kndTask *task
 
     if (self->inst_idx) {
         err = out->write(out, ",\"_tot\":", strlen(",\"_tot\":"));                  RET_ERR();
-        err = out->writef(out, "%zu", self->inst_idx->num_valid_elems);      RET_ERR();
+        err = out->writef(out, "%zu", self->inst_idx->num_elems);      RET_ERR();
     } else {
         err = out->write(out, ",\"_tot\":0", strlen(",\"_tot\":0"));                  RET_ERR();
     }
@@ -290,13 +290,8 @@ extern int knd_class_set_export_JSON(struct kndSet *set, struct kndTask *task)
     }
     err = out->writec(out, '}');                                                  RET_ERR();
 
-    if (view->show_removed_objs) {
-        err = out->writef(out, ",\"total\":%lu",
-                          (unsigned long)set->num_elems);                         RET_ERR();
-    } else {
-        err = out->writef(out, ",\"total\":%lu",
-                          (unsigned long)set->num_valid_elems);                   RET_ERR();
-    }
+    err = out->writef(out, ",\"total\":%lu",
+                      (unsigned long)set->num_elems);                   RET_ERR();
 
     err = out->write(out, ",\"batch\":[",
                      strlen(",\"batch\":["));                                     RET_ERR();
@@ -534,7 +529,7 @@ static int export_inverse_rels(struct kndClass *self, struct kndTask *task, size
             if (indent_size) {
                 OUT(" ", 1);
             }
-            OUTF("%zu", attr_hub->topics->num_valid_elems);
+            OUTF("%zu", attr_hub->topics->num_elems);
         
             curr_depth = task->ctx->max_depth;
             task->ctx->max_depth = 0;

@@ -419,7 +419,7 @@ int knd_resolve_cls_ref(struct kndRepo *repo, const char *name, size_t name_size
     }
 
     /* initial bulk load */
-    if (task->type == KND_BULK_LOAD_STATE) {
+    if (task->type == KND_TASK_BULK_LOAD) {
         entry = knd_shared_dict_get(class_name_idx, name, name_size);
         if (!entry) {
             err = knd_NO_MATCH;

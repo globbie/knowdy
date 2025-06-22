@@ -107,7 +107,6 @@ static gsl_err_t remove_proc(void *obj, const char *name, size_t name_size)
         knd_log("== proc to remove: \"%.*s\"\n",
                 proc->name_size, proc->name);
 
-    task->type = KND_COMMIT_STATE;
     if (!task->ctx->commit) {
         err = knd_commit_new(&task->ctx->commit, task->mempool);
         if (err) return make_gsl_err_external(err);
@@ -149,7 +148,7 @@ static gsl_err_t parse_proc_inst_import(void *obj, const char *rec, size_t *tota
     }
 
     switch (task->type) {
-    case KND_GET_STATE:
+    case KND_TASK_QUERY:
         if (!commit) {
             err = knd_commit_new(&commit, mempool);
             if (err) return make_gsl_err_external(err);
@@ -214,7 +213,7 @@ gsl_err_t knd_proc_select(struct kndRepo *repo, const char *rec, size_t *total_s
 
     /* any commits happened? */
     switch (task->type) {
-    case KND_COMMIT_STATE:
+    case KND_TASK_COMMIT:
         phase = KND_UPDATED;
         if (task->phase == KND_REMOVED)
             phase = KND_REMOVED;

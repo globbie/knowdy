@@ -13,6 +13,7 @@
 #include "knd_utils.h"
 #include "knd_output.h"
 #include "knd_query.h"
+#include "knd_commit.h"
 #include "knd_http_codes.h"
 
 #include <gsl-parser.h>
@@ -43,15 +44,15 @@ void knd_task_del(struct kndTask *self)
 
 void knd_task_reset(struct kndTask *self)
 {
-    self->type = KND_DEFAULT_STATE;
+    self->type = KND_TASK_DEFAULT;
     self->phase = KND_SELECTED;
 
     self->depth = 0;
     self->max_depth = 1;
 
-    if (self->ctx)
+    if (self->ctx) {
         memset(self->ctx, 0, sizeof(*self->ctx));
-
+    }
     self->user_ctx = self->default_user_ctx;
     self->repo = self->system_repo;
 
@@ -180,34 +181,30 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
     if (DEBUG_TASK_LEVEL_2) {
         size_t chunk_size = KND_TEXT_CHUNK_SIZE;
         if (task->input_size < chunk_size) chunk_size = task->input_size;
-        knd_log("== INPUT (size:%zu): %.*s ..",
+        knd_log("== INPUT {size %zu} %.*s ..",
                 task->input_size, chunk_size, task->input);
     }
 
     struct gslTaskSpec specs[] = {
-        { .name = "task",
-          .name_size = strlen("task"),
-          .parse = knd_parse_task,
-          .obj = task
-        },
         { .name = "query",
           .name_size = strlen("query"),
-          .parse = knd_parse_query,
+          .parse = knd_query_run,
           .obj = task
         },
-        { .name = "cmd",
-          .name_size = strlen("cmd"),
-          .parse = knd_parse_task,
+        { .name = "commit",
+          .name_size = strlen("commit"),
+          .parse = knd_commit_run,
           .obj = task
         }
     };
+
     parser_err = gsl_parse_task(task->input, &total_size, specs, sizeof specs / sizeof specs[0]);
     switch (parser_err.code) {
     case gsl_OK:
         break;
     case gsl_NO_MATCH:
         if (!task->log->buf_size) {
-            KND_TASK_LOG("{tag %.*s} is not valid here, \"task\" or \"query\" expected",
+            KND_TASK_LOG("{tag %.*s} is not valid here, {cmd} or {query} is expected",
                          parser_err.val_size, parser_err.val);
         }
         break;
@@ -343,12 +340,13 @@ int knd_task_init(struct kndTask *task, struct kndSteward *steward)
 
     /* local cache */
     mempool = task->ctx_cache_mempool;
-    err = knd_set_new(&task->cache_class_idx, mempool);
+    err = knd_set_new(&task->cache_class_idx, KND_SET_UNIQUE_VALUES, mempool);
     if (err) goto error;
 
     /* system repo defaults */
-    task->system_repo       = repo;
-    task->repo              = repo;
+    task->system_repo = repo;
+    task->repo = repo;
+    task->repo_name_idx = steward->repo_name_idx;
 
     err = task_context_new(&task->ctx);
     if (err) goto error;

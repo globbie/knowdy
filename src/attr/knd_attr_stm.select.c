@@ -354,6 +354,8 @@ int knd_attr_stm_plan(struct kndAttrStm *stm, struct kndTask *task)
     case KND_ATTR_CLS_REF:
         cref = stm->subtype;
 
+        assert (cref->cls_entry != NULL);
+
         if (DEBUG_ATTR_STM_SELECT_LEVEL_TMP) {
             knd_log(".. query {cls-ref %.s}", cref->cls_entry->name_size, cref->cls_entry->name);
         }

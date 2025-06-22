@@ -40,6 +40,6 @@ struct kndCommit
 };
 
 int knd_commit_new(struct kndCommit **result, struct kndMemPool *mempool);
-int knd_resolve_commit(struct kndCommit *self, struct kndTask *task);
-int knd_dedup_commit(struct kndCommit *commit, struct kndTask *task);
-
+int knd_commit_resolve(struct kndCommit *self, struct kndTask *task);
+int knd_commit_dedup(struct kndCommit *commit, struct kndTask *task);
+gsl_err_t knd_commit_run(void *obj, const char *rec, size_t *total_size);

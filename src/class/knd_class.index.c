@@ -87,10 +87,9 @@ static int index_ancestor(struct kndClass *self, struct kndClass *baseclass, str
 
     desc_idx = baseclass->descendants;
     if (!desc_idx) {
-        err = knd_set_new(&desc_idx, mempool);
+        err = knd_set_new(&desc_idx, KND_SET_UNIQUE_VALUES, mempool);
         KND_TASK_ERR("failed to alloc a set");
-        desc_idx->type = KND_SET_CLASS;
-        //desc_idx->base = baseclass->entry;
+
         baseclass->descendants = desc_idx;
     }
 
@@ -144,7 +143,7 @@ static int register_desc(struct kndClass *base, struct kndClass *sub, struct knd
     /* register a descendant */
     desc_idx = base->descendants;
     if (!desc_idx) {
-        err = knd_set_new(&desc_idx, mempool);
+        err = knd_set_new(&desc_idx, KND_SET_UNIQUE_VALUES, mempool);
         KND_TASK_ERR("failed to alloc a desc idx set");
         base->descendants = desc_idx;
     } else {

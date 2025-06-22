@@ -22,12 +22,14 @@ void knd_facet_str(struct kndFacet *facet,
 {
     struct kndFacetHashSpec *spec = facet->curr_spec;
     assert (spec != NULL);
+    int err;
 
-    knd_log("%*s{facet %s", depth * KND_OFFSET_SIZE, "",
-            knd_facet_type_names[spec->type]);
+    knd_log("%*s{facet %s {num-elems %zu} {num-children %zu}", depth * KND_OFFSET_SIZE, "",
+            knd_facet_type_names[spec->type],
+            facet->num_elems, facet->num_children);
 
     if (facet->val) {
-        knd_log("%*s{val ", (depth + 1) * KND_OFFSET_SIZE, "");
+        knd_log("%*s{key ", (depth + 1) * KND_OFFSET_SIZE, "");
         spec->val_str_fn(facet->val, depth + 2);
         knd_log("%*s}", (depth + 1) * KND_OFFSET_SIZE, "");
     } else {
@@ -40,11 +42,17 @@ void knd_facet_str(struct kndFacet *facet,
         }
     }
 
+    if (facet->idx) {
+        //  err = knd_set_map(facet->idx, );
+        //if (err) return;
+    }
+
     if (facet->num_children) {
         for (size_t i = 0; i < facet->num_children; i++) {
             knd_facet_str(facet->children[i], elem_str_fn, depth + 1);
         }
     }
+
     knd_log("%*s}", depth * KND_OFFSET_SIZE, "");
 }
 

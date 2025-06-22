@@ -47,21 +47,18 @@ struct kndRepoCache;
 
 typedef int (*task_cb_func)(void *obj, const char *msg, size_t msg_size, void *ctx);
 
-typedef enum knd_task_spec_type {
-    KND_DEFAULT_STATE,
-    KND_GET_STATE,
-    KND_SELECT_STATE,
-    KND_READ_SNAPSHOT_STATE,
-    KND_BUILD_SNAPSHOT_STATE,
-    KND_COMMIT_STATE,
-    KND_INNER_STATE,
-    KND_INNER_COMMIT_STATE,
-    KND_DELTA_STATE,
-    KND_BULK_LOAD_STATE,
-    KND_CACHE_UPDATE_STATE,
-    KND_RESTORE_STATE,
-    KND_STOP_STATE
-} knd_task_spec_type;
+typedef enum knd_task_type {
+    KND_TASK_DEFAULT,
+    KND_TASK_QUERY,
+    KND_TASK_COMMIT,
+    KND_TASK_READ_SNAPSHOT,
+    KND_TASK_BUILD_SNAPSHOT,
+    KND_TASK_INNER,
+    KND_TASK_INNER_COMMIT,
+    KND_TASK_BULK_LOAD,
+    KND_TASK_CACHE_UPDATE,
+    KND_TASK_RESTORE
+} knd_task_type;
 
 typedef enum knd_task_phase_t {
      KND_REGISTER,
@@ -95,7 +92,7 @@ struct kndTaskContext {
     size_t id_size;
     size_t numid;
 
-    knd_task_spec_type type;
+    knd_task_type type;
     knd_task_phase_t phase;
 
     struct timespec start_ts;
@@ -166,7 +163,7 @@ struct kndTaskContext {
 struct kndTask
 {
     knd_agent_role_type role;
-    knd_task_spec_type type;
+    knd_task_type type;
     int id;
     knd_state_phase phase;
     knd_task_mode_t mode;
@@ -263,5 +260,4 @@ int knd_task_run(struct kndTask *self, const char *input, size_t input_size);
 // knd_task.select.c
 gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size);
 
-int knd_task_fetch_memblock(struct kndTask *task,
-                            size_t space_required, struct kndMemBlock **result);
+int knd_task_fetch_memblock(struct kndTask *task, size_t space_required, struct kndMemBlock **result);

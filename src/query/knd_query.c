@@ -21,35 +21,37 @@
 #define DEBUG_QUERY_LEVEL_3 0
 #define DEBUG_QUERY_LEVEL_TMP 1
 
-int knd_query_plan(struct kndQuery *query, struct kndTask *task)
+int knd_query_obj_export(struct kndQuery *query, struct kndTask *task)
 {
-    struct kndAttrStm *stm;
-    size_t min_ops = 0;
     int err;
 
-    // TODO query cache lookup
-
-    FOREACH (stm, query->attr_stms) {
-        err = knd_attr_stm_plan(stm, task);
-        switch (err) {
-        case knd_OK:
-            break;
-        case knd_NO_MATCH:
-            knd_log("no matches for attr stm");
-
-            break;
-        default:
-            KND_TASK_ERR("failed to plan attr stm query");
-            break;
-        }
-
-        if (stm->min_query_ops < min_ops) {
-            min_ops = stm->min_query_ops;
-        }
+    switch (task->ctx->format) {
+    case KND_FORMAT_JSON:
+        //err = knd_query_results_export_JSON(query, task, 0);
+        //KND_TASK_ERR("failed to export query result in JSON");
+        break;
+    default:
+        err = knd_query_obj_export_GSL(query, task, 0);
+        KND_TASK_ERR("failed to export a requested object in GSL");
+        break;
     }
+    return knd_OK;
+}
 
-    // < KND_QUERY_MIN_OPERS ?
+int knd_query_match_export(struct kndQuery *query, struct kndTask *task)
+{
+    int err;
 
+    switch (task->ctx->format) {
+    case KND_FORMAT_JSON:
+        //err = knd_query_results_export_JSON(query, task, 0);
+        //KND_TASK_ERR("failed to export query result in JSON");
+        break;
+    default:
+        err = knd_query_match_export_GSL(query, task, 0);
+        KND_TASK_ERR("failed to export query matching results in GSL");
+        break;
+    }
     return knd_OK;
 }
 

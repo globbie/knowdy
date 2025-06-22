@@ -77,7 +77,6 @@ struct kndQuery
 
     struct kndRepo    *repo;
     struct kndClass   *cls;
-
     struct kndAttrStm *attr_stms;
     struct kndAttrStm *attr_stms_tail;
     size_t num_attr_stms;
@@ -91,15 +90,19 @@ struct kndQuery
 
     struct kndSet *match;
 
+    size_t complexity;
+    size_t max_complexity;
     struct kndQuery *next;
 };
 
-extern gsl_err_t knd_parse_query(void *obj, const char *rec, size_t *total_size);
-
-extern int knd_query_export_GSL(struct kndQuery *self, struct kndTask *task);
 extern int knd_query_new(struct kndQuery **self, struct kndMemPool *mempool);
-extern int knd_query_plan(struct kndQuery *query, struct kndTask *task);
-extern int knd_query_run(struct kndQuery *query, struct kndTask *task);
+extern gsl_err_t knd_query_run(void *obj, const char *rec, size_t *total_size);
+
+extern int knd_query_obj_export(struct kndQuery *self, struct kndTask *task);
+extern int knd_query_obj_export_GSL(struct kndQuery *query, struct kndTask *task, size_t depth);
+
+extern int knd_query_match_export(struct kndQuery *self, struct kndTask *task);
+extern int knd_query_match_export_GSL(struct kndQuery *query, struct kndTask *task, size_t depth);
 
 static inline void knd_query_append_attr_stm(struct kndQuery *q, struct kndAttrStm *stm)
 {

@@ -121,7 +121,7 @@ static gsl_err_t parse_locale(void *obj, const char *rec, size_t *total_size)
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
+gsl_err_t knd_run_cmd(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
     gsl_err_t parser_err;
@@ -168,7 +168,7 @@ gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size)
 
     /* any commits? */
     switch (task->type) {
-    case KND_COMMIT_STATE:
+    case KND_TASK_COMMIT:
         // TODO
         // check resource usage threshold, raise alert flag if needed        
         // knd_log(".. building report for commit %zu", task->ctx->commit->numid);

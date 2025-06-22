@@ -60,9 +60,9 @@ int knd_repo_index_proc_arg(struct kndRepo *repo, struct kndProc *proc,
     arg_ref->proc = proc;
 
     switch (task->type) {
-    case KND_RESTORE_STATE:
+    case KND_TASK_RESTORE:
         // fall through
-    case KND_BULK_LOAD_STATE:
+    case KND_TASK_BULK_LOAD:
 
         err = knd_proc_get_arg(proc, arg->name, arg->name_size, &ref, task);
 
@@ -142,7 +142,7 @@ int knd_repo_snapshot_new(struct kndRepoSnapshot **result, size_t numid,
     err = knd_snapshot_build_path(s, task);
     KND_TASK_ERR("failed to build a default snapshot path");
 
-    err = knd_set_new(&s->commit_idx, mempool);
+    err = knd_set_new(&s->commit_idx, KND_SET_UNIQUE_VALUES, mempool);
     if (err) return err;
     s->max_journals = KND_MAX_JOURNALS;
     s->max_journal_size = KND_MAX_JOURNAL_SIZE;

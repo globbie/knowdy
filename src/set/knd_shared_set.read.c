@@ -684,7 +684,7 @@ static int read_elem(struct kndStorageLeaf *leaf, struct kndSharedSetDir *dir,
 int knd_storage_leaf_read_elem(struct kndStorageLeaf *leaf, const char *id, size_t id_size,
                                elem_unmarshall_cb cb, void *ctx, void **result, struct kndTask *task)
 {
-    knd_task_spec_type orig_task_type = task->type;
+    knd_task_type orig_task_type = task->type;
     int err;
     assert (leaf->dir != NULL);
 

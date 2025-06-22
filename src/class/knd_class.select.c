@@ -78,7 +78,7 @@ static gsl_err_t select_class_attr(void *obj, const char *name, size_t name_size
 
     err = knd_attr_find(bc, name, name_size, &attr, task);
     if (err) {
-        KND_TASK_LOG("{attr %.*s} is not applicable to {cls %.*s}",
+        KND_TASK_LOG("no {attr %.*s} in {cls %.*s}",
                      name_size, name, bc->name_size, bc->name);
         return make_gsl_err(gsl_FAIL);
     }
@@ -381,14 +381,14 @@ static gsl_err_t import_class_inst(void *obj, const char *rec, size_t *total_siz
         knd_log(".. parse import class inst..");
 
     if (!c) {
-        KND_TASK_LOG("no class selected");
+        KND_TASK_LOG("no cls selected");
         return *total_size = 0, make_gsl_err_external(knd_FORMAT);
     }
 
     // TODO check write privileges
 
     switch (task->type) {
-    case KND_GET_STATE:
+    case KND_TASK_QUERY:
         if (!commit) {
             err = knd_commit_new(&commit, mempool);
             if (err) return make_gsl_err_external(err);
@@ -440,7 +440,7 @@ static gsl_err_t remove_class(void *obj, const char *unused_var(name), size_t na
 #if 0
     // TODO: copy-on-write : add special entry
     //         for deleted classes from base repo
-    ctx->task->type = KND_COMMIT_STATE;
+    ctx->task->type = KND_TASK_COMMIT;
     ctx->task->phase = KND_REMOVED;
     return make_gsl_err(gsl_OK);
 #endif

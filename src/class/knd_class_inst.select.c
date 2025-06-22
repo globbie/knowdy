@@ -51,11 +51,10 @@ static gsl_err_t run_get_inst(void *obj, const char *name, size_t name_size)
         KND_TASK_LOG("failed to get class inst: %.*s", name_size, name);
         return make_gsl_err_external(err);
     }
-    /* to return a single object */
-    task->type = KND_GET_STATE;
 
-    if (DEBUG_INST_LEVEL_2)
+    if (DEBUG_INST_LEVEL_2) {
         knd_class_inst_str(inst, 0);
+    }
 
     ctx->inst = inst;
 
@@ -87,7 +86,6 @@ static gsl_err_t parse_get_inst_by_numid(void *obj, const char *rec, size_t *tot
         KND_TASK_LOG("failed to open class inst \"%.*s\"", id_size, id);
         return make_gsl_err_external(err);
     }
-    task->type = KND_GET_STATE;
 
     if (DEBUG_INST_LEVEL_3) {
         knd_class_inst_str(entry->inst, 0);
@@ -136,15 +134,12 @@ static gsl_err_t present_state(void *obj, const char *unused_var(name), size_t u
         knd_log(".. select delta:  gt %zu  lt %zu  eq:%zu..",
                 task->state_gt, task->state_lt, task->state_eq);
     }
-
-    task->type = KND_SELECT_STATE;
-
     if (task->state_gt  >= ctx->class->num_inst_states) goto JSON_state;
     //if (task->gte >= base->num_inst_states) goto JSON_state;
 
     if (task->state_lt && task->state_lt < task->state_gt) goto JSON_state;
 
-    err = knd_set_new(&set, mempool);
+    err = knd_set_new(&set, KND_SET_UNIQUE_VALUES, mempool);
     if (err) return make_gsl_err_external(err);
 
     err = knd_class_get_inst_updates(ctx->class, task->state_gt, task->state_lt, task->state_eq, set);
@@ -251,8 +246,6 @@ static gsl_err_t remove_inst(void *obj, const char *unused_var(name), size_t unu
     err = log->write(log, " class inst removed", strlen(" class inst removed"));
     if (err) return make_gsl_err_external(err);
 
-    task->type = KND_COMMIT_STATE;
-
     // TODO state_ref->next = task->class_inst_state_refs;
     //task->class_inst_state_refs = state_ref;
 
@@ -273,7 +266,7 @@ static gsl_err_t present_inst_selection(void *obj, const char *unused_var(val),
         knd_log(".. presenting inst selection of class \"%.*s\"", c->name_size, c->name);
 
     out->reset(out);
-    if (task->type == KND_SELECT_STATE) {
+    if (task->type == KND_TASK_QUERY) {
         /* no sets found? */
         if (!task->num_sets) {
             /*if (entry->inst_idx) {
@@ -344,7 +337,6 @@ gsl_err_t knd_select_class_inst(struct kndClass *c, const char *rec, size_t *tot
     if (DEBUG_INST_LEVEL_2)
         knd_log(".. class instance parsing: \"%.*s\"", 64, rec);
 
-    task->type = KND_SELECT_STATE;
     struct LocalContext ctx = {
         .task = task,
         .class = c,

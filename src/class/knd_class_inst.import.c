@@ -280,7 +280,7 @@ int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *
     gsl_err_t parser_err;
 
     if (DEBUG_INST_IMPORT_LEVEL_2) {
-        knd_log(".. {repo %.*s {class %.*s}} to import {inst %.*s} {task-type %d}",
+        knd_log(".. {repo %.*s {cls %.*s}} to import {inst %.*s} {task-type %d}",
                 entry->repo->name_size, entry->repo->name,
                 entry->name_size, entry->name,  64, rec, task->type);
     }
@@ -289,17 +289,17 @@ int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *
     KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
    
     switch (task->type) {
-    case KND_BULK_LOAD_STATE:
+    case KND_TASK_BULK_LOAD:
         break;
-    case KND_RESTORE_STATE:
+    case KND_TASK_RESTORE:
         break;
-    case KND_INNER_COMMIT_STATE:
+    case KND_TASK_INNER_COMMIT:
         // fall through
-    case KND_INNER_STATE:
-        task->type = KND_INNER_COMMIT_STATE;
+    case KND_TASK_INNER:
+        task->type = KND_TASK_INNER_COMMIT;
         break;
     default:
-        task->type = KND_COMMIT_STATE;
+        task->type = KND_TASK_COMMIT;
     }    
     err = knd_class_inst_entry_new(&inst_entry, mempool);
     KND_TASK_ERR("class inst  alloc failed");
@@ -330,7 +330,7 @@ int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *
     }
 
     switch (task->type) {
-    case KND_BULK_LOAD_STATE:
+    case KND_TASK_BULK_LOAD:
         if (DEBUG_INST_IMPORT_LEVEL_3)
             knd_log("++ {class %.*s {inst %.*s}} numid:%zu init data import OK!",
                     entry->name_size, entry->name, inst->name_size, inst->name,
@@ -340,7 +340,7 @@ int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *
         KND_TASK_ERR("failed to register class inst by name");
         return knd_OK;
 
-    case KND_INNER_COMMIT_STATE:
+    case KND_TASK_INNER_COMMIT:
         FOREACH (declar, ctx->declars) {
             if (declar->entry == c->entry) break;
         }

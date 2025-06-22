@@ -47,8 +47,8 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
     struct kndCommit *commit = task->ctx->commit;
     int err;
 
-    if (task->type != KND_BULK_LOAD_STATE) {
-        task->type = KND_COMMIT_STATE;
+    if (task->type != KND_TASK_BULK_LOAD) {
+        task->type = KND_TASK_COMMIT;
         if (!commit) {
             err = knd_commit_new(&commit, task->mempool);
             if (err) return make_gsl_err_external(err);
@@ -78,8 +78,8 @@ static gsl_err_t parse_proc_import(void *obj, const char *rec, size_t *total_siz
     struct kndRepo *repo = ctx->repo ? ctx->repo : task->repo;
     int err;
 
-    if (task->type != KND_BULK_LOAD_STATE) {
-        task->type = KND_COMMIT_STATE;
+    if (task->type != KND_TASK_BULK_LOAD) {
+        task->type = KND_TASK_COMMIT;
 
         if (!task->ctx->commit) {
             err = knd_commit_new(&task->ctx->commit, task->mempool);
@@ -99,9 +99,9 @@ static gsl_err_t run_get_schema(void *obj, const char *name, size_t name_size)
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    if (DEBUG_REPO_GSL_LEVEL_2)
-        knd_log(".. select repo schema: \"%.*s\"..", name_size, name);
-
+    if (DEBUG_REPO_GSL_LEVEL_2) {
+        knd_log(".. select repo {schema %.*s}", name_size, name);
+    }
     self->repo->schema_name = name;
     self->repo->schema_name_size = name_size;
     return make_gsl_err(gsl_OK);
@@ -644,8 +644,9 @@ int knd_repo_read_sources(struct kndRepo *self, struct kndTask *task)
         knd_log(".. initial loading of schema source files for {repo %.*s}",
                 self->name_size, self->name);
     }
+
     /* read a system-wide schema */
-    task->type = KND_BULK_LOAD_STATE;
+    task->type = KND_TASK_BULK_LOAD;
     err = read_GSL_file(self, NULL, KND_PACKAGE_INDEX_NAME, strlen(KND_PACKAGE_INDEX_NAME),
                         KND_GSL_SCHEMA, task);
     KND_TASK_ERR("schema import failed");
@@ -665,7 +666,7 @@ int knd_repo_read_sources(struct kndRepo *self, struct kndTask *task)
     if (self->data_path_size) {
         if (DEBUG_REPO_GSL_LEVEL_3)
             knd_log(".. initial loading of data files");
-        task->type = KND_BULK_LOAD_STATE;
+        task->type = KND_TASK_BULK_LOAD;
         err = read_GSL_file(self, NULL,
                             KND_PACKAGE_INDEX_NAME, strlen(KND_PACKAGE_INDEX_NAME),
                             KND_GSL_INIT_DATA, task);

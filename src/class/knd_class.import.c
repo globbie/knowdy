@@ -100,7 +100,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
 
     /* task mode: initial bulk load */
     switch (task->type) {
-    case KND_BULK_LOAD_STATE:
+    case KND_TASK_BULK_LOAD:
         knd_build_conc_abbr(name, name_size, c->abbr, &c->abbr_size);
 
         entry = knd_shared_dict_get(task->idxs->class_name_idx, name, name_size);
@@ -542,9 +542,9 @@ gsl_err_t knd_class_import(struct kndRepo *repo, const char *rec, size_t *total_
     }
 
     switch (task->type) {
-    case KND_RESTORE_STATE:
+    case KND_TASK_RESTORE:
         // fall through
-    case KND_COMMIT_STATE:
+    case KND_TASK_COMMIT:
         err = knd_class_commit_state(c->entry, KND_CREATED, task);
         if (err) {
             return make_gsl_err_external(err);

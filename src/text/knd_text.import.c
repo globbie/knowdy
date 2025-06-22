@@ -515,11 +515,11 @@ static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_si
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    knd_task_spec_type orig_task_type = task->type;
+    knd_task_type orig_task_type = task->type;
     gsl_err_t parser_err;
 
     /* switch to statement's local scope */
-    task->type = KND_INNER_STATE;
+    task->type = KND_TASK_INNER;
     parser_err = knd_class_select(task->repo, rec, total_size, task);
     task->type = orig_task_type;
 
@@ -530,11 +530,11 @@ static gsl_err_t parse_proc_select(void *obj, const char *rec, size_t *total_siz
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    knd_task_spec_type orig_task_type = task->type;
+    knd_task_type orig_task_type = task->type;
     gsl_err_t parser_err;
 
     /* switch to statement's local scope */
-    task->type = KND_INNER_STATE;
+    task->type = KND_TASK_INNER;
     parser_err = knd_proc_select(task->repo, rec, total_size, task);
     task->type = orig_task_type;
     return parser_err;

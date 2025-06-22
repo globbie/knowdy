@@ -106,7 +106,7 @@ struct kndSteward
 
     /* subrepos */
     struct kndSet *repo_idx;
-    struct kndSharedDict *repo_name_idx;
+    struct kndDict *repo_name_idx;
 };
 
 int  knd_steward_new(struct kndSteward **steward, const char *config, size_t config_size);

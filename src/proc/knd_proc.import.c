@@ -213,7 +213,7 @@ static gsl_err_t set_proc_name(void *obj, const char *name, size_t name_size)
     self->name_size = name_size;
 
     /* initial bulk load in progress */
-    if (task->type == KND_BULK_LOAD_STATE) {
+    if (task->type == KND_TASK_BULK_LOAD) {
         entry = knd_shared_dict_get(task->idxs->proc_name_idx, name, name_size);
         if (!entry) {
             entry = self->entry;
@@ -450,7 +450,7 @@ gsl_err_t knd_proc_import(struct kndRepo *repo, const char *rec, size_t *total_s
     if (DEBUG_PROC_IMPORT_LEVEL_2)
         knd_proc_str(proc, 0);
 
-    if (task->type == KND_COMMIT_STATE) {
+    if (task->type == KND_TASK_COMMIT) {
         err = knd_proc_commit_state(proc, KND_CREATED, task);
         if (err) return make_gsl_err_external(err);
     }
