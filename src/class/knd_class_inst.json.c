@@ -165,7 +165,7 @@ static int export_inverse_rels(struct kndClassInst *self, struct kndTask *task, 
                 OUT(" ", 1);
             }
             OUT("[", 1);
-            err = knd_set_map(attr_hub->topics, export_class_inst, (void*)task);
+            err = knd_set_map(attr_hub->topics, export_class_inst, (void*)task, false);
             if (err && err != knd_RANGE) return err;
 
             if (indent_size) {

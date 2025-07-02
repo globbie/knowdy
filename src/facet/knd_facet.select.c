@@ -18,50 +18,15 @@
 #define DEBUG_FACET_SELECT_LEVEL_5 0
 #define DEBUG_FACET_SELECT_LEVEL_TMP 1
 
-int knd_facet_map(struct kndFacet *facet, void *query_val,
-                  knd_facet_map_fn cb, void *ctx, struct kndTask *task)
+static int apply_map_cb(struct kndFacet *facet, void *key,
+                        knd_facet_map_cb cb, void *ctx, struct kndTask *task)
 {
-    struct kndFacetHashSpec *spec = facet->hash_specs;
-    void *hashval;
-    size_t numval;
     int err;
-
-    if (!facet->num_hash_specs) {
-        err = knd_LIMIT;
-        KND_TASK_ERR("no facet hash specs available");
-    }
-
-    if (DEBUG_FACET_SELECT_LEVEL_TMP) {
-        spec->val_str_fn(facet->val, 1);
-
-        if (query_val) {
-            spec->val_str_fn(query_val, 1);
-        }
-    }
-
-    /* if (query_val) {
-        err = spec->hash_fn(facet->val, elem, &hashval, &numval, task);
-    if (err) {
-        switch (err) {
-        case knd_NO_MATCH:
-            err = update_index(facet, elem, task);
-            KND_TASK_ERR("failed to update a facet index");
-            return knd_OK;
-        default:
-            KND_TASK_ERR("failed to apply a facet hash func {err %d}", err);
-        }
-    }
-
-    if (numval >= KND_MAX_FACETS) {
-        return knd_LIMIT;
-    }
-
-    f = facet->children[numval];
-    int err;
-    */
 
     if (facet->cache_size) {
         for (size_t i = 0; i < facet->cache_size; i++) {
+            if (!facet->cache[i]) continue;
+
             err = cb(facet->cache[i], ctx);
             KND_TASK_ERR("failed to call a facet cb func to a cached elem");
         }
@@ -72,10 +37,72 @@ int knd_facet_map(struct kndFacet *facet, void *query_val,
         KND_TASK_ERR("failed to apply a facet cb func to an idx");
     }
 
-    for (size_t i = 0; i < facet->num_children; i++) {
-        err = knd_facet_map(facet->children[i], query_val, cb, ctx, task);
-        KND_TASK_ERR("failed to iterate a subfacet");
+    for (size_t i = 0; i < KND_MAX_FACETS; i++) {
+        if (!facet->children[i]) continue;
+
+        err = apply_map_cb(facet->children[i], key, cb, ctx, task);
+        KND_TASK_ERR("failed to apply cb to a subfacet");
     }
+    return knd_OK;
+}
+
+/**
+ * find a matching facet and apply cb to all key matching elems
+ */
+int knd_facet_map(struct kndFacet *facet, void *key,
+                  knd_facet_map_cb cb, void *ctx, struct kndTask *task)
+{
+    struct kndFacetHashSpec *spec = facet->hash_specs;
+    struct kndFacet *f;
+    void *hashval;
+    size_t numval;
+    int err;
+
+    if (!facet->num_hash_specs) {
+        err = knd_LIMIT;
+        KND_TASK_ERR("no facet hash specs available");
+    }
+
+    if (DEBUG_FACET_SELECT_LEVEL_TMP) {
+        spec->key_str_cb(facet->key, 1);
+        if (key) {
+            spec->key_str_cb(key, 1);
+        }
+    }
+
+    if (!key) {
+        err = apply_map_cb(facet, NULL, cb, ctx, task);
+        KND_TASK_ERR("failed to apply a cb to a facet, given no query key");
+        return knd_OK;
+    }
+
+    if (key == facet->key) {
+        err = apply_map_cb(facet, key, cb, ctx, task);
+        KND_TASK_ERR("failed to apply a cb to a facet, given no query key");
+        return knd_OK;
+    }
+
+    if (!facet->num_children) {
+        err = apply_map_cb(facet, key, cb, ctx, task);
+        KND_TASK_ERR("failed to apply a cb to a terminal facet");
+        return knd_OK;
+    }
+
+    err = spec->hash_cb(facet->key, key, &hashval, &numval, task);
+    KND_TASK_ERR("failed to apply a facet hash func {err %d}", err);
+
+    if (numval >= KND_MAX_FACETS) {
+        return knd_LIMIT;
+    }
+   
+    f = facet->children[numval];
+    if (!f) {
+        knd_log("no subfacets matching {key %zu}", numval);
+        return knd_NO_MATCH;
+    }
+
+    err = knd_facet_map(f, hashval, cb, ctx, task);
+    KND_TASK_ERR("failed to apply a cb to a subfacet");
 
     return knd_OK;
 }

@@ -67,7 +67,7 @@ int knd_attr_stm_inner_idx(struct kndClassEntry *topic, struct kndAttr *attr,
     int err;
 
     if (DEBUG_ATTR_STM_IDX_LEVEL_2) {
-        knd_log("?? indexing check for {class %.*s} inner attr {%s %.*s} {is-a-set %d}",
+        knd_log("?? indexing check for {cls %.*s} inner attr {%s %.*s} {is-a-set %d}",
                 topic->name_size, topic->name,
                 knd_attr_names[attr->type], attr->name_size, attr->name,
                 attr->is_a_set);
@@ -97,7 +97,7 @@ int knd_index_attr_stm(struct kndClassEntry *entry, struct kndAttr *attr,
     int err;
 
     if (DEBUG_ATTR_STM_IDX_LEVEL_2) {
-        knd_log(".. {cls %.*s} to index {%s %.*s} {is-list-item %d}",
+        knd_log("{cls %.*s} to index {%s %.*s} {is-list-item %d}",
                 entry->name_size, entry->name,
                 knd_attr_names[attr->type], attr->name_size, attr->name,
                 stm->is_list_item);
@@ -134,14 +134,6 @@ int knd_index_attr_stm(struct kndClassEntry *entry, struct kndAttr *attr,
                                 knd_attr_stm_get_elem_key, task->mempool);
             KND_TASK_ERR("failed to alloc a facet");
         }
-
-        if (DEBUG_ATTR_STM_IDX_LEVEL_2) {
-            knd_log(".. {cls %.*s} to index inner cls {%s %.*s} {is-list-item %d}",
-                    entry->name_size, entry->name,
-                    knd_attr_names[attr->type], attr->name_size, attr->name,
-                    stm->is_list_item);
-        }
-
         err = knd_facet_add(attr->facet, stm, task);
         KND_TASK_ERR("failed to add inner {stm %.*s} elem to facet",
                      stm->name_size, stm->name);
@@ -168,7 +160,7 @@ int knd_index_inst_attr_stm(struct kndClassInstEntry *topic_inst, struct kndAttr
                             struct kndAttrStm *unused_var(stm), struct kndTask *unused_var(task))
 {
     if (DEBUG_ATTR_STM_IDX_LEVEL_2) {
-        knd_log(".. {cls %.*s {inst %.*s}} to index {%s %.*s}",
+        knd_log("{cls %.*s {inst %.*s}} to index {%s %.*s}",
                 topic_inst->is_a->name_size, topic_inst->is_a->name,
                 topic_inst->name_size, topic_inst->name,
                 knd_attr_names[attr->type], attr->name_size, attr->name);

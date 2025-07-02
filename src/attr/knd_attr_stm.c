@@ -91,13 +91,18 @@ void knd_attr_stm_str(struct kndAttrStm *stm, size_t depth)
     }
 }
 
-void knd_attr_stm_present_subj(void *obj, size_t depth)
+int knd_attr_stm_present_subj(void *obj, void *ctx_obj)
 {
     struct kndAttrStm *stm = obj;
     struct kndClass *c = stm->subj;
+
+    assert (c != NULL);
+
+    size_t depth = *(size_t *)ctx_obj;
     //struct kndAttr *attr = stm->attr;
 
-    knd_log("%*s{cls %.*s {%.*s %.*s}}", depth * KND_OFFSET_SIZE, "",
+    knd_log("%*s{cls %.*s {%.*s %.*s}}",
+            depth * KND_OFFSET_SIZE, "",
             c->name_size, c->name,
             stm->name_size, stm->name, stm->val_size, stm->val);
 
@@ -117,6 +122,7 @@ void knd_attr_stm_present_subj(void *obj, size_t depth)
         break;
     }
     */
+    return knd_OK;
 }
 
 int knd_cls_ref_attr_stm_new(struct kndClassRefAttrStm **result, struct kndMemPool *mempool)

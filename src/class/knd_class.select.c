@@ -72,7 +72,7 @@ static gsl_err_t select_class_attr(void *obj, const char *name, size_t name_size
     int err;
 
     if (!bc) {
-        KND_TASK_LOG("no base class selected");
+        KND_TASK_LOG("no base cls selected");
         return *total_size = 0, make_gsl_err_external(knd_FAIL);
     }
 
@@ -222,7 +222,7 @@ static gsl_err_t select_inverse_attr(void *obj, const char *rec, size_t *total_s
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t select_by_base_class(void *obj, const char *rec, size_t *total_size)
+static gsl_err_t select_by_base_cls(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndQuery *query = ctx->query;
@@ -496,7 +496,7 @@ gsl_err_t knd_class_select(struct kndRepo *repo, const char *rec, size_t *total_
         },
         { .name = "is",
           .name_size = strlen("is"),
-          .parse = select_by_base_class,
+          .parse = select_by_base_cls,
           .obj = &ctx
         },
         { .is_default = true,

@@ -27,7 +27,7 @@
             {max-small-x4-pages    400000  }
             {max-small-x2-pages    80000   }
             {max-small-pages       4000000 }
-            {max-tiny-pages        1300000 }}
+            {max-tiny-pages        1400000 }}
          {ctx
             {max-large-pages        10}
             {max-base-pages        1000}

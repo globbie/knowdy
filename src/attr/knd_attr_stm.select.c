@@ -57,8 +57,8 @@ struct LocalContext {
     struct kndAttr    *attr;
 };
 
-static gsl_err_t set_inner_cls_query_range(void *obj, const char *unused_var(val),
-                                           size_t unused_var(val_size))
+static gsl_err_t check_inner_cls_query_range(void *obj, const char *unused_var(val),
+                                             size_t unused_var(val_size))
 {
     struct LocalContext *ctx = obj;
     struct kndAttrStm *stm = ctx->stm;
@@ -71,7 +71,7 @@ static gsl_err_t set_inner_cls_query_range(void *obj, const char *unused_var(val
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t set_ref_cls_query_range(void *obj, const char *unused_var(val),
+static gsl_err_t check_ref_cls_query_range(void *obj, const char *unused_var(val),
                                            size_t unused_var(val_size))
 {
     struct LocalContext *ctx = obj;
@@ -85,7 +85,7 @@ static gsl_err_t set_ref_cls_query_range(void *obj, const char *unused_var(val),
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t set_inner_cls(void *obj, const char *name, size_t name_size)
+static gsl_err_t check_inner_cls(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
@@ -112,7 +112,8 @@ static gsl_err_t set_inner_cls(void *obj, const char *name, size_t name_size)
     if (inner->cls == inner->template_cls) {
         // TODO raise a warning about tautology
         if (DEBUG_ATTR_STM_SELECT_LEVEL_TMP) {
-            knd_log("the same cls specified in inner cls spec");
+            knd_log("NB: the same {cls %.*s} specified in inner cls spec",
+                    inner->cls->name_size, inner->cls->name);
         }
         return make_gsl_err(gsl_OK);
     }
@@ -128,29 +129,56 @@ static gsl_err_t set_inner_cls(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t set_ref_cls(void *obj, const char *name, size_t name_size)
+static int check_ref_cls(const char *name, size_t name_size,
+                         struct kndClassRefAttrStm *ref_stm,
+                         struct kndTask *task)
+{
+    struct kndRepo *repo = task->repo;
+    struct kndClassEntry *entry;
+    struct kndClass *c;
+    int err;
+
+    err = knd_get_class_entry(repo, name, name_size, true, &entry, task);
+    KND_TASK_ERR("{cls %.*s} not found", name_size, name);
+
+    err = knd_class_acquire(entry, &c, task);
+    KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);
+
+    if (c == ref_stm->template_cls) {
+        // TODO raise a warning about tautology
+        if (DEBUG_ATTR_STM_SELECT_LEVEL_TMP) {
+            knd_log("NB: the same {cls %.*s} specified in ref cls spec",
+                    c->name_size, c->name);
+        }
+        return knd_OK;
+    }
+
+    err = knd_class_is_base(ref_stm->template_cls, c);
+    KND_TASK_ERR("no inheritance from {cls %.*s} to {cls %.*s}",
+                 ref_stm->template_cls->name_size, ref_stm->template_cls->name,
+                 c->name_size, c->name);
+
+    ref_stm->cls_entry = entry;
+    ref_stm->cls = c;
+    return knd_OK;
+}
+
+static gsl_err_t check_ref_cls_cb(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndRepo *repo = task->repo;
-    struct kndClassRefAttrStm *ref_stm = ctx->ref_stm;
-    struct kndClassEntry *entry;
     int err;
 
     if (DEBUG_ATTR_STM_SELECT_LEVEL_3) {
-        knd_log(">> set specific ref {cls %.*s}", name_size, name);
+        knd_log(">> check and set specific ref {cls %.*s}", name_size, name);
     }
-    err = knd_get_class_entry(repo, name, name_size, true, &entry, task);
+
+    err = check_ref_cls(name, name_size, ctx->ref_stm, task);
     if (err) {
-        KND_TASK_LOG("{cls %.*s} not found", name_size, name);
-        task->ctx->error = knd_NO_MATCH;
+        task->ctx->error = err;
         return make_gsl_err(gsl_FAIL);
     }
-    err = knd_class_acquire(entry, &ref_stm->cls, task);
-    if (err) {
-        KND_TASK_LOG("failed to acquire {cls %.*s}", entry->name_size, entry->name);
-        return make_gsl_err_external(err);
-    }
+
     return make_gsl_err(gsl_OK);
 }
 
@@ -211,14 +239,14 @@ static int inner_cls_parse(struct kndAttrStm *stm, struct kndClassInnerAttrStm *
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = set_inner_cls,
+          .run = check_inner_cls,
           .obj = &ctx
         },
         { .validate = select_inner_cls_attr_stm,
           .obj = &ctx
         },
         { .is_default = true,
-          .run = set_inner_cls_query_range,
+          .run = check_inner_cls_query_range,
           .obj = &ctx
         }
     };
@@ -242,11 +270,11 @@ static int ref_cls_parse(struct kndAttrStm *stm, struct kndClassRefAttrStm *ref,
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = set_ref_cls,
+          .run = check_ref_cls_cb,
           .obj = &ctx
         },
         { .is_default = true,
-          .run = set_ref_cls_query_range,
+          .run = check_ref_cls_query_range,
           .obj = &ctx
         }
     };
@@ -322,12 +350,34 @@ int knd_attr_parse_query_stm(struct kndAttrStm *stm,
     return knd_OK;
 }
 
+static int cls_ref_query_plan(struct kndClassRefAttrStm *cref,
+                              struct kndClassRefAttr *cls_ref_attr,
+                              struct kndFacet *facet, struct kndTask *task)
+{
+    struct kndClassEntry *entry = cref->cls_entry ? cref->cls_entry : cls_ref_attr->template_cls;
+    assert (entry != NULL);
+    size_t depth = 0;
+    int err;
+
+    if (DEBUG_ATTR_STM_SELECT_LEVEL_2) {
+        knd_log(">> facet query of {cls-ref %.*s}",
+                entry->name_size, entry->name);
+    }
+
+    err = knd_facet_map(facet, entry, knd_attr_stm_present_subj, &depth, task);
+    KND_TASK_ERR("failed to map facet fn");
+
+    return knd_OK;
+}
+
 int knd_attr_stm_plan(struct kndAttrStm *stm, struct kndTask *task)
 {
     struct kndAttr *attr = stm->attr;
     struct kndFacet *facet = attr->facet;
     struct kndQuantAttrStm *quant_attr_stm;
+    struct kndClassRefAttr *cls_ref_attr;
     struct kndClassRefAttrStm *cref;
+    struct kndClassEntry *entry;
     int err;
 
     if (DEBUG_ATTR_STM_SELECT_LEVEL_TMP) {
@@ -352,17 +402,43 @@ int knd_attr_stm_plan(struct kndAttrStm *stm, struct kndTask *task)
         }
         break;
     case KND_ATTR_CLS_REF:
-        cref = stm->subtype;
-
-        assert (cref->cls_entry != NULL);
-
-        if (DEBUG_ATTR_STM_SELECT_LEVEL_TMP) {
-            knd_log(".. query {cls-ref %.s}", cref->cls_entry->name_size, cref->cls_entry->name);
-        }
-   
+        err = cls_ref_query_plan(stm->subtype, attr->subtype, facet, task);
+        KND_TASK_ERR("failed to plan a cls ref query");
         break;
     default:
         break;
     }
     return knd_OK;
+}
+
+int knd_facet_cls_key_get(void *elem, void **result, struct kndTask *task)
+{
+    struct kndAttrStm *stm = elem;
+    struct kndAttr *attr = stm->is_list_item ? stm->parent->attr : stm->attr;
+    struct kndClassInnerAttr *cls_inner_attr;
+    struct kndClassInnerAttrStm *inner_stm;
+    struct kndClassRefAttr *cls_ref_attr;
+    struct kndClassRefAttrStm *ref_stm;
+    struct kndClassEntry *entry;
+    int err;
+
+    switch (attr->type) {
+    case KND_ATTR_CLS_INNER:
+        cls_inner_attr = attr->subtype;
+        inner_stm = stm->subtype;
+        entry = inner_stm->cls_entry ? inner_stm->cls_entry : cls_inner_attr->template_cls;
+
+        *result = entry;
+        return knd_OK;
+    case KND_ATTR_CLS_REF:
+        cls_ref_attr = attr->subtype;
+        ref_stm = stm->subtype;
+        entry = ref_stm->cls_entry ? ref_stm->cls_entry : cls_ref_attr->template_cls;
+
+        *result = entry;
+        return knd_OK;
+    default:
+        break;
+    }
+    return knd_NO_MATCH;
 }

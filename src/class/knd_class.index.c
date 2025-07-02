@@ -96,8 +96,8 @@ static int index_ancestor(struct kndClass *self, struct kndClass *baseclass, str
     err = knd_set_get(desc_idx, entry->id, entry->id_size, &result);
     if (!err) {
         if (DEBUG_CLASS_INDEX_LEVEL_2) {
-            knd_log("== index already present between %.*s (%.*s)"
-                    " and its ancestor %.*s",
+            knd_log("== index already present between {cls %.*s {id %.*s}}"
+                    " and its ancestor {cls %.*s}",
                     entry->name_size, entry->name, entry->id_size, entry->id,
                     baseclass->name_size, baseclass->name);
         }
@@ -136,7 +136,7 @@ static int register_desc(struct kndClass *base, struct kndClass *sub, struct knd
     }
 
     if (DEBUG_CLASS_INDEX_LEVEL_2) {
-        knd_log(".. add {class %.*s} as a child of {class %.*s}",
+        knd_log(".. add {cls %.*s} as a child of {cls %.*s}",
                 sub->name_size, sub->name, base->name_size, base->name);
     }
 
@@ -228,12 +228,14 @@ static int find_direct_child(struct kndClassEntry *base, struct kndClassEntry *t
     if (!base_c->num_children) return knd_NO_MATCH;
 
     FOREACH (ref, base_c->children) {
+        /* terminal class reached */
         if (ref->entry == term) {
             *result = term;
             *numval = ref->numid;
             return knd_OK;
         }
 
+        /* check inheritance */
         err = knd_class_acquire(ref->entry, &sub_c, task);
         KND_TASK_ERR("failed to acquire {cls %.*s}",
                      ref->entry->name_size, ref->entry->name);
@@ -244,6 +246,11 @@ static int find_direct_child(struct kndClassEntry *base, struct kndClassEntry *t
         err = knd_class_is_base(sub_c, term_c);
         if (err) continue;
 
+        if (DEBUG_CLASS_INDEX_LEVEL_2) {
+            knd_log(">> inheritance confirmed from {base %.*s} to {term %.*s}",
+                    sub_c->name_size, sub_c->name, term->name_size, term->name);
+        }
+
         *result = ref->entry;
         *numval = ref->numid;
         return knd_OK;
@@ -251,72 +258,37 @@ static int find_direct_child(struct kndClassEntry *base, struct kndClassEntry *t
     return knd_NO_MATCH;
 }
 
-int knd_facet_subclass_hash(void *val, void *elem, void **payload, size_t *hashval,
-                            struct kndTask *task)
+int knd_facet_cls_hash(void *curr_key, void *term_key, void **result, size_t *numval,
+                       struct kndTask *task)
 {
-    struct kndAttrStm *stm = elem;
-    struct kndAttr *attr = stm->is_list_item ? stm->parent->attr : stm->attr;
-    struct kndClassInnerAttr *cls_inner_attr;
-    struct kndClassRefAttr *cls_ref_attr;
-
-    struct kndClassRefAttrStm *ref_stm;
-    struct kndClassInnerAttrStm *inner_stm;
-
-    struct kndClassEntry *entry, *result;
-    struct kndClassEntry *curr_entry = val;
+    struct kndClassEntry *curr_entry = curr_key;
+    struct kndClassEntry *term_entry = term_key;
+    struct kndClassEntry *entry;
     int err;
 
     assert (curr_entry != NULL);
+    assert (term_entry != NULL);
 
-    switch (attr->type) {
-    case KND_ATTR_CLS_INNER:
-        cls_inner_attr = attr->subtype;
-        inner_stm = stm->subtype;
+    if (curr_entry == term_entry) return knd_NO_MATCH;
 
-        entry = inner_stm->cls_entry ? inner_stm->cls_entry : cls_inner_attr->template_cls;
-
-        if (DEBUG_CLASS_INDEX_LEVEL_2) {
-            knd_log(".. subclass hash of {inner %.*s} {facet-cls %.*s}",
-                    entry->name_size, entry->name,
-                    curr_entry->name_size, curr_entry->name);
-        }
-
-        err = find_direct_child(curr_entry, entry, &result, hashval, task);
-
-        // TODO vicious circle?
-        if (err) return err;
-        //KND_TASK_ERR("failed to match a direct child of {cls %.*s}",
-        //             curr_entry->name_size, curr_entry->name);
-
-        *payload = result;
-        // TODO
-        return knd_NO_MATCH;
-    case KND_ATTR_CLS_REF:
-        cls_ref_attr = attr->subtype;
-        ref_stm = stm->subtype;
-        entry = ref_stm->cls_entry ? ref_stm->cls_entry : cls_ref_attr->template_cls;
-
-        if (DEBUG_CLASS_INDEX_LEVEL_3) {
-            knd_log(".. subclass hash of {cls-ref %.*s} {facet-cls %.*s}",
-                    entry->name_size, entry->name,
-                    curr_entry->name_size, curr_entry->name);
-        }
-
-        err = find_direct_child(curr_entry, entry, &result, hashval, task);
-        KND_TASK_ERR("failed to match a direct child of {cls %.*s}",
-                     curr_entry->name_size, curr_entry->name);
-        *payload = result;
-        // TODO
+    err = find_direct_child(curr_entry, term_entry, &entry, numval, task);
+    switch (err) {
+    case knd_OK:
+        *result = entry;
+        return knd_OK;
+    case knd_NO_MATCH:
         return knd_NO_MATCH;
     default:
-        break;
+        KND_TASK_ERR("failed to find a subclass from {cls %.*s} to {cls %.*s}",
+                     curr_entry->name_size, curr_entry->name,
+                     term_entry->name_size, term_entry->name);
     }
     return knd_NO_MATCH;
 }
 
-void knd_facet_subclass_str(void *val, size_t depth)
+void knd_facet_cls_key_str(void *key, size_t depth)
 {
-    struct kndClassEntry *entry = val;
+    struct kndClassEntry *entry = key;
 
     knd_log("%*s{cls %.*s}",  depth * KND_OFFSET_SIZE, "",
             entry->name_size, entry->name);

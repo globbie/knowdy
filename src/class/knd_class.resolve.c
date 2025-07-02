@@ -203,8 +203,10 @@ static int set_child_ref(struct kndClass *base, struct kndClass *cls, struct knd
     base->children = ref;
     base->num_children++;
     if (base->num_children > KND_MAX_FACETS) {
-        knd_log("warning: num of subclasses of {cls %.*s} exceeds {max-facet-num %d}",
-                base->name_size, base->name, KND_MAX_FACETS);
+        if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
+            knd_log("warning: num of subclasses of {cls %.*s} exceeds {max-facet-num %d}",
+                    base->name_size, base->name, KND_MAX_FACETS);
+        }
     }
     return knd_OK;
 }

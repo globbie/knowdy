@@ -146,25 +146,34 @@ int knd_quant_ureal_index(struct kndFacet *facet, struct kndClassEntry *topic,
     return knd_OK;
 }
 
-int knd_quant_seq_len_hash(void *curr_val, void *obj, void **val, size_t *numval, struct kndTask *task)
+int knd_quant_seq_len_hash(void *curr_key, void *term_key,
+                           void **result, size_t *numval,
+                           struct kndTask *task)
 {
-    struct kndAttrStm *stm = obj;
-    struct kndQuantAttrStm *quant_attr_stm = stm->subtype;
-    struct kndQuantUInt *uint = quant_attr_stm->uint;
-    size_t pos = 0;
+    struct kndQuantUInt *curr_uint = curr_key;
+    struct kndQuantUInt *term_uint = term_key;
 
-    if (DEBUG_QUANT_INDEX_LEVEL_3) {
-        knd_log(".. hash quant {seq %.*s {len %zu}}",
-                uint->seq_size, uint->seq, uint->seq_size);
-    }
-    *numval = uint->seq_size;
-    *val = uint;
-
+    *numval = term_uint->seq_size;
+    *result = term_uint;
     // TODO
     return knd_NO_MATCH;
 }
 
-void knd_quant_seq_len_str(void *val, size_t depth)
+int knd_quant_seq_len_key_get(void *elem, void **result, struct kndTask *task)
+{
+    struct kndAttrStm *stm = elem;
+    struct kndQuantAttrStm *quant_attr_stm = stm->subtype;
+    struct kndQuantUInt *uint = quant_attr_stm->uint;
+
+    if (DEBUG_QUANT_INDEX_LEVEL_3) {
+        knd_log(".. quant {seq %.*s {len %zu}} get key..",
+                uint->seq_size, uint->seq, uint->seq_size);
+    }
+    *result = uint;
+    return knd_OK;
+}
+
+void knd_quant_seq_len_key_str(void *val, size_t depth)
 {
     struct kndQuantUInt *uint = val; 
 

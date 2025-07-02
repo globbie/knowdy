@@ -182,14 +182,15 @@ int knd_quant_attr_new(struct kndQuantAttr **result, knd_quant_type type,
     quant_attr->name = name;
     quant_attr->name_size = name_size;
 
-    err = knd_facet_hash_spec_new(&spec, KND_FACET_SEQ_LENGTH,
-                                  knd_quant_seq_len_hash, knd_quant_seq_len_str,
-                                  mempool);
+    err = knd_facet_hash_spec_new(&spec, KND_FACET_LEN,
+                                  knd_quant_seq_len_key_get, knd_quant_seq_len_key_str,
+                                  knd_quant_seq_len_hash, mempool);
     if (err) return err;
     append_quant_hash_spec(quant_attr, spec);
 
-    err = knd_facet_hash_spec_new(&spec, KND_FACET_ACCUM,
-                                  knd_quant_hash, knd_quant_str, mempool);
+    err = knd_facet_hash_spec_new(&spec, KND_FACET_SUM,
+                                  knd_quant_seq_len_key_get, knd_quant_str,
+                                  knd_quant_hash, mempool);
     if (err) return err;
     append_quant_hash_spec(quant_attr, spec);
 

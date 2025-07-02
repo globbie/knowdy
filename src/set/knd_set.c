@@ -127,6 +127,29 @@ int knd_set_intersect(struct kndSet *self, struct kndSet **sets, size_t num_sets
     return knd_OK;
 }
 
+static int save_list_elem(struct kndSet *self, struct kndSetElemIdx *parent_idx,
+                          int idx_pos, void *val)
+{
+    struct kndSetElem *ref, *prev;
+    int err;
+
+    err = knd_set_elem_new(&ref, self->mempool);
+    if (err) {
+        knd_log("-- set elem idx mempool limit reached");
+        return err;
+    }
+    ref->val = val;
+
+    if (parent_idx->elems[idx_pos]) {
+        prev = parent_idx->elems[idx_pos];
+        ref->next = prev;
+        ref->numval = prev->numval + 1;
+    }
+
+    parent_idx->elems[idx_pos] = ref;
+    return knd_OK;
+}
+
 static int save_elem(struct kndSet *self, struct kndSetElemIdx *parent_idx,
                      void *elem, const char *id, size_t id_size)
 {
@@ -134,8 +157,9 @@ static int save_elem(struct kndSet *self, struct kndSetElemIdx *parent_idx,
     int idx_pos;
     int err;
 
-    if (DEBUG_SET_LEVEL_2)
-        knd_log("== set idx to save ID remainder: \"%.*s\"", id_size, id);
+    if (DEBUG_SET_LEVEL_2) {
+        knd_log("== set idx to save {id-remainder %.*s}", id_size, id);
+    }
 
     idx_pos = obj_id_base[(unsigned char)*id];
     if (id_size > 1) {
@@ -158,14 +182,17 @@ static int save_elem(struct kndSet *self, struct kndSetElemIdx *parent_idx,
     case KND_SET_UNIQUE_VALUES:
         if (parent_idx->elems[idx_pos] != NULL) return knd_CONFLICT;
         parent_idx->elems[idx_pos] = elem;
-        break;
+        self->num_elems++;
+        return knd_OK;
     case KND_SET_MULTIPLE_VALUES:
-        break;
+        err = save_list_elem(self, parent_idx, idx_pos, elem);
+        if (err) return err;
+        self->num_elems++;
+        return knd_OK;
     default:
         break;
     }
-    self->num_elems++;
-    return knd_OK;
+    return knd_FAIL;
 }
 
 static int get_elem(struct kndSet *self, struct kndSetElemIdx *parent_idx,
@@ -178,9 +205,10 @@ static int get_elem(struct kndSet *self, struct kndSetElemIdx *parent_idx,
 
     idx_pos = obj_id_base[(unsigned char)*id];
 
-    if (DEBUG_SET_LEVEL_2)
-        knd_log(".. get elem by ID, remainder \"%.*s\" POS:%d", id_size, id, idx_pos);
-
+    if (DEBUG_SET_LEVEL_2) {
+        knd_log(".. get elem by ID, {id-remainder %.*s} {idx-pos %d}",
+                id_size, id, idx_pos);
+    }
     if (id_size > 1) {
         idx = parent_idx->idxs[idx_pos];
         if (!idx) return knd_NO_MATCH;
@@ -200,11 +228,36 @@ static int get_elem(struct kndSet *self, struct kndSetElemIdx *parent_idx,
     return knd_OK;
 }
 
+static int apply_cb(struct kndSet *self, map_cb_func cb, void *obj, void *ctx)
+{
+    struct kndSetElem *elems, *elem;
+    int err;
+
+    switch (self->type) {
+    case KND_SET_UNIQUE_VALUES:
+        err = cb(obj, ctx);
+        if (err) return err;
+        return knd_OK;
+    case KND_SET_MULTIPLE_VALUES:
+        elems = obj;
+        FOREACH (elem, elems) {
+            err = cb(elem->val, ctx);
+            if (err) return err;
+        }
+        return knd_OK;
+    default:
+        break;
+    }
+    return knd_FAIL;
+}
+
 int knd_set_add(struct kndSet *self, const char *key, size_t key_size, void *elem)
 {
     int err;
     assert(key_size != 0);
     assert(key != NULL);
+    assert(elem != NULL);
+
     err = save_elem(self, self->idx, elem, key, key_size);
     if (err) return err;
     return knd_OK;
@@ -219,7 +272,8 @@ int knd_set_get(struct kndSet *self, const char *key, size_t key_size, void **el
     return knd_OK;
 }
 
-static int traverse_idx(struct kndSetElemIdx *parent_idx, map_cb_func cb, void *ctx)
+static int traverse_idx(struct kndSet *self,
+                        struct kndSetElemIdx *parent_idx, map_cb_func cb, void *ctx)
 {
     struct kndSetElemIdx *idx;
     void *elem;
@@ -228,15 +282,17 @@ static int traverse_idx(struct kndSetElemIdx *parent_idx, map_cb_func cb, void *
     for (size_t i = 0; i < KND_RADIX_BASE; i++) {
         elem = parent_idx->elems[i];
         if (!elem) continue;
-        err = cb(elem, ctx);
+
+        err = apply_cb(self, cb, elem, ctx);
         if (err) return err;
+
     }
 
     for (size_t i = 0; i < KND_RADIX_BASE; i++) {
         idx = parent_idx->idxs[i];
         if (!idx) continue;
 
-        err = traverse_idx(idx, cb, ctx);
+        err = traverse_idx(self, idx, cb, ctx);
         if (err) return err;
     }
     return knd_OK;
@@ -247,70 +303,15 @@ int knd_set_map(struct kndSet *self, map_cb_func cb, void *ctx)
     int err;
 
     if (!self->idx) {
-        if (DEBUG_SET_LEVEL_2)
+        if (DEBUG_SET_LEVEL_3)
             knd_log("NB: -- set has no root idx");
         return knd_OK;
     }
-    err = traverse_idx(self->idx, cb, ctx);
+    err = traverse_idx(self, self->idx, cb, ctx);
     if (err) return err;
 
     return knd_OK;
 }
-
-static int build_dir_footer(struct kndSetDir *dir,
-                                bool use_positional_indexing,
-                                struct kndTask *task)
-{
-    unsigned char buf[KND_NAME_SIZE];
-    size_t buf_size = KND_UINT_SIZE;
-    unsigned int numval;
-    struct kndSetDirEntry *entry;
-    struct kndOutput *out = task->out;
-    int err;
-
-    out->reset(out);
-    for (size_t i = 0; i < KND_RADIX_BASE; i++) {
-        entry = &dir->entries[i];
-        /* explicit field naming */
-        if (!use_positional_indexing) {
-            if (entry->payload_size || entry->subdir) {
-                err = out->writec(out, (char)i);
-                KND_TASK_ERR("output failure");
-            }
-        }
-
-        if (!entry->payload_size) {
-            if (use_positional_indexing) {
-                knd_pack_u32(buf, 0);
-                err = out->write(out, (const char*)buf, buf_size);
-                KND_TASK_ERR("set output failed");
-            }
-        } else {
-            numval = entry->payload_size;
-            knd_pack_u32(buf, numval);
-            err = out->write(out, (const char*)buf, buf_size);
-            KND_TASK_ERR("set output failed");
-        }
-
-        if (!entry->subdir) {
-            if (use_positional_indexing) {
-                err = out->write(out, "|0000", 5);
-                KND_TASK_ERR("set output failed");
-            }
-        } else {
-            err = out->writef(out, "|%zu", entry->subdir->total_size);
-            KND_TASK_ERR("set output failed");
-        }
-    }
-
-    knd_log("SUBDIRS:%zu ELEMS:%zu DIR SIZE:%zu DIR:%.*s",
-            dir->num_subdirs, dir->num_elems, dir->total_size, out->buf_size, out->buf);
-
-    //knd_pack_int(buf, numval);
-    
-    return knd_OK;
-}
-
 
 int knd_set_new(struct kndSet **result, knd_set_type type, struct kndMemPool *mempool)
 {

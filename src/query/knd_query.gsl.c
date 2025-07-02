@@ -114,25 +114,17 @@ int knd_query_obj_export_GSL(struct kndQuery *query, struct kndTask *task, size_
     OUT("{", 1);
     OUT("result", strlen("result"));
 
-    if (indent_size) {
-        OUT("\n", 1);
-        err = knd_print_offset(out, depth * indent_size);
-        KND_TASK_ERR("failed to output an offset");
-    }
-
     switch (query->obj_type) {
     case KND_QUERY_OBJ_REPO:
         // present repo
         
         break;
     case KND_QUERY_OBJ_CLASS:
-        // present cls
         assert (query->cls != NULL);
         c = query->cls;
 
-        err = knd_class_export_GSL(c, task, true, 1);
-        KND_TASK_ERR("failed to export GSL {cls %.*s}", c->name_size, c->name);
-
+        err = knd_class_export_GSL(c, task, false, 1);
+        KND_TASK_ERR("failed to export {cls %.*s} GSL", c->name_size, c->name);
         break;
     default:
         break;
@@ -150,12 +142,6 @@ int knd_query_match_export_GSL(struct kndQuery *query, struct kndTask *task, siz
 
     OUT("{", 1);
     OUT("match", strlen("match"));
-
-    if (indent_size) {
-        OUT("\n", 1);
-        err = knd_print_offset(out, depth * indent_size);
-        KND_TASK_ERR("failed to output an offset");
-    }
 
     switch (query->obj_type) {
     case KND_QUERY_OBJ_REPO:

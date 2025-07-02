@@ -26,35 +26,36 @@ struct kndMemPool;
 struct kndTask;
 
 typedef enum knd_facet_type {
-    KND_FACET_SEQ_LENGTH,
-    KND_FACET_ACCUM,
-    KND_FACET_ADDRESS,
-    KND_FACET_SUBCLASS
+    KND_FACET_LEN,
+    KND_FACET_SUM,
+    KND_FACET_LOC,
+    KND_FACET_CLS
 } knd_facet_type;
 
 static const char* const knd_facet_type_names[] = {
-    "Sequence Length",
-    "Accumulation",
-    "Address",
-    "Subclass"
+    "len",
+    "sum",
+    "loc",
+    "cls"
 };
 
-typedef int (*knd_facet_hash_fn)(void *curr_val, void *elem, void **val,
+typedef int (*knd_facet_key_get_cb)(void *elem, void **key, struct kndTask *task);
+typedef void (*knd_facet_key_str_cb)(void *curr_val, size_t depth);
+typedef int (*knd_facet_hash_cb)(void *curr_val, void *elem, void **val,
                                  size_t *numval, struct kndTask *task);
-typedef void (*knd_facet_val_str_fn)(void *curr_val, size_t depth);
 
-typedef int (*knd_facet_elem_key_fn)(void *elem, const char **key, size_t *key_size);
-typedef void (*knd_facet_elem_str_fn)(void *elem, size_t depth);
+typedef int (*knd_facet_elem_id_cb)(void *elem, const char **key, size_t *key_size);
 
-typedef int (*knd_facet_map_fn)(void *elem, void *ctx);
+typedef int (*knd_facet_map_cb)(void *elem, void *ctx);
 
 struct kndFacetHashSpec {
     knd_facet_type type;
     const char *name;
     size_t name_size;
 
-    knd_facet_hash_fn hash_fn;
-    knd_facet_val_str_fn val_str_fn;
+    knd_facet_key_get_cb key_get_cb;
+    knd_facet_key_str_cb key_str_cb;
+    knd_facet_hash_cb hash_cb;
 
     struct kndFacetHashSpec *next;
 };
@@ -87,7 +88,7 @@ struct kndFacetLinearBlock
 
 struct kndFacet
 {
-    void *val;
+    void *key;
 
     /* providing hashing keys for subfacets */
     struct kndFacetHashSpec *hash_specs;
@@ -98,9 +99,9 @@ struct kndFacet
     size_t cache_size;
     size_t num_elems;
 
-    /* providing keys (ids) for storing elems in kndSet
+    /* providing ids for storing elems in kndSet
        if cache storage capacity is exceeded */
-    knd_facet_elem_key_fn elem_key_fn;
+    knd_facet_elem_id_cb elem_id_cb;
     struct kndSet *idx;
 
     /* subfacets */
@@ -144,15 +145,17 @@ struct kndFacetLeaf
 
 int knd_facet_new(struct kndFacet **result, void *val,
                   struct kndFacetHashSpec *hash_specs, size_t num_hash_specs,
-                  knd_facet_elem_key_fn elem_key_fn, struct kndMemPool *mempool);
+                  knd_facet_elem_id_cb elem_id_cb, struct kndMemPool *mempool);
 
 int knd_facet_hash_spec_new(struct kndFacetHashSpec **result, knd_facet_type facet_type,
-                            knd_facet_hash_fn hash_fn, knd_facet_val_str_fn val_str_fn,
+                            knd_facet_key_get_cb key_get_cb,
+                            knd_facet_key_str_cb key_str_cb,
+                            knd_facet_hash_cb hash_cb,
                             struct kndMemPool *mempool);
 
 int knd_facet_add(struct kndFacet *facet, void *elem, struct kndTask *task);
 
 int knd_facet_map(struct kndFacet *facet, void *val,
-                  knd_facet_map_fn cb, void *ctx, struct kndTask *task);
+                  knd_facet_map_cb cb, void *ctx, struct kndTask *task);
 
-void knd_facet_str(struct kndFacet *facet, knd_facet_elem_str_fn cb, size_t depth);
+void knd_facet_str(struct kndFacet *facet, knd_facet_map_cb cb, size_t depth);

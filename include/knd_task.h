@@ -243,6 +243,7 @@ struct kndTask
     struct kndDict *proc_name_idx;
     struct kndDict *proc_arg_name_idx;
 
+    size_t trace_level;
     /* cache */
     struct kndSet  *cache_class_idx;
 };

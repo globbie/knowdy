@@ -160,7 +160,8 @@ int knd_attr_find(struct kndClass *cls, const char *name, size_t name_size,
 
     if (!attr) {
         err = knd_NO_MATCH;
-        KND_TASK_ERR("class %.*s has no attr %.*s", cls->name_size, cls->name, name_size, name);
+        KND_TASK_ERR("{cls %.*s} has no {attr %.*s}",
+                     cls->name_size, cls->name, name_size, name);
     }
 
     *result = attr;
@@ -208,9 +209,10 @@ int knd_cls_inner_attr_new(struct kndClassInnerAttr **result,
     inner->name = name;
     inner->name_size = name_size;
 
-    err = knd_facet_hash_spec_new(&spec, KND_FACET_SUBCLASS,
-                                  knd_facet_subclass_hash, knd_facet_subclass_str,
-                                  mempool);
+    err = knd_facet_hash_spec_new(&spec, KND_FACET_CLS,
+                                  knd_facet_cls_key_get,
+                                  knd_facet_cls_key_str,
+                                  knd_facet_cls_hash, mempool);
     if (err) return err;
     append_inner_hash_spec(inner, spec);
 
@@ -233,9 +235,10 @@ int knd_cls_ref_attr_new(struct kndClassRefAttr **result,
     refattr->name = name;
     refattr->name_size = name_size;
 
-    err = knd_facet_hash_spec_new(&spec, KND_FACET_SUBCLASS,
-                                  knd_facet_subclass_hash, knd_facet_subclass_str,
-                                  mempool);
+    err = knd_facet_hash_spec_new(&spec, KND_FACET_CLS,
+                                  knd_facet_cls_key_get,
+                                  knd_facet_cls_key_str,
+                                  knd_facet_cls_hash, mempool);
     if (err) return err;
 
     append_hash_spec(refattr, spec);

@@ -114,32 +114,6 @@ static int export_conc_elem_GSL(void *elem, void *ctx)
     return knd_OK;
 }
 
-static int export_concise_GSL(struct kndClass *self, struct kndTask *task, size_t depth)
-{
-    struct kndClassBasePred *item;
-    int err;
-
-    if (DEBUG_GSL_LEVEL_2) {
-        knd_log(".. export concise GSL for %.*s..",
-                self->entry->name_size, self->entry->name);
-    }
-    FOREACH (item, self->base_preds) {
-        if (!item->attr_stms) continue;
-
-        err = knd_attr_stms_export_GSL(item->attr_stms, task, depth);
-        RET_ERR();
-    }
-
-    /*if (DEBUG_GSL_LEVEL_2)
-        knd_log(".. export inherited attrs of %.*s..",
-                self->entry->name_size, self->entry->name);
-    err = self->attr_idx->map(self->attr_idx,
-                              knd_export_inherited_attr, (void*)task); 
-    if (err && err != knd_RANGE) return err;
-    */
-    return knd_OK;
-}
-
 extern int knd_empty_set_export_GSL(struct kndClass *self,
                                     struct kndTask *task)
 {
@@ -179,8 +153,8 @@ int knd_class_set_export_GSL(struct kndSet *set, struct kndTask *task)
         batch->max_items = KND_RESULT_BATCH_SIZE;
     }
 
-    err = out->write(out, "[class",
-                     strlen("[class"));                                            RET_ERR();
+    err = out->write(out, "[cls",
+                     strlen("[cls"));                                            RET_ERR();
 
     err = knd_set_map(set, export_conc_elem_GSL, (void*)task);
     if (err && err != knd_RANGE) return err;
@@ -224,8 +198,8 @@ static int present_subclass(struct kndClassRef *ref, struct kndTask *task, size_
         RET_ERR();
     }
 
-    err = export_concise_GSL(c, task, depth);
-    RET_ERR();
+    //err = export_concise_GSL(c, task, depth);
+    //RET_ERR();
 
     OUT("}", 1);
     return knd_OK;
@@ -258,11 +232,13 @@ static int present_subclasses(struct kndClass *self, size_t num_children,
         err = out->writec(out, '\n');                                             RET_ERR();
         err = knd_print_offset(out, (depth + 1) * task->ctx->format_indent);           RET_ERR();
     }
+
     err = out->write(out, "[batch", strlen("[batch"));                            RET_ERR();
 
+    // TODO sort by?
     FOREACH (ref, self->children) {
         err = knd_class_acquire(ref->entry, &c, task);
-        KND_TASK_ERR("failed to acquire {class %.*s}", ref->entry->name_size, ref->entry->name);
+        KND_TASK_ERR("failed to acquire {cls %.*s}", ref->entry->name_size, ref->entry->name);
         
         state = c->states;
         if (state && state->phase == KND_REMOVED) continue;
@@ -313,7 +289,7 @@ static int export_attrs(struct kndClass *self, struct kndTask *task, size_t dept
             RET_ERR();
         }
         err = knd_attr_export_GSL(attr, task, depth + 1);
-        KND_TASK_ERR("failed to export %.*s attr", attr->name_size, attr->name);
+        KND_TASK_ERR("failed to export {attr %.*s}", attr->name_size, attr->name);
         i++;
     }
     return knd_OK;
@@ -332,6 +308,7 @@ static int export_base_preds(struct kndClass *self, struct kndTask *task, size_t
         err = knd_print_offset(out, depth * indent_size);
         RET_ERR();
     }
+
     OUT("[is", strlen("[is"));
 
     FOREACH (bp, self->base_preds) {
@@ -340,7 +317,9 @@ static int export_base_preds(struct kndClass *self, struct kndTask *task, size_t
             err = knd_print_offset(out, (depth + 1) * indent_size);
             RET_ERR();
         }
-        OUT("{ ", strlen("{ "));
+
+        OUT("{", 1);
+        if (indent_size) OUT(" ", 1);
         OUT(bp->entry->name, bp->entry->name_size);
 
         // TODO
@@ -351,10 +330,9 @@ static int export_base_preds(struct kndClass *self, struct kndTask *task, size_t
             err = knd_text_gloss_export_GSL(c->tr, true, task, depth + 2);
             KND_TASK_ERR("failed to export baseclass gloss GSL");
             }*/
-       
         if (bp->attr_stms) {
             //curr_depth = task->ctx->depth;
-            err = knd_attr_stms_export_GSL(bp->attr_stms, task, depth + 1);
+            err = knd_attr_stms_export_GSL(bp->attr_stms, task, depth + 2);
             KND_TASK_ERR("failed to export attr stms GSL");
             //task->ctx->depth = curr_depth;   
         }
@@ -379,11 +357,18 @@ int knd_class_export_GSL(struct kndClass *self, struct kndTask *task,
 
     if (DEBUG_GSL_LEVEL_2) {
         knd_log(".. GSL export {repo %.*s {cls %.*s}} "
-                " depth:%zu max depth:%zu indent size:%zu",
+                " {depth %zu} {max-depth %zu} {indent-size %zu}",
                 self->entry->repo->name_size, self->entry->repo->name,
                 self->name_size, self->name,
                 task->depth, task->max_depth, indent_size);
     }
+
+    if (indent_size) {
+        OUT("\n", 1);
+        err = knd_print_offset(out, depth * indent_size);
+        RET_ERR("output failure");
+    }
+
     OUT("{", 1);
 
     if (!is_list_item) {
@@ -440,38 +425,30 @@ int knd_class_export_GSL(struct kndClass *self, struct kndTask *task,
 
     if (self->tr) {
         err = knd_text_gloss_export_GSL(self->tr, use_locale, task, depth + 1);
-        KND_TASK_ERR("failed to export gloss GSL");
+        KND_TASK_ERR("failed to export cls gloss GSL");
     }
 
-    if (depth >= task->max_depth) {
-        err = export_concise_GSL(self, task, depth);
-        KND_TASK_ERR("failed to export concise cls GSL");
-        goto final;
-    }
-
-    /* display base classes only once */
     if (self->num_base_preds) {
         err = export_base_preds(self, task, depth + 1);
-        KND_TASK_ERR("failed to export base preds GSL");
+        KND_TASK_ERR("failed to export cls base preds GSL");
     }
 
     if (self->attrs) {
         err = export_attrs(self, task, depth + 1);
-        RET_ERR();
+        KND_TASK_ERR("failed to export cls attrs GSL");
     }
 
     num_children = self->num_children;
     if (self->desc_states) {
         state = self->desc_states;
-        if (state->val) 
-            num_children = state->val->val_size;
+        num_children = state->val? state->val->val_size : 0;
     }
 
     /*if (orig_entry) {
         err = knd_class_acquire(orig_entry, &c, task);
         KND_TASK_ERR("failed to acquire class %.*s", orig_entry->name_size, orig_entry->name);
         num_children += c->num_children;
-        }*/
+    }*/
 
     if (num_children) {
         if (indent_size) {
@@ -481,11 +458,7 @@ int knd_class_export_GSL(struct kndClass *self, struct kndTask *task,
         err = present_subclasses(self, num_children, task, depth + 1);            RET_ERR();
     }
 
-    /* inverse relations */
-    /*if (self->attr_hubs) {
-        err = export_inverse_rels(self, task, depth + 1);
-        KND_TASK_ERR("failed to export GSL inverse rels");
-    }*/
+    /* TODO inverse rels */
 
  final:
     OUT(" ", 1);

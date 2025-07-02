@@ -65,6 +65,7 @@ struct kndSetElemIdx
 struct kndSetElem
 {
     void *val;
+    size_t numval;
     struct kndSetElem *next;
 };
 
