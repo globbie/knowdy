@@ -231,7 +231,8 @@ static int export_descendants(struct kndClass *self, struct kndTask *task)
 
     OUT("[desc", strlen("[desc"));
 
-    err = knd_set_map(self->descendants, export_class_ref, (void*)task);
+    err = knd_set_map(self->descendants, NULL, NULL, NULL,
+                      export_class_ref, (void*)task);
     KND_TASK_ERR("failed to export descendants");
 
     OUT("]", 1);

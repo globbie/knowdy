@@ -139,7 +139,7 @@ int knd_shared_set_dir_new(struct kndSharedSetDir **result, struct kndMemPool *m
 
 int knd_shared_set_get(struct kndSharedSet *self, const char *key, size_t key_size, void **elem);
 int knd_shared_set_add(struct kndSharedSet *self, const char *key, size_t key_size, void *elem);
-int knd_shared_set_map(struct kndSharedSet *self, map_cb_func cb, void *obj);
+int knd_shared_set_map(struct kndSharedSet *self, map_cb_t cb, void *obj);
 int knd_shared_set_intersect(struct kndSharedSet *self, struct kndSharedSet **sets, size_t num_sets);
 
 int knd_shared_set_marshall(struct kndSharedSet *idx, const char *path, size_t path_size,

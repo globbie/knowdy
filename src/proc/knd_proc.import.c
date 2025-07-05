@@ -238,7 +238,6 @@ static gsl_err_t set_proc_name(void *obj, const char *name, size_t name_size)
         }
         KND_TASK_LOG("\"%.*s\" proc name already exists", name_size, name);
 
-        task->ctx->http_code = HTTP_CONFLICT;
         task->ctx->error = KND_CONFLICT;
         return make_gsl_err(gsl_FAIL);
     }
@@ -257,8 +256,7 @@ static gsl_err_t set_proc_name(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 
  doublet:
-    task->ctx->http_code = HTTP_CONFLICT;
-    KND_TASK_LOG("\"%.*s\" proc doublet found?", name_size, name);
+    KND_TASK_LOG("{proc %.*s} doublet found?", name_size, name);
     return make_gsl_err(gsl_FAIL);
 }
 

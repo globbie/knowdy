@@ -18,7 +18,7 @@
 #define DEBUG_FACET_LEVEL_TMP 1
 
 void knd_facet_str(struct kndFacet *facet,
-                   knd_facet_map_cb cb, size_t depth)
+                   map_cb_t cb, size_t depth)
 {
     struct kndFacetHashSpec *spec = facet->hash_specs;
     assert (spec != NULL);
@@ -46,7 +46,8 @@ void knd_facet_str(struct kndFacet *facet,
     }
 
     if (facet->idx) {
-        err = knd_set_map(facet->idx, cb, &depth);
+        err = knd_set_map(facet->idx, NULL, NULL, NULL,
+                          cb, &depth);
         if (err) return;
     }
 

@@ -146,10 +146,10 @@ int knd_quant_ureal_index(struct kndFacet *facet, struct kndClassEntry *topic,
     return knd_OK;
 }
 
-int knd_quant_seq_len_hash(void *curr_key, void *term_key,
-                           void **result, size_t *numval,
-                           struct kndTask *task)
+int knd_quant_seq_len_hash(void *parent_key, void *curr_key, void *term_key,
+                           void **result, size_t *numval, struct kndTask *task)
 {
+    struct kndQuantUInt *parent_uint = parent_key;
     struct kndQuantUInt *curr_uint = curr_key;
     struct kndQuantUInt *term_uint = term_key;
 
@@ -181,8 +181,8 @@ void knd_quant_seq_len_key_str(void *val, size_t depth)
             uint->seq_size, uint->seq, uint->seq_size);
 }
 
-int knd_quant_hash(void *curr_val, void *obj, void **val, size_t *numval,
-                   struct kndTask *task)
+int knd_quant_hash(void *parent_key, void *curr_key, void *obj,
+                   void **result_key, size_t *numval, struct kndTask *task)
 {
     struct kndAttrStm *stm = obj;
     struct kndQuantAttrStm *quant_attr_stm = stm->subtype;
@@ -192,9 +192,8 @@ int knd_quant_hash(void *curr_val, void *obj, void **val, size_t *numval,
     if (DEBUG_QUANT_INDEX_LEVEL_3) {
         knd_log(".. hash seq {uint %zu}", uint->numval);
     }
-
+    *result_key = uint;
     *numval = pos;
-    *val = uint;
     return knd_OK;
 }
 

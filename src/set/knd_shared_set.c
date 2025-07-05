@@ -230,7 +230,7 @@ int knd_shared_set_get(struct kndSharedSet *self, const char *key, size_t key_si
     return knd_OK;
 }
 
-static int traverse_idx(struct kndSharedSetElemIdx *parent_idx, map_cb_func cb, void *obj)
+static int traverse_idx(struct kndSharedSetElemIdx *parent_idx, map_cb_t cb, void *obj)
 {
     struct kndSharedSetElemIdx *idx;
     void *elem;
@@ -251,11 +251,10 @@ static int traverse_idx(struct kndSharedSetElemIdx *parent_idx, map_cb_func cb, 
         err = traverse_idx(idx, cb, obj);
         if (err) return err;
     }
-
     return knd_OK;
 }
 
-int knd_shared_set_map(struct kndSharedSet *self, map_cb_func cb, void *obj)
+int knd_shared_set_map(struct kndSharedSet *self, map_cb_t cb, void *obj)
 {
     int err;
 

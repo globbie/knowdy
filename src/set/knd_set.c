@@ -32,11 +32,10 @@ static int compare_set_by_size_ascend(const void *a,
     return -1;
 }
 
-static int traverse(struct kndSet *self,
-                    struct kndSetElemIdx *base_idx,
+static int traverse(struct kndSetElemIdx *base_idx,
                     struct kndSetElemIdx **idxs,
                     size_t num_idxs,
-                    struct kndSetElemIdx *result_idx)
+                    struct kndSetElemIdx *result_idx, struct kndTask *task)
 {
     struct kndSetElemIdx *nested_idxs[KND_MAX_CLAUSES];
     struct kndSetElemIdx *idx, *sub_idx, *nested_idx;
@@ -62,7 +61,7 @@ static int traverse(struct kndSet *self,
         /* the elem is present in _all_ sets,
            save the result */
         result_idx->elems[i] = elem;
-        self->num_elems++;
+        //self->num_elems++;
     }
 
     /* iterate over subfolders */
@@ -82,23 +81,22 @@ static int traverse(struct kndSet *self,
         }
         if (!gotcha) continue;
 
-        err = knd_set_elem_idx_new(&sub_idx, self->mempool);
-        if (err) {
-            knd_log("-- set elem idx mempool limit reached :(");
-            return err;
-        }
+        err = knd_set_elem_idx_new(&sub_idx, task->mempool);
+        KND_TASK_ERR("failed to alloc a set elem idx");
         result_idx->idxs[i] = sub_idx;
 
-        err = traverse(self, idx, nested_idxs, num_idxs, sub_idx);
-        if (err) return err;
+        err = traverse(idx, nested_idxs, num_idxs, sub_idx, task);
+        KND_TASK_ERR("failed to traverse set idxs");
     }
     
     return knd_OK;
 }
 
-int knd_set_intersect(struct kndSet *self, struct kndSet **sets, size_t num_sets)
+int knd_set_intersect(struct kndSet **sets, size_t num_sets,
+                      struct kndSetRange *range, struct kndSet **result,
+                      struct kndTask *task)
 {
-    struct kndSetElemIdx *base_idx;
+    struct kndSetElemIdx *base_idx, *idx;
     struct kndSetElemIdx *idxs[KND_MAX_CLAUSES];
 
     assert (num_sets >= 2 && sets != NULL);
@@ -121,8 +119,13 @@ int knd_set_intersect(struct kndSet *self, struct kndSet **sets, size_t num_sets
         idxs[i] = sets[i]->idx;
     }
 
-    err = traverse(self, base_idx, idxs, num_idxs, self->idx);
-    if (err) return err;
+    err = knd_set_elem_idx_new(&idx, task->mempool);
+    KND_TASK_ERR("failed to alloc a set elem idx");
+
+    err = traverse(base_idx, idxs, num_idxs, idx, task);
+    KND_TASK_ERR("failed to traverse set idxs");
+
+    // TODO return kndSet
 
     return knd_OK;
 }
@@ -228,7 +231,7 @@ static int get_elem(struct kndSet *self, struct kndSetElemIdx *parent_idx,
     return knd_OK;
 }
 
-static int apply_cb(struct kndSet *self, map_cb_func cb, void *obj, void *ctx)
+static int apply_cb(struct kndSet *self, map_cb_t cb, void *obj, void *ctx)
 {
     struct kndSetElem *elems, *elem;
     int err;
@@ -272,8 +275,10 @@ int knd_set_get(struct kndSet *self, const char *key, size_t key_size, void **el
     return knd_OK;
 }
 
-static int traverse_idx(struct kndSet *self,
-                        struct kndSetElemIdx *parent_idx, map_cb_func cb, void *ctx)
+static int traverse_idx(struct kndSet *self, struct kndSetElemIdx *parent_idx,
+                        struct kndSetRange *range,
+                        filter_cb_t filter_cb, void *filter_ctx,
+                        map_cb_t map_cb, void *map_ctx)
 {
     struct kndSetElemIdx *idx;
     void *elem;
@@ -283,22 +288,28 @@ static int traverse_idx(struct kndSet *self,
         elem = parent_idx->elems[i];
         if (!elem) continue;
 
-        err = apply_cb(self, cb, elem, ctx);
-        if (err) return err;
+        // apply range
+        // apply filtering
 
+        err = apply_cb(self, map_cb, elem, map_ctx);
+        if (err) return err;
     }
 
     for (size_t i = 0; i < KND_RADIX_BASE; i++) {
         idx = parent_idx->idxs[i];
         if (!idx) continue;
 
-        err = traverse_idx(self, idx, cb, ctx);
+        // apply range
+
+        err = traverse_idx(self, idx, range, filter_cb, filter_ctx, map_cb, map_ctx);
         if (err) return err;
     }
     return knd_OK;
 }
 
-int knd_set_map(struct kndSet *self, map_cb_func cb, void *ctx)
+int knd_set_map(struct kndSet *self, struct kndSetRange *range,
+                filter_cb_t filter_cb, void *filter_ctx,
+                map_cb_t map_cb, void *map_ctx)
 {
     int err;
 
@@ -307,7 +318,10 @@ int knd_set_map(struct kndSet *self, map_cb_func cb, void *ctx)
             knd_log("NB: -- set has no root idx");
         return knd_OK;
     }
-    err = traverse_idx(self, self->idx, cb, ctx);
+
+    err = traverse_idx(self, self->idx,
+                       range, filter_cb, filter_ctx,
+                       map_cb, map_ctx);
     if (err) return err;
 
     return knd_OK;
@@ -357,3 +371,16 @@ int knd_set_elem_new(struct kndSetElem **result, struct kndMemPool *mempool)
     *result = page;
     return knd_OK;
 }
+
+int knd_set_range_new(struct kndSetRange **result, struct kndMemPool *mempool)
+{
+    void *page;
+    int err;
+    assert(mempool->tiny_page_size >= sizeof(struct kndSetRange));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
+    if (err) return err;
+    memset(page, 0, sizeof(struct kndSetRange));
+    *result = page;
+    return knd_OK;
+}
+

@@ -71,7 +71,7 @@ static int inherit_args(struct kndProc *self, struct kndProc *base, struct kndRe
     }
 
     if (DEBUG_PROC_RESOLVE_LEVEL_2) {
-        knd_log(".. \"%.*s\" proc to inherit args from \"%.*s\"..",
+        knd_log(".. {proc %.*s} to inherit args from {proc %.*s}",
                 self->entry->name_size, self->entry->name, base->name_size, base->name);
     }
     struct LocalContext ctx = {
@@ -80,7 +80,8 @@ static int inherit_args(struct kndProc *self, struct kndProc *base, struct kndRe
         .base = base
     };
 
-    err = knd_set_map(base->arg_idx, inherit_arg, (void*)&ctx);             RET_ERR();
+    err = knd_set_map(base->arg_idx, NULL, NULL, NULL,
+                      inherit_arg, (void*)&ctx);             RET_ERR();
     return knd_OK;
 }
 

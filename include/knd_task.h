@@ -28,8 +28,6 @@
 #include "knd_memblock.h"
 #include "knd_steward.h"
 #include "knd_repo.h"
-#include "knd_dict.h"
-#include "knd_http_codes.h"
 
 #include <gsl-parser/gsl_err.h>
 
@@ -43,9 +41,10 @@ struct kndQuery;
 struct kndClassInst;
 struct kndConcFolder;
 struct kndText;
+struct kndDict;
 struct kndRepoCache;
 
-typedef int (*task_cb_func)(void *obj, const char *msg, size_t msg_size, void *ctx);
+typedef int (*task_cb_t)(void *obj, const char *msg, size_t msg_size, void *ctx);
 
 typedef enum knd_task_type {
     KND_TASK_DEFAULT,
@@ -99,16 +98,15 @@ struct kndTaskContext {
     struct timespec end_ts;
 
     void *obj;
-    task_cb_func cb;
+    task_cb_t cb;
     void *external_obj;
-    task_cb_func external_cb;
+    task_cb_t external_cb;
 
     char       *input_buf;
     const char *input;
     size_t      input_size;
 
     int error;
-    knd_http_code_t http_code;
 
     char locale[KND_ID_SIZE];
     size_t locale_size;
@@ -191,8 +189,6 @@ struct kndTask
     size_t filepath_size;
     int fd;
 
-    knd_http_code_t http_code;
-
     size_t depth;
     size_t max_depth;
 
@@ -261,4 +257,5 @@ int knd_task_run(struct kndTask *self, const char *input, size_t input_size);
 // knd_task.select.c
 gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size);
 
-int knd_task_fetch_memblock(struct kndTask *task, size_t space_required, struct kndMemBlock **result);
+int knd_task_fetch_memblock(struct kndTask *task, size_t space_required,
+                            struct kndMemBlock **result);

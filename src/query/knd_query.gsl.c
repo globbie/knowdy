@@ -90,7 +90,8 @@ static int export_attr_stms(struct kndQuery *query, struct kndTask *task, size_t
             OUT("[", 1);
             OUT("cls", strlen("cls"));
 
-            err = knd_set_map(stm->match, export_class_entry_GSL, (void*)task);
+            err = knd_set_map(stm->match, NULL, NULL, NULL,
+                              export_class_entry_GSL, (void*)task);
             KND_TASK_ERR("failed to export attr stm matching set to GSL");
             OUT("]", 1);
         }

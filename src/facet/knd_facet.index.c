@@ -49,8 +49,11 @@ static int facetize_elem(struct kndFacet *facet, void *elem, struct kndTask *tas
     struct kndFacetHashSpec *spec = facet->hash_specs;
     struct kndFacet *f;
     void *term_key;
-    void *next_key;
-    size_t numval;
+    void *result_key;
+    void *curr_key = NULL;
+    size_t numval = 0;
+    bool is_idx_updated = false;
+    size_t count = 0;
     int err;
 
     if (!facet->num_hash_specs) {
@@ -63,39 +66,43 @@ static int facetize_elem(struct kndFacet *facet, void *elem, struct kndTask *tas
     err = spec->key_get_cb(elem, &term_key, task);
     KND_TASK_ERR("failed to obtain a facet key from elem");
 
-    err = spec->hash_cb(facet->key, term_key, &next_key, &numval, task);
-    if (err) {
-        switch (err) {
-        case knd_NO_MATCH:
-            err = update_index(facet, elem, task);
-            KND_TASK_ERR("failed to update a facet index");
-            return knd_OK;
-        default:
+    do {
+        err = spec->hash_cb(facet->key, curr_key, term_key, &result_key, &numval, task);
+        if (err) {
+            if (err == knd_NO_MATCH) break;
             KND_TASK_ERR("failed to apply a facet hash func {err %d}", err);
         }
-    }
 
-    if (numval >= KND_MAX_FACETS) {
-        knd_log("{numval %zu} exceeds max facets limit?", numval);
+        if (numval >= KND_MAX_FACETS) {
+            knd_log("{numval %zu} exceeds max facets limit?", numval);
+            break;
+        }
 
+        f = facet->children[numval];
+        if (!f) {
+            err = knd_facet_new(&f, result_key, facet->hash_specs, facet->num_hash_specs,
+                                facet->elem_id_cb, task->mempool);
+            KND_TASK_ERR("failed to alloc a subfacet");
+            facet->children[numval] = f;
+            facet->num_children++;
+        }
+        err = knd_facet_add(f, elem, task);
+        KND_TASK_ERR("failed to add a facet elem {err %d}", err);
+        is_idx_updated = true;
+
+        /* inheritance bottom reached */
+        if (result_key == term_key) {
+            break;
+        }
+
+        curr_key = result_key;
+        count++;
+    } while (curr_key);
+
+    if (!is_idx_updated) {
         err = update_index(facet, elem, task);
         KND_TASK_ERR("failed to update a facet index");
-        // TODO knd_LIMIT
-        return knd_OK;
     }
-
-    f = facet->children[numval];
-    if (!f) {
-        err = knd_facet_new(&f, next_key, facet->hash_specs, facet->num_hash_specs,
-                            facet->elem_id_cb, task->mempool);
-        KND_TASK_ERR("failed to alloc a subfacet");
-        facet->children[numval] = f;
-        facet->num_children++;
-    }
-
-    err = knd_facet_add(f, elem, task);
-    KND_TASK_ERR("failed to add a facet elem {err %d}", err);
-
     return knd_OK;
 }
 

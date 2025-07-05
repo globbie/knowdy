@@ -133,7 +133,9 @@ static int inherit_attrs(struct kndClass *self, struct kndClass *base, struct kn
         .class = self,
         .baseclass = base
     };
-    err = knd_set_map(base->attr_idx, inherit_attr, (void*)&ctx);
+
+    err = knd_set_map(base->attr_idx, NULL, NULL, NULL,
+                      inherit_attr, (void*)&ctx);
     KND_TASK_ERR("{cls %.*s} failed to inherit attrs from {cls %.*s}",
                  self->name_size, self->name, base->name_size, base->name);
     return knd_OK;
@@ -202,6 +204,7 @@ static int set_child_ref(struct kndClass *base, struct kndClass *cls, struct knd
     ref->next = base->children;
     base->children = ref;
     base->num_children++;
+
     if (base->num_children > KND_MAX_FACETS) {
         if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
             knd_log("warning: num of subclasses of {cls %.*s} exceeds {max-facet-num %d}",

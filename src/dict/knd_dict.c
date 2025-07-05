@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "knd_set.h"
 #include "knd_dict.h"
 #include "knd_state.h"
 #include "knd_config.h"
@@ -116,7 +117,7 @@ int knd_dict_remove(struct kndDict *self, const char *key, size_t key_size)
     return knd_OK;
 }
 
-int knd_dict_map(struct kndDict *idx, map_cb_func cb, void *ctx)
+int knd_dict_map(struct kndDict *idx, map_cb_t cb, void *ctx)
 {
     struct kndDictItem *item;
     int err;

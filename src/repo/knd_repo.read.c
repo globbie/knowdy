@@ -332,10 +332,15 @@ int knd_repo_restore(struct kndRepo *self, struct kndRepoSnapshot *snapshot, str
         knd_log("== total commits to restore in {repo %.*s}: %zu",
                 self->name_size, self->name, snapshot->commit_idx->num_elems);
     }
+
     /* all commits are there in the idx,
        let's apply them in timely order */
+
+    // TODO use set_reduce to aggregate
     task->repo = self;
-    err = knd_set_map(snapshot->commit_idx, knd_apply_commit, (void*)task);
+    err = knd_set_map(snapshot->commit_idx,
+                      NULL, NULL, NULL,
+                      knd_apply_commit, (void*)task);
     KND_TASK_ERR("failed to apply commits");
     atomic_store_explicit(&snapshot->num_commits, snapshot->commit_idx->num_elems,
                           memory_order_relaxed);

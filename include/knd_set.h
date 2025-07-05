@@ -21,6 +21,7 @@
 #pragma once
 
 #include "knd_config.h"
+#include "knd_task.h"
 
 typedef enum knd_set_type { KND_SET_UNIQUE_VALUES,
 			    KND_SET_MULTIPLE_VALUES } knd_set_type;
@@ -30,7 +31,10 @@ typedef enum knd_set_dir_type { KND_SET_DIR_FIXED,
 
 struct kndSet;
 
-typedef int (*map_cb_func)(void *elem, void *ctx);
+typedef int (*filter_cb_t)(void *elem, void *ctx);
+typedef int (*map_cb_t)(void *elem, void *ctx);
+typedef int (*reduce_cb_t)(void *elem, void *ctx);
+typedef int (*compare_cb_t)(void *elem, void *ctx);
 
 struct kndSetDirEntry
 {
@@ -69,6 +73,14 @@ struct kndSetElem
     struct kndSetElem *next;
 };
 
+struct kndSetRange
+{
+    const char *key_from;
+    size_t key_from_size;
+    const char *key_to;
+    size_t key_to_size;
+};
+
 struct kndSet
 {
     knd_set_type type;
@@ -81,9 +93,24 @@ struct kndSet
 
 int knd_set_new(struct kndSet **result, knd_set_type type, struct kndMemPool *mempool);
 int knd_set_elem_new(struct kndSetElem **result, struct kndMemPool *mempool);
+int knd_set_range_new(struct kndSetRange **result, struct kndMemPool *mempool);
 int knd_set_elem_idx_new(struct kndSetElemIdx **result, struct kndMemPool *mempool);
 
-int knd_set_add(struct kndSet *self, const char *key, size_t key_size, void *elem);
-int knd_set_map(struct kndSet *self, map_cb_func cb, void *ctx);
-int knd_set_get(struct kndSet *self, const char *key, size_t key_size, void **elem);
-int knd_set_intersect(struct kndSet *self, struct kndSet **sets, size_t num_sets);
+int knd_set_add(struct kndSet *set, const char *key, size_t key_size, void *elem);
+int knd_set_get(struct kndSet *set, const char *key, size_t key_size, void **elem);
+
+int knd_set_filter(struct kndSet *set,
+                   filter_cb_t filter_cb, void *filter_ctx,
+                   struct kndSet **result);
+int knd_set_map(struct kndSet *set, struct kndSetRange *range,
+                filter_cb_t filter_cb, void *filter_ctx,
+                map_cb_t map_cb, void *map_ctx);
+int knd_set_reduce(struct kndSet *set, struct kndSetRange *range,
+                   map_cb_t reduce_cb, void *reduce_ctx);
+
+int knd_set_intersect(struct kndSet **sets, size_t num_sets,
+                      struct kndSetRange *range, struct kndSet **result,
+                      struct kndTask *task);
+
+int knd_set_sort(struct kndSet *set, struct kndSetRange *range, compare_cb_t cb,
+                 struct kndSet **result, struct kndTask *task);

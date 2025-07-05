@@ -117,8 +117,6 @@ static int inherit_attr(void *elem, void *ctx_obj)
 
 static int inherit_attrs(struct kndClass *c, struct kndClass *base, struct kndTask *task)
 {
-    int err;
-
     if (DEBUG_CLASS_DECODE_LEVEL_2) {
         knd_log(".. {cls %.*s} to inherit attrs from {cls %.*s} {total %zu}",
                 c->entry->name_size, c->entry->name,
@@ -129,7 +127,10 @@ static int inherit_attrs(struct kndClass *c, struct kndClass *base, struct kndTa
         .class = c,
         .baseclass = base
     };
-    err = knd_set_map(base->attr_idx, inherit_attr, (void*)&ctx);
+    int err;
+
+    err = knd_set_map(base->attr_idx, NULL, NULL, NULL,
+                      inherit_attr, (void*)&ctx);
     KND_TASK_ERR("{cls %.*s} failed to inherit attrs from {cls %.*s}",
                  c->name_size, c->name, base->name_size, base->name);
     return knd_OK;

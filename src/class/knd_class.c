@@ -32,7 +32,6 @@
 #include "knd_shared_set.h"
 #include "knd_utils.h"
 #include "knd_output.h"
-#include "knd_http_codes.h"
 
 #include <gsl-parser.h>
 
@@ -138,7 +137,9 @@ void knd_class_str(struct kndClass *self, size_t depth)
                 entry->name_size, entry->name);
     }
 
-    err = knd_set_map(self->attr_idx, str_attr_idx_rec, (void*)self);
+    /* no range limits, no filtering */
+    err = knd_set_map(self->attr_idx, NULL, NULL, NULL,
+                      str_attr_idx_rec, (void*)self);
     if (err) return;
 
     knd_log("%*s the end of %.*s}", depth * KND_OFFSET_SIZE, "",
@@ -163,7 +164,6 @@ int knd_get_class_inst(struct kndClass *self, const char *name, size_t name_size
     if (!name_idx) {
         if (!self->num_snapshot_insts) {
             err = knd_NO_MATCH;
-            task->http_code = HTTP_NOT_FOUND;
             KND_TASK_ERR("class \"%.*s\" has no instances", self->name_size, self->name);
         }
         err = knd_class_inst_idx_fetch(self, &name_idx, task);
@@ -173,7 +173,6 @@ int knd_get_class_inst(struct kndClass *self, const char *name, size_t name_size
     entry = knd_shared_dict_get(name_idx, name, name_size);
     if (!entry) {
         err = knd_NO_MATCH;
-        task->http_code = HTTP_NOT_FOUND;
         KND_TASK_ERR("no such class inst: \"%.*s\"", name_size, name);
     }
 
@@ -364,7 +363,11 @@ int knd_class_get_attr(struct kndClass *self, const char *name, size_t name_size
         .name = name,
         .name_size = name_size
     };
-    int err = knd_set_map(self->attr_idx, match_attr, &ctx);
+    int err;
+
+    /* no range limits, no filtering */
+    err = knd_set_map(self->attr_idx, NULL, NULL, NULL,
+                      match_attr, &ctx);
     switch (err) {
     case knd_EXISTS:
         ref = ctx.attr_ref;
@@ -384,8 +387,10 @@ int knd_class_get_attr_stm(struct kndClass *self, const char *name, size_t name_
         .name = name,
         .name_size = name_size
     };
-   
-    int err = knd_set_map(self->attr_idx, match_attr, &ctx);
+    int err;
+
+    err = knd_set_map(self->attr_idx, NULL, NULL, NULL,
+                      match_attr, &ctx);
     switch (err) {
     case knd_EXISTS:
         ref = ctx.attr_ref;

@@ -402,6 +402,6 @@ static inline void knd_base_pred_append_attr_stm(struct kndClassBasePred *bp, st
 
 int knd_class_link_base(struct kndClass *cls, struct kndClass *base, struct kndTask *task);
 
-int knd_facet_cls_hash(void *val, void *elem,void **payload, size_t *hashval,
-                       struct kndTask *task);
+int knd_facet_cls_hash(void *parent_key, void *curr_key, void *elem,
+                       void **result_key, size_t *numval, struct kndTask *task);
 void knd_facet_cls_key_str(void *val, size_t depth);

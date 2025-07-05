@@ -34,5 +34,5 @@ void knd_dict_reset(struct kndDict *self);
 void* knd_dict_get(struct kndDict *self, const char *key, size_t key_size);
 int knd_dict_set(struct kndDict *self, const char *key, size_t key_size, void *data);
 int knd_dict_remove(struct kndDict *self, const char *key, size_t key_size);
-int knd_dict_map(struct kndDict *self, map_cb_func cb, void *obj);
+int knd_dict_map(struct kndDict *self, map_cb_t cb, void *obj);
 

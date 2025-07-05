@@ -214,12 +214,15 @@ int knd_class_index(struct kndClass *cls, struct kndTask *task)
     return knd_OK;
 }
 
-static int find_direct_child(struct kndClassEntry *base, struct kndClassEntry *term,
+static int find_direct_child(struct kndClassEntry *base,
+                             struct kndClassEntry *curr_entry,
+                             struct kndClassEntry *term,
                              struct kndClassEntry **result, size_t *numval,
                              struct kndTask *task)
 {
     struct kndClass *base_c, *sub_c, *term_c;
     struct kndClassRef *ref;
+    bool ff_search = curr_entry != NULL ? true : false;
     int err;
 
     err = knd_class_acquire(base, &base_c, task);
@@ -227,7 +230,21 @@ static int find_direct_child(struct kndClassEntry *base, struct kndClassEntry *t
 
     if (!base_c->num_children) return knd_NO_MATCH;
 
+    if (DEBUG_CLASS_INDEX_LEVEL_2) {
+        knd_log(".. looking for the next child of {cls %.*s}",
+                base_c->name_size, base_c->name);
+    }
+
     FOREACH (ref, base_c->children) {
+        /* continue matching only after current entry is met */
+        if (ff_search) {
+            if (ref->entry == curr_entry) {
+                ff_search = false;
+                continue;
+            }
+            continue;
+        }
+
         /* terminal class reached */
         if (ref->entry == term) {
             *result = term;
@@ -246,11 +263,10 @@ static int find_direct_child(struct kndClassEntry *base, struct kndClassEntry *t
         err = knd_class_is_base(sub_c, term_c);
         if (err) continue;
 
-        if (DEBUG_CLASS_INDEX_LEVEL_2) {
-            knd_log(">> inheritance confirmed from {base %.*s} to {term %.*s}",
+        if (DEBUG_CLASS_INDEX_LEVEL_3) {
+            knd_log("  ++ class inheritance confirmed from {base %.*s} to {term %.*s}",
                     sub_c->name_size, sub_c->name, term->name_size, term->name);
         }
-
         *result = ref->entry;
         *numval = ref->numid;
         return knd_OK;
@@ -258,20 +274,22 @@ static int find_direct_child(struct kndClassEntry *base, struct kndClassEntry *t
     return knd_NO_MATCH;
 }
 
-int knd_facet_cls_hash(void *curr_key, void *term_key, void **result, size_t *numval,
-                       struct kndTask *task)
+int knd_facet_cls_hash(void *parent_key, void *curr_key, void *term_key,
+                       void **result, size_t *numval, struct kndTask *task)
 {
+    struct kndClassEntry *parent_entry = parent_key;
     struct kndClassEntry *curr_entry = curr_key;
     struct kndClassEntry *term_entry = term_key;
     struct kndClassEntry *entry;
     int err;
 
-    assert (curr_entry != NULL);
+    assert (parent_entry != NULL);
     assert (term_entry != NULL);
 
-    if (curr_entry == term_entry) return knd_NO_MATCH;
+    if (parent_entry == term_entry) return knd_NO_MATCH;
 
-    err = find_direct_child(curr_entry, term_entry, &entry, numval, task);
+    err = find_direct_child(parent_entry, curr_entry, term_entry, &entry,
+                            numval, task);
     switch (err) {
     case knd_OK:
         *result = entry;
@@ -280,7 +298,7 @@ int knd_facet_cls_hash(void *curr_key, void *term_key, void **result, size_t *nu
         return knd_NO_MATCH;
     default:
         KND_TASK_ERR("failed to find a subclass from {cls %.*s} to {cls %.*s}",
-                     curr_entry->name_size, curr_entry->name,
+                     parent_entry->name_size, parent_entry->name,
                      term_entry->name_size, term_entry->name);
     }
     return knd_NO_MATCH;

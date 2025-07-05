@@ -56,7 +56,6 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
         err = log->write(log,   " proc inst name already exists",
                          strlen(" proc inst name already exists"));
         if (err) return make_gsl_err_external(err);
-        task->http_code = HTTP_CONFLICT;
         return make_gsl_err(gsl_EXISTS);
     }
     assign_name:

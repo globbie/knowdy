@@ -156,7 +156,7 @@ int knd_shared_dict_remove(struct kndSharedDict *self, const char *key, size_t k
     return knd_OK;
 }
 
-int knd_shared_dict_map(struct kndSharedDict *idx, map_cb_func cb, void *ctx)
+int knd_shared_dict_map(struct kndSharedDict *idx, map_cb_t cb, void *ctx)
 {
     struct kndSharedDictItem *item = NULL;
     int err;

@@ -14,7 +14,6 @@
 #include "knd_output.h"
 #include "knd_query.h"
 #include "knd_commit.h"
-#include "knd_http_codes.h"
 
 #include <gsl-parser.h>
 #include <gsl-parser/gsl_err.h>
@@ -93,26 +92,12 @@ static int task_err_export_JSON(struct kndTask *task)
         err = out->write(out, task->log->buf, task->log->buf_size);
         if (err) return err;
     } else {
-        ctx->http_code = HTTP_INTERNAL_SERVER_ERROR;
         err = out->write(out, "internal server error", strlen("internal server error"));
         if (err) return err;
     }
     err = out->write(out, "\"", strlen("\""));
     if (err) return err;
 
-    if (ctx->http_code != HTTP_OK) {
-        err = out->write(out, ",\"http_code\":", strlen(",\"http_code\":"));
-        if (err) return err;
-        err = out->writef(out, "%d", ctx->http_code);
-        if (err) return err;
-    } else {
-        ctx->http_code = HTTP_NOT_FOUND;
-        // convert error code to HTTP error
-        err = out->write(out, ",\"http_code\":", strlen(",\"http_code\":"));
-        if (err) return err;
-        err = out->writef(out, "%d", HTTP_NOT_FOUND);
-        if (err) return err;
-    }
     err = out->write(out, "}", strlen("}"));
     if (err) return err;
 
@@ -125,7 +110,6 @@ static int task_err_export_GSP(struct kndTask *task)
     struct kndTaskContext *ctx = task->ctx;
     int err;
     err = out->write(out, "{err ", strlen("{err "));                              RET_ERR();
-    err = out->writef(out, "%d", ctx->http_code);                                RET_ERR();
 
     err = out->write(out, "{gloss ", strlen("{gloss "));                          RET_ERR();
     if (task->log->buf_size) {

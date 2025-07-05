@@ -364,7 +364,8 @@ static int cls_ref_query_plan(struct kndClassRefAttrStm *cref,
                 entry->name_size, entry->name);
     }
 
-    err = knd_facet_map(facet, entry, knd_attr_stm_present_subj, &depth, task);
+    err = knd_facet_map(facet, entry, NULL, NULL, NULL,
+                        knd_attr_stm_present_subj, &depth, task);
     KND_TASK_ERR("failed to map facet fn");
 
     return knd_OK;

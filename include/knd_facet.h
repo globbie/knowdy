@@ -20,8 +20,8 @@
 #pragma once
 
 #include "knd_config.h"
+#include "knd_set.h"
 
-struct kndSet;
 struct kndMemPool;
 struct kndTask;
 
@@ -41,12 +41,10 @@ static const char* const knd_facet_type_names[] = {
 
 typedef int (*knd_facet_key_get_cb)(void *elem, void **key, struct kndTask *task);
 typedef void (*knd_facet_key_str_cb)(void *curr_val, size_t depth);
-typedef int (*knd_facet_hash_cb)(void *curr_val, void *elem, void **val,
-                                 size_t *numval, struct kndTask *task);
+typedef int (*knd_facet_hash_cb)(void *parent_val, void *curr_val, void *term_val,
+                                 void **result, size_t *numval, struct kndTask *task);
 
 typedef int (*knd_facet_elem_id_cb)(void *elem, const char **key, size_t *key_size);
-
-typedef int (*knd_facet_map_cb)(void *elem, void *ctx);
 
 struct kndFacetHashSpec {
     knd_facet_type type;
@@ -154,8 +152,12 @@ int knd_facet_hash_spec_new(struct kndFacetHashSpec **result, knd_facet_type fac
                             struct kndMemPool *mempool);
 
 int knd_facet_add(struct kndFacet *facet, void *elem, struct kndTask *task);
+int knd_facet_get(struct kndFacet *facet, void *key,
+                  struct kndFacet **result, struct kndTask *task);
 
-int knd_facet_map(struct kndFacet *facet, void *val,
-                  knd_facet_map_cb cb, void *ctx, struct kndTask *task);
+int knd_facet_map(struct kndFacet *facet, void *key,
+                  struct kndSetRange *range,
+                  filter_cb_t filter_cb, void *filter_ctx,
+                  map_cb_t map_cb, void *map_ctx, struct kndTask *task);
 
-void knd_facet_str(struct kndFacet *facet, knd_facet_map_cb cb, size_t depth);
+void knd_facet_str(struct kndFacet *facet, map_cb_t map_cb, size_t depth);

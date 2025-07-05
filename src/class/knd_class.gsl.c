@@ -156,7 +156,8 @@ int knd_class_set_export_GSL(struct kndSet *set, struct kndTask *task)
     err = out->write(out, "[cls",
                      strlen("[cls"));                                            RET_ERR();
 
-    err = knd_set_map(set, export_conc_elem_GSL, (void*)task);
+    err = knd_set_map(set, NULL, NULL, NULL,
+                      export_conc_elem_GSL, (void*)task);
     if (err && err != knd_RANGE) return err;
     
     err = out->writec(out, ']');                                                  RET_ERR();

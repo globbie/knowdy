@@ -36,7 +36,6 @@
 #include "knd_utils.h"
 #include "knd_ignore.h"
 #include "knd_output.h"
-#include "knd_http_codes.h"
 
 #include <gsl-parser.h>
 
@@ -124,7 +123,6 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     err = knd_get_class_by_name(repo, name, name_size, &c, task);
     if (!err) {
         KND_TASK_LOG("{class %.*s} already exists in {repo %.*s}", name_size, name);
-        task->ctx->http_code = HTTP_CONFLICT;
         task->ctx->error = KND_CONFLICT;
         return make_gsl_err(gsl_FAIL);
     }
@@ -137,7 +135,6 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
                          name_size, name,
                          task->user_ctx->base_repo->name_size,
                          task->user_ctx->base_repo->name);
-            task->ctx->http_code = HTTP_CONFLICT;
             task->ctx->error = KND_CONFLICT;
             return make_gsl_err(gsl_FAIL);
         }
@@ -510,7 +507,7 @@ gsl_err_t knd_class_import(struct kndRepo *repo, const char *rec, size_t *total_
     if (parser_err.code) {
         switch (parser_err.code) {
         case gsl_NO_MATCH:
-            KND_TASK_LOG("unrecognized tag \"%.*s\" in {cls %.*s}",
+            KND_TASK_LOG("unrecognized {tag %.*s} in {cls %.*s}",
                          parser_err.val_size, parser_err.val,
                          c->name_size, c->name);
             break;
@@ -524,7 +521,6 @@ gsl_err_t knd_class_import(struct kndRepo *repo, const char *rec, size_t *total_
 
     if (!c->name_size) {
         KND_TASK_LOG("no class name specified");
-        task->http_code = HTTP_BAD_REQUEST;
         parser_err = make_gsl_err(gsl_FAIL);
         goto final;
     }
