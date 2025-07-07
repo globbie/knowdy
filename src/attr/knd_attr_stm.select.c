@@ -50,8 +50,8 @@ struct LocalContext {
     struct kndQuery   *query;
     struct kndTask    *task;
     struct kndRepo    *repo;
-
     struct kndAttrStm *stm;
+
     struct kndClassInnerAttrStm *inner_stm;
     struct kndClassRefAttrStm *ref_stm;
     struct kndAttr    *attr;
@@ -203,7 +203,7 @@ static gsl_err_t select_inner_cls_attr_stm(void *obj, const char *name, size_t n
         return make_gsl_err(gsl_FAIL);
     }
 
-    if (DEBUG_ATTR_STM_SELECT_LEVEL_TMP) {
+    if (DEBUG_ATTR_STM_SELECT_LEVEL_3) {
         knd_log("{cls %.*s {attr %.*s}} confirmed by owner {cls %.*s}",
                 c->name_size, c->name, name_size, name,
                 attr->owner->name_size, attr->owner->name);
@@ -298,7 +298,10 @@ int knd_attr_parse_query_stm(struct kndAttrStm *stm,
     int err;
 
     if (DEBUG_ATTR_STM_SELECT_LEVEL_TMP) {
-        knd_log(".. parse attr stm query {attr %.*s}", attr->name_size, attr->name);
+        knd_log(".. parse attr stm query {cls %.*s {attr %.*s}}",
+                stm->subj->name_size, stm->subj->name,
+                attr->owner->name_size, attr->owner->name,
+                attr->name_size, attr->name);
     }
 
     switch (attr->type) {
@@ -350,22 +353,45 @@ int knd_attr_parse_query_stm(struct kndAttrStm *stm,
     return knd_OK;
 }
 
-static int cls_ref_query_plan(struct kndClassRefAttrStm *cref,
-                              struct kndClassRefAttr *cls_ref_attr,
-                              struct kndFacet *facet, struct kndTask *task)
+static int filter_subj(void *elem, void *ctx_obj)
 {
-    struct kndClassEntry *entry = cref->cls_entry ? cref->cls_entry : cls_ref_attr->template_cls;
-    assert (entry != NULL);
-    size_t depth = 0;
+    struct kndAttrStm *stm = elem;
+    struct LocalContext *ctx = ctx_obj;
+    struct kndClass *c = stm->subj;
+    struct kndClass *bc = ctx->stm->subj;
     int err;
 
     if (DEBUG_ATTR_STM_SELECT_LEVEL_2) {
-        knd_log(">> facet query of {cls-ref %.*s}",
-                entry->name_size, entry->name);
+        knd_log("!! filter subj {cls %.*s} with base {cls %.*s}",
+                c->name_size, c->name, bc->name_size, bc->name);
     }
 
-    err = knd_facet_map(facet, entry, NULL, NULL, NULL,
-                        knd_attr_stm_present_subj, &depth, task);
+    if (c != bc) {
+        return knd_class_is_base(bc, c);
+    }
+    return knd_OK;
+}
+
+static int cls_ref_query_plan(struct kndAttrStm *stm, struct kndFacet *facet,
+                              struct kndTask *task)
+{
+    struct kndClassRefAttrStm *cref = stm->subtype;
+    struct kndClassRefAttr *cls_ref_attr = stm->attr->subtype;
+    struct kndClassEntry *entry = cref->cls_entry ? cref->cls_entry : cls_ref_attr->template_cls;
+    assert (entry != NULL);
+
+    size_t depth = 0;
+    int err;
+
+    struct LocalContext ctx = {
+        .task = task,
+        .stm = stm,
+        .ref_stm = cref
+    };
+
+    err = knd_facet_map(facet, entry, NULL,
+                        filter_subj, &ctx,
+                        knd_attr_stm_present_subj, &ctx, task);
     KND_TASK_ERR("failed to map facet fn");
 
     return knd_OK;
@@ -382,7 +408,8 @@ int knd_attr_stm_plan(struct kndAttrStm *stm, struct kndTask *task)
     int err;
 
     if (DEBUG_ATTR_STM_SELECT_LEVEL_TMP) {
-        knd_log(".. query planning of {attr %.*s} {attr-type %s}",
+        knd_log(".. query planning of {cls %.*s {attr %.*s {type %s}}}",
+                stm->subj->name_size, stm->subj->name,
                 attr->name_size, attr->name, knd_attr_names[attr->type]);
     }
 
@@ -403,7 +430,7 @@ int knd_attr_stm_plan(struct kndAttrStm *stm, struct kndTask *task)
         }
         break;
     case KND_ATTR_CLS_REF:
-        err = cls_ref_query_plan(stm->subtype, attr->subtype, facet, task);
+        err = cls_ref_query_plan(stm, facet, task);
         KND_TASK_ERR("failed to plan a cls ref query");
         break;
     default:

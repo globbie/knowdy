@@ -64,5 +64,6 @@ int knd_query_new(struct kndQuery **result, struct kndMemPool *mempool)
     if (err) return err;
     memset(page, 0, sizeof(struct kndQuery));
     *result = page;
+    (*result)->max_complexity = KND_QUERY_MAX_COMPLEXITY;
     return knd_OK;
 }

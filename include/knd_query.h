@@ -89,6 +89,7 @@ struct kndQuery
     size_t num_children;
 
     struct kndSet *match;
+    size_t num_matches;
 
     size_t complexity;
     size_t max_complexity;

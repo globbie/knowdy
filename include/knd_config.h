@@ -233,6 +233,7 @@ static const char *const knd_format_names[] = {
 #define KND_FACET_MAX_ELEM_CACHE 3
 
 #define KND_QUERY_MIN_OPERS 64
+#define KND_QUERY_MAX_COMPLEXITY 1024
 
 #define KND_RESULT_BATCH_SIZE 10
 #define KND_RESULT_MAX_BATCH_SIZE 500

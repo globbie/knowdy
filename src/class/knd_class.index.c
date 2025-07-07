@@ -43,13 +43,6 @@
 #define DEBUG_CLASS_INDEX_LEVEL_5 0
 #define DEBUG_CLASS_INDEX_LEVEL_TMP 1
 
-struct LocalContext {
-    struct kndTask *task;
-    struct kndRepo *repo;
-    struct kndClass *class;
-    struct kndClassBasePred *base_pred;
-};
-
 static int index_ancestor(struct kndClass *self, struct kndClass *baseclass, struct kndTask *task)
 {
     struct kndClassEntry *entry = self->entry;
@@ -192,7 +185,8 @@ int knd_class_index(struct kndClass *cls, struct kndTask *task)
 
     FOREACH (bp, cls->base_preds) {
         err = knd_class_acquire(bp->entry, &c, task);
-        KND_TASK_ERR("failed to acquire {cls %.*s}", bp->entry->name_size, bp->entry->name);
+        KND_TASK_ERR("failed to acquire {cls %.*s}",
+                     bp->entry->name_size, bp->entry->name);
 
         err = register_desc(c, cls, task);
         KND_TASK_ERR("failed to register a subclass {cls %.*s} in base {cls %.*s}",

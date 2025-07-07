@@ -231,7 +231,28 @@ static int get_elem(struct kndSet *self, struct kndSetElemIdx *parent_idx,
     return knd_OK;
 }
 
-static int apply_cb(struct kndSet *self, map_cb_t cb, void *obj, void *ctx)
+int knd_set_add(struct kndSet *self, const char *key, size_t key_size, void *elem)
+{
+    int err;
+    assert(key_size != 0);
+    assert(key != NULL);
+    assert(elem != NULL);
+
+    err = save_elem(self, self->idx, elem, key, key_size);
+    if (err) return err;
+    return knd_OK;
+}
+
+int knd_set_get(struct kndSet *self, const char *key, size_t key_size, void **elem)
+{
+    int err;
+    if (!self->idx) return knd_FAIL;
+    err = get_elem(self, self->idx, elem, key, key_size);
+    if (err) return err;
+    return knd_OK;
+}
+
+static int apply_map_cb(struct kndSet *self, void *obj, map_cb_t cb, void *ctx)
 {
     struct kndSetElem *elems, *elem;
     int err;
@@ -254,25 +275,50 @@ static int apply_cb(struct kndSet *self, map_cb_t cb, void *obj, void *ctx)
     return knd_FAIL;
 }
 
-int knd_set_add(struct kndSet *self, const char *key, size_t key_size, void *elem)
+static int apply_filter_cb(struct kndSet *self, void *obj,
+                           filter_cb_t filter_cb, void *filter_ctx,
+                           map_cb_t map_cb, void *map_ctx)
 {
+    struct kndSetElem *elems, *elem;
     int err;
-    assert(key_size != 0);
-    assert(key != NULL);
-    assert(elem != NULL);
 
-    err = save_elem(self, self->idx, elem, key, key_size);
-    if (err) return err;
-    return knd_OK;
-}
+    assert (filter_cb != NULL);
+    assert (map_cb != NULL);
 
-int knd_set_get(struct kndSet *self, const char *key, size_t key_size, void **elem)
-{
-    int err;
-    if (!self->idx) return knd_FAIL;
-    err = get_elem(self, self->idx, elem, key, key_size);
-    if (err) return err;
-    return knd_OK;
+    switch (self->type) {
+    case KND_SET_UNIQUE_VALUES:
+        err = filter_cb(obj, filter_ctx);
+        switch (err) {
+        case knd_OK:
+            err = map_cb(obj, map_ctx);
+            if (err) return err;
+            break;
+        case knd_NO_MATCH:
+            return knd_OK;
+        default:
+            return err;
+        }
+        return knd_OK;
+    case KND_SET_MULTIPLE_VALUES:
+        elems = obj;
+        FOREACH (elem, elems) {
+            err = filter_cb(elem->val, filter_ctx);
+            switch (err) {
+            case knd_OK:
+                err = map_cb(elem->val, map_ctx);
+                if (err) return err;
+                break;
+            case knd_NO_MATCH:
+                continue;
+            default:
+                return err;
+            }
+        }
+        return knd_OK;
+    default:
+        break;
+    }
+    return knd_FAIL;
 }
 
 static int traverse_idx(struct kndSet *self, struct kndSetElemIdx *parent_idx,
@@ -281,17 +327,23 @@ static int traverse_idx(struct kndSet *self, struct kndSetElemIdx *parent_idx,
                         map_cb_t map_cb, void *map_ctx)
 {
     struct kndSetElemIdx *idx;
-    void *elem;
+    struct kndSetElem *elems, *elem;
+    void *obj;
     int err;
 
     for (size_t i = 0; i < KND_RADIX_BASE; i++) {
-        elem = parent_idx->elems[i];
-        if (!elem) continue;
+        obj = parent_idx->elems[i];
+        if (!obj) continue;
 
-        // apply range
-        // apply filtering
+        // TODO: apply range
 
-        err = apply_cb(self, map_cb, elem, map_ctx);
+        if (!filter_cb) {
+            err = apply_map_cb(self, obj, map_cb, map_ctx);
+            if (err) return err;
+            continue;
+        }
+
+        err = apply_filter_cb(self, obj, filter_cb, filter_ctx, map_cb, map_ctx);
         if (err) return err;
     }
 
@@ -299,7 +351,7 @@ static int traverse_idx(struct kndSet *self, struct kndSetElemIdx *parent_idx,
         idx = parent_idx->idxs[i];
         if (!idx) continue;
 
-        // apply range
+        // TODO: apply range
 
         err = traverse_idx(self, idx, range, filter_cb, filter_ctx, map_cb, map_ctx);
         if (err) return err;
@@ -319,9 +371,7 @@ int knd_set_map(struct kndSet *self, struct kndSetRange *range,
         return knd_OK;
     }
 
-    err = traverse_idx(self, self->idx,
-                       range, filter_cb, filter_ctx,
-                       map_cb, map_ctx);
+    err = traverse_idx(self, self->idx, range, filter_cb, filter_ctx, map_cb, map_ctx);
     if (err) return err;
 
     return knd_OK;

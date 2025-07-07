@@ -140,22 +140,26 @@ int knd_query_match_export_GSL(struct kndQuery *query, struct kndTask *task, siz
     int err;
 
     out->reset(out);
-
     OUT("{", 1);
     OUT("match", strlen("match"));
 
+    OUT("{num-matches ", strlen("{num-matches "));
+    OUTF("%zu", query->num_matches);
+    OUT("}", 1);
+
     switch (query->obj_type) {
     case KND_QUERY_OBJ_REPO:
-
         knd_log(".. matching repos..");
-
         break;
     case KND_QUERY_OBJ_CLASS:
-        knd_log(".. matching classes..");
+        knd_log(".. export matching classes..");
+
+        
+        break;
     default:
         break;
     }
-    
+
     OUT("}", 1);
     return knd_OK;
 }

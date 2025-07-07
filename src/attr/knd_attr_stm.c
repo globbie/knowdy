@@ -25,6 +25,17 @@
 #define DEBUG_ATTR_STM_LEVEL_5 0
 #define DEBUG_ATTR_STM_LEVEL_TMP 1
 
+struct LocalContext {
+    struct kndQuery   *query;
+    struct kndTask    *task;
+    struct kndRepo    *repo;
+    struct kndAttrStm *stm;
+
+    struct kndClassInnerAttrStm *inner_stm;
+    struct kndClassRefAttrStm *ref_stm;
+    struct kndAttr    *attr;
+};
+
 void knd_attr_stm_str(struct kndAttrStm *stm, size_t depth)
 {
     struct kndAttr *attr = stm->attr;
@@ -94,17 +105,17 @@ void knd_attr_stm_str(struct kndAttrStm *stm, size_t depth)
 int knd_attr_stm_present_subj(void *obj, void *ctx_obj)
 {
     struct kndAttrStm *stm = obj;
-    struct kndClass *c = stm->subj;
-
+    struct kndClass *c = stm->subj;    
     assert (c != NULL);
 
-    size_t depth = *(size_t *)ctx_obj;
-    //struct kndAttr *attr = stm->attr;
+    struct LocalContext *ctx = ctx_obj;
+    struct kndAttrStm *query_stm = ctx->stm;
 
-    knd_log("%*s{cls %.*s {%.*s %.*s}}",
-            depth * KND_OFFSET_SIZE, "",
+    knd_log("** {cls %.*s {%.*s %.*s}}",
             c->name_size, c->name,
             stm->name_size, stm->name, stm->val_size, stm->val);
+
+    query_stm->num_matches++;
 
     /*
     switch (attr->type) {
@@ -122,6 +133,7 @@ int knd_attr_stm_present_subj(void *obj, void *ctx_obj)
         break;
     }
     */
+
     return knd_OK;
 }
 

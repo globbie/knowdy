@@ -138,6 +138,7 @@ static int query_plan(struct kndQuery *query, struct kndTask *task)
         err = knd_attr_stm_plan(stm, task);
         switch (err) {
         case knd_OK:
+            query->num_matches += stm->num_matches;
             break;
         case knd_NO_MATCH:
             knd_log("no matches for attr stm");
@@ -154,7 +155,6 @@ static int query_plan(struct kndQuery *query, struct kndTask *task)
     }
 
     // < KND_QUERY_MIN_OPERS ?
-
     return knd_OK;
 }
 
@@ -243,6 +243,7 @@ gsl_err_t knd_query_run(void *obj, const char *rec, size_t *total_size)
         }
 
         if (query->complexity < query->max_complexity) {
+
             // perform query ops
 
             err = knd_query_match_export(query, task);

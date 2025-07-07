@@ -61,7 +61,7 @@ static gsl_err_t confirm_default_query(void *obj, const char *unused_var(val),
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t select_class_attr(void *obj, const char *name, size_t name_size,
+static gsl_err_t select_cls_attr(void *obj, const char *name, size_t name_size,
                                    const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
@@ -83,7 +83,7 @@ static gsl_err_t select_class_attr(void *obj, const char *name, size_t name_size
         return make_gsl_err(gsl_FAIL);
     }
 
-    if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
+    if (DEBUG_CLASS_SELECT_LEVEL_3) {
         knd_log("{cls %.*s {attr %.*s}} confirmed by owner {cls %.*s}",
                 bc->name_size, bc->name, name_size, name,
                 attr->owner->name_size, attr->owner->name);
@@ -135,7 +135,7 @@ static gsl_err_t get_cls_by_name(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t get_base_class(void *obj, const char *name, size_t name_size)
+static gsl_err_t get_base_cls(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
@@ -211,7 +211,7 @@ static gsl_err_t select_inverse_attr(void *obj, const char *rec, size_t *total_s
           .run = get_subj_base_class,
           .obj = obj
         },
-        { .validate = select_class_attr,
+        { .validate = select_cls_attr,
           .obj = obj
         }
     };
@@ -235,13 +235,13 @@ static gsl_err_t select_by_base_cls(void *obj, const char *rec, size_t *total_si
         return *total_size = 0, make_gsl_err_external(knd_FORMAT);
     }
  
-    if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
+    if (DEBUG_CLASS_SELECT_LEVEL_3) {
         knd_log(".. select by base {cls %.*s}", 64, rec);
     }
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = get_base_class,
+          .run = get_base_cls,
           .obj = obj
         },
         { .name = "of",
@@ -249,7 +249,7 @@ static gsl_err_t select_by_base_cls(void *obj, const char *rec, size_t *total_si
           .parse = select_inverse_attr,
           .obj = obj
         },
-        { .validate = select_class_attr,
+        { .validate = select_cls_attr,
           .obj = obj
         }
     };
