@@ -26,6 +26,7 @@
 #include "knd_logic.h"
 #include "knd_config.h"
 #include "knd_output.h"
+#include "knd_storage.h"
 
 #include <gsl-parser/gsl_err.h>
 
@@ -176,8 +177,6 @@ struct kndAttr
 
     const char *cls_name;
     size_t cls_name_size;
-    //struct kndClassEntry *cls_entry;
-    //struct kndClass *cls;
 
     const char *format_cls_name;
     size_t format_cls_name_size;
@@ -238,9 +237,11 @@ gsl_err_t knd_attr_required(void *obj, const char *name, size_t name_size);
 gsl_err_t knd_attr_unique(void *obj, const char *name, size_t name_size);
 gsl_err_t knd_parse_quant_type(void *obj, const char *rec, size_t *total_size);
 
-int knd_attr_names_marshall(void *elem, size_t *output_size, struct kndTask *task);
-int knd_attr_names_unmarshall(const char *elem_id, size_t elem_id_size,
-                              const char *rec, size_t rec_size, struct kndTask *task);
+int knd_attr_name_marshall(void *elem, void *ctx, struct kndStorageLeaf *leaf,
+                           size_t *output_size, struct kndTask *task);
+int knd_attr_name_unmarshall(const char *elem_id, size_t elem_id_size,
+                             const char *rec, size_t rec_size,
+                             void *ctx, void **result, struct kndTask *task);
 
 int knd_attr_decode(struct kndAttr *attr, struct kndTask *task);
 

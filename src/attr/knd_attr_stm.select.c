@@ -359,7 +359,6 @@ static int filter_subj(void *elem, void *ctx_obj)
     struct LocalContext *ctx = ctx_obj;
     struct kndClass *c = stm->subj;
     struct kndClass *bc = ctx->stm->subj;
-    int err;
 
     if (DEBUG_ATTR_STM_SELECT_LEVEL_2) {
         knd_log("!! filter subj {cls %.*s} with base {cls %.*s}",
@@ -379,8 +378,6 @@ static int cls_ref_query_plan(struct kndAttrStm *stm, struct kndFacet *facet,
     struct kndClassRefAttr *cls_ref_attr = stm->attr->subtype;
     struct kndClassEntry *entry = cref->cls_entry ? cref->cls_entry : cls_ref_attr->template_cls;
     assert (entry != NULL);
-
-    size_t depth = 0;
     int err;
 
     struct LocalContext ctx = {
@@ -400,11 +397,8 @@ static int cls_ref_query_plan(struct kndAttrStm *stm, struct kndFacet *facet,
 int knd_attr_stm_plan(struct kndAttrStm *stm, struct kndTask *task)
 {
     struct kndAttr *attr = stm->attr;
-    struct kndFacet *facet = attr->facet;
+    struct kndFacet *facet;
     struct kndQuantAttrStm *quant_attr_stm;
-    struct kndClassRefAttr *cls_ref_attr;
-    struct kndClassRefAttrStm *cref;
-    struct kndClassEntry *entry;
     int err;
 
     if (DEBUG_ATTR_STM_SELECT_LEVEL_TMP) {
@@ -413,10 +407,8 @@ int knd_attr_stm_plan(struct kndAttrStm *stm, struct kndTask *task)
                 attr->name_size, attr->name, knd_attr_names[attr->type]);
     }
 
-    if (!facet) {
-        knd_log("no facets exist for {attr %.*s}", attr->name_size, attr->name);
-        return knd_OK;
-    }
+    err = knd_facet_acquire(attr, &facet, task);
+    KND_TASK_ERR("failed to acquire a facet for {attr %.*s}", attr->name_size, attr->name);
 
     switch (attr->type) {
     case KND_ATTR_UINT:
@@ -439,7 +431,7 @@ int knd_attr_stm_plan(struct kndAttrStm *stm, struct kndTask *task)
     return knd_OK;
 }
 
-int knd_facet_cls_key_get(void *elem, void **result, struct kndTask *task)
+int knd_facet_cls_key_get(void *elem, void **result, struct kndTask *unused_var(task))
 {
     struct kndAttrStm *stm = elem;
     struct kndAttr *attr = stm->is_list_item ? stm->parent->attr : stm->attr;
@@ -448,7 +440,6 @@ int knd_facet_cls_key_get(void *elem, void **result, struct kndTask *task)
     struct kndClassRefAttr *cls_ref_attr;
     struct kndClassRefAttrStm *ref_stm;
     struct kndClassEntry *entry;
-    int err;
 
     switch (attr->type) {
     case KND_ATTR_CLS_INNER:

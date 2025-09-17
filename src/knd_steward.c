@@ -10,6 +10,7 @@
 #include "knd_task.h"
 #include "knd_shared_dict.h"
 #include "knd_set.h"
+#include "knd_dict.h"
 #include "knd_repo.h"
 #include "knd_mempool.h"
 #include "knd_output.h"
@@ -702,6 +703,8 @@ int knd_steward_snapshot_create(struct kndSteward *steward)
     KND_STEWARD_ERR("failed to init a write mempool");
 
     task->type = KND_TASK_BUILD_SNAPSHOT;
+    task->mode = KND_TASK_TRACE_MODE;
+
     task->mempool = steward->mempool_write_temp;
     repo = steward->repo;
 
@@ -731,9 +734,9 @@ int knd_steward_snapshot_activate(struct kndSteward *steward)
     struct kndRepo *repo = steward->repo;
     int err;
 
-    if (DEBUG_STEWARD_LEVEL_TMP)
+    if (DEBUG_STEWARD_LEVEL_TMP) {
         knd_log(".. activating new snapshot ..");
-
+    }
     // TODO iterate all repos
 
     err = knd_repo_snapshot_activate(repo, steward->task);

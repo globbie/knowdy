@@ -7,6 +7,7 @@
 
 #include "knd_repo.h"
 #include "knd_attr.h"
+#include "knd_facet.h"
 #include "knd_set.h"
 #include "knd_shared_set.h"
 #include "knd_user.h"
@@ -27,6 +28,106 @@
 #define DEBUG_REPO_GSP_LEVEL_2 0
 #define DEBUG_REPO_GSP_LEVEL_3 0
 #define DEBUG_REPO_GSP_LEVEL_TMP 1
+
+static int attr_facet_marshall(void *elem, void *ctx, struct kndStorageLeaf *leaf,
+                              size_t *output_size, struct kndTask *task)
+{
+    struct kndAttrRef *ref = elem;
+    struct kndAttr *attr = ref->attr;
+    struct kndFacet *facet = attr->facet;
+    struct kndSetRange *range = ctx;
+    int err;
+
+    if (DEBUG_REPO_GSP_LEVEL_2) {
+        knd_log(">> building GSP for {cls %.*s {attr %.*s}} {leaf %zu}",
+                attr->owner->name_size, attr->owner->name,
+                attr->name_size, attr->name, leaf->numid);
+    }
+
+    if (!facet) return knd_NO_MATCH;
+
+    err = knd_facet_leaf_marshall(facet, attr->type, leaf, range, output_size, task);
+    KND_TASK_ERR("failed to marshall attr facet");
+
+    return knd_OK;
+}
+
+static int marshall_attr_idx(struct kndRepoSnapshot *s, struct kndTask *task)
+{
+    struct kndStorageLeaf *leaf;
+    size_t num_leaves = 0;
+    struct kndOutput *out = task->out;
+    int err;
+
+    out->reset(out);
+    OUT(s->path, s->path_size);
+    OUT("/", 1);
+    OUT("attrs", strlen("attrs"));
+    if (out->buf_size >= KND_PATH_SIZE) return knd_LIMIT;
+
+    err = knd_shared_set_marshall(task->idxs->attr_idx, NULL, out->buf, out->buf_size,
+                                  attr_facet_marshall, NULL, &leaf, &num_leaves, task);
+    KND_TASK_ERR("failed to build attr facet idx");
+
+    return knd_OK;
+}
+
+static int marshall_name_mappings(struct kndRepoSnapshot *s, struct kndTask *task)
+{
+    int err;
+
+    err = knd_shared_dict_marshall(task->idxs->class_name_idx,
+                                  s->path, s->path_size, "class-name-idx", strlen("class-name-idx"),
+                                  knd_class_name_marshall, NULL, task);
+    KND_TASK_ERR("failed to marhall a class name idx");
+
+    err = knd_shared_dict_marshall(task->idxs->attr_name_idx,
+                                  s->path, s->path_size, "attr-name-idx", strlen("attr-name-idx"),
+                                  knd_attr_name_marshall, NULL, task);
+    KND_TASK_ERR("failed to marshall an attr name idx");
+
+    return knd_OK;
+}
+
+static int marshall_content(struct kndRepoSnapshot *s, struct kndTask *task)
+{
+    struct kndStorageLeaf *leaf;
+    size_t num_leaves = 0;
+    struct kndOutput *out = task->out;
+    int err;
+
+    out->reset(out);
+    OUT(s->path, s->path_size);
+    OUT("/", 1);
+    OUT("classes", strlen("classes"));
+    if (out->buf_size >= KND_PATH_SIZE) return knd_LIMIT;
+
+    err = knd_shared_set_marshall(task->idxs->class_idx, NULL, out->buf, out->buf_size,
+                                  knd_class_marshall, NULL, &leaf, &num_leaves, task);
+    KND_TASK_ERR("failed to build a class idx");
+
+    return knd_OK;
+}
+
+static int marshall_strings(struct kndRepoSnapshot *s, struct kndTask *task)
+{
+    struct kndStorageLeaf *leaf;
+    size_t num_leaves = 0;
+    struct kndOutput *out = task->out;
+    int err;
+
+    out->reset(out);
+    OUT(s->path, s->path_size);
+    OUT("/", 1);
+    OUT("strings", strlen("strings"));
+    if (out->buf_size >= KND_PATH_SIZE) return knd_LIMIT;
+
+    err = knd_shared_set_marshall(task->idxs->str_idx, NULL, out->buf, out->buf_size,
+                                  knd_charseq_marshall, NULL, &leaf, &num_leaves, task);
+    KND_TASK_ERR("failed to build a string idx");
+
+    return knd_OK;
+}
 
 int knd_repo_snapshot_create(struct kndRepo *repo, struct kndTask *task)
 {
@@ -50,36 +151,27 @@ int knd_repo_snapshot_create(struct kndRepo *repo, struct kndTask *task)
     KND_TASK_ERR("failed to create a repo snapshot");
 
     err = knd_mkpath((const char*)s->path, s->path_size, 0755, false);
-    KND_TASK_ERR("mkpath %.*s failed", s->path_size, s->path);
+    KND_TASK_ERR("failed to make {path %.*s}", s->path_size, s->path);
 
     if (DEBUG_REPO_GSP_LEVEL_TMP) {
-        knd_log(".. building a GSP snapshot #%zu of {repo %.*s {last-commit %zu}}",
+        knd_log(".. building a GSP {snapshot #%zu} of {repo %.*s {last-commit %zu}}",
                 numid, repo->name_size, repo->name, last_commit_id);
     }
 
-    err = knd_shared_dict_marshall(task->idxs->class_name_idx, s->path, s->path_size,
-                                   "class-name-idx", strlen("class-name-idx"),
-                                   knd_class_names_marshall, s->idxs.class_name_idx, task);
-    KND_TASK_ERR("failed to build a class name idx");
+    err = marshall_name_mappings(s, task);
+    KND_TASK_ERR("failed to marshall name mappings in {path %.*s}", s->path_size, s->path);
 
-    err = knd_shared_dict_marshall(task->idxs->attr_name_idx, s->path, s->path_size,
-                                   "attr-name-idx", strlen("attr-name-idx"),
-                                   knd_attr_names_marshall, s->idxs.attr_name_idx, task);
-    KND_TASK_ERR("failed to build an attr name idx");
+    err = marshall_content(s, task);
+    KND_TASK_ERR("failed to marshall main content in {path %.*s}", s->path_size, s->path);
 
-    /* save class content */
-    err = knd_shared_set_marshall(task->idxs->class_idx, s->path, s->path_size,
-                                  "classes", strlen("classes"),
-                                  knd_class_marshall, s->idxs.class_idx, task);
-    KND_TASK_ERR("failed to build a class idx");
+    err = marshall_attr_idx(s, task);
+    KND_TASK_ERR("failed to marshall attr idx in {path %.*s}", s->path_size, s->path);
 
     /* global string dict storage 
        NB: shoud be exported last */
-    err = knd_shared_set_marshall(task->idxs->str_idx, s->path, s->path_size,
-                                  "strings", strlen("strings"),
-                                  knd_charseq_marshall, s->idxs.str_idx, task);
-    KND_TASK_ERR("failed to build a string idx");
-    
+    err = marshall_strings(s, task);
+    KND_TASK_ERR("failed to marshall strings in {path %.*s}", s->path_size, s->path);
+
     repo->snapshot_temp = s;
     return knd_OK;
 }

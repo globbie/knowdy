@@ -65,47 +65,54 @@ static int export_glosses(struct kndAttr *self, struct kndOutput *out)
     return knd_OK;
 }
 
-int knd_attr_names_marshall(void *elem, size_t *output_size, struct kndTask *task)
+int knd_attr_name_marshall(void *elem, void *unused_var(ctx),
+                           struct kndStorageLeaf *leaf,
+                           size_t *output_size, struct kndTask *task)
 {
-    struct kndSharedDictItem *item, *items = elem;
-    struct kndAttrRef *attr_ref, *attr_refs;
+    struct kndAttrRef *attr_ref, *attr_refs = elem;
     struct kndAttr *attr;
     struct kndClassEntry *entry;
     struct kndOutput *out = task->out;
-    size_t orig_size = out->buf_size;
+    int err;
 
-    OUT("[n", strlen("[n"));
+    out->reset(out);
 
-    FOREACH (item, items) {
-        attr_refs = item->data;
+    attr = attr_refs->attr;
 
-        attr = attr_refs->attr;
+    OUT("{", strlen("{"));
+    OUT(attr->name, attr->name_size);
 
+    OUT("[a", strlen("[a"));
+
+    FOREACH (attr_ref, attr_refs) {
+        // TODO check commit version
+        attr = attr_ref->attr;
+        entry = attr->owner->entry;
+        
         OUT("{", strlen("{"));
-        OUT(attr->name, attr->name_size);
-
-        OUT("[a", strlen("[a"));
-
-        FOREACH (attr_ref, attr_refs) {
-            // TODO check commit version
-            attr = attr_ref->attr;
-            entry = attr->owner->entry;
-
-            OUT("{", strlen("{"));
-            OUT(attr->id, attr->id_size);
-
-            OUT("{c ", strlen("{c "));
-            OUT(entry->id, entry->id_size);
-            OUT("}", strlen("}"));
-
-            OUT("}", strlen("}"));
-        }
-        OUT("]", strlen("]"));
+        OUT(attr->id, attr->id_size);
+        
+        OUT("{c ", strlen("{c "));
+        OUT(entry->id, entry->id_size);
+        OUT("}", strlen("}"));
+        
         OUT("}", strlen("}"));
     }
     OUT("]", strlen("]"));
+    OUT("}", strlen("}"));
 
-    *output_size = out->buf_size - orig_size;
+    switch (task->mode) {
+    case KND_TASK_TRACE_MODE:
+        knd_log(".. write {attr %.*s} to {filepath %.*s}", attr->name_size, attr->name,
+                leaf->filepath_size, leaf->filepath);
+        break;
+    default:
+        err = knd_append_file((const char*)leaf->filepath, out->buf, out->buf_size);
+        KND_TASK_ERR("attr name write failure");
+        break;
+    }
+
+    *output_size = out->buf_size;
     return knd_OK;
 }
 

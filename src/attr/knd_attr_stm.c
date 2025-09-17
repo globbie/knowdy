@@ -109,6 +109,8 @@ int knd_attr_stm_present_subj(void *obj, void *ctx_obj)
     assert (c != NULL);
 
     struct LocalContext *ctx = ctx_obj;
+    assert (ctx != NULL);
+
     struct kndAttrStm *query_stm = ctx->stm;
 
     knd_log("** {cls %.*s {%.*s %.*s}}",

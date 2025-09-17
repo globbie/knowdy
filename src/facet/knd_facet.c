@@ -4,6 +4,7 @@
 
 #include "knd_facet.h"
 #include "knd_class.h"
+#include "knd_quant.h"
 #include "knd_task.h"
 #include "knd_mempool.h"
 #include "knd_output.h"
@@ -62,8 +63,79 @@ void knd_facet_str(struct kndFacet *facet,
     knd_log("%*s}", depth * KND_OFFSET_SIZE, "");
 }
 
+int knd_facet_acquire(struct kndAttr *attr, struct kndFacet **result, struct kndTask *task)
+{
+    struct kndQuantAttr *quant_attr;
+    struct kndClassInnerAttr *cls_inner_attr;
+    struct kndClassRefAttr *cls_ref_attr;
+    int err;
+
+    /* check global cache */
+    if (attr->facet) {
+        *result = attr->facet;
+        return knd_OK;
+    }
+
+    switch (attr->type) {
+    case KND_ATTR_UINT:
+        quant_attr = attr->subtype;
+        if (!attr->facet) {
+            err = knd_facet_new(&attr->facet, NULL,
+                                quant_attr->hash_specs, quant_attr->num_hash_specs,
+                                knd_attr_stm_get_elem_key, task->mempool);
+            KND_TASK_ERR("failed to alloc a facet");
+        }
+        break;
+    case KND_ATTR_URATIO:
+        //err = knd_quant_uint_index(attr->impl, entry, stm, task);
+        //KND_TASK_ERR("failed to index natural number attr stm");
+        break;
+    case KND_ATTR_UREAL:
+        //err = knd_quant_ureal_index(facet, entry, stm, task);
+        //KND_TASK_ERR("failed to index real number attr stm");
+        break;
+    case KND_ATTR_STR:
+        break;
+    case KND_ATTR_CLS_INNER:
+        cls_inner_attr = attr->subtype;
+        assert (cls_inner_attr != NULL);
+        if (!attr->facet) {
+            err = knd_facet_new(&attr->facet, cls_inner_attr->template_cls,
+                                cls_inner_attr->hash_specs, cls_inner_attr->num_hash_specs,
+                                knd_attr_stm_get_elem_key, task->mempool);
+            KND_TASK_ERR("failed to alloc a facet");
+        }
+        break;
+    case KND_ATTR_CLS_REF:
+        cls_ref_attr = attr->subtype;
+        if (!attr->facet) {
+            err = knd_facet_new(&attr->facet, cls_ref_attr->template_cls,
+                                cls_ref_attr->hash_specs, cls_ref_attr->num_hash_specs,
+                                knd_attr_stm_get_elem_key, task->mempool);
+            KND_TASK_ERR("failed to alloc a facet");
+        }
+        break;
+    default:
+        break;
+    }
+
+    /*err = knd_shared_set_find_leaf(task->idxs->attr_idx, entry->id, entry->id_size, &leaf, task);
+    KND_TASK_ERR("no storage leaf found for unmarshalling {cls %.*s}", entry->id_size, entry->id);
+
+    err = knd_storage_leaf_read_elem(leaf, entry->id, entry->id_size,
+                                     knd_class_unmarshall, entry, (void**)&c, task);
+    KND_TASK_ERR("failed to read {cls %.*s}", entry->name_size, entry->name);
+
+    err = knd_class_decode(c, task);
+    KND_TASK_ERR("failed to decode {cls %.*s}", c->name_size, c->name);
+    */
+
+    return knd_OK;
+}
+
 int knd_facet_hash_spec_new(struct kndFacetHashSpec **result, knd_facet_type facet_type,
                             knd_facet_key_get_cb key_get_cb,
+                            knd_facet_key_encode_cb key_encode_cb,
                             knd_facet_key_str_cb key_str_cb,
                             knd_facet_hash_cb hash_cb,
                             struct kndMemPool *mempool)
@@ -81,6 +153,7 @@ int knd_facet_hash_spec_new(struct kndFacetHashSpec **result, knd_facet_type fac
     spec->type = facet_type;
 
     spec->key_get_cb = key_get_cb;
+    spec->key_encode_cb = key_encode_cb;
     spec->key_str_cb = key_str_cb;
     spec->hash_cb = hash_cb;
 
@@ -111,21 +184,5 @@ int knd_facet_new(struct kndFacet **result, void *key,
     f->curr_spec = hash_specs;
 
     *result = f;
-    return knd_OK;
-}
-
-int knd_facet_leaf_new(struct kndFacetLeaf **result, size_t numid, struct kndFacet *f)
-{
-    struct kndFacetLeaf *leaf;
-    leaf = calloc(1, sizeof(struct kndFacetLeaf));
-    if (!leaf) return knd_NOMEM;
-
-    leaf->numid = numid;
-    leaf->parent = f;
-
-    leaf->min_leaf_size = KND_SNAPSHOT_LEAF_MIN_THRESHOLD;
-    leaf->max_leaf_size = KND_SNAPSHOT_LEAF_MAX_THRESHOLD;
-
-    *result = leaf;
     return knd_OK;
 }

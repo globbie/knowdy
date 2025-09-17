@@ -447,7 +447,7 @@ int knd_get_class_by_name(struct kndRepo *repo, const char *name, size_t name_si
     }
 
     err = knd_class_acquire(entry, &c, task);
-    KND_TASK_ERR("failed to acquire cls %.*s", entry->name_size, entry->name);
+    KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);
 
     if (c->num_states) {
         state = c->states;
@@ -501,7 +501,7 @@ int knd_get_class_by_id(struct kndRepo *repo, const char *id, size_t id_size,
     int err;
 
     if (DEBUG_CLASS_LEVEL_2) {
-        knd_log(".. {repo %.*s} to get {class {id %.*s}}", repo->name_size, repo->name, id_size, id);
+        knd_log(".. {repo %.*s} to get {cls {id %.*s}}", repo->name_size, repo->name, id_size, id);
     }
 
     err = knd_shared_set_get(class_idx, id, id_size, (void**)&entry);
@@ -513,16 +513,16 @@ int knd_get_class_by_id(struct kndRepo *repo, const char *id, size_t id_size,
             return knd_OK;
         }
         err = knd_NO_MATCH;
-        KND_TASK_ERR("no such {class {id %.*s}}", id_size, id);
+        KND_TASK_ERR("no such {cls {id %.*s}}", id_size, id);
     }
 
     err = knd_class_acquire(entry, &c, task);
-    KND_TASK_ERR("failed to acquire {class %.*s}", entry->name_size, entry->name);
+    KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);
     if (c->num_states) {
         state = c->states;
         if (state->phase == KND_REMOVED) {
             err = knd_NO_MATCH;
-            KND_TASK_ERR("\"%s\" class was removed", id);
+            KND_TASK_ERR("{cls %s} was removed", id);
         }
     }
     *result = c;
@@ -553,12 +553,14 @@ int knd_class_acquire(struct kndClassEntry *entry, struct kndClass **result, str
         return knd_OK;
     }
 
-    err = knd_shared_set_find_leaf(task->idxs->class_idx, entry->id, entry->id_size, &leaf, task);
-    KND_TASK_ERR("no storage leaf found for unmarshalling class entry %.*d",
-                 entry->id_size, entry->id);
+    // TODO check local task cache
 
-    err = knd_storage_leaf_read_elem(leaf, entry->id, entry->id_size,
-                                     knd_class_unmarshall, entry, (void**)&c, task);
+    err = knd_shared_set_find_leaf(task->idxs->class_idx, entry->id, entry->id_size, &leaf, task);
+    KND_TASK_ERR("no storage leaf found for unmarshalling {cls %.*s}", entry->id_size, entry->id);
+
+    err = knd_shared_set_leaf_read_elem(leaf, task->idxs->class_idx->dir,
+                                        entry->id, entry->id_size,
+                                        knd_class_unmarshall, entry, (void**)&c, task);
     KND_TASK_ERR("failed to read {cls %.*s}", entry->name_size, entry->name);
 
     err = knd_class_decode(c, task);
@@ -576,7 +578,7 @@ int knd_get_class_entry_by_id(struct kndRepo *repo, const char *id, size_t id_si
     int err;
 
     if (DEBUG_CLASS_LEVEL_2) {
-        knd_log(".. {repo %.*s} to get class entry by id \"%.*s\"",
+        knd_log(".. {repo %.*s} to get cls entry by {id %.*s}",
                 repo->name_size, repo->name, id_size, id);
     }
     err = knd_shared_set_get(class_idx, id, id_size, (void**)&entry);

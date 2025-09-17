@@ -23,6 +23,8 @@
 
 #include "knd_config.h"
 #include "knd_state.h"
+#include "knd_set.h"
+#include "knd_storage.h"
 #include "knd_shared_idx.h"
 
 struct kndTask;
@@ -306,7 +308,9 @@ int knd_par_export_GSL(struct kndPar *par, struct kndTask *task);
 int knd_charseq_new(struct kndCharSeq **result, struct kndMemPool *mempool);
 int knd_charseq_fetch(struct kndRepo *repo, const char *val, size_t val_size,
                       struct kndCharSeq **result, struct kndTask *task);
-int knd_charseq_marshall(void *elem, size_t *output_size, struct kndTask *task);
+
+int knd_charseq_marshall(void *elem, void *ctx, struct kndStorageLeaf *leaf,
+                         size_t *output_size, struct kndTask *task);
 int knd_charseq_unmarshall(const char *elem_id, size_t elem_id_size, const char *val, size_t val_size,
                            void **result, struct kndTask *task);
 int knd_charseq_decode(const char *id, size_t id_size,

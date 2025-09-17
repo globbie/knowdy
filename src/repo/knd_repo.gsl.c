@@ -568,19 +568,20 @@ static int present_idx_meta(struct kndSharedSet *idx,
         OUT(leaf->name, leaf->name_size);
         OUT(" ", 1);
 
-        if (leaf->range_from_id_size) {
-            OUT("{range-from ", strlen("{range-from "));
-            OUT(leaf->range_from_id, leaf->range_from_id_size);
+        if (leaf->range_from_addr_size) {
+            OUT("{from-addr ", strlen("{from-addr "));
+            OUT(leaf->range_from_addr, leaf->range_from_addr_size);
             OUT("}", 1);
         }
 
-        if (leaf->range_to_id_size) {
-            OUT("{range-to ", strlen("{range-to "));
-            OUT(leaf->range_to_id, leaf->range_to_id_size);
+        if (leaf->range_to_addr_size) {
+            OUT("{to-addr ", strlen("{to-addr "));
+            OUT(leaf->range_to_addr, leaf->range_to_addr_size);
             OUT("}", 1);
         }
+
         OUTF("{num-elems %zu}", leaf->num_elems);
-        OUTF("{file-size %zu}", leaf->file_size);
+        OUTF("{file-size %zu}", leaf->curr_size);
         OUT("}", 1);
     }
     OUT("]", 1);
@@ -607,14 +608,14 @@ int knd_repo_save_meta(struct kndRepoSnapshot *s, struct kndTask *task)
     OUT("{snapshot ", strlen("{snapshot "));
     OUTF("%zu", s->numid);
 
-    err = present_idx_meta(s->idxs.class_name_idx->idx,
+    /*    err = present_idx_meta(s->idxs.class_name_idx->idx,
                            "class-name-idx", strlen("class-name-idx"), task);
     KND_TASK_ERR("failed to present class name idx meta");
 
     err = present_idx_meta(s->idxs.attr_name_idx->idx,
                            "attr-name-idx", strlen("attr-name-idx"), task);
     KND_TASK_ERR("failed to present attr name idx meta");
-
+    */
     err = present_idx_meta(s->idxs.class_idx,
                            "classes", strlen("classes"), task);
     KND_TASK_ERR("failed to present classes idx meta");

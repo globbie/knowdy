@@ -44,7 +44,6 @@ static int attr_stm_list_export_GSL(struct kndAttrStm *parent_item, struct kndTa
 
 static int inner_stm_export_GSL(struct kndAttrStm *stm, struct kndTask *task, size_t depth)
 {
-    struct kndAttrStm *item;
     int err;
 
     err = knd_attr_stms_export_GSL(stm->children, task, depth + 1);
@@ -53,23 +52,10 @@ static int inner_stm_export_GSL(struct kndAttrStm *stm, struct kndTask *task, si
     return knd_OK;
 }
 
-static int ref_stm_export_GSL(struct kndAttrStm *stm, struct kndTask *task, size_t unused_var(depth))
-{
-    struct kndOutput *out = task->out;
-    struct kndClassRefAttrStm *cref = stm->subtype;
-
-    assert(cref->cls_entry != NULL);
-
-    OUT(cref->cls_entry->name, cref->cls_entry->name_size);
-    return knd_OK;
-}
-
 static int attr_stm_list_export_GSL(struct kndAttrStm *stm, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
-    struct kndAttr *attr = stm->attr;
     struct kndAttrStm *item;
-    size_t count = 0;
     size_t indent_size = task->ctx->format_indent;
     int err;
 
@@ -96,10 +82,8 @@ static int attr_stm_list_export_GSL(struct kndAttrStm *stm, struct kndTask *task
 
 int knd_attr_stms_export_GSL(struct kndAttrStm *stms, struct kndTask *task, size_t depth)
 {
-    struct kndOutput *out = task->out;
     struct kndAttrStm *stm;
     struct kndAttr *attr;
-    size_t indent_size = task->ctx->format_indent;
     int err;
 
     FOREACH (stm, stms) {

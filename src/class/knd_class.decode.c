@@ -275,7 +275,7 @@ int knd_class_decode(struct kndClass *c, struct kndTask *task)
     int err;
 
     if (DEBUG_CLASS_DECODE_LEVEL_2) {
-        knd_log("\n.. decoding {cls %.*s {num-bases %zu}}",
+        knd_log(".. decoding {cls %.*s {num-bases %zu}}",
                 c->name_size, c->name, c->num_base_preds);
         size_t count = 0;
         FOREACH (bp, c->base_preds) {

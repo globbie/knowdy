@@ -30,7 +30,9 @@ struct kndSharedDict
     atomic_size_t num_items;
 
     struct kndMemPool *mempool;
-    struct kndSharedSet *idx;
+
+    /* for marshalled elems */
+    struct kndSet *idx;
 
     bool allow_key_overwrite;
 };
@@ -46,5 +48,5 @@ int knd_shared_dict_map(struct kndSharedDict *self, map_cb_t cb, void *obj);
 
 int knd_shared_dict_marshall(struct kndSharedDict *self, const char *path, size_t path_size,
                              const char *pref, size_t pref_size,
-                             elem_marshall_cb cb, struct kndSharedDict *result_dict,
+                             knd_set_elem_marshall_cb_t cb, struct kndSharedDict *result_dict,
                              struct kndTask *task);

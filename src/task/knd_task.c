@@ -82,7 +82,6 @@ void knd_task_reset(struct kndTask *self)
 static int task_err_export_JSON(struct kndTask *task)
 {
     struct kndOutput *out = task->out;
-    struct kndTaskContext *ctx = task->ctx;
     int err;
 
     err = out->write(out, "{\"err\":\"", strlen("{\"err\":\""));
@@ -107,7 +106,6 @@ static int task_err_export_JSON(struct kndTask *task)
 static int task_err_export_GSP(struct kndTask *task)
 {
     struct kndOutput *out = task->out;
-    struct kndTaskContext *ctx = task->ctx;
     int err;
     err = out->write(out, "{err ", strlen("{err "));                              RET_ERR();
 
@@ -383,6 +381,8 @@ int knd_task_new(struct kndTask **result,
 
     err = knd_output_new(&task->file_out, NULL, KND_FILE_BUF_SIZE);
     if (err) goto error;
+
+    // TODO add local LRU cache
 
     err = knd_task_init(task, steward);
     if (err) goto error;

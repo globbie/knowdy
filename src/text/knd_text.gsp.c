@@ -21,21 +21,31 @@
 #define DEBUG_TEXT_GSP_LEVEL_2 0
 #define DEBUG_TEXT_GSP_LEVEL_TMP 1
 
-int knd_charseq_marshall(void *elem, size_t *output_size, struct kndTask *task)
+int knd_charseq_marshall(void *elem, void *unused_var(ctx), struct kndStorageLeaf *leaf,
+                         size_t *output_size, struct kndTask *task)
 {
     struct kndCharSeq *seq = elem;
-    struct kndOutput *out = task->out;
-    size_t orig_size = out->buf_size;
-
-    OUT(seq->val, seq->val_size);
+    int err;
 
     if (DEBUG_TEXT_GSP_LEVEL_2) {
-        knd_log("** {seq %.*s {numid %zu}} => \"%.*s\" {size %zu}",
+        knd_log("** {seq-id %.*s {numid %zu}} => {seq %.*s {size %zu}}",
                 seq->id_size, seq->id, seq->numid,
-                seq->val_size, seq->val, out->buf_size - orig_size);
+                seq->val_size, seq->val, seq->val_size);
     }
 
-    *output_size = out->buf_size - orig_size;
+    switch (task->mode) {
+    case KND_TASK_TRACE_MODE:
+        knd_log(".. write charseq to {filepath %.*s}",
+                leaf->filepath_size, leaf->filepath);
+        break;
+    default:
+        err = knd_append_file((const char*)leaf->filepath, seq->val, seq->val_size);
+        KND_TASK_ERR("charseq write failure");
+    }
+
+    leaf->curr_size += seq->val_size;
+    *output_size = seq->val_size;
+
     return knd_OK;
 }
 

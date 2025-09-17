@@ -133,6 +133,9 @@ int knd_attr_stm_export_GSP(struct kndAttrStm *self, struct kndTask *task,
 int knd_attr_stms_export_GSP(struct kndAttrStm *stms, struct kndOutput *out, struct kndTask *task,
                              size_t depth);
 
+int knd_attr_stm_subj_GSP(void *obj, void *ctx, struct kndStorageLeaf *leaf,
+                          size_t *result_size, struct kndTask *task);
+
 void knd_attr_stm_str(struct kndAttrStm *stm, size_t depth);
 
 gsl_err_t knd_select_attr_stm(struct kndClass *class, const char *name, size_t name_size,
@@ -180,3 +183,4 @@ int knd_attr_parse_query_stm(struct kndAttrStm *stm,
 int knd_attr_stm_present_subj(void *obj, void *ctx_obj);
 
 int knd_facet_cls_key_get(void *elem, void **result, struct kndTask *task);
+int knd_attr_stm_get_elem_key(void *obj, const char **key, size_t *key_size);

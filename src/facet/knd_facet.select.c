@@ -64,7 +64,7 @@ static int match_elem(void *elem, void *ctx_obj)
 }
  
 static int apply_cb(struct kndFacet *facet, void *key,
-                    struct kndSetRange *range,
+                    struct kndSetRange *unused_var(range),
                     filter_cb_t filter_cb, void *filter_ctx,
                     map_cb_t map_cb, void *map_ctx, struct kndTask *task)
 {
@@ -79,10 +79,6 @@ static int apply_cb(struct kndFacet *facet, void *key,
         .filter_cb = filter_cb,
         .filter_ctx = filter_ctx
     };
-
-    //knd_log("\n.. apply cb to facet {num-elems %zu} {cache-size %zu} {idx %p} {query-key %p}",
-    //        facet->num_elems, facet->cache_size, facet->idx, key);
-    //spec->key_str_cb(facet->key, 1);
 
     if (facet->cache_size) {
         for (size_t i = 0; i < facet->cache_size; i++) {
@@ -100,7 +96,6 @@ static int apply_cb(struct kndFacet *facet, void *key,
                     KND_TASK_ERR("failed to apply a facet hash func {err %d}", err);
                 }
             }
-
             if (filter_cb) {
                 err = filter_cb(elem, filter_ctx);
                 switch (err) {
@@ -112,15 +107,13 @@ static int apply_cb(struct kndFacet *facet, void *key,
                     KND_TASK_ERR("failed to apply a filter func {err %d}", err);
                 }
             }
-
             err = map_cb(elem, map_ctx);
             KND_TASK_ERR("failed to call a facet cb func to a cached elem");
         }
     }
 
     if (facet->idx) {
-        err = knd_set_map(facet->idx, NULL,
-                          match_elem, &ctx, map_cb, map_ctx);
+        err = knd_set_map(facet->idx, NULL, match_elem, &ctx, map_cb, map_ctx);
         KND_TASK_ERR("failed to apply a facet cb func to an idx");
     }
 

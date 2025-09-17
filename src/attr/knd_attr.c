@@ -211,6 +211,7 @@ int knd_cls_inner_attr_new(struct kndClassInnerAttr **result,
 
     err = knd_facet_hash_spec_new(&spec, KND_FACET_CLS,
                                   knd_facet_cls_key_get,
+                                  knd_cls_facet_key_encode,
                                   knd_facet_cls_key_str,
                                   knd_facet_cls_hash, mempool);
     if (err) return err;
@@ -237,6 +238,7 @@ int knd_cls_ref_attr_new(struct kndClassRefAttr **result,
 
     err = knd_facet_hash_spec_new(&spec, KND_FACET_CLS,
                                   knd_facet_cls_key_get,
+                                  knd_cls_facet_key_encode,
                                   knd_facet_cls_key_str,
                                   knd_facet_cls_hash, mempool);
     if (err) return err;

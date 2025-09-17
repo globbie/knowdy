@@ -24,32 +24,34 @@
 
 #include "knd_config.h"
 #include "knd_task.h"
-#include "knd_queue.h"
 
-struct kndStorage
+struct kndStorageLeaf
 {
-    char path[KND_PATH_SIZE];
-    size_t path_size;
+    size_t numid;
 
-    char commit_filename[KND_PATH_SIZE];
-    size_t commit_filename_size;
+    size_t min_size;
+    size_t max_size;
+    size_t curr_size;
 
-    struct kndQueue *input_queue;
-    struct kndQueue *output_queue;
+    size_t num_elems;
 
-    struct kndSet *ctx_idx;
+    char range_from_addr[KND_PATH_SIZE + 1];
+    size_t range_from_addr_size;
 
-    struct kndTask  **tasks;
-    size_t num_tasks;
+    char range_to_addr[KND_PATH_SIZE + 1];
+    size_t range_to_addr_size;
+
+    char name[KND_SHORT_NAME_SIZE + 1];
+    size_t name_size;
+
+    char filepath[KND_PATH_SIZE + 1];
+    size_t filepath_size;
+
+    char file_hash[KND_HASH_SIZE];
+    size_t file_hash_size;
+
+    struct kndStorageLeaf *next;
+    struct kndStorageLeaf *tail;
 };
 
-int knd_storage_new(struct kndStorage **self, size_t queue_capacity);
-int knd_storage_reset(struct kndStorage *self);
-int knd_storage_serve(struct kndStorage *self);
-int knd_storage_stop(struct kndStorage *self);
-
-int knd_storage_report(struct kndStorage *self,
-                       const char task_id, size_t task_id_size);
-int knd_storage_cancel(struct kndStorage *self,
-                       const char task_id, size_t task_id_size);
-
+int knd_storage_leaf_new(struct kndStorageLeaf **result, size_t numid);

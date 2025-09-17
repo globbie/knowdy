@@ -242,7 +242,7 @@ static gsl_err_t parse_subtypes(void *obj, const char *name, size_t name_size,
         break;
     }
 
-    KND_TASK_LOG("unknown {tag %.*s} tag in {attr %.*s}",
+    KND_TASK_LOG("unknown {tag %.*s} in {attr %.*s}",
                  name_size, name, attr->name_size, attr->name);
     return make_gsl_err(gsl_FORMAT);
  }
@@ -253,7 +253,7 @@ gsl_err_t knd_attr_import(struct kndAttr *self, struct kndTask *task,
     gsl_err_t err;
 
     if (DEBUG_ATTR_LEVEL_2) {
-        knd_log(".. {class %.*s} to import {attr-type %.*s}",
+        knd_log(".. {cls %.*s} to import {attr-type %.*s}",
                 self->owner->name_size, self->owner->name,
                 strlen(knd_attr_names[self->type]), knd_attr_names[self->type]);
     }
@@ -318,7 +318,7 @@ gsl_err_t knd_attr_import(struct kndAttr *self, struct kndTask *task,
     if (err.code) {
         switch (err.code) {
         case gsl_NO_MATCH:
-            KND_TASK_LOG("unknown {tag %.*s} in {class %.*s {attr %.*s}}",
+            KND_TASK_LOG("unknown {tag %.*s} in {cls %.*s {attr %.*s}}",
                          err.val_size, err.val,
                          self->owner->name_size, self->owner->name,
                          self->name_size, self->name);

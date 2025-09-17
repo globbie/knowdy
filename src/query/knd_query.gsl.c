@@ -44,6 +44,7 @@
 
 #include "knd_query.h"
 
+#if 0
 static int export_class_entry_GSL(void *elem, void *ctx)
 {
     struct kndTask *task = ctx;
@@ -102,11 +103,12 @@ static int export_attr_stms(struct kndQuery *query, struct kndTask *task, size_t
     OUT("]", 1); // stm list
     return knd_OK;
 }
+#endif
 
-int knd_query_obj_export_GSL(struct kndQuery *query, struct kndTask *task, size_t depth)
+int knd_query_obj_export_GSL(struct kndQuery *query, struct kndTask *task,
+                             size_t unused_var(depth))
 {
     struct kndOutput *out = task->out;
-    size_t indent_size = task->ctx->format_indent;
     struct kndClass *c;
     int err;
 
@@ -133,11 +135,10 @@ int knd_query_obj_export_GSL(struct kndQuery *query, struct kndTask *task, size_
     return knd_OK;
 }
 
-int knd_query_match_export_GSL(struct kndQuery *query, struct kndTask *task, size_t depth)
+int knd_query_match_export_GSL(struct kndQuery *query, struct kndTask *task,
+                               size_t unused_var(depth))
 {
     struct kndOutput *out = task->out;
-    size_t indent_size = task->ctx->format_indent;
-    int err;
 
     out->reset(out);
     OUT("{", 1);

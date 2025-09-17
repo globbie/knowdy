@@ -24,7 +24,7 @@
 
 static int unmarshall_block(struct kndSharedSet *self, struct kndSharedSetDir *dir,
                             int fd, size_t block_size,
-                            char *idbuf, size_t idbuf_size, leaf_unmarshall_cb cb,
+                            char *idbuf, size_t idbuf_size, knd_set_elem_unmarshall_cb_t cb,
                             struct kndTask *task);
 
 int knd_shared_set_find_leaf(struct kndSharedSet *idx, const char *id, size_t id_size,
@@ -39,45 +39,45 @@ int knd_shared_set_find_leaf(struct kndSharedSet *idx, const char *id, size_t id
     FOREACH (leaf, idx->leaves) {
         //knd_log(">> {leaf %zu {from %.*s} {to %.*s}} {elem-id %.*s}",
         //        leaf->numid,
-        //        leaf->range_from_id_size, leaf->range_from_id,
-        //        leaf->range_to_id_size, leaf->range_to_id,
+        //        leaf->range_from_addr_size, leaf->range_from_addr,
+        //        leaf->range_to_addr_size, leaf->range_to_addr,
         //        id_size, id);
 
-        if (*leaf->range_to_id == '/') {
+        if (*leaf->range_to_addr == '/') {
             if (id_size == 1) {
                 *result = leaf;
                 return knd_OK;
             }
         }
 
-        if (*leaf->range_from_id == '/') {
-            if (numid < leaf->range_to) {
+        if (*leaf->range_from_addr == '/') {
+            /*if (numid < leaf->range_to) {
                 *result = leaf;
                 return knd_OK;
-            }
+                }*/
         }
 
-        if (!leaf->range_from_id_size) {
+        if (!leaf->range_from_addr_size) {
             if (id_size == 1) {
                 *result = leaf;
                 return knd_OK;
             }
 
-            if (leaf->range_to_id_size == 1
-                && leaf->range_to_id[0] == '0'
+            if (leaf->range_to_addr_size == 1
+                && leaf->range_to_addr[0] == '0'
                 && numid == 0) {
                 *result = leaf;
                 return knd_OK;
             }
         }
 
-        if (leaf->range_from >= numid) continue;
+        //if (leaf->range_from >= numid) continue;
 
-        if (!leaf->range_to_id_size) {
+        if (!leaf->range_to_addr_size) {
             *result = leaf;
             return knd_OK;
         }
-        if (leaf->range_to < numid) continue;
+        //if (leaf->range_to < numid) continue;
 
         *result = leaf;
         return knd_OK;
@@ -88,11 +88,12 @@ int knd_shared_set_find_leaf(struct kndSharedSet *idx, const char *id, size_t id
 static int payload_linear_scan(struct kndSharedSetDir *dir,
                                const char *block, size_t block_size,
                                char *idbuf, size_t idbuf_size,
-                               leaf_unmarshall_cb cb, struct kndTask *task)
+                               knd_set_elem_unmarshall_cb_t cb, struct kndTask *task)
 {
     const char *b, *c;
     size_t remainder = block_size - 1;
     size_t val_size;
+    void *result;
     int err;
 
     if (DEBUG_SHARED_SET_READ_LEVEL_2) {
@@ -109,7 +110,7 @@ static int payload_linear_scan(struct kndSharedSetDir *dir,
         case '\0':
             val_size = c - b;
             if (cb) {
-                err = cb(idbuf, idbuf_size, b, val_size, task);
+                err = cb(idbuf, idbuf_size, b, val_size, NULL, &result, task);
                 KND_TASK_ERR("failed to unmarshall {elem %.*s}", idbuf_size, idbuf);
             }
             dir->num_term_elems++;
@@ -126,7 +127,7 @@ static int payload_linear_scan(struct kndSharedSetDir *dir,
     }
     val_size = c - b;
     if (cb) {
-        err = cb(idbuf, idbuf_size, b, val_size, task);
+        err = cb(idbuf, idbuf_size, b, val_size, NULL, &result, task);
         KND_TASK_ERR("failed to unmarshall {elem %.*s}", idbuf_size, idbuf);
     }
     dir->num_term_elems++;
@@ -134,7 +135,8 @@ static int payload_linear_scan(struct kndSharedSetDir *dir,
 }
 
 static int fetch_elem_linear_scan(const char *id, size_t id_size,
-                                  const char *block, size_t block_size, elem_unmarshall_cb cb,
+                                  const char *block, size_t block_size,
+                                  knd_set_elem_unmarshall_cb_t cb,
                                   void *ctx, void **result, struct kndTask *task)
 {
     char curr_id;
@@ -183,7 +185,8 @@ static int fetch_elem_linear_scan(const char *id, size_t id_size,
 }
 
 static int unmarshall_elems(struct kndSharedSetDir *dir, char *block, size_t block_size,
-                            char *idbuf, size_t idbuf_size, leaf_unmarshall_cb cb, struct kndTask *task)
+                            char *idbuf, size_t idbuf_size, knd_set_elem_unmarshall_cb_t cb,
+                            struct kndTask *task)
 {
     unsigned char spec;
     bool use_keys = false;
@@ -198,6 +201,7 @@ static int unmarshall_elems(struct kndSharedSetDir *dir, char *block, size_t blo
     size_t remainder;
     size_t elem_id_val = 0;
     size_t num_term_elems = KND_RADIX_BASE;
+    void *result;
     int err;
 
     if (DEBUG_SHARED_SET_READ_LEVEL_2) {
@@ -277,7 +281,7 @@ static int unmarshall_elems(struct kndSharedSetDir *dir, char *block, size_t blo
 
         /* activate callback function */
         if (cb) {
-            err = cb(idbuf, idbuf_size + 1, e, numval, task);
+            err = cb(idbuf, idbuf_size + 1, e, numval, NULL, &result, task);
             KND_TASK_ERR("failed to unmarshall {elem %.*s}", idbuf_size + 1, idbuf);
         }
 
@@ -310,8 +314,9 @@ static int read_payload_size(struct kndSharedSetDir *dir, int fd, size_t offset,
     footer_size = 1;
 
     if (size_spec == 0) {
-        if (DEBUG_SHARED_SET_READ_LEVEL_2)
+        if (DEBUG_SHARED_SET_READ_LEVEL_2) {
             knd_log("-- no payload in this block");
+        }
         /* just 1 byte */
         dir->payload_footer_size = footer_size;
         dir->payload_block_size = 0;
@@ -338,7 +343,8 @@ static int read_payload_size(struct kndSharedSetDir *dir, int fd, size_t offset,
 
 static int read_subdirs(struct kndSharedSet *self, struct kndSharedSetDir *dir,
                         int fd, size_t offset, size_t parent_block_size,
-                        char *idbuf, size_t idbuf_size, leaf_unmarshall_cb cb, struct kndTask *task)
+                        char *idbuf, size_t idbuf_size,
+                        knd_set_elem_unmarshall_cb_t cb, struct kndTask *task)
 {
     unsigned char buf[KND_NAME_SIZE];
     struct kndSharedSetDir *subdir;
@@ -384,9 +390,9 @@ static int read_subdirs(struct kndSharedSet *self, struct kndSharedSetDir *dir,
     // make sure buf len is enough
     if (subdir_footer_size > KND_NAME_SIZE) return knd_LIMIT;
 
-    if (DEBUG_SHARED_SET_READ_LEVEL_2)
-        knd_log("== cell size:%zu footer size:%zu", cell_size, subdir_footer_size);
-
+    if (DEBUG_SHARED_SET_READ_LEVEL_2) {
+        knd_log("== cell size:%zu footer} size:%zu", cell_size, subdir_footer_size);
+    }
     subdir_area_size = parent_block_size - (subdir_footer_size + spec_size);
 
     lseek(fd, offset + subdir_area_size, SEEK_SET);
@@ -394,10 +400,10 @@ static int read_subdirs(struct kndSharedSet *self, struct kndSharedSetDir *dir,
     if (num_bytes != (ssize_t)subdir_footer_size) return knd_IO_FAIL;
 
     if (use_keys) {
-        if (DEBUG_SHARED_SET_READ_LEVEL_2)
-            knd_log(">> dir %.*s: subdir linear traversal needed (cell size:%zu footer size:%zu)",
+        if (DEBUG_SHARED_SET_READ_LEVEL_2) {
+            knd_log(">> {dir %.*s} subdir linear traversal needed {cell-size %zu} {footer-size %zu}",
                     idbuf_size, idbuf, cell_size, subdir_footer_size);
-
+        }
         for (size_t i = 0; i < num_subdirs; i++) {
             c = (unsigned char*)buf + (i * (1 + cell_size));
             numval = knd_unpack_int(c + 1, cell_size); // skip over subdir's id
@@ -453,7 +459,7 @@ static int read_subdirs(struct kndSharedSet *self, struct kndSharedSetDir *dir,
 
 static int unmarshall_block(struct kndSharedSet *self, struct kndSharedSetDir *dir,
                             int fd, size_t block_size, char *idbuf, size_t idbuf_size,
-                            leaf_unmarshall_cb cb, struct kndTask *task)
+                            knd_set_elem_unmarshall_cb_t cb, struct kndTask *task)
 {
     struct kndOutput *file_out = task->file_out;
     ssize_t num_bytes;
@@ -506,8 +512,8 @@ static int unmarshall_block(struct kndSharedSet *self, struct kndSharedSetDir *d
     return knd_OK;
 }
 
-int knd_storage_leaf_open(struct kndSharedSet *self, struct kndStorageLeaf *leaf,
-                          leaf_unmarshall_cb cb, struct kndTask *task)
+int knd_shared_set_leaf_open(struct kndSharedSet *self, struct kndStorageLeaf *leaf,
+                             knd_set_elem_unmarshall_cb_t cb, struct kndTask *task)
 {
     char idbuf[KND_ID_SIZE];
     size_t idbuf_size = 0;
@@ -525,7 +531,7 @@ int knd_storage_leaf_open(struct kndSharedSet *self, struct kndStorageLeaf *leaf
     if (DEBUG_SHARED_SET_READ_LEVEL_2) {
         knd_log(".. open storage {leaf %.*s {filepath %.*s} {size %zu}}",
                 leaf->name_size, leaf->name, filename_size, filename,
-                leaf->file_size);
+                leaf->curr_size);
     }
 
     if (stat(filename, &st)) {
@@ -533,10 +539,10 @@ int knd_storage_leaf_open(struct kndSharedSet *self, struct kndStorageLeaf *leaf
         KND_TASK_ERR("no such {file %.*s}", filename_size, filename);
     }
 
-    if (leaf->file_size != (size_t)st.st_size) {
+    if (leaf->curr_size != (size_t)st.st_size) {
         err = knd_IO_FAIL;
         KND_TASK_ERR("{file %.*s} size mismatch: expected %zu, not %zu bytes",
-                     filename_size, filename, leaf->file_size, st.st_size);
+                     filename_size, filename, leaf->curr_size, st.st_size);
     }
 
     fd = open(filename, O_RDONLY);
@@ -553,10 +559,9 @@ int knd_storage_leaf_open(struct kndSharedSet *self, struct kndStorageLeaf *leaf
     dir->id[0] = '/';
     dir->id_size = 1;
 
-    leaf->dir = dir;
-
     dir->total_size = st.st_size;
     dir->global_offset = offset;
+    self->dir = dir;
 
     err = unmarshall_block(self, dir, fd, st.st_size - offset, idbuf, idbuf_size, cb, task);
     if (err) goto final;
@@ -602,7 +607,7 @@ static int read_file_chunk(struct kndStorageLeaf *leaf, size_t offset, size_t bu
 }
 
 static int read_elem(struct kndStorageLeaf *leaf, struct kndSharedSetDir *dir,
-                     const char *id, size_t id_size, elem_unmarshall_cb cb,
+                     const char *id, size_t id_size, knd_set_elem_unmarshall_cb_t cb,
                      void *ctx, void **result, struct kndTask *task)
 {
     struct kndOutput *file_out = task->file_out;
@@ -662,7 +667,7 @@ static int read_elem(struct kndStorageLeaf *leaf, struct kndSharedSetDir *dir,
     }
 
     if (DEBUG_SHARED_SET_READ_LEVEL_3) {
-        knd_log(".. reading a payload block of size %zu", buf_size);
+        knd_log(".. reading a payload block of {size %zu}", buf_size);
     }
 
     // read block
@@ -672,30 +677,34 @@ static int read_elem(struct kndStorageLeaf *leaf, struct kndSharedSetDir *dir,
     buf = file_out->buf;
     if (dir->elems_linear_scan) {
         err = fetch_elem_linear_scan(id, id_size, buf, buf_size, cb, ctx, result, task);
-        KND_TASK_ERR("failed to fetch elem \"%.*s\"", id_size, id);
+        KND_TASK_ERR("failed to fetch {elem %.*s}", id_size, id);
         return knd_OK;
     }
 
     err = cb(id, id_size, buf, buf_size, ctx, result, task);
     KND_TASK_ERR("failed to unmarshall {elem %.*s}", id_size, id);
+
     return knd_OK;
 }
 
-int knd_storage_leaf_read_elem(struct kndStorageLeaf *leaf, const char *id, size_t id_size,
-                               elem_unmarshall_cb cb, void *ctx, void **result, struct kndTask *task)
+int knd_shared_set_leaf_read_elem(struct kndStorageLeaf *leaf, struct kndSharedSetDir *dir,
+                                  const char *id, size_t id_size,
+                                  knd_set_elem_unmarshall_cb_t cb, void *ctx, void **result,
+                                  struct kndTask *task)
 {
     knd_task_type orig_task_type = task->type;
     int err;
-    assert (leaf->dir != NULL);
 
     if (DEBUG_SHARED_SET_READ_LEVEL_2) {
         knd_log(".. unmarshall {elem %.*s} from {file %.*s}",
                 id_size, id, leaf->filepath_size, leaf->filepath);
     }
-    err = read_elem(leaf, leaf->dir, id, id_size, cb, ctx, result, task);
+
+    err = read_elem(leaf, dir, id, id_size, cb, ctx, result, task);
     if (err) {
         KND_TASK_LOG("failed to read GSP {elem %.*s}", id_size, id);
     }
+
     task->type = orig_task_type;
     return err;
 }

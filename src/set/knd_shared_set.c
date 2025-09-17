@@ -2,11 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "knd_class.h"
-#include "knd_utils.h"
-#include "knd_repo.h"
-#include "knd_mempool.h"
 #include "knd_shared_set.h"
+#include "knd_utils.h"
+#include "knd_mempool.h"
 #include "knd_task.h"
 
 #include <gsl-parser.h>
@@ -300,6 +298,7 @@ int knd_shared_set_dir_new(struct kndSharedSetDir **result, struct kndMemPool *m
     struct kndSharedSetDir *dir;
     void *page;
     int err;
+
     assert(mempool->small_page_size >= sizeof(struct kndSharedSetDir));
     err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
     if (err) return err;
@@ -313,21 +312,5 @@ int knd_shared_set_dir_new(struct kndSharedSetDir **result, struct kndMemPool *m
     dir->idx = page;
 
     *result = dir;
-    return knd_OK;
-}
-
-int knd_storage_leaf_new(struct kndStorageLeaf **result, size_t numid, struct kndSharedSet *idx)
-{
-    struct kndStorageLeaf *leaf;
-    leaf = calloc(1, sizeof(struct kndStorageLeaf));
-    if (!leaf) return knd_NOMEM;
-
-    leaf->numid = numid;
-    leaf->parent = idx;
-
-    leaf->min_leaf_size = KND_SNAPSHOT_LEAF_MIN_THRESHOLD;
-    leaf->max_leaf_size = KND_SNAPSHOT_LEAF_MAX_THRESHOLD;
-
-    *result = leaf;
     return knd_OK;
 }

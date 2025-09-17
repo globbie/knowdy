@@ -21,9 +21,12 @@
 
 #include "knd_config.h"
 #include "knd_set.h"
+#include "knd_attr.h"
+#include "knd_storage.h"
 
 struct kndMemPool;
 struct kndTask;
+struct kndAttr;
 
 typedef enum knd_facet_type {
     KND_FACET_LEN,
@@ -39,8 +42,10 @@ static const char* const knd_facet_type_names[] = {
     "cls"
 };
 
-typedef int (*knd_facet_key_get_cb)(void *elem, void **key, struct kndTask *task);
-typedef void (*knd_facet_key_str_cb)(void *curr_val, size_t depth);
+typedef int (*knd_facet_key_get_cb)(void *elem, void **result_key, struct kndTask *task);
+typedef int (*knd_facet_key_encode_cb)(void *key, void *ctx, struct kndTask *task);
+
+typedef void (*knd_facet_key_str_cb)(void *key, size_t depth);
 typedef int (*knd_facet_hash_cb)(void *parent_val, void *curr_val, void *term_val,
                                  void **result, size_t *numval, struct kndTask *task);
 
@@ -52,19 +57,19 @@ struct kndFacetHashSpec {
     size_t name_size;
 
     knd_facet_key_get_cb key_get_cb;
+    knd_facet_key_encode_cb key_encode_cb;
     knd_facet_key_str_cb key_str_cb;
     knd_facet_hash_cb hash_cb;
 
     struct kndFacetHashSpec *next;
 };
 
-struct kndFacetLinearBlock
+struct kndFacetDir
 {
     char id[KND_ID_SIZE];
     size_t id_size;
 
-    //struct kndStorageLeaf *leaf;
-    //struct kndSharedSetDirIdx *idx;
+    struct kndFacetDirIdx *idx;
 
     size_t num_term_elems;
     size_t payload_block_size;
@@ -86,6 +91,7 @@ struct kndFacetLinearBlock
 
 struct kndFacet
 {
+    size_t numid;
     void *key;
 
     /* providing hashing keys for subfacets */
@@ -107,46 +113,13 @@ struct kndFacet
     size_t num_children;
 };
 
-struct kndFacetLeaf
-{
-    size_t numid;
-    size_t min_leaf_size;
-    size_t max_leaf_size;
-
-    struct kndFacet *parent;
-    //struct kndSharedSetDir *dir;
-
-    size_t num_elems;
-
-    char range_from_id[KND_ID_SIZE];
-    size_t range_from_id_size;
-    size_t range_from;
-
-    char range_to_id[KND_ID_SIZE];
-    size_t range_to_id_size;
-    size_t range_to;
-
-    char name[KND_SHORT_NAME_SIZE + 1];
-    size_t name_size;
-
-    char filepath[KND_PATH_SIZE + 1];
-    size_t filepath_size;
-    size_t file_size;
-
-    char file_hash[KND_HASH_SIZE];
-    size_t file_hash_size;
-
-    struct kndFacetLeaf *next;
-    struct kndFacetLeaf *tail;
-    size_t num_leaves;
-};
-
 int knd_facet_new(struct kndFacet **result, void *val,
                   struct kndFacetHashSpec *hash_specs, size_t num_hash_specs,
                   knd_facet_elem_id_cb elem_id_cb, struct kndMemPool *mempool);
 
 int knd_facet_hash_spec_new(struct kndFacetHashSpec **result, knd_facet_type facet_type,
                             knd_facet_key_get_cb key_get_cb,
+                            knd_facet_key_encode_cb key_encode_cb,
                             knd_facet_key_str_cb key_str_cb,
                             knd_facet_hash_cb hash_cb,
                             struct kndMemPool *mempool);
@@ -161,3 +134,11 @@ int knd_facet_map(struct kndFacet *facet, void *key,
                   map_cb_t map_cb, void *map_ctx, struct kndTask *task);
 
 void knd_facet_str(struct kndFacet *facet, map_cb_t map_cb, size_t depth);
+
+int knd_facet_acquire(struct kndAttr *attr, struct kndFacet **result, struct kndTask *task);
+
+int knd_facet_leaf_marshall(struct kndFacet *facet, knd_attr_type attr_type,
+                            struct kndStorageLeaf *leaf, struct kndSetRange *range,
+                            size_t *output_size, struct kndTask *task);
+
+int knd_facet_read(struct kndFacet *facet, knd_attr_type attr_type, struct kndTask *task);

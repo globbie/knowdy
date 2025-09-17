@@ -55,8 +55,8 @@ int knd_charseq_decode(const char *id, size_t id_size,
     err = knd_shared_set_find_leaf(str_idx, id, id_size, &leaf, task);
     KND_TASK_ERR("no storage leaf found for unmarshalling {seq %.*s}", id_size, id);
 
-    err = knd_storage_leaf_read_elem(leaf, id, id_size, knd_string_unmarshall,
-                                     NULL, (void**)&seq, task);
+    err = knd_shared_set_leaf_read_elem(leaf, str_idx->dir, id, id_size, knd_string_unmarshall,
+                                        NULL, (void**)&seq, task);
     KND_TASK_ERR("failed to unmarshall {seq %.*s}", id_size, id);
 
     *result = seq;
@@ -76,6 +76,7 @@ int knd_charseq_fetch(struct kndRepo *repo, const char *val, size_t val_size,
         knd_log(".. {repo %.*s} fetching {seq %.*s}",
                 repo->name_size, repo->name, val_size, val);
     }
+
     seq = knd_shared_dict_get(task->idxs->str_dict, val, val_size);
     if (seq) {
         if (DEBUG_TEXT_DECODE_LEVEL_3) {
@@ -93,10 +94,10 @@ int knd_charseq_fetch(struct kndRepo *repo, const char *val, size_t val_size,
     knd_uid_create(seq->numid, seq->id, &seq->id_size);
  
     err = knd_shared_dict_set(task->idxs->str_dict, val, val_size, (void*)seq);
-    KND_TASK_ERR("failed to register a charseq");
+    KND_TASK_ERR("failed to register a charseq {err %d}", err);
 
     err = knd_shared_set_add(task->idxs->str_idx, seq->id, seq->id_size, (void*)seq);
-    KND_TASK_ERR("failed to register a charseq by numid");
+    KND_TASK_ERR("failed to register a charseq by numid {err %d}", err);
 
     if (DEBUG_TEXT_DECODE_LEVEL_3) {
         knd_log(">> {seq %.*s {id %.*s}} registered", val_size, val, seq->id_size, seq->id);

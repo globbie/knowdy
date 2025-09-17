@@ -226,10 +226,14 @@ static const char *const knd_format_names[] = {
 /* default values, overriden by config  */
 #define KND_MAX_SNAPSHOTS 32
 #define KND_SNAPSHOT_LEAF_MAX_THRESHOLD 1024 * 1024 * 100
-#define KND_SNAPSHOT_LEAF_MIN_THRESHOLD 1024
-#define KND_SNAPSHOT_MEM_THRESHOLD_RATIO 0.8
+#define KND_SNAPSHOT_LEAF_MIN_THRESHOLD 1024 * 1024 * 10
+#define KND_SNAPSHOT_MEM_THRESHOLD_RATIO 0.4
 
-#define KND_MAX_FACETS 64
+/* alphanumeric symbols used in radix base representation: 0-9, A-Z, a-z */
+#define KND_RADIX_BASE 62
+#define KND_MAX_FACETS KND_RADIX_BASE
+static_assert(KND_MAX_FACETS <= KND_RADIX_BASE, "Max facets must not exceed the radix base");
+
 #define KND_FACET_MAX_ELEM_CACHE 3
 
 #define KND_QUERY_MIN_OPERS 64
@@ -242,6 +246,7 @@ static const char *const knd_format_names[] = {
 
 #define KND_ID_SIZE  (8 * sizeof(char))
 #define KND_ID_BATCH_SIZE 10
+#define KND_GUID_SIZE  (64 * sizeof(char))
 #define KND_LOCALE_SIZE 8
 
 #define KND_MAX_MIGRATIONS 256
@@ -319,9 +324,6 @@ static const char *const knd_format_names[] = {
 
 #define KND_SIZE_OF_OFFSET sizeof(size_t)
 
-/* alphanumeric symbols:
-   0-9, A-Z, a-z */
-#define KND_RADIX_BASE 62
 
 #define KND_UINT_MAX_SEQ_SIZE 64
 #define KND_UINT_DEC_SEQ_SIZE 128
@@ -348,6 +350,7 @@ static const char *const knd_format_names[] = {
 
 #define KND_OBJ_STORAGE_SIZE 100
 #define KND_TRN_STORAGE_SIZE 10000
+#define KND_MAX_STORAGE_LEAVES 64
 
 #define KND_UPDATE_OPER_STORAGE_SIZE 8
 

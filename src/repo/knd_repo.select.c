@@ -137,7 +137,6 @@ gsl_err_t knd_parse_repo_select(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
     gsl_err_t parser_err;
-    int err;
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,

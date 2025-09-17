@@ -124,7 +124,7 @@ static int register_desc(struct kndClass *base, struct kndClass *sub, struct knd
         if (c->state_top) continue;
 
         err = index_ancestor(sub, c, task);
-        KND_TASK_ERR("failed to index ancestor {class %.*s} of {class %.*s}",
+        KND_TASK_ERR("failed to index ancestor {cls %.*s} of {cls %.*s}",
                      c->name_size, c->name, base->name_size, base->name);
     }
 
@@ -149,8 +149,8 @@ static int register_desc(struct kndClass *base, struct kndClass *sub, struct knd
     }
 
     err = knd_set_add(desc_idx, entry->id, entry->id_size, (void*)entry);
-    KND_TASK_ERR("failed to register a descendant {class %.*s}"
-                 " within an ancestor {class %.*s}  {err %d}",
+    KND_TASK_ERR("failed to register a descendant {cls %.*s}"
+                 " within an ancestor {cls %.*s}  {err %d}",
                  entry->name_size, entry->name, base->name_size, base->name, err);
     base->num_descendants++;
 
@@ -170,43 +170,6 @@ int knd_class_update_indices(struct kndRepo *repo, struct kndClassEntry *self,
     return knd_OK;
 }
 
-int knd_class_index(struct kndClass *cls, struct kndTask *task)
-{
-    struct kndClassBasePred *bp;
-    struct kndClass *c;
-    struct kndAttrStm *stm;
-    int err;
-
-    if (DEBUG_CLASS_INDEX_LEVEL_2) {
-        knd_log(".. indexing {cls %.*s {id %.*s}}",
-                cls->entry->name_size, cls->entry->name,
-                cls->entry->id_size, cls->entry->id);
-    }
-
-    FOREACH (bp, cls->base_preds) {
-        err = knd_class_acquire(bp->entry, &c, task);
-        KND_TASK_ERR("failed to acquire {cls %.*s}",
-                     bp->entry->name_size, bp->entry->name);
-
-        err = register_desc(c, cls, task);
-        KND_TASK_ERR("failed to register a subclass {cls %.*s} in base {cls %.*s}",
-                     cls->name_size, cls->name, bp->entry->name_size, bp->entry->name);
-
-        FOREACH (stm, bp->attr_stms) {
-            if (stm->attr->is_a_set) {
-                err = knd_index_attr_stm_list(cls->entry, stm->attr, stm, task);
-                KND_TASK_ERR("failed to index {attr-stm-list %.*s}",
-                             stm->attr->name_size, stm->attr->name);
-            } else {
-                err = knd_index_attr_stm(cls->entry, stm->attr, stm, task);
-                KND_TASK_ERR("failed to index {attr-stm %.*s}",
-                             stm->attr->name_size, stm->attr->name);
-            }
-        }
-    }
-    cls->phase = KND_CLASS_INDEXED;
-    return knd_OK;
-}
 
 static int find_direct_child(struct kndClassEntry *base,
                              struct kndClassEntry *curr_entry,
@@ -291,7 +254,7 @@ int knd_facet_cls_hash(void *parent_key, void *curr_key, void *term_key,
     case knd_NO_MATCH:
         return knd_NO_MATCH;
     default:
-        KND_TASK_ERR("failed to find a subclass from {cls %.*s} to {cls %.*s}",
+        KND_TASK_ERR("failed to find a subclass between {cls %.*s} and {cls %.*s}",
                      parent_entry->name_size, parent_entry->name,
                      term_entry->name_size, term_entry->name);
     }
@@ -304,4 +267,43 @@ void knd_facet_cls_key_str(void *key, size_t depth)
 
     knd_log("%*s{cls %.*s}",  depth * KND_OFFSET_SIZE, "",
             entry->name_size, entry->name);
+    
+}
+
+int knd_class_index(struct kndClass *cls, struct kndTask *task)
+{
+    struct kndClassBasePred *bp;
+    struct kndClass *c;
+    struct kndAttrStm *stm;
+    int err;
+
+    if (DEBUG_CLASS_INDEX_LEVEL_2) {
+        knd_log(".. indexing {cls %.*s {id %.*s}}",
+                cls->entry->name_size, cls->entry->name,
+                cls->entry->id_size, cls->entry->id);
+    }
+
+    FOREACH (bp, cls->base_preds) {
+        err = knd_class_acquire(bp->entry, &c, task);
+        KND_TASK_ERR("failed to acquire {cls %.*s}",
+                     bp->entry->name_size, bp->entry->name);
+
+        err = register_desc(c, cls, task);
+        KND_TASK_ERR("failed to register a subclass {cls %.*s} in base {cls %.*s}",
+                     cls->name_size, cls->name, bp->entry->name_size, bp->entry->name);
+
+        FOREACH (stm, bp->attr_stms) {
+            if (stm->attr->is_a_set) {
+                err = knd_index_attr_stm_list(cls->entry, stm->attr, stm, task);
+                KND_TASK_ERR("failed to index {attr-stm-list %.*s}",
+                             stm->attr->name_size, stm->attr->name);
+            } else {
+                err = knd_index_attr_stm(cls->entry, stm->attr, stm, task);
+                KND_TASK_ERR("failed to index {attr-stm %.*s}",
+                             stm->attr->name_size, stm->attr->name);
+            }
+        }
+    }
+    cls->phase = KND_CLASS_INDEXED;
+    return knd_OK;
 }

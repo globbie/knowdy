@@ -36,7 +36,6 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     struct kndProcInstEntry *entry;
     struct kndSharedDict *name_idx = ctx->task->idxs->proc_inst_name_idx;
     struct kndOutput *log = ctx->task->log;
-    struct kndTask *task = ctx->task;
     int err;
 
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);

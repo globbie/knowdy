@@ -243,15 +243,14 @@ static gsl_err_t parse_class_entry_array_item(void *obj, const char *rec, size_t
 
     err = knd_repo_snapshot_fetch_memblock(snapshot, entry->name_size, &memblock, task);
     if (err) {
-        KND_TASK_LOG("failed to fetch a memblock to save entry name %.*s",
+        KND_TASK_LOG("failed to fetch a memblock to save {cls-entry-name %.*s}",
                      entry->name_size, entry->name);
         return make_gsl_err_external(err);
     }
 
     err = knd_memblock_write(memblock, entry->name, entry->name_size, &b);
     if (err) {
-        KND_TASK_LOG("failed to to save entry name %.*s",
-                     entry->name_size, entry->name);
+        KND_TASK_LOG("failed to save {cls-entry-name %.*s}", entry->name_size, entry->name);
         return make_gsl_err_external(err);
     }
 
@@ -263,19 +262,18 @@ static gsl_err_t parse_class_entry_array_item(void *obj, const char *rec, size_t
     }
 
     if (DEBUG_CLASS_READ_LEVEL_3) {
-        knd_log(".. register class entry %.*s", entry->name_size, entry->name);
+        knd_log(".. register {cls-entry %.*s}", entry->name_size, entry->name);
     }
 
     err = knd_shared_dict_set(class_name_idx, entry->name, entry->name_size, (void*)entry);
     if (err) {
-        KND_TASK_LOG("entry %.*s already registered?", entry->name_size, entry->name);
+        KND_TASK_LOG("{cls-entry %.*s} already registered?", entry->name_size, entry->name);
         return make_gsl_err_external(err);
     }
 
     err = knd_shared_set_add(class_idx, entry->id, entry->id_size, (void*)entry);
     if (err) {
-        KND_TASK_LOG("{class-entry %.*s already registered}?",
-                     entry->id_size, entry->id);
+        KND_TASK_LOG("{cls-entry %.*s} already registered?", entry->id_size, entry->id);
         return make_gsl_err_external(err);
     }
     return make_gsl_err(gsl_OK);
@@ -403,14 +401,14 @@ static gsl_err_t set_descendant_ref(void *obj, const char *id, size_t id_size)
 
     err = knd_shared_set_get(task->idxs->class_idx, id, id_size, (void**)&entry);
     if (err) {
-        KND_TASK_LOG("{class %.*s} not found in {repo %.*s}",
+        KND_TASK_LOG("{cls %.*s} not found in {repo %.*s}",
                      id_size, id, repo->name_size, repo->name);
         return make_gsl_err(gsl_FAIL);
     }
 
     err = knd_set_add(c->descendants, entry->id, entry->id_size, (void*)entry);    
     if (err) {
-        KND_TASK_LOG("failed to add descendant ref {class %.*s}",
+        KND_TASK_LOG("failed to add descendant ref {cls %.*s}",
                      entry->id_size, entry->id);
         return make_gsl_err(gsl_FAIL);
     }
@@ -562,7 +560,7 @@ static gsl_err_t read_attr(void *obj, const char *name, size_t name_size,
     }
 
     if (DEBUG_CLASS_READ_LEVEL_2) {
-        knd_log("++ assigned {class %.*s {attr %.*s {id %.*s}}}",
+        knd_log("++ assigned {cls %.*s {attr %.*s {id %.*s}}}",
                 self->name_size, self->name,
                 attr->name_size, attr->name, attr->id_size, attr->id);
     }
@@ -688,7 +686,7 @@ int knd_class_unmarshall(const char *unused_var(elem_id), size_t unused_var(elem
     int err;
 
     if (DEBUG_CLASS_READ_LEVEL_2) {
-        knd_log(".. unmarshall {class %.*s} {task {type %d}}",
+        knd_log(".. unmarshall {cls %.*s} {task {type %d}}",
                 entry->name_size, entry->name, task->type);
     }
 
@@ -698,13 +696,13 @@ int knd_class_unmarshall(const char *unused_var(elem_id), size_t unused_var(elem
     }
 
     err = knd_class_new(&c, mempool);
-    KND_TASK_ERR("failed to alloc a class to unmarshall");
+    KND_TASK_ERR("failed to alloc a cls to unmarshall");
     c->entry = entry;
     c->name = entry->name;
     c->name_size = entry->name_size;
 
     err = knd_class_read(c, rec, &total_size, task);
-    KND_TASK_ERR("failed to read GSP of %.*s", c->name_size, c->name);
+    KND_TASK_ERR("failed to read GSP of {cls %.*s}", c->name_size, c->name);
 
     switch (task->type) {
     case KND_TASK_READ_SNAPSHOT:
@@ -713,8 +711,8 @@ int knd_class_unmarshall(const char *unused_var(elem_id), size_t unused_var(elem
         entry->cached_version = c;
         break;
     default:
-        // TODO update task local cache?
 
+        // TODO update task local cache?
 
         break;
     }
@@ -723,8 +721,9 @@ int knd_class_unmarshall(const char *unused_var(elem_id), size_t unused_var(elem
     return knd_OK;
 }
 
-int knd_class_names_unmarshall(const char *unused_var(elem_id), size_t unused_var(elem_id_size),
-                               const char *rec, size_t rec_size, struct kndTask *task)
+int knd_class_name_unmarshall(const char *unused_var(elem_id), size_t unused_var(elem_id_size),
+                              const char *rec, size_t rec_size,
+                              void *unused_var(ctx), void **unused_var(result), struct kndTask *task)
 {
     size_t total_size = rec_size;
 

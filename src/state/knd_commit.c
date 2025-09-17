@@ -21,15 +21,15 @@
 #define DEBUG_COMMIT_LEVEL_3 0
 #define DEBUG_COMMIT_LEVEL_TMP 1
 
-gsl_err_t knd_commit_run(void *obj, const char *rec, size_t *total_size)
+gsl_err_t knd_commit_run(void *obj, const char *unused_var(rec), size_t *unused_var(total_size))
 {
     struct kndTask *task = obj;
-    struct kndCommit *commit;
-    gsl_err_t parser_err;
-    int err;
+    //struct kndCommit *commit;
+    //gsl_err_t parser_err;
+    // int err;
 
     task->type = KND_TASK_QUERY;
-    task->ctx->commit = commit;
+    //task->ctx->commit = commit;
 
     /*    struct gslTaskSpec specs[] = {
         { .name = "locale",

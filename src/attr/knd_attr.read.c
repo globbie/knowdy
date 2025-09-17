@@ -425,13 +425,14 @@ static gsl_err_t parse_attr_name_array(void *obj, const char *rec, size_t *total
     return gsl_parse_array(&spec, rec, total_size);
 }
 
-int knd_attr_names_unmarshall(const char *unused_var(elem_id), size_t unused_var(elem_id_size),
-                               const char *rec, size_t rec_size, struct kndTask *task)
+int knd_attr_name_unmarshall(const char *unused_var(elem_id), size_t unused_var(elem_id_size),
+                             const char *rec, size_t rec_size,
+                             void *unused_var(ctx), void **unused_var(result), struct kndTask *task)
 {
     size_t total_size = rec_size;
 
     if (DEBUG_ATTR_READ_LEVEL_2) {
-        knd_log(">> attr names block: %.*s", rec_size, rec);
+        knd_log(">> attr name block: %.*s", rec_size, rec);
     }
 
     struct gslTaskSpec specs[] = {
