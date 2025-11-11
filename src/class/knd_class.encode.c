@@ -55,6 +55,7 @@ struct LocalContext {
     struct kndClassBasePred *class_var;
 };
 
+#if 0
 int knd_class_inst_idx_fetch(struct kndClass *self, struct kndSharedDict **result,
                              struct kndTask *task)
 {
@@ -81,39 +82,14 @@ int knd_class_inst_idx_fetch(struct kndClass *self, struct kndSharedDict **resul
         return knd_NO_MATCH;
     }
 
-    if (DEBUG_CLASS_ENCODE_LEVEL_2)
-        knd_log(".. reading class inst storage: %.*s [%zu]",
+    if (DEBUG_CLASS_ENCODE_LEVEL_2) {
+        knd_log(".. reading cls inst storage: %.*s [%zu]",
                 out->buf_size, out->buf, (size_t)st.st_size);
-
-    do {
-        name_idx = atomic_load_explicit(&self->inst_name_idx, memory_order_acquire);
-        if (name_idx) {
-            // TODO free new_name_idx if (new_name_idx != NULL) 
-            *result = name_idx;
-            break;
-        }
-        err = knd_shared_dict_new(&new_name_idx, KND_MEDIUM_DICT_SIZE, task->mempool, false);
-        KND_TASK_ERR("failed to create inst name idx");
-        *result = new_name_idx;
-    } while (!atomic_compare_exchange_weak(&self->inst_name_idx, &name_idx, new_name_idx));
-
-    do {
-        idx = atomic_load_explicit(&self->inst_idx, memory_order_acquire);
-        if (idx) {
-            // TODO free new_idx if (new_idx != NULL) 
-            break;
-        }
-        err = knd_shared_set_new(&new_idx, task->mempool);
-        KND_TASK_ERR("failed to create inst idx");
-
-    } while (!atomic_compare_exchange_weak(&self->inst_idx, &idx, new_idx));
-
-    task->payload = self->entry;
-
-    //err = knd_shared_set_unmarshall_leaf(self->inst_idx, leaf, knd_class_inst_entry_unmarshall, task);
-    //KND_TASK_ERR("failed to unmarshall class inst storage GSP file");
+    }
+    // TODO
     return knd_OK;
 }
+#endif
 
 static int export_glosses(struct kndClass *self, struct kndOutput *out)
 {
@@ -276,6 +252,7 @@ static int export_class_body_commits(struct kndClass *self,
     return knd_OK;
 }
 
+#if 0
 static int export_class_inst_commits(struct kndClass *unused_var(self), struct kndClassCommit *class_commit,
                                      struct kndTask *task)
 {
@@ -300,6 +277,7 @@ static int export_class_inst_commits(struct kndClass *unused_var(self), struct k
 
     return knd_OK;
 }
+#endif
 
 int knd_class_export_commits_GSP(struct kndClass *self, struct kndClassCommit *class_commit, struct kndTask *task)
 {
@@ -325,13 +303,12 @@ int knd_class_export_commits_GSP(struct kndClass *self, struct kndClassCommit *c
         /* any commits of the class body? */
         err = export_class_body_commits(self, class_commit, task);                 RET_ERR();
     }
-    if (self->inst_states) {
+    /*    if (self->inst_states) {
         state = self->inst_states;
-        /* any commits of the class insts? */
         if (state->commit == commit) {
             err = export_class_inst_commits(self, class_commit, task);             RET_ERR();
         }
-    }
+        }*/
 
     err = out->writec(out, '}');                                                  RET_ERR();
     err = out->writec(out, '}');                                                  RET_ERR();
@@ -341,6 +318,8 @@ int knd_class_export_commits_GSP(struct kndClass *self, struct kndClassCommit *c
 int knd_class_export_GSP(struct kndClass *self, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
+    char idbuf[KND_ID_SIZE];
+    size_t idbuf_size = 0;
     struct kndAttr *attr;
     struct kndClassEntry *entry = self->entry;
     int err;
@@ -348,18 +327,20 @@ int knd_class_export_GSP(struct kndClass *self, struct kndTask *task)
     assert(entry->seq != NULL);
 
     out->reset(out);
+    knd_uid_create(entry->seq->numid, idbuf, &idbuf_size);
+    OUT(idbuf, idbuf_size);
 
     if (DEBUG_CLASS_ENCODE_LEVEL_2) {
-        knd_log(".. GSP export of {cls %.*s {id %.*s}}",
-                entry->name_size, entry->name, entry->id_size, entry->id);
+        knd_log(".. GSP export of {cls %.*s {id %.*s} {seq %.*s}}",
+                entry->name_size, entry->name, entry->id_size, entry->id,
+                idbuf_size, idbuf);
     }
-    //knd_uid_create(entry->seq->numid, idbuf, &idbuf_size);
-    //OUT(idbuf, idbuf_size);
 
     if (self->tr) {
         err = export_glosses(self, out);
         KND_TASK_ERR("failed to export glosses");
     }
+
     if (self->base_preds) {
         err = export_base_preds(self, task, out);
         KND_TASK_ERR("failed to export baseclass vars");
@@ -392,6 +373,7 @@ int knd_class_export_GSP(struct kndClass *self, struct kndTask *task)
     if (self->inst_idx) {
         OUTF("{insts %zu}", self->inst_idx->num_elems);
     }
+
     return knd_OK;
 }
 
@@ -401,7 +383,6 @@ int knd_class_name_marshall(void *elem, void *unused_var(ctx),
 {
     struct kndClassEntry *entry = elem;
     struct kndOutput *out = task->out;
-    // size_t num_requests; // used for caching
     int err;
 
     out->reset(out);
@@ -410,7 +391,7 @@ int knd_class_name_marshall(void *elem, void *unused_var(ctx),
     OUT(entry->id, entry->id_size);
     OUT("}", strlen("}"));
 
-    if (DEBUG_CLASS_ENCODE_LEVEL_3) {
+    if (DEBUG_CLASS_ENCODE_LEVEL_2) {
         knd_log("== {cls %.*s {id %.*s}} {GSP {size %zu}}", 
                 entry->name_size,  entry->name, 
                 entry->id_size, entry->id, out->buf_size);
@@ -418,8 +399,8 @@ int knd_class_name_marshall(void *elem, void *unused_var(ctx),
 
     switch (task->mode) {
     case KND_TASK_TRACE_MODE:
-        knd_log(".. write {cls %.*s} to {filepath %.*s}", entry->name_size, entry->name,
-                leaf->filepath_size, leaf->filepath);
+        //knd_log(".. write {cls %.*s} to {filepath %.*s}", entry->name_size, entry->name,
+        //        leaf->filepath_size, leaf->filepath);
         break;
     default:
         err = knd_append_file((const char*)leaf->filepath, out->buf, out->buf_size);
@@ -432,8 +413,7 @@ int knd_class_name_marshall(void *elem, void *unused_var(ctx),
 }
 
 int knd_class_marshall(void *elem, void *unused_var(ctx),
-                       struct kndStorageLeaf *leaf,
-                       size_t *output_size, struct kndTask *task)
+                       struct kndStorageLeaf *leaf, size_t *output_size, struct kndTask *task)
 {
     struct kndClassEntry *entry = elem;
     struct kndClass *c;
@@ -447,13 +427,15 @@ int knd_class_marshall(void *elem, void *unused_var(ctx),
     KND_TASK_ERR("failed to export GSP of {cls %.*s}", c->name_size, c->name);
 
     if (out->buf_size > leaf->max_size - leaf->curr_size) {
-        return knd_LIMIT;
+        err = knd_LIMIT;
+        KND_TASK_ERR("leaf output limit reached {leaf {max-size %zu} {curr-size %zu}}",
+                     leaf->max_size, leaf->curr_size);
     }
 
     switch (task->mode) {
     case KND_TASK_TRACE_MODE:
-        knd_log(".. write cls GSP to {filepath %.*s}",
-                leaf->filepath_size, leaf->filepath);
+        //knd_log(".. write cls GSP to {filepath %.*s}",
+        //        leaf->filepath_size, leaf->filepath);
         break;
     default:
         err = knd_append_file((const char*)leaf->filepath, out->buf, out->buf_size);
@@ -471,8 +453,7 @@ int knd_cls_facet_key_encode(void *key, void *unused_var(ctx), struct kndTask *t
     struct kndOutput *out = task->out;
 
     if (DEBUG_CLASS_ENCODE_LEVEL_TMP) {
-        knd_log(".. building GSP of facet key {cls %.*s}",
-                entry->name_size, entry->name);
+        knd_log(".. building GSP of facet key {cls %.*s}", entry->name_size, entry->name);
     }
 
     OUT(entry->id, entry->id_size);

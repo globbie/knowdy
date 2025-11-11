@@ -40,8 +40,8 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     struct kndClassEntry *class_entry;
     struct kndClassInstEntry *entry;
     struct kndTask *task = ctx->task;
-    struct kndSharedDict *class_name_idx = task->idxs->class_name_idx;
-    struct kndSharedDict *name_idx;
+    struct kndDict *class_name_idx = task->idxs.cls_name_idx;
+    struct kndDict *name_idx;
     struct kndClass *c, *inner_c;
     int err;
 
@@ -68,15 +68,15 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
 
     /* inner obj? */
     if (self->type == KND_OBJ_INNER) {
-        class_entry = knd_shared_dict_get(class_name_idx, name, name_size);
+        class_entry = knd_dict_get(class_name_idx, name, name_size);
         if (!class_entry) {
-            KND_TASK_LOG("inner obj: no such class: %.*s", name_size, name);
+            KND_TASK_LOG("inner obj: no such {cls %.*s}", name_size, name);
             return make_gsl_err(gsl_FAIL);
         }
 
         err = knd_class_acquire(class_entry, &inner_c, task);
         if (err) {
-            KND_TASK_LOG("failed to acquire class %.*s", class_entry->name_size, class_entry->name);
+            KND_TASK_LOG("failed to acquire {cls %.*s}", class_entry->name_size, class_entry->name);
             return make_gsl_err_external(err);
         }
 
@@ -91,7 +91,7 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     }
 
     if (name_idx) {
-        entry = knd_shared_dict_get(name_idx, name, name_size);
+        entry = knd_dict_get(name_idx, name, name_size);
         if (entry) {
             /*if (entry->inst && entry->inst->states->phase == KND_REMOVED) {
               knd_log("-- this class instance has been removed lately: %.*s",
@@ -242,7 +242,7 @@ static int generate_uniq_inst_name(struct kndClassInst *inst, struct kndTask *ta
 
 static int register_by_name(struct kndClassInstEntry *entry, struct kndTask *task)
 {
-    struct kndSharedDict *name_idx;
+    struct kndDict *name_idx;
     struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndClass *c;
     int err;
@@ -252,15 +252,14 @@ static int register_by_name(struct kndClassInstEntry *entry, struct kndTask *tas
 
     name_idx = c->inst_name_idx;
     if (!name_idx) {
-        err = knd_shared_dict_new(&name_idx, KND_MEDIUM_DICT_SIZE, mempool, false);
+        err = knd_dict_new(&name_idx, KND_MEDIUM_DICT_SIZE, mempool);
         KND_TASK_ERR("failed to create inst name idx");
 
         c->inst_name_idx = name_idx;
     }
 
-    err = knd_shared_dict_set(name_idx, entry->name, entry->name_size, (void*)entry);
-    KND_TASK_ERR("name idx failed to register class inst %.*s",
-                 entry->name_size, entry->name);
+    err = knd_dict_set(name_idx, entry->name, entry->name_size, (void*)entry);
+    KND_TASK_ERR("name idx failed to register {cls-inst %.*s}", entry->name_size, entry->name);
 
     return knd_OK;
 }
@@ -280,8 +279,7 @@ int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *
     gsl_err_t parser_err;
 
     if (DEBUG_INST_IMPORT_LEVEL_2) {
-        knd_log(".. {repo %.*s {cls %.*s}} to import {inst %.*s} {task-type %d}",
-                entry->repo->name_size, entry->repo->name,
+        knd_log("{cls %.*s} to import {inst %.*s} {task-type %d}",
                 entry->name_size, entry->name,  64, rec, task->type);
     }
 

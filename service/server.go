@@ -17,7 +17,7 @@ import (
 type Config struct {
 	ListenAddress     string        `json:"listen-address"`
 	ParentAddress     string        `json:"parent-address,required"`
-	KndConfigPath     string        `json:"shard-config"`
+	KndConfigPath     string        `json:"steward-config"`
 	RequestsMax       int           `json:"requests-max"`
 	SlotAwaitDuration time.Duration `json:"slot-await-duration"`
 }
@@ -38,8 +38,8 @@ func init() {
 		duration      time.Duration
 	)
 
-	flag.StringVar(&configPath, "config-path", "/etc/knowdy/service.json", "path to http service config")
-	flag.StringVar(&kndConfigPath, "shard-config", "/etc/knowdy/shard.gsl", "path to Knowdy config")
+	flag.StringVar(&configPath, "config-path", "/etc/knowdy/service.json", "path to web service config")
+	flag.StringVar(&kndConfigPath, "steward-config", "/etc/knowdy/config.gsl", "path to Knowdy config")
 	flag.StringVar(&listenAddress, "listen-address", "", "Knowdy listen address")
 	flag.StringVar(&parentAddress, "parent-address", "", "parent service address")
 	flag.IntVar(&requestsMax, "requests-limit", 10, "maximum number of requests to process simultaneously")
@@ -69,12 +69,12 @@ func init() {
 		}
 	}
 
-	{ // load shard config
-		shardConfigBytes, err := ioutil.ReadFile(cfg.KndConfigPath)
+	{ // load steward config
+		stewardConfigBytes, err := ioutil.ReadFile(cfg.KndConfigPath)
 		if err != nil {
-			log.Fatalln("could not read shard config, error:", err)
+			log.Fatalln("could not read config, error:", err)
 		}
-		KndConfig = string(shardConfigBytes)
+		KndConfig = string(stewardConfigBytes)
 	}
 
 	if duration != 0 {
@@ -95,7 +95,7 @@ func main() {
 	router := http.NewServeMux()
 	router.Handle("/query", limiter(queryHandler(proc),
 		cfg.RequestsMax, cfg.SlotAwaitDuration))
-	router.Handle("/command", limiter(commandHandler(proc),
+	router.Handle("/cmd", limiter(commandHandler(proc),
 		cfg.RequestsMax, cfg.SlotAwaitDuration))
 	// router.Handle("/metrics", metricsHandler)
 
@@ -125,7 +125,7 @@ func main() {
 		close(done)
 	}()
 
-	log.Printf("Knowdy \"%s\" service (role:%s) is ready to handle requests at %s",
+	log.Printf("Knowdy \"%s\" service (%s role) is ready to handle requests at %s",
 		proc.Name, proc.Role, cfg.ListenAddress)
 
 	err = server.ListenAndServe()
@@ -166,19 +166,20 @@ func queryHandler(proc *kndProc) http.Handler {
 			return
 		}
 		defer r.Body.Close()
-		body, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			http.Error(w, "internal server error", http.StatusInternalServerError)
-			return
-		}
+		//body, err := ioutil.ReadAll(r.Body)
+		//if err != nil {
+		//	http.Error(w, "internal server error", http.StatusInternalServerError)
+		//	return
+		//}
 
-		result, _, err := proc.QueryTask(string(body), len(body))
-		if err != nil {
-			log.Println(err.Error())
+		result := ""
+		//result, _, err := proc.QueryTask(string(body), len(body))
+		//if err != nil {
+		//	log.Println(err.Error())
 			// TODO HTTP error mapping
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+		//	http.Error(w, err.Error(), http.StatusInternalServerError)
+		//	return
+		//}
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = io.WriteString(w, result)
 	})
@@ -197,7 +198,7 @@ func commandHandler(proc *kndProc) http.Handler {
 			return
 		}
 
-		result, _, err := proc.CommandTask(string(body), len(body))
+		result, err := proc.RunCommandTask(string(body), len(body))
 		if err != nil {
 			log.Println(err.Error())
 			// TODO HTTP error mapping

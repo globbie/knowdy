@@ -33,7 +33,7 @@
 
 void knd_repo_del(struct kndRepo *self)
 {
-    // del snapshots
+    // TODO del snapshots
     free(self);
 }
 
@@ -41,14 +41,13 @@ int knd_repo_index_proc_arg(struct kndRepo *repo, struct kndProc *proc,
                             struct kndProcArg *arg, struct kndTask *task)
 {
     struct kndMemPool *mempool   = task->mempool;
-    struct kndSet *arg_idx       = task->idxs->proc_arg_idx;
-    struct kndSharedDict *arg_name_idx = task->idxs->proc_arg_name_idx;
+    struct kndSet *arg_idx       = task->idxs.proc_arg_idx;
+    struct kndDict *arg_name_idx = task->idxs.proc_arg_name_idx;
     struct kndProcArgRef *ref, *arg_ref, *next_arg_ref;
     int err;
 
     /* generate unique attr id */
-    arg->numid = atomic_fetch_add_explicit(&task->idxs->proc_arg_id_count, 1,
-                                           memory_order_relaxed);
+    arg->numid = ++task->idxs.proc_arg_id_count;
     arg->numid++;
     knd_uid_create(arg->numid, arg->id, &arg->id_size);
 
@@ -66,15 +65,14 @@ int knd_repo_index_proc_arg(struct kndRepo *repo, struct kndProc *proc,
 
         err = knd_proc_get_arg(proc, arg->name, arg->name_size, &ref, task);
 
-        next_arg_ref = knd_shared_dict_get(arg_name_idx, arg->name, arg->name_size);
+        next_arg_ref = knd_dict_get(arg_name_idx, arg->name, arg->name_size);
         arg_ref->next = next_arg_ref;
 
-        err = knd_shared_dict_set(arg_name_idx, arg->name, arg->name_size, (void*)arg_ref);
+        err = knd_dict_set(arg_name_idx, arg->name, arg->name_size, (void*)arg_ref);
         KND_TASK_ERR("failed to globally register {arg %.*s}", arg->name_size, arg->name);
 
-        err = knd_set_add(arg_idx, arg->id, arg->id_size, (void*)arg_ref);
-        KND_TASK_ERR("failed to globally register numid of arg \"%.*s\"",
-                     arg->name_size, arg->name);
+        err = knd_set_add(arg_idx, arg->id, arg->id_size, (void*)arg_ref, task);
+        KND_TASK_ERR("failed to globally register numid of {arg %.*s}", arg->name_size, arg->name);
 
         return knd_OK;
     default:
@@ -82,14 +80,14 @@ int knd_repo_index_proc_arg(struct kndRepo *repo, struct kndProc *proc,
     }
 
     /* local task name idx */
-    err = knd_dict_set(task->proc_arg_name_idx, arg->name, arg->name_size, (void*)arg_ref);
-    KND_TASK_ERR("failed to register arg name %.*s", arg->name_size, arg->name);
+    //err = knd_dict_set(task->idxs->proc_arg_name_idx, arg->name, arg->name_size, (void*)arg_ref);
+    //KND_TASK_ERR("failed to register arg name %.*s", arg->name_size, arg->name);
 
-    if (DEBUG_REPO_LEVEL_2)
-        knd_log("++ new primary arg: \"%.*s\" (id:%.*s) of \"%.*s\" (repo:%.*s)",
+    if (DEBUG_REPO_LEVEL_2) {
+        knd_log("++ new primary {arg %.*s {id %.*s}} of {proc %.*s} {repo %.*s}",
                 arg->name_size, arg->name, arg->id_size, arg->id,
                 proc->name_size, proc->name, repo->name_size, repo->name);
-
+    }
     return knd_OK;
 }
 
@@ -125,9 +123,8 @@ int knd_snapshot_build_path(struct kndRepoSnapshot *s, struct kndTask *task)
     return knd_OK;
 }
 
-int knd_repo_snapshot_new(struct kndRepoSnapshot **result, size_t numid,
-                          size_t latest_commit_id,
-                          struct kndRepo *repo, struct kndTask *task)
+int knd_repo_snapshot_new(struct kndRepoSnapshot **result, size_t numid, size_t latest_commit_id,
+                          struct kndRepo *repo, knd_agent_role_type role, struct kndTask *task)
 {
     struct kndRepoSnapshot *s;
     struct kndMemPool *mempool = task->mempool;
@@ -138,6 +135,7 @@ int knd_repo_snapshot_new(struct kndRepoSnapshot **result, size_t numid,
     s->numid = numid;
     s->repo = repo;
     s->start_from_commit_id = latest_commit_id;
+    s->role = role;
 
     err = knd_snapshot_build_path(s, task);
     KND_TASK_ERR("failed to build a default snapshot path");
@@ -147,21 +145,22 @@ int knd_repo_snapshot_new(struct kndRepoSnapshot **result, size_t numid,
     s->max_journals = KND_MAX_JOURNALS;
     s->max_journal_size = KND_MAX_JOURNAL_SIZE;
 
-    /* indices for writing */
-    err = knd_shared_set_new(&s->idxs.str_idx, mempool);
+    err = knd_set_new(&s->cache.str_idx, KND_SET_UNIQUE_VALUES, mempool);
     if (err) return err;
-    err = knd_shared_dict_new(&s->idxs.str_dict, KND_MEDIUM_DICT_SIZE, mempool, false);
-    if (err) return err;
-
-    err = knd_shared_set_new(&s->idxs.class_idx, mempool);
-    if (err) return err;
-    err = knd_shared_dict_new(&s->idxs.class_name_idx, KND_MEDIUM_DICT_SIZE, mempool, false);
+    err = knd_dict_new(&s->cache.str_dict, KND_MEDIUM_DICT_SIZE, mempool);
     if (err) return err;
 
-    err = knd_shared_set_new(&s->idxs.attr_idx, mempool);
+    err = knd_set_new(&s->cache.class_idx, KND_SET_UNIQUE_VALUES, mempool);
     if (err) return err;
-    err = knd_shared_dict_new(&s->idxs.attr_name_idx, KND_MEDIUM_DICT_SIZE, mempool, false);
+    err = knd_dict_new(&s->cache.class_name_idx, KND_HUGE_DICT_SIZE, mempool);
     if (err) return err;
+
+    err = knd_set_new(&s->cache.attr_idx, KND_SET_UNIQUE_VALUES, mempool);
+    if (err) return err;
+    err = knd_dict_new(&s->cache.attr_name_idx, KND_MEDIUM_DICT_SIZE, mempool);
+    if (err) return err;
+
+
 
     err = knd_shared_set_new(&s->idxs.proc_idx, mempool);
     if (err) return err;
@@ -172,7 +171,7 @@ int knd_repo_snapshot_new(struct kndRepoSnapshot **result, size_t numid,
     return knd_OK;
 }
 
-int knd_repo_snapshot_activate(struct kndRepo *repo, struct kndTask *task)
+int knd_repo_snapshot_activate(struct kndRepo *repo, struct kndRepoSnapshot **result, struct kndTask *task)
 {
     struct kndRepoSnapshot *snapshot;
     int err;
@@ -186,13 +185,11 @@ int knd_repo_snapshot_activate(struct kndRepo *repo, struct kndTask *task)
     KND_TASK_ERR("failed to update persistent repo meta");
 
     /* switching the snapshots */
-    snapshot = atomic_load_explicit(&repo->snapshot, memory_order_relaxed);    
-    atomic_store_explicit(&repo->snapshot, repo->snapshot_temp, memory_order_relaxed);
-    repo->snapshot_temp = NULL;
+    snapshot = repo->snapshot_temp;    
+    repo->snapshot_temp = repo->snapshot;
+    repo->snapshot = snapshot;
 
-    /* releasing resources */
-    knd_repo_snapshot_del(snapshot);
-
+    *result = snapshot;
     return knd_OK;
 }
 
@@ -209,6 +206,7 @@ int knd_repo_snapshot_fetch_memblock(struct kndRepoSnapshot *self,
     if (!self->blocks) {
         err = knd_memblock_new(&block, 0, KND_MEMBLOCK_BUF_SIZE);
         KND_TASK_ERR("failed to alloc a memblock");
+        self->blocks = block;
         *result = block;
         return knd_OK;
     }

@@ -1,4 +1,4 @@
-/* lock-free fixed size LRU cache */
+/* fixed size LRU cache */
 
 #pragma once
 

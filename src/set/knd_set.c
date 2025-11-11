@@ -32,77 +32,17 @@ static int compare_set_by_size_ascend(const void *a,
     return -1;
 }
 
-static int traverse(struct kndSetDir *base_dir,
-                    struct kndSetDir **dirs,
-                    size_t num_dirs,
-                    struct kndSetDir *result_dir, struct kndTask *task)
-{
-    struct kndSetDir *nested_dirs[KND_MAX_CLAUSES];
-    struct kndSetDir *dir, *sub_dir, *nested_dir;
-    void *elem;
-    bool gotcha = false;
-    int err;
-
-    /* iterate over terminal elems */
-    for (size_t i = 0; i < KND_RADIX_BASE; i++) {
-        elem = base_dir->elems[i];
-        if (!elem) continue;
-
-        gotcha = true;
-        for (size_t j = 0; j < num_dirs; j++) {
-            dir = dirs[j];
-            if (!dir->elems[i]) {
-                gotcha = false;
-                break;
-            }
-        }
-        if (!gotcha) continue;
-
-        /* the elem is present in _all_ sets,
-           save the result */
-        result_dir->elems[i] = elem;
-        //self->num_elems++;
-    }
-
-    /* iterate over subfolders */
-    for (size_t i = 0; i < KND_RADIX_BASE; i++) {
-        dir = base_dir->subdirs[i];
-        if (!dir) continue;
-
-        gotcha = true;
-        for (size_t j = 0; j < num_dirs; j++) {
-            nested_dir = dirs[j];
-
-            if (!nested_dir->subdirs[i]) {
-                gotcha = false;
-                break;
-            }
-            nested_dirs[j] = nested_dir->subdirs[i];
-        }
-        if (!gotcha) continue;
-
-        err = knd_set_dir_new(&sub_dir, task->mempool);
-        KND_TASK_ERR("failed to alloc a set elem dir");
-        result_dir->subdirs[i] = sub_dir;
-
-        err = traverse(dir, nested_dirs, num_dirs, sub_dir, task);
-        KND_TASK_ERR("failed to traverse set dirs");
-    }
-    
-    return knd_OK;
-}
-
 int knd_set_intersect(struct kndSet **sets, size_t num_sets,
                       struct kndSetRange *unused_var(range), struct kndSet **unused_var(result),
-                      struct kndTask *task)
+                      struct kndTask *unused_var(task))
 {
-    struct kndSetDir *base_dir, *dir;
+    //struct kndSetDir *base_dir, *dir;
     struct kndSetDir *dirs[KND_MAX_CLAUSES];
 
     assert (num_sets >= 2 && sets != NULL);
 
     size_t num_dirs = num_sets - 1;
-    int err;
+    //int err;
 
     if (num_sets == 1) {
         return knd_FAIL;
@@ -112,18 +52,18 @@ int knd_set_intersect(struct kndSet **sets, size_t num_sets,
     qsort(sets, num_sets, sizeof(struct kndSet*), compare_set_by_size_ascend);
 
     /* the smallest set is taken as a base */
-    base_dir = sets[0]->dir;
-    sets++;
+    // base_dir = sets[0]->dir;
+    //sets++;
 
     for (size_t i = 0; i < num_dirs; i++) {
         dirs[i] = sets[i]->dir;
     }
 
-    err = knd_set_dir_new(&dir, task->mempool);
-    KND_TASK_ERR("failed to alloc a set elem dir");
+    //err = knd_set_dir_new(&dir, task->mempool);
+    //KND_TASK_ERR("failed to alloc a set elem dir");
 
-    err = traverse(base_dir, dirs, num_dirs, dir, task);
-    KND_TASK_ERR("failed to traverse set dirs");
+    //err = traverse(base_dir, dirs, num_dirs, dir, task);
+    //KND_TASK_ERR("failed to traverse set dirs");
 
     // TODO return kndSet
 
@@ -138,7 +78,7 @@ static int save_list_elem(struct kndSet *self, struct kndSetDir *parent_dir,
 
     err = knd_set_elem_new(&ref, self->mempool);
     if (err) {
-        knd_log("-- set elem dir mempool limit reached");
+        knd_log("-- set elem mempool limit reached");
         return err;
     }
     ref->val = val;
@@ -154,7 +94,7 @@ static int save_list_elem(struct kndSet *self, struct kndSetDir *parent_dir,
 }
 
 static int save_elem(struct kndSet *self, struct kndSetDir *parent_dir,
-                     void *elem, const char *id, size_t id_size)
+                     void *elem, const char *id, size_t id_size, struct kndTask *task)
 {
     struct kndSetDir *dir;
     int dir_pos;
@@ -168,14 +108,12 @@ static int save_elem(struct kndSet *self, struct kndSetDir *parent_dir,
     if (id_size > 1) {
         dir = parent_dir->subdirs[dir_pos];
         if (!dir) {
-            err = knd_set_dir_new(&dir, self->mempool);
-            if (err) {
-                knd_log("-- set elem dir mempool limit reached");
-                return err;
-            }
+            err = knd_set_dir_new(&dir, parent_dir->id, parent_dir->id_size, id, self->mempool);
+            KND_TASK_ERR("failed to alloc a set dir");
+            
             parent_dir->subdirs[dir_pos] = dir;
         }
-        err = save_elem(self, dir, elem, id + 1, id_size - 1);
+        err = save_elem(self, dir, elem, id + 1, id_size - 1, task);
         if (err) return err;
         return knd_OK;
     }
@@ -231,15 +169,16 @@ static int get_elem(struct kndSet *self, struct kndSetDir *parent_dir,
     return knd_OK;
 }
 
-int knd_set_add(struct kndSet *self, const char *key, size_t key_size, void *elem)
+int knd_set_add(struct kndSet *self, const char *key, size_t key_size, void *elem, struct kndTask *task)
 {
     int err;
     assert(key_size != 0);
     assert(key != NULL);
     assert(elem != NULL);
 
-    err = save_elem(self, self->dir, elem, key, key_size);
-    if (err) return err;
+    err = save_elem(self, self->dir, elem, key, key_size, task);
+    KND_TASK_ERR("failed to add an elem to a set");
+
     return knd_OK;
 }
 
@@ -392,22 +331,34 @@ int knd_set_new(struct kndSet **result, knd_set_type type, struct kndMemPool *me
     s->type = type;
     s->mempool = mempool;
 
-    err = knd_set_dir_new(&s->dir, mempool);
+    err = knd_set_dir_new(&s->dir, "", 0, "", mempool);
     if (err) return err;
 
     *result = s;
     return knd_OK;
 }
 
-int knd_set_dir_new(struct kndSetDir **result, struct kndMemPool *mempool)
+int knd_set_dir_new(struct kndSetDir **result, const char *parent_id, size_t parent_id_size,
+                    const char *curr_id, struct kndMemPool *mempool)
 {
+    struct kndSetDir *dir;
     void *page;
     int err;
     assert(mempool->base_page_size >= sizeof(struct kndSetDir));
     err = knd_mempool_page(mempool, KND_MEMPAGE_BASE, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndSetDir));
-    *result = page;
+    dir = page;
+
+    if (parent_id_size) {
+        memcpy(dir->id, parent_id, parent_id_size);
+    }
+    if (*curr_id) {
+        dir->id[parent_id_size] = *curr_id;
+        dir->id_size = parent_id_size + 1;
+    }
+
+    *result = dir;
     return knd_OK;
 }
 
@@ -429,8 +380,8 @@ int knd_set_dir_block_new(struct kndSetDirBlock **result, struct kndMemPool *mem
     void *page;
     int err;
 
-    assert(mempool->small_page_size >= sizeof(struct kndSetDirBlock));
-    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
+    assert(mempool->base_page_size >= sizeof(struct kndSetDirBlock));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_BASE, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndSetDirBlock));
     b = page;

@@ -66,7 +66,6 @@ static int decode_inner_attr_stm(struct kndClass *base, struct kndAttrStm *stm,
     struct kndClass *c;
     struct kndClassInnerAttrStm *inner_stm;
     struct kndMemPool *mempool = task->mempool;
-    struct kndRepo *repo = task->repo;
     int err;
 
     assert (entry != NULL);
@@ -87,13 +86,8 @@ static int decode_inner_attr_stm(struct kndClass *base, struct kndAttrStm *stm,
 
     /* specific inner subclass */
     if (stm->val_id_size) {
-        err = knd_shared_set_get(task->idxs->class_idx, stm->val_id, stm->val_id_size,
-                                 (void**)&entry);
-        KND_TASK_ERR("{cls %.*s} not found in {repo %.*s}",
-                     stm->val_id_size, stm->val_id, repo->name_size, repo->name);
-
-        err = knd_class_acquire(entry, &c, task);
-        KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);
+        err = knd_get_cls_by_id(stm->val_id, stm->val_id_size, &c, task);
+        KND_TASK_ERR("no such {cls %.*s}", stm->val_id_size, stm->val_id);
 
         if (c->phase < KND_CLASS_DECODED) {
             err = knd_class_decode(c, task);
@@ -116,16 +110,10 @@ static int decode_cls_ref_attr_stm(struct kndClass *unused_var(base),
     struct kndMemPool *mempool = task->mempool;
     int err;
 
-    err = knd_shared_set_get(task->idxs->class_idx, stm->val_id, stm->val_id_size,
-                             (void**)&entry);
-    KND_TASK_ERR("{class %.*s} not found in {repo %.*s}",
-                 stm->val_id_size, stm->val_id,
-                 task->repo->name_size, task->repo->name);
+    assert (stm->val_id_size != 0);
 
-    if (DEBUG_ATTR_STM_DECODE_LEVEL_3) {
-            knd_log(">> decoded {ref %.*s {cls %.*s}}",
-                    stm->name_size, stm->name, entry->name_size, entry->name);
-    }
+    err = knd_get_cls_entry_by_id(stm->val_id, stm->val_id_size, &entry, task);
+    KND_TASK_ERR("no such entry {cls %.*s}", stm->val_id, stm->val_id_size);
 
     err = knd_cls_ref_attr_stm_new(&cref, mempool);
     KND_TASK_ERR("failed to alloc {cls-ref %.*s}", stm->val_size, stm->val);

@@ -103,7 +103,8 @@ set(SOURCES src/attr/knd_attr.c src/attr/knd_attr.import.c src/attr/knd_attr.res
         src/class/knd_class_inst.import.c src/class/knd_class_inst.read.c
         src/class/knd_class_inst.json.c src/class/knd_class_inst.select.c
         src/class/knd_class_inst.resolve.c src/class/knd_class_inst.index.c
-        src/dict/knd_dict.c src/dict/knd_shared_dict.c src/dict/knd_shared_dict.gsp.c
+        src/dict/knd_dict.c src/dict/knd_dict.gsp.c src/dict/knd_dict.read.c
+        src/dict/knd_shared_dict.c
         src/facet/knd_facet.c src/facet/knd_facet.index.c src/facet/knd_facet.gsp.c
         src/facet/knd_facet.read.c src/facet/knd_facet.select.c
         src/utils/knd_ignore.c
@@ -123,11 +124,11 @@ set(SOURCES src/attr/knd_attr.c src/attr/knd_attr.import.c src/attr/knd_attr.res
         src/repo/knd_repo.c src/repo/knd_repo.gsl.c src/repo/knd_repo.gsp.c src/repo/knd_repo.select.c
         src/repo/knd_repo.commit.c src/repo/knd_repo.read.c src/repo/knd_repo.cache.c
         src/set/knd_set.c src/set/knd_set.gsp.c src/set/knd_set.read.c
-        src/set/knd_shared_set.c src/set/knd_shared_set.gsp.c
+        src/set/knd_shared_set.c
         src/set/knd_shared_set.read.c src/set/knd_set_idx.c
         src/knd_steward.c
         src/state/knd_state.c src/storage/knd_storage.c src/state/knd_commit.c
-        src/task/knd_task.c src/task/knd_task.select.c
+        src/task/knd_task.c src/task/knd_task.cache.c src/task/knd_task.select.c
         src/text/knd_text.c src/text/knd_text.import.c src/text/knd_text.resolve.c
         src/text/knd_text.read.c src/text/knd_text.decode.c
         src/text/knd_text.search.c src/text/knd_text.select.c

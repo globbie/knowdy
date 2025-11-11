@@ -44,6 +44,11 @@ int knd_charseq_new(struct kndCharSeq **result, struct kndMemPool *mempool)
     return knd_OK;
 }
 
+void knd_charseq_free(struct kndCharSeq *seq, struct kndMemPool *mempool)
+{
+    knd_mempool_free(mempool, KND_MEMPAGE_TINY, (void*)seq);
+}
+
 int knd_text_search_report_new(struct kndTextSearchReport **result, struct kndMemPool *mempool)
 {
     void *page;

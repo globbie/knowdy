@@ -32,25 +32,13 @@ struct LocalContext {
     struct kndTextSearchReport *report;
 };
 
-static int approve_src(struct kndTextSearchReport *pref, struct kndClassRef *ref)
-{
-    for (; pref; pref = pref->next) {
-        if (pref->entry == ref->entry && pref->attr == ref->attr)
-            return knd_OK;
-    }
-    return knd_NO_MATCH;
-}
-
 static gsl_err_t build_search_plan(void *obj, const char *unused_var(name), size_t unused_var(name_size))    
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndClassRef *ref = NULL;
-    struct kndTextSearchReport *report, *pref = task->ctx->reports;
     struct kndClassDeclar *declar;
     struct kndClassEntry *entry;
     struct kndClass *c;
-    struct kndClassRef *text_idxs;
     int err;
 
     if (!ctx->stm) {
@@ -65,9 +53,10 @@ static gsl_err_t build_search_plan(void *obj, const char *unused_var(name), size
     FOREACH (declar, ctx->stm->declars) {
         entry = declar->entry;
 
-        if (DEBUG_TEXT_SEARCH_LEVEL_TMP)
-            knd_log(">> class declar: %.*s (repo:%.*s)",
-                    entry->name_size, entry->name, entry->repo->name_size, entry->repo->name);
+        if (DEBUG_TEXT_SEARCH_LEVEL_TMP) {
+            knd_log(">> class declar: %.*s",
+                    entry->name_size, entry->name);
+        }
 
         err = knd_class_acquire(entry, &c, task);
         if (err) {
@@ -75,13 +64,8 @@ static gsl_err_t build_search_plan(void *obj, const char *unused_var(name), size
             return make_gsl_err_external(err);
         }
 
-        text_idxs = atomic_load_explicit(&c->text_idxs, memory_order_relaxed);
+        /*        text_idxs = atomic_load_explicit(&c->text_idxs, memory_order_relaxed);
         FOREACH (ref, text_idxs) {
-            if (DEBUG_TEXT_SEARCH_LEVEL_TMP)
-                knd_log("** text idx: \"%.*s\" (repo:%.*s) text idx:%p class idx:%p",
-                        ref->entry->name_size, ref->entry->name,
-                        ref->entry->repo->name_size, ref->entry->repo->name, ref, ref->idx);
-
             if (pref) {
                 err = approve_src(pref, ref);
                 if (err) {
@@ -100,7 +84,7 @@ static gsl_err_t build_search_plan(void *obj, const char *unused_var(name), size
             report->idx = ref->idx;
             report->next = task->ctx->reports;
             task->ctx->reports = report;
-        }
+            }*/
     }
     err = knd_text_export_query_report(task);
     if (err) {
@@ -114,15 +98,13 @@ static gsl_err_t set_text_src(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTextSearchReport *report = NULL;
-    struct kndRepo *repo = ctx->repo;
     struct kndTask *task = ctx->task;
     struct kndClassEntry *entry;
     int err;
 
-    err = knd_get_class_entry(repo, name, name_size, false, &entry, task);
+    err = knd_get_cls_entry_by_name(name, name_size, &entry, task);
     if (err) {
-        KND_TASK_LOG("class \"%.*s\" not found in repo \"%.*s\"",
-                     name_size, name, repo->name_size, repo->name);
+        KND_TASK_LOG("{cls %.*s} not found", name_size, name);
         return make_gsl_err_external(err);
     }
     err = knd_text_search_report_new(&report, task->mempool);

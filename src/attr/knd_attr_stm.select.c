@@ -89,7 +89,6 @@ static gsl_err_t check_inner_cls(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndRepo *repo = task->repo;
     struct kndClassInnerAttrStm *inner = ctx->inner_stm;
     struct kndClassEntry *entry;
     int err;
@@ -97,12 +96,14 @@ static gsl_err_t check_inner_cls(void *obj, const char *name, size_t name_size)
     if (DEBUG_ATTR_STM_SELECT_LEVEL_TMP) {
         knd_log(">> set specific inner {cls %.*s}", name_size, name);
     }
-    err = knd_get_class_entry(repo, name, name_size, true, &entry, task);
+
+    err = knd_get_cls_entry_by_name(name, name_size, &entry, task);
     if (err) {
         KND_TASK_LOG("{cls %.*s} not found", name_size, name);
         task->ctx->error = knd_NO_MATCH;
         return make_gsl_err(gsl_FAIL);
     }
+
     err = knd_class_acquire(entry, &inner->cls, task);
     if (err) {
         KND_TASK_LOG("failed to acquire {cls %.*s}", entry->name_size, entry->name);
@@ -133,12 +134,11 @@ static int check_ref_cls(const char *name, size_t name_size,
                          struct kndClassRefAttrStm *ref_stm,
                          struct kndTask *task)
 {
-    struct kndRepo *repo = task->repo;
     struct kndClassEntry *entry;
     struct kndClass *c;
     int err;
 
-    err = knd_get_class_entry(repo, name, name_size, true, &entry, task);
+    err = knd_get_cls_entry_by_name(name, name_size, &entry, task);
     KND_TASK_ERR("{cls %.*s} not found", name_size, name);
 
     err = knd_class_acquire(entry, &c, task);
@@ -417,8 +417,8 @@ int knd_attr_stm_plan(struct kndAttrStm *stm, struct kndTask *task)
         err = knd_quant_uint_query_plan(quant_attr_stm, facet, task);
         KND_TASK_ERR("failed to plan a quant uint query");
 
-        if (quant_attr_stm->match) {
-            stm->match = quant_attr_stm->match;
+        if (quant_attr_stm->matchset) {
+            stm->matchset = quant_attr_stm->matchset;
         }
         break;
     case KND_ATTR_CLS_REF:

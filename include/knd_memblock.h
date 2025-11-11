@@ -2,6 +2,8 @@
 
 #include "knd_config.h"
 
+struct kndMemBlock;
+
 struct kndMemBlock {
     size_t numid;
 
@@ -10,7 +12,13 @@ struct kndMemBlock {
     size_t buf_size;
 
     size_t capacity;
+
+    struct kndCharSeq *seqs;
+    struct kndCharSeq *seq_tail;
+    size_t num_seqs;
+
     struct kndMemBlock *next;
+    struct kndMemBlock *prev;
 };
 
 int knd_memblock_new(struct kndMemBlock **result, size_t numid, size_t capacity);

@@ -59,7 +59,7 @@ static gsl_err_t set_attr_id(void *obj, const char *id, size_t id_size)
     memcpy(attr->id, id, id_size);
     attr->id_size = id_size;
 
-    err = knd_shared_set_get(task->idxs->attr_idx, id, id_size, (void**)&ref);
+    err = knd_set_get(task->idxs.attr_idx, id, id_size, (void**)&ref);
     if (err) {
         KND_TASK_LOG("failed to get {attr %.*s}", id_size, id);
         return make_gsl_err_external(err);
@@ -115,7 +115,7 @@ static gsl_err_t set_template_cls(void *obj, const char *id, size_t id_size)
     if (!id_size) return make_gsl_err(gsl_FORMAT);
     if (id_size > KND_ID_SIZE) return make_gsl_err(gsl_FORMAT);
 
-    err = knd_shared_set_get(task->idxs->class_idx, id, id_size, (void**)&entry);
+    err = knd_set_get(task->idxs.cls_idx, id, id_size, (void**)&entry);
     if (err) {
         KND_TASK_LOG("no such {cls %.*s}", id_size, id);
         return make_gsl_err_external(err);
@@ -291,8 +291,8 @@ static gsl_err_t parse_attr_ref_array_item(void *obj, const char *rec, size_t *t
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
     struct kndMemPool *mempool = task->mempool;
-    struct kndSharedDict *attr_name_idx = task->idxs->attr_name_idx;
-    struct kndSharedSet *attr_idx = task->idxs->attr_idx;
+    struct kndDict *attr_name_idx = task->idxs.attr_name_idx;
+    struct kndSet *attr_idx = task->idxs.attr_idx;
     struct kndAttrRef *ref, *refs;
     int err;
 
@@ -323,7 +323,7 @@ static gsl_err_t parse_attr_ref_array_item(void *obj, const char *rec, size_t *t
         knd_log(".. register {attr %.*s}", ref->name_size, ref->name);
     }
 
-    refs = knd_shared_dict_get(attr_name_idx, ref->name, ref->name_size);
+    refs = knd_dict_get(attr_name_idx, ref->name, ref->name_size);
     if (refs) {
         if (refs->tail) {
             refs->tail->next = ref;
@@ -332,14 +332,14 @@ static gsl_err_t parse_attr_ref_array_item(void *obj, const char *rec, size_t *t
         }
         refs->tail = ref;
     } else {
-        err = knd_shared_dict_set(attr_name_idx, ref->name, ref->name_size, (void*)ref);
+        err = knd_dict_set(attr_name_idx, ref->name, ref->name_size, (void*)ref);
         if (err) {
             KND_TASK_LOG("failed to register {attr %.*s}", ref->name_size, ref->name);
             return make_gsl_err_external(err);
         }
     }
 
-    err = knd_shared_set_add(attr_idx, ref->id, ref->id_size, (void*)ref);
+    err = knd_set_add(attr_idx, ref->id, ref->id_size, (void*)ref, task);
     if (err) {
         KND_TASK_LOG("failed to register {attr-id %.*s} {err %d}",
                      ref->id_size, ref->id, err);

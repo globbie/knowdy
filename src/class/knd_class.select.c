@@ -116,7 +116,7 @@ static gsl_err_t get_cls_by_name(void *obj, const char *name, size_t name_size)
 
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    err = knd_get_class_entry(ctx->repo, name, name_size, true, &entry, task);
+    err = knd_get_cls_entry_by_name(name, name_size, &entry, task);
     if (err) {
         KND_TASK_LOG("{cls %.*s} not found", name_size, name);
         task->ctx->error = knd_NO_MATCH;
@@ -148,7 +148,7 @@ static gsl_err_t get_base_cls(void *obj, const char *name, size_t name_size)
 
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    err = knd_get_class_entry(ctx->repo, name, name_size, true, &entry, task);
+    err = knd_get_cls_entry_by_name(name, name_size, &entry, task);
     if (err) {
         KND_TASK_LOG("{cls %.*s} not found", name_size, name);
         task->ctx->error = knd_NO_MATCH;
@@ -185,7 +185,7 @@ static gsl_err_t get_subj_base_class(void *obj, const char *name, size_t name_si
 
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    err = knd_get_class_entry(ctx->repo, name, name_size, true, &entry, task);
+    err = knd_get_cls_entry_by_name(name, name_size, &entry, task);
     if (err) {
         KND_TASK_LOG("{cls %.*s} not found", name_size, name);
         task->ctx->error = knd_NO_MATCH;
@@ -377,9 +377,9 @@ static gsl_err_t import_class_inst(void *obj, const char *rec, size_t *total_siz
     struct kndClass *c = ctx->cls;
     int err;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_2)
-        knd_log(".. parse import class inst..");
-
+    if (DEBUG_CLASS_SELECT_LEVEL_2) {
+        knd_log("parse import class inst");
+    }
     if (!c) {
         KND_TASK_LOG("no cls selected");
         return *total_size = 0, make_gsl_err_external(knd_FORMAT);

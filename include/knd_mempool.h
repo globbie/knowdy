@@ -39,7 +39,7 @@ typedef enum knd_mempage_t { KND_MEMPAGE_TINY,
 typedef enum knd_mempool_t {
                              KND_ALLOC_INCR,
                              KND_ALLOC_LIST,
-                             KND_ALLOC_SHARED                            
+                             KND_ALLOC_SHARED
 } knd_mempool_t;
 
 struct kndMemPoolReport {

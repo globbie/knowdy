@@ -26,15 +26,15 @@ struct LocalContext {
     struct kndQuantUInt *uint;
 };
 
-static int elem_eq_lookup(struct kndFacet *parent, struct kndQuantUInt *uint,
-                          const char *seq, size_t seq_size,
-                          struct kndSet **result, struct kndTask *task);
-static int elem_gt_lookup(struct kndFacet *parent, struct kndQuantUInt *uint,
-                          const char *seq, size_t seq_size,
-                          struct kndSet **result, struct kndTask *task);
-static int elem_lt_lookup(struct kndFacet *parent, struct kndQuantUInt *uint,
-                          const char *seq, size_t seq_size,
-                          struct kndSet **result, struct kndTask *task);
+//static int elem_eq_lookup(struct kndFacet *parent, struct kndQuantUInt *uint,
+//                          const char *seq, size_t seq_size,
+//                          struct kndSet **result, struct kndTask *task);
+//static int elem_gt_lookup(struct kndFacet *parent, struct kndQuantUInt *uint,
+//                          const char *seq, size_t seq_size,
+//                          struct kndSet **result, struct kndTask *task);
+//static int elem_lt_lookup(struct kndFacet *parent, struct kndQuantUInt *uint,
+//                          const char *seq, size_t seq_size,
+//                          struct kndSet **result, struct kndTask *task);
 
 static gsl_err_t set_eq_val(void *obj, const char *val, size_t val_size)
 {
@@ -344,6 +344,7 @@ static int get_next_facet(struct kndFacet *parent, const char *seq, size_t seq_s
 }
 */
 
+#if 0
 static int cache_eq_lookup(struct kndFacet *facet, struct kndQuantUInt *uint,
                            struct kndSet **result, struct kndTask *task)
 {
@@ -381,7 +382,9 @@ static int cache_eq_lookup(struct kndFacet *facet, struct kndQuantUInt *uint,
     *result = set;
     return knd_OK;
 }
+#endif
 
+#if 0
 static int elem_eq_lookup(struct kndFacet *parent, struct kndQuantUInt *uint,
                           const char *seq, size_t seq_size,
                           struct kndSet **result, struct kndTask *task)
@@ -410,10 +413,12 @@ static int elem_eq_lookup(struct kndFacet *parent, struct kndQuantUInt *uint,
 
     return knd_OK;
 }
+#endif
 
 /* 
  * GT lookup - find any value higher than uint
  */
+#if 0
 static int elem_gt_lookup(struct kndFacet *parent, struct kndQuantUInt *uint,
                           const char *seq, size_t seq_size,
                           struct kndSet **result, struct kndTask *task)
@@ -446,10 +451,12 @@ static int elem_gt_lookup(struct kndFacet *parent, struct kndQuantUInt *uint,
 
     return knd_OK;
 }
+#endif
 
 /* 
  * GT lookup - find any value less than uint
  */
+#if 0
 static int elem_lt_lookup(struct kndFacet *parent, struct kndQuantUInt *uint,
                           const char *seq, size_t seq_size,
                           struct kndSet **result, struct kndTask *task)
@@ -477,13 +484,14 @@ static int elem_lt_lookup(struct kndFacet *parent, struct kndQuantUInt *uint,
     // TODO short list -> set
     return knd_OK;
 }
+#endif
 
-int knd_quant_uint_query_plan(struct kndQuantAttrStm *stm, struct kndFacet *facet,
-                              struct kndTask *task)
+int knd_quant_uint_query_plan(struct kndQuantAttrStm *stm, struct kndFacet *unused_var(facet),
+                              struct kndTask *unused_var(task))
 {
     struct kndQuantUInt *uint;
     struct kndQuantUIntRange *uint_range;
-    int err;
+    //int err;
 
     /** calculating a total number of operations to complete the query
 
@@ -504,9 +512,9 @@ int knd_quant_uint_query_plan(struct kndQuantAttrStm *stm, struct kndFacet *face
             knd_log("EQ lookup {uint %.*s}", uint->seq_size, uint->seq);
         }
 
-        err = elem_eq_lookup(facet, uint, uint->seq, uint->seq_size, &stm->match, task);
-        KND_TASK_ERR("failed to lookup an EQ value of {uint %.*s}",
-                     uint->seq_size, uint->seq);
+        //err = elem_eq_lookup(facet, uint, uint->seq, uint->seq_size, &stm->matchset, task);
+        //KND_TASK_ERR("failed to lookup an EQ value of {uint %.*s}",
+        //             uint->seq_size, uint->seq);
 
         break;
     case KND_QUANT_RANGE:
@@ -516,15 +524,15 @@ int knd_quant_uint_query_plan(struct kndQuantAttrStm *stm, struct kndFacet *face
 
         if (uint_range->gt) {
             uint = uint_range->gt;
-            err = elem_gt_lookup(facet, uint, uint->seq, uint->seq_size, &stm->match, task);
-            KND_TASK_ERR("failed to lookup a GT value of {uint %.*s}",
-                         uint->seq_size, uint->seq);
+            //err = elem_gt_lookup(facet, uint, uint->seq, uint->seq_size, &stm->matchset, task);
+            //KND_TASK_ERR("failed to lookup a GT value of {uint %.*s}",
+            //             uint->seq_size, uint->seq);
             break;
         }
         uint = uint_range->lt;
-        err = elem_lt_lookup(facet, uint, uint->seq, uint->seq_size, &stm->match, task);
-        KND_TASK_ERR("failed to lookup a LT value of {uint %.*s}",
-                     uint->seq_size, uint->seq);
+        //err = elem_lt_lookup(facet, uint, uint->seq, uint->seq_size, &stm->matchset, task);
+        //KND_TASK_ERR("failed to lookup a LT value of {uint %.*s}",
+        //             uint->seq_size, uint->seq);
         break;
     case KND_QUANT_APPROX:
 

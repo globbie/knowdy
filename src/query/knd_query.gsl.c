@@ -58,10 +58,10 @@ static int export_class_entry_GSL(void *elem, void *ctx)
     int err;
 
     err = knd_class_acquire(entry, &c, task);
-    KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
+    KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);
 
     err = knd_class_export_GSL(c, task, true, 1);
-    KND_TASK_ERR("failed to export GSL {class %.*s}", entry->name_size, entry->name);
+    KND_TASK_ERR("failed to export GSL {cls %.*s}", entry->name_size, entry->name);
 
     task->depth = curr_depth;
     // batch->size++;
@@ -87,11 +87,11 @@ static int export_attr_stms(struct kndQuery *query, struct kndTask *task, size_t
 
         OUT("{", 1);
 
-        if (stm->match) {
+        if (stm->matchset) {
             OUT("[", 1);
             OUT("cls", strlen("cls"));
 
-            err = knd_set_map(stm->match, NULL, NULL, NULL,
+            err = knd_set_map(stm->matchset, NULL, NULL, NULL,
                               export_class_entry_GSL, (void*)task);
             KND_TASK_ERR("failed to export attr stm matching set to GSL");
             OUT("]", 1);

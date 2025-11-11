@@ -27,9 +27,8 @@
 static int find_repo(struct kndRepo **result, const char *name, size_t name_size, struct kndTask *task)
 {
     struct kndRepo *repo;
-    assert (task->repo_name_idx != NULL);
 
-    repo = knd_dict_get(task->repo_name_idx, name, name_size);
+    repo = knd_dict_get(task->idxs.repo_name_idx, name, name_size);
     if (!repo) return knd_NO_MATCH;
 
     *result = repo;
@@ -40,7 +39,6 @@ static gsl_err_t get_repo(void *obj, const char *name, size_t name_size)
 {
     struct kndTask *task = obj;
     struct kndQuery *query = task->ctx->query;
-    struct kndRepoSnapshot *snapshot;
     int err;
 
     /* default system repo */
@@ -79,11 +77,9 @@ static gsl_err_t get_repo(void *obj, const char *name, size_t name_size)
     query->obj_type = KND_QUERY_OBJ_REPO;
     query->repo = repo;
 
-    snapshot = atomic_load_explicit(&repo->snapshot, memory_order_relaxed);
-    assert (snapshot != NULL);
+    assert (repo->snapshot != NULL);
 
-    task->snapshot = snapshot;
-    task->idxs = &repo->snapshot->idxs;
+    task->snapshot = repo->snapshot;
 
     return make_gsl_err(gsl_OK);
 }
@@ -118,6 +114,7 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
     struct kndTask *task = obj;
     struct kndUserContext *ctx = task->user_ctx;
     struct kndRepo *repo = ctx->repo ? ctx->repo : task->repo;
+    struct kndClassEntry *entry;
     int err;
 
     if (task->type != KND_TASK_BULK_LOAD) {
@@ -130,7 +127,15 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
                 atomic_load_explicit(&task->snapshot->num_commits, memory_order_relaxed);
         }
     }
-    return knd_class_import(repo, rec, total_size, task);
+
+    err = knd_class_import(repo, rec, total_size, &entry, task);
+    if (err) return make_gsl_err_external(err);
+
+    /* assign a unique class entry id */
+    entry->numid = task->idxs.cls_id_count++;
+    knd_uid_create(entry->numid, entry->id, &entry->id_size);
+
+    return make_gsl_err(gsl_OK);
 }
 
 gsl_err_t knd_parse_repo_select(void *obj, const char *rec, size_t *total_size)

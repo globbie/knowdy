@@ -470,17 +470,17 @@ int knd_proc_arg_resolve(struct kndProcArg *self, struct kndTask *task)
     if (self->classname_size) {
         if (DEBUG_PROC_ARG_LEVEL_2)
             knd_log(".. resolving arg class template: %.*s..", self->classname_size, self->classname);
-        entry = knd_shared_dict_get(task->idxs->class_name_idx, self->classname, self->classname_size);
+        entry = knd_dict_get(task->idxs.cls_name_idx, self->classname, self->classname_size);
         if (!entry) {
             err = knd_NO_MATCH;
-            KND_TASK_ERR("no such class: %.*s", self->classname_size, self->classname);
+            KND_TASK_ERR("no such {cls %.*s}", self->classname_size, self->classname);
         }
         self->template = entry;
     }
 
     if (self->proc_call) {
-        proc_entry = knd_shared_dict_get(task->idxs->proc_name_idx,
-                                         self->proc_call->name, self->proc_call->name_size);
+        proc_entry = knd_dict_get(task->idxs.proc_name_idx,
+                                  self->proc_call->name, self->proc_call->name_size);
         if (!proc_entry) {
             knd_log("-- no such proc: %.*s",
                     self->proc_call->name_size, self->proc_call->name);
@@ -514,16 +514,16 @@ int knd_resolve_proc_arg_var(struct kndProc *proc, struct kndProcArgVar *var, st
     }
 
     if (var->val_size) {
-        entry = knd_shared_dict_get(task->idxs->class_name_idx, var->val, var->val_size);
+        entry = knd_dict_get(task->idxs.cls_name_idx, var->val, var->val_size);
         if (!entry) {
             err = knd_NO_MATCH;
-            KND_TASK_ERR("no such {class %.*s}", var->val_size, var->val);
+            KND_TASK_ERR("no such {cls %.*s}", var->val_size, var->val);
         }
         var->template = entry;
 
         if (template_c) {
             err = knd_class_acquire(entry, &c, task);
-            KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
+            KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);
 
             if (template_c == c) {
                 err = knd_FORMAT;

@@ -197,6 +197,9 @@ struct kndAttr
     struct kndAttr *next;
 };
 
+
+int knd_attr_register(struct kndAttr *attr, struct kndClass *cls, struct kndTask *task);
+
 int knd_export_inherited_attr(void *obj, const char *elem_id, size_t elem_id_size,
                               size_t count, void *elem);
 

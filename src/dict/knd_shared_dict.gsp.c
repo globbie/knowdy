@@ -56,6 +56,8 @@ int knd_shared_dict_marshall(struct kndSharedDict *dict, const char *path, size_
     size_t output_size = 0;
     int err;
 
+    assert (result_dict != NULL);
+
     err = knd_set_new(&idx, KND_SET_MULTIPLE_VALUES, task->mempool);
     KND_TASK_ERR("failed to alloc a shared set");
 
@@ -66,15 +68,15 @@ int knd_shared_dict_marshall(struct kndSharedDict *dict, const char *path, size_
         if (!item) continue;
 
         knd_uid_create(i, idbuf, &idbuf_size);
-        
+
         for (; item; item = item->next) {
-            err = knd_set_add(idx, idbuf, idbuf_size, (void*)item->data);
+            err = knd_set_add(idx, idbuf, idbuf_size, (void*)item->data, task);
             KND_TASK_ERR("failed to add a set elem");
         }
     }
 
-    err = knd_storage_leaf_new(&leaf, 1);
-    KND_TASK_ERR("failed to alloc a storage leaf");
+    //err = knd_storage_leaf_new(&leaf, 1);
+    //KND_TASK_ERR("failed to alloc a storage leaf");
 
     err = build_leaf_filename(leaf, path, path_size, pref, pref_size, task);
     KND_TASK_ERR("failed to build a leaf filename");

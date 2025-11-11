@@ -204,7 +204,7 @@ static gsl_err_t set_proc_name(void *obj, const char *name, size_t name_size)
     int err;
 
     assert(repo != NULL);
-    assert(task->idxs->proc_name_idx != NULL);
+    assert(task->idxs.proc_name_idx != NULL);
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     self->entry->name = name;
@@ -214,7 +214,7 @@ static gsl_err_t set_proc_name(void *obj, const char *name, size_t name_size)
 
     /* initial bulk load in progress */
     if (task->type == KND_TASK_BULK_LOAD) {
-        entry = knd_shared_dict_get(task->idxs->proc_name_idx, name, name_size);
+        entry = knd_dict_get(task->idxs.proc_name_idx, name, name_size);
         if (!entry) {
             entry = self->entry;
             entry->name = name;
@@ -223,7 +223,7 @@ static gsl_err_t set_proc_name(void *obj, const char *name, size_t name_size)
             self->name_size = name_size;
 
             /* register globally */
-            err = knd_shared_dict_set(task->idxs->proc_name_idx, name, name_size, (void*)entry);
+            err = knd_dict_set(task->idxs.proc_name_idx, name, name_size, (void*)entry);
             if (err) return make_gsl_err_external(err);
             return make_gsl_err(gsl_OK);
         }
@@ -246,13 +246,13 @@ static gsl_err_t set_proc_name(void *obj, const char *name, size_t name_size)
 
     err = knd_get_proc(repo, name, name_size, &proc, task);
     if (!err) goto doublet;
-    entry = knd_dict_get(task->proc_name_idx, name, name_size);
-    if (!entry) {
-        entry = self->entry;
-        err = knd_dict_set(task->proc_name_idx, name, name_size, (void*)entry);
-        if (err) return make_gsl_err_external(err);
-        return make_gsl_err(gsl_OK);
-    }
+    //entry = knd_dict_get(task->idxs->proc_name_idx, name, name_size);
+    //if (!entry) {
+    //    entry = self->entry;
+        //err = knd_dict_set(task->idxs->proc_name_idx, name, name_size, (void*)entry);
+        //if (err) return make_gsl_err_external(err);
+    //    return make_gsl_err(gsl_OK);
+    //}
     return make_gsl_err(gsl_OK);
 
  doublet:

@@ -35,8 +35,8 @@ int knd_charseq_marshall(void *elem, void *unused_var(ctx), struct kndStorageLea
 
     switch (task->mode) {
     case KND_TASK_TRACE_MODE:
-        knd_log(".. write charseq to {filepath %.*s}",
-                leaf->filepath_size, leaf->filepath);
+        //knd_log(".. write charseq to {filepath %.*s}",
+        //        leaf->filepath_size, leaf->filepath);
         break;
     default:
         err = knd_append_file((const char*)leaf->filepath, seq->val, seq->val_size);
@@ -54,8 +54,8 @@ int knd_charseq_unmarshall(const char *elem_id, size_t elem_id_size,
 {
     struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndCharSeq *seq;
-    struct kndSharedSet *str_idx = task->idxs->str_idx;
-    struct kndSharedDict *str_dict = task->idxs->str_dict;
+    struct kndSet *str_idx = task->idxs.str_idx;
+    struct kndDict *str_dict = task->idxs.str_dict;
     int err;
 
     if (DEBUG_TEXT_GSP_LEVEL_2) {
@@ -66,11 +66,11 @@ int knd_charseq_unmarshall(const char *elem_id, size_t elem_id_size,
     seq->val = val;
     seq->val_size = val_size;
 
-    err = knd_shared_set_add(str_idx, elem_id, elem_id_size, (void*)seq);
-    KND_TASK_ERR("failed to register charseq \"%.*s\" (err:%s)", val_size, val, knd_err_names[err]);
+    err = knd_set_add(str_idx, elem_id, elem_id_size, (void*)seq, task);
+    KND_TASK_ERR("failed to register {seq %.*s {err %s}}", val_size, val, knd_err_names[err]);
 
-    err = knd_shared_dict_set(str_dict, val, val_size, (void*)seq);
-    KND_TASK_ERR("failed to register charseq \"%.*s\" in str dict (err:%s)",
+    err = knd_dict_set(str_dict, val, val_size, (void*)seq);
+    KND_TASK_ERR("failed to register {seq %.*s} in str dict {err %s}",
                  val_size, val, knd_err_names[err]);
     
     *result = seq;

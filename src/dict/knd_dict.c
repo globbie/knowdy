@@ -18,7 +18,7 @@
 #include "knd_config.h"
 #include "knd_utils.h"
 
-static int dict_item_new(struct kndMemPool *mempool, struct kndDictItem **result)
+int knd_dict_item_new(struct kndDictItem **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
@@ -26,6 +26,18 @@ static int dict_item_new(struct kndMemPool *mempool, struct kndDictItem **result
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndDictItem));
+    *result = page;
+    return knd_OK;
+}
+
+int knd_dict_entry_new(struct kndDictEntry **result, struct kndMemPool *mempool)
+{
+    void *page;
+    int err;
+    assert(mempool->tiny_page_size >= sizeof(struct kndDictEntry));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
+    if (err) return err;
+    memset(page, 0,  sizeof(struct kndDictEntry));
     *result = page;
     return knd_OK;
 }
@@ -47,7 +59,14 @@ static size_t knd_dict_hash(const char *key, size_t key_size)
 void* knd_dict_get(struct kndDict *self, const char *key, size_t key_size)
 {
     size_t h = knd_dict_hash(key, key_size) % self->size;
-    struct kndDictItem *item = self->hash_array[h];
+    struct kndDictEntry *entry = self->hash_array[h];
+    struct kndDictItem *item;
+
+    if (!entry) return NULL;
+
+    // TODO  entry demarshalling needed?
+
+    item = entry->items;
 
     while (item) {
         if (item->key_size != key_size) goto next_item;
@@ -59,16 +78,42 @@ void* knd_dict_get(struct kndDict *self, const char *key, size_t key_size)
     next_item:
         item = item->next;
     }
+
     return NULL;
+}
+
+static int add_item(struct kndDict *self, struct kndDictEntry *entry,
+                    const char *key, size_t key_size, void *data)
+{
+    struct kndDictItem *item;
+
+    if (knd_dict_item_new(&item, self->mempool) != knd_OK) return knd_NOMEM;
+    item->phase = KND_DICT_VALID;
+    item->data = data;
+    item->key = key;
+    item->key_size = key_size;
+    item->next = entry->items;
+    entry->items = item;
+    entry->num_items++;
+
+    return knd_OK;
 }
 
 int knd_dict_set(struct kndDict *self, const char *key, size_t key_size, void *data)
 {
-    struct kndDictItem *new_item;
     size_t h = knd_dict_hash(key, key_size) % self->size;
-    struct kndDictItem *orig_head = self->hash_array[h];
-    struct kndDictItem *item = orig_head;
+    struct kndDictEntry *entry = self->hash_array[h];
+    struct kndDictItem *item;
+    int err;
 
+    if (!entry) {
+        err = knd_dict_entry_new(&entry, self->mempool);
+        if (err) return err;
+        self->hash_array[h] = entry;
+        return add_item(self, entry, key, key_size, data);
+    }
+
+    item = entry->items;
     while (item) {
         if (item->key_size != key_size) goto next_item;
         if (!memcmp(item->key, key, key_size)) {
@@ -77,30 +122,22 @@ int knd_dict_set(struct kndDict *self, const char *key, size_t key_size, void *d
     next_item:
         item = item->next;
     }
-    if (item) {
-        if (item->phase == KND_DICT_VALID)
-            return knd_CONFLICT;
+
+    if (!item) {
+        return add_item(self, entry, key, key_size, data);
     }
 
-    /* add new item */
-    if (dict_item_new(self->mempool, &new_item) != knd_OK) return knd_NOMEM;
-    new_item->phase = KND_DICT_VALID;
-    new_item->data = data;
-    new_item->key = key;
-    new_item->key_size = key_size;
-    new_item->next = orig_head;
-    self->hash_array[h] = new_item;
+    if (item->phase == KND_DICT_VALID)
+        return knd_CONFLICT;
 
-    self->num_keys++;
-    self->num_items++;
-    return knd_OK;
+    return knd_CONFLICT;
 }
 
 int knd_dict_remove(struct kndDict *self, const char *key, size_t key_size)
 {
     size_t h = knd_dict_hash(key, key_size) % self->size;
-    struct kndDictItem *head = self->hash_array[h];
-    struct kndDictItem *item = head;
+    struct kndDictEntry *head = self->hash_array[h];
+    struct kndDictItem *item = head->items;
 
     while (item) {
         if (item->key_size != key_size) goto next_item;
@@ -119,11 +156,13 @@ int knd_dict_remove(struct kndDict *self, const char *key, size_t key_size)
 
 int knd_dict_map(struct kndDict *idx, map_cb_t cb, void *ctx)
 {
+    struct kndDictEntry *entry;
     struct kndDictItem *item;
     int err;
 
     for (size_t i = 0; i < idx->size; i++) {
-        item = idx->hash_array[i];
+        entry = idx->hash_array[i];
+        item = entry->items;
         for (; item; item = item->next) {
             err = cb(item->data, ctx);
             if (err) return err;
@@ -142,19 +181,18 @@ void knd_dict_del(struct kndDict *self)
 
 void knd_dict_reset(struct kndDict *self)
 {
-    memset(self->hash_array, 0, sizeof(struct kndDictItem*) * self->size);
+    memset(self->hash_array, 0, sizeof(struct kndDictEntry*) * self->size);
 }
 
-int knd_dict_new(struct kndDict **result, struct kndMemPool *mempool, size_t init_size)
+int knd_dict_new(struct kndDict **result, size_t init_size, struct kndMemPool *mempool)
 {
     struct kndDict *self;
 
     self = calloc(1, sizeof(struct kndDict));
     if (!self) return knd_NOMEM;
-    self->hash_array = calloc(init_size, sizeof(struct kndDictItem*));
+    self->hash_array = calloc(init_size, sizeof(struct kndDictEntry*));
     if (!self->hash_array) return knd_NOMEM;
     self->size = init_size;
-
     self->mempool = mempool;
     *result = self;
     return knd_OK;

@@ -109,7 +109,7 @@ static int inherit_attr(void *elem, void *ctx_obj)
     ref->attr_stm = src_ref->attr_stm;
     ref->cls_entry = src_ref->cls_entry;
 
-    err = knd_set_add(attr_idx, attr->id, attr->id_size, (void*)ref);
+    err = knd_set_add(attr_idx, attr->id, attr->id_size, (void*)ref, task);
     KND_TASK_ERR("failed to update attr idx of %.*s", self->name_size, self->name);
 
     return knd_OK;
@@ -129,71 +129,9 @@ static int inherit_attrs(struct kndClass *c, struct kndClass *base, struct kndTa
     };
     int err;
 
-    err = knd_set_map(base->attr_idx, NULL, NULL, NULL,
-                      inherit_attr, (void*)&ctx);
+    err = knd_set_map(base->attr_idx, NULL, NULL, NULL, inherit_attr, (void*)&ctx);
     KND_TASK_ERR("{cls %.*s} failed to inherit attrs from {cls %.*s}",
                  c->name_size, c->name, base->name_size, base->name);
-    return knd_OK;
-}
-
-int knd_class_entry_unmarshall(const char *elem_id, size_t elem_id_size,
-                               const char *rec, size_t rec_size,
-                               void **result, struct kndTask *task)
-{
-    struct kndMemPool *mempool = task->user_ctx->mempool;
-    struct kndClassEntry *entry = NULL;
-    struct kndRepo *repo = task->repo;
-    struct kndCharSeq *seq;
-    const char *c, *name = rec;
-    size_t name_size;
-    int err;
-
-    if (DEBUG_CLASS_DECODE_LEVEL_2) {
-        knd_log(">> GSP class entry \"%.*s\" => \"%.*s\"",
-                elem_id_size, elem_id, rec_size, rec);
-    }
-    err = knd_class_entry_new(&entry, mempool);
-    KND_TASK_ERR("failed to alloc a class entry");
-    entry->repo = task->repo;
-    memcpy(entry->id, elem_id, elem_id_size);
-    entry->id_size = elem_id_size;
-
-    /* get name numid */
-    c = name;
-    while (*c) {
-        if (*c == '{' || *c == '[') break;
-        c++;
-    }
-    name_size = c - name;
-    if (!name_size) {
-        err = knd_FORMAT;
-        KND_TASK_ERR("anonymous class entry in GSP");
-    }
-    if (name_size > KND_ID_SIZE) {
-        err = knd_FORMAT;
-        KND_TASK_ERR("invalid class name numid in GSP");
-    }
-
-    err = knd_charseq_decode(name, name_size, &seq, task);
-    KND_TASK_ERR("failed to decode a charseq");
-
-    entry->name = seq->val;
-    entry->name_size = seq->val_size;
-    entry->seq = seq;
-
-    err = knd_shared_dict_set(task->idxs->class_name_idx, entry->name, entry->name_size,
-                              (void*)entry);
-    KND_TASK_ERR("failed to register class name");
-
-    err = knd_shared_set_add(task->idxs->class_idx, entry->id, entry->id_size, (void*)entry);
-    KND_TASK_ERR("failed to register class entry \"%.*s\"", entry->id_size, entry->id);
-
-    if (DEBUG_CLASS_DECODE_LEVEL_3) {
-        knd_log("== class name decoded \"%.*s\" => \"%.*s\" {repo %.*s}",
-                entry->id_size, entry->id, entry->name_size, entry->name,
-                repo->name_size, repo->name);
-    }
-    *result = entry;
     return knd_OK;
 }
 
@@ -260,7 +198,7 @@ static int register_attr(struct kndClass *self, struct kndAttr *attr, struct knd
     attr_ref->attr = attr;
     attr_ref->cls_entry = self->entry;
 
-    err = knd_set_add(self->attr_idx, attr->id, attr->id_size, (void*)attr_ref);
+    err = knd_set_add(self->attr_idx, attr->id, attr->id_size, (void*)attr_ref, task);
     KND_TASK_ERR("failed to register {cls %.*s {attr %.*s}}",
                  self->name_size, self->name, attr->name_size, attr->name);
     return knd_OK;

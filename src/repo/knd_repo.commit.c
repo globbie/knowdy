@@ -190,9 +190,9 @@ static int update_indices(struct kndRepo *self, struct kndCommit *commit, struct
 {
     struct kndStateRef *ref;
     struct kndClassEntry *entry;
-    struct kndProcEntry *proc_entry;
+    //struct kndProcEntry *proc_entry;
     struct kndRepo *repo = self;
-    struct kndSharedDict *name_idx = task->idxs->class_name_idx;
+    struct kndDict *name_idx = task->idxs.cls_name_idx;
     int err;
 
     if (DEBUG_REPO_COMMIT_LEVEL_2) {
@@ -206,7 +206,7 @@ static int update_indices(struct kndRepo *self, struct kndCommit *commit, struct
     FOREACH (ref, commit->class_state_refs) {
         entry = ref->obj;
         if (DEBUG_REPO_COMMIT_LEVEL_2) {
-            knd_log(".. idx update of {class %.*s {phase %d}}",
+            knd_log(".. idx update of {cls %.*s {phase %d}}",
                     entry->name_size, entry->name, ref->state->phase);
         }
         switch (ref->state->phase) {
@@ -216,8 +216,8 @@ static int update_indices(struct kndRepo *self, struct kndCommit *commit, struct
                         self->name_size, self->name, entry->name_size, entry->name);
             }
             /* register new class */
-            err = knd_shared_dict_set(name_idx, entry->name,  entry->name_size, (void*)entry);
-            KND_TASK_ERR("failed to register class %.*s", entry->name_size, entry->name);
+            err = knd_dict_set(name_idx, entry->name,  entry->name_size, (void*)entry);
+            KND_TASK_ERR("failed to register {cls %.*s}", entry->name_size, entry->name);
             continue;
         case KND_REMOVED:
             entry->phase = KND_REMOVED;
@@ -226,20 +226,21 @@ static int update_indices(struct kndRepo *self, struct kndCommit *commit, struct
             entry->phase = KND_UPDATED;
 
             err = knd_class_update_indices(self, entry, ref->state, task);
-            KND_TASK_ERR("failed to update indices of class %.*s",
+            KND_TASK_ERR("failed to update indices of {cls %.*s}",
                          entry->name_size, entry->name);
             continue;
         default:
             // KND_SELECTED
             if (ref->state->children != NULL) {
                 err = knd_class_inst_update_indices(self, entry, ref->state->children, task);
-                KND_TASK_ERR("failed to update inst indices of class \"%.*s\"",
+                KND_TASK_ERR("failed to update inst indices of {cls %.*s}",
                              entry->name_size, entry->name);
             }
             break;
         }
     }
 
+    /*
     name_idx = task->idxs->proc_name_idx;
 
     FOREACH (ref, commit->proc_state_refs) {
@@ -256,10 +257,9 @@ static int update_indices(struct kndRepo *self, struct kndCommit *commit, struct
         default:
             break;
         }
-        err = knd_shared_dict_set(name_idx, proc_entry->name,  proc_entry->name_size,
-                                  (void*)proc_entry);
+        err = knd_shared_dict_set(name_idx, proc_entry->name, proc_entry->name_size, (void*)proc_entry);
         RET_ERR();
-    }
+        }*/
     return knd_OK;
 }
 
@@ -350,11 +350,11 @@ static int build_commit_WAL(struct kndRepo *self, struct kndCommit *commit, stru
     err = file_out->write(file_out, "}\n", strlen("}\n"));
     KND_TASK_ERR("commit output failed");
 
-    if (task->keep_local_WAL) {
+    /*if (task->keep_local_WAL) {
         err = knd_append_file((const char*)filename, file_out->buf, file_out->buf_size);
         KND_TASK_ERR("WAL file append failed");
         atomic_store_explicit(&commit->confirm, KND_PERSISTENT_STATE, memory_order_relaxed);
-    }
+        }*/
     return knd_OK;
 }
 
@@ -455,7 +455,7 @@ int knd_repo_transfer_commits(struct kndRepo *repo, struct kndTask *unused_var(t
 
     assert (repo->snapshot_temp != NULL);
 
-    snapshot = atomic_load_explicit(&repo->snapshot, memory_order_relaxed);    
+    snapshot = repo->snapshot;    
 
     if (DEBUG_REPO_COMMIT_LEVEL_TMP) {
         knd_log(".. transfer the remaining delta of latest commits in {repo %.*s}",

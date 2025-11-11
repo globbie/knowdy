@@ -20,10 +20,40 @@
 
 #pragma once
 
-#include <stdatomic.h>
-
 #include "knd_config.h"
-#include "knd_task.h"
+
+typedef enum knd_storage_unit_type {
+    KND_STORAGE_UNIT_DEFAULT,
+    KND_STORAGE_UNIT_KB,
+    KND_STORAGE_UNIT_MB,
+    KND_STORAGE_UNIT_GB,
+    KND_STORAGE_UNIT_TB
+} knd_storage_unit_type;
+
+static const char* const knd_storage_unit_names[] = {
+    [KND_STORAGE_UNIT_DEFAULT] = "default unit",
+    [KND_STORAGE_UNIT_KB] = "K",
+    [KND_STORAGE_UNIT_MB] = "M",
+    [KND_STORAGE_UNIT_GB] = "G",
+    [KND_STORAGE_UNIT_TB] = "T"
+};
+
+
+struct kndStorageConfig {
+    knd_storage_unit_type quota_unit;
+    size_t quota_total;
+
+    // gt 0  lte 1
+    float snapshot_threshold_ratio;
+    size_t max_snapshots;
+
+    knd_storage_unit_type leaf_storage_unit;
+    size_t leaf_max_units_size;
+    size_t leaf_max_size;
+
+    size_t leaf_min_units_size;
+    size_t leaf_min_size;
+};
 
 struct kndStorageLeaf
 {
@@ -54,4 +84,6 @@ struct kndStorageLeaf
     struct kndStorageLeaf *tail;
 };
 
-int knd_storage_leaf_new(struct kndStorageLeaf **result, size_t numid);
+int knd_storage_leaf_new(struct kndStorageLeaf **result, size_t numid, const char *path, size_t path_size,
+                         size_t min_size, size_t max_size);
+void knd_storage_leaf_del(struct kndStorageLeaf *leaf);

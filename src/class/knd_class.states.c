@@ -39,8 +39,9 @@
 #define DEBUG_CLASS_SELECT_LEVEL_5 0
 #define DEBUG_CLASS_SELECT_LEVEL_TMP 1
 
+#if 0
 static int retrieve_inst_updates(struct kndStateRef *ref,
-                                 struct kndSet *set)
+                                 struct kndSet *set, struct kndTask *task)
 {
     struct kndState *state = ref->state;
     struct kndClassInstEntry *inst_entry;
@@ -50,7 +51,8 @@ static int retrieve_inst_updates(struct kndStateRef *ref,
     knd_log("++ state: %zu  type:%d", state->numid, ref->type);
 
     for (child_ref = state->children; child_ref; child_ref = child_ref->next) {
-        err = retrieve_inst_updates(child_ref, set);                          RET_ERR();
+        err = retrieve_inst_updates(child_ref, set, task);
+        RET_ERR();
     }
 
     switch (ref->type) {
@@ -63,7 +65,8 @@ static int retrieve_inst_updates(struct kndStateRef *ref,
 
             err = knd_set_add(set,
                            inst_entry->id,
-                           inst_entry->id_size, (void*)inst_entry);                   RET_ERR();
+                              inst_entry->id_size, (void*)inst_entry, task);
+            RET_ERR();
 
             /* TODO: filter out the insts
                that were created and removed _after_
@@ -80,19 +83,16 @@ static int retrieve_inst_updates(struct kndStateRef *ref,
     return knd_OK;
 }
 
+
 int knd_class_get_inst_updates(struct kndClass *self, size_t gt, size_t lt,
                                size_t unused_var(eq),
-                               struct kndSet *set)
+                               struct kndSet *set, struct kndTask *task)
 {
     struct kndState *state;
     struct kndStateRef *ref;
     int err;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_2)
-        knd_log(".. class %.*s (repo:%.*s) to extract instance updates",
-                self->name_size, self->name, self->entry->repo->name_size, self->entry->repo->name);
-
-    if (!lt) lt = self->num_inst_states + 1;
+    /*    if (!lt) lt = self->num_inst_states + 1;
 
     for (state = self->inst_states; state; state = state->next) {
         if (state->numid >= lt) continue;
@@ -102,14 +102,17 @@ int knd_class_get_inst_updates(struct kndClass *self, size_t gt, size_t lt,
         if (!state->children) continue;
 
         for (ref = state->children; ref; ref = ref->next) {
-            err = retrieve_inst_updates(ref, set);                    RET_ERR();
+            err = retrieve_inst_updates(ref, set, task);                    RET_ERR();
         }
     }
-
+    */
     return knd_OK;
 }
 
-int knd_retrieve_class_updates(struct kndStateRef *ref, struct kndSet *set)
+#endif
+
+
+int knd_retrieve_class_updates(struct kndStateRef *ref, struct kndSet *set, struct kndTask *task)
 {
     struct kndState *state = ref->state;
     struct kndClassEntry *entry;
@@ -119,7 +122,8 @@ int knd_retrieve_class_updates(struct kndStateRef *ref, struct kndSet *set)
     knd_log("++ class state: %zu  type:%d", state->numid, ref->type);
 
     for (child_ref = state->children; child_ref; child_ref = child_ref->next) {
-        err = knd_retrieve_class_updates(child_ref, set);                             RET_ERR();
+        err = knd_retrieve_class_updates(child_ref, set, task);
+        RET_ERR();
     }
 
     switch (ref->type) {
@@ -136,7 +140,7 @@ int knd_retrieve_class_updates(struct kndStateRef *ref, struct kndSet *set)
 
             err = knd_set_add(set,
                               entry->id,
-                              entry->id_size, (void*)entry);                   RET_ERR();
+                              entry->id_size, (void*)entry, task);                   RET_ERR();
 
             /* TODO: filter out the insts
                that were created and removed _after_
@@ -149,19 +153,20 @@ int knd_retrieve_class_updates(struct kndStateRef *ref, struct kndSet *set)
     return knd_OK;
 }
 
+#if 0
 extern int knd_class_get_updates(struct kndClass *self,
                                  size_t gt, size_t lt,
                                  size_t unused_var(eq),
-                                 struct kndSet *set)
+                                 struct kndSet *unused_var(set), struct kndTask *unused_var(task))
 {
     struct kndState *state;
     struct kndStateRef *ref;
     int err;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_2)
-        knd_log(".. class %.*s (repo:%.*s) to extract updates..",
-                self->name_size, self->name,
-                self->entry->repo->name_size, self->entry->repo->name);
+    if (DEBUG_CLASS_SELECT_LEVEL_2) {
+        knd_log("{cls %.*s} to extract updates",
+                self->name_size, self->name);
+    }
 
     if (!lt) lt = self->states->numid + 1;
 
@@ -171,28 +176,28 @@ extern int knd_class_get_updates(struct kndClass *self,
 
         // TODO
         if (!state->children) continue;
-        for (ref = state->children; ref; ref = ref->next) {
-            err = knd_retrieve_class_updates(ref, set);                               RET_ERR();
-        }
+        // for (ref = state->children; ref; ref = ref->next) {
+        //    err = knd_retrieve_class_updates(ref, set, task);                               RET_ERR();
+        //}
     }
 
     return knd_OK;
 }
+#endif
 
 extern int knd_class_get_desc_updates(struct kndClass *self,
                                       size_t gt, size_t lt,
                                       size_t unused_var(eq),
-                                      struct kndSet *set)
+                                      struct kndSet *set, struct kndTask *task)
 {
     struct kndState *state;
     struct kndStateRef *ref;
     int err;
 
-    if (DEBUG_CLASS_SELECT_LEVEL_2)
-        knd_log(".. class %.*s (repo:%.*s) to extract descendant updates..",
-                self->name_size, self->name,
-                self->entry->repo->name_size, self->entry->repo->name);
-
+    if (DEBUG_CLASS_SELECT_LEVEL_2) {
+        knd_log("{cls %.*s} to extract descendant updates..",
+                self->name_size, self->name);
+    }
     if (!lt) lt = self->desc_states->numid + 1;
     FOREACH (state, self->desc_states) {
         if (state->numid >= lt) continue;
@@ -201,7 +206,7 @@ extern int knd_class_get_desc_updates(struct kndClass *self,
         // TODO
         if (!state->children) continue;
         FOREACH (ref, state->children) {
-            err = knd_retrieve_class_updates(ref, set);                               RET_ERR();
+            err = knd_retrieve_class_updates(ref, set, task);                               RET_ERR();
         }
     }
 

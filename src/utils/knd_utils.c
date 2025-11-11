@@ -327,8 +327,7 @@ extern int knd_append_file(const char *filename, const void *buf, size_t buf_siz
     int fd;
 
     /* write textual content */
-    fd = open(filename,  
-              O_WRONLY | O_CREAT | O_APPEND, 0644);
+    fd = open(filename, O_WRONLY | O_CREAT | O_APPEND, 0644);
     if (fd < 0) {
         knd_log("-- append to file \"%s\" failed :(", filename);
         return knd_IO_FAIL;

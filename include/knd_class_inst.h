@@ -70,6 +70,7 @@ struct kndClassInstEntry
     struct kndAttrIdx *attr_idxs;
 
     struct kndClassInstEntry *next;
+    struct kndClassInstEntry *prev;
 };
 
 struct kndClassInst
@@ -95,8 +96,6 @@ struct kndClassInst
     struct kndAttrStm *attr_stms;
     struct kndAttrStm *attr_stms_tail;
     size_t num_attr_stms;
-
-    struct kndAttrHub *attr_hubs;
 
     size_t linear_pos;
     size_t linear_len;

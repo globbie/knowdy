@@ -211,9 +211,8 @@ static int present_subclasses(struct kndClass *self, size_t num_children,
 {
     struct kndOutput *out = task->out;
     struct kndClassRef *ref;
-    struct kndClassEntry *entry = self->entry;
-    struct kndClassEntry *orig_entry = entry->orig;
-    struct kndClass *orig_c, *c;
+    //struct kndClassEntry *entry = self->entry;
+    struct kndClass *c;
     struct kndState *state;
     int err;
 
@@ -251,7 +250,7 @@ static int present_subclasses(struct kndClass *self, size_t num_children,
         RET_ERR();
     }
 
-    if (orig_entry) {
+    /*    if (orig_entry) {
         err = knd_class_acquire(orig_entry, &orig_c, task);
         KND_TASK_ERR("failed to acquire {class %.*s}", orig_entry->name_size, orig_entry->name);
 
@@ -269,7 +268,8 @@ static int present_subclasses(struct kndClass *self, size_t num_children,
             }
             err = present_subclass(ref, task, depth + 1);                         RET_ERR();
         }
-    }
+        } */
+
     err = out->writec(out, ']');                                                  RET_ERR();
     err = out->writec(out, '}');                                                  RET_ERR();
 
@@ -357,9 +357,8 @@ int knd_class_export_GSL(struct kndClass *self, struct kndTask *task,
     int err;
 
     if (DEBUG_GSL_LEVEL_2) {
-        knd_log(".. GSL export {repo %.*s {cls %.*s}} "
+        knd_log(".. GSL export {cls %.*s} "
                 " {depth %zu} {max-depth %zu} {indent-size %zu}",
-                self->entry->repo->name_size, self->entry->repo->name,
                 self->name_size, self->name,
                 task->depth, task->max_depth, indent_size);
     }
@@ -453,10 +452,13 @@ int knd_class_export_GSL(struct kndClass *self, struct kndTask *task,
 
     if (num_children) {
         if (indent_size) {
-            err = out->writec(out, '\n');                                         RET_ERR();
-            err = knd_print_offset(out, (depth + 1) * indent_size);       RET_ERR();
+            err = out->writec(out, '\n');
+            RET_ERR();
+            err = knd_print_offset(out, (depth + 1) * indent_size);
+            RET_ERR();
         }
-        err = present_subclasses(self, num_children, task, depth + 1);            RET_ERR();
+        err = present_subclasses(self, num_children, task, depth + 1);
+        RET_ERR();
     }
 
     /* TODO inverse rels */

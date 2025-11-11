@@ -83,7 +83,7 @@ int knd_class_inst_commit_state(struct kndClass *self, struct kndStateRef *child
     struct kndMemPool *mempool = task->mempool;
     struct kndCommit *commit = task->ctx->commit;
     struct kndStateRef *ref;
-    struct kndState *state, *head;
+    struct kndState *state;
     int err;
 
     err = knd_state_new(&state, mempool);
@@ -91,14 +91,14 @@ int knd_class_inst_commit_state(struct kndClass *self, struct kndStateRef *child
     state->phase = KND_SELECTED;
     state->children = children;
     state->num_children = num_children;
-    do {
+    /*    do {
         head = atomic_load_explicit(&self->inst_states, memory_order_relaxed);
         if (head) {
             state->next = head;
             state->numid = head->numid + 1;
         }
     } while (!atomic_compare_exchange_weak(&self->inst_states, &head, state));
-
+    */
     /* inform our repo */
     err = knd_state_ref_new(&ref, mempool);                                 RET_ERR();
     ref->state = state;

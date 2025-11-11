@@ -51,11 +51,14 @@ struct kndCharSeq
     /* repo wide str idx id */
     char id[KND_ID_SIZE];
     size_t id_size;
-    size_t numid; 
+    size_t numid;
 
-    /* the actual string */
+    /* the string in MemBlock */
     const char *val;
     size_t val_size;
+
+    struct kndCharSeq *next;
+    struct kndCharSeq *prev;
 };
 
 struct kndDiscourseContext
@@ -306,8 +309,9 @@ int knd_text_build_JSON(const char *rec, size_t rec_size, struct kndTask *task);
 int knd_par_export_GSL(struct kndPar *par, struct kndTask *task);
 
 int knd_charseq_new(struct kndCharSeq **result, struct kndMemPool *mempool);
-int knd_charseq_fetch(struct kndRepo *repo, const char *val, size_t val_size,
-                      struct kndCharSeq **result, struct kndTask *task);
+void knd_charseq_free(struct kndCharSeq *seq, struct kndMemPool *mempool);
+
+int knd_charseq_fetch(const char *val, size_t val_size, struct kndCharSeq **result, struct kndTask *task);
 
 int knd_charseq_marshall(void *elem, void *ctx, struct kndStorageLeaf *leaf,
                          size_t *output_size, struct kndTask *task);

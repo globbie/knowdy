@@ -113,7 +113,8 @@ static int build_subdirs_footer(struct kndSharedSetDir *dir, char *idbuf, size_t
 }
 
 static int marshall_elems(struct kndSharedSetElemIdx *parent_idx, struct kndSharedSetDir *dir,
-                          const char *idbuf, size_t idbuf_size, knd_set_elem_marshall_cb_t cb,
+                          const char *idbuf, size_t idbuf_size,
+                          knd_set_elem_marshall_cb_t cb, void *cb_ctx,
                           bool use_keys, struct kndStorageLeaf *leaf, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
@@ -121,9 +122,15 @@ static int marshall_elems(struct kndSharedSetElemIdx *parent_idx, struct kndShar
     size_t block_size;
     int err;
 
-    if (DEBUG_SHARED_SET_GSP_LEVEL_2) {
-        knd_log(".. marshall elems of {dir %.*s}", idbuf_size, idbuf);
+    if (DEBUG_SHARED_SET_GSP_LEVEL_TMP) {
+        if (!idbuf_size) {
+            knd_log(".. marshall elems of {dir /}");
+        } else {
+            knd_log(".. marshall elems of {dir %.*s}", idbuf_size, idbuf);
+        }
     }
+
+    out->reset(out);
 
     for (size_t i = 0; i < KND_RADIX_BASE; i++) {
         if (parent_idx->idxs[i]) dir->num_subdirs++;
@@ -138,11 +145,13 @@ static int marshall_elems(struct kndSharedSetElemIdx *parent_idx, struct kndShar
             OUTC(obj_id_seq[i]);
         }
 
-        if (DEBUG_SHARED_SET_GSP_LEVEL_2) {
+        if (DEBUG_SHARED_SET_GSP_LEVEL_3) {
             knd_log(">> elem %.*s%c", idbuf_size, idbuf, obj_id_seq[i]);
         }
-        err = cb(elem, NULL, leaf, &block_size, task);
-        if (err) return err;
+
+        err = cb(elem, cb_ctx, leaf, &block_size, task);
+        KND_TASK_ERR("failed marshalling {elem %.*s%c} {err %d}",
+                     idbuf_size, idbuf, obj_id_seq[i], err);
 
         if (block_size > dir->cell_max_val)
             dir->cell_max_val = block_size;
@@ -157,8 +166,7 @@ static int marshall_elems(struct kndSharedSetElemIdx *parent_idx, struct kndShar
                     dir->num_subdirs, dir->num_term_elems, dir->total_elems);
         } else {
             knd_log("{dir %.*s} {num-subdirs %zu} {num-term-elems %zu {total-elems %zu}}",
-                    idbuf_size, idbuf, dir->num_subdirs,
-                    dir->num_term_elems, dir->total_elems);
+                    idbuf_size, idbuf, dir->num_subdirs, dir->num_term_elems, dir->total_elems);
         }
     }
     return knd_OK;
@@ -318,7 +326,8 @@ static int set_leaf_range_end(struct kndStorageLeaf *leaf, const char *dir_id, s
 static int build_elems_block(struct kndSharedSetElemIdx *parent_idx,
                              struct kndStorageLeaf *leaf, struct kndSharedSetDir *dir,
                              char *idbuf, size_t idbuf_size,
-                             knd_set_elem_marshall_cb_t cb, struct kndTask *task)
+                             knd_set_elem_marshall_cb_t cb, void *cb_ctx,
+                             struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     size_t cell_size = 1;
@@ -331,13 +340,11 @@ static int build_elems_block(struct kndSharedSetElemIdx *parent_idx,
                 dir->id_size, dir->id, idbuf_size, idbuf);
     }
 
-    out->reset(out);
-    err = marshall_elems(parent_idx, dir, idbuf, idbuf_size, cb, false, leaf, task);
+    err = marshall_elems(parent_idx, dir, idbuf, idbuf_size, cb, cb_ctx, false, leaf, task);
     KND_TASK_ERR("failed to marshall elems");
 
-    if (out->buf_size == 0) {
-        err = knd_FAIL;
-        KND_TASK_ERR("payload is empty");
+    if (out->buf_size) {
+        // TODO keys
     }
 
     cell_size = knd_min_bytes(dir->cell_max_val);
@@ -350,7 +357,7 @@ static int build_elems_block(struct kndSharedSetElemIdx *parent_idx,
         }
         out->reset(out);
         dir->num_term_elems = 0;
-        err = marshall_elems(parent_idx, dir, idbuf, idbuf_size, cb, true, leaf, task);
+        err = marshall_elems(parent_idx, dir, idbuf, idbuf_size, cb, cb_ctx, true, leaf, task);
         KND_TASK_ERR("failed to marshall elems");
         OUTC((char)0);
         OUTC((char)1);
@@ -419,9 +426,14 @@ static int traverse_marshall(struct kndSharedSet *self, struct kndStorageLeaf *l
     size_t footer_size;
     int err;
 
-    if (DEBUG_SHARED_SET_GSP_LEVEL_2) {
-        knd_log(">> {curr-dir %.*s} {from-dir-remainder %.*s}",
-                idbuf_size, idbuf, range_from_addr_size, range_from_addr);
+    if (DEBUG_SHARED_SET_GSP_LEVEL_TMP) {
+        if (!idbuf_size) {
+            knd_log(">> {curr-dir /} {from-dir-remainder %.*s} {num-term-elems %zu}",
+                    range_from_addr_size, range_from_addr, parent_idx->num_term_elems);
+        } else {
+            knd_log(">> {curr-dir %.*s} {from-dir-remainder %.*s}",
+                    idbuf_size, idbuf, range_from_addr_size, range_from_addr);
+        }
     }
 
     err = knd_shared_set_dir_new(&dir, self->mempool);
@@ -431,7 +443,7 @@ static int traverse_marshall(struct kndSharedSet *self, struct kndStorageLeaf *l
     dir->id_size = idbuf_size;
 
     if (!range_from_addr_size) {
-        err = build_elems_block(parent_idx, leaf, dir, idbuf, idbuf_size, cb, task);
+        err = build_elems_block(parent_idx, leaf, dir, idbuf, idbuf_size, cb, cb_ctx, task);
         KND_TASK_ERR("failed to build elems block of {dir %.*s}", idbuf_size, idbuf);
         if (leaf->range_to_addr_size) {
             *result_dir = dir;
@@ -459,8 +471,14 @@ static int build_leaf_temp_filename(struct kndStorageLeaf *leaf,
     struct kndOutput *out = task->out;
     int err;
 
+    assert (path_size > 0);
+
     out->reset(out);
     OUT(path, path_size);
+    if (path[path_size - 1] != '/') {
+        OUT("/", 1);
+    }
+
     OUT("output", strlen("output"));
     OUT(KND_GSP_FILE_TMP_EXT_NAME, strlen(KND_GSP_FILE_TMP_EXT_NAME));
     
@@ -485,8 +503,8 @@ static int storage_leaf_create(struct kndStorageLeaf **result, size_t numid,
     size_t path_size = idx->path_size;
     int err;
 
-    err = knd_storage_leaf_new(&leaf, numid);
-    KND_TASK_ERR("failed to alloc a storage leaf");
+    //err = knd_storage_leaf_new(&leaf, numid);
+    //KND_TASK_ERR("failed to alloc a storage leaf");
 
     err = build_leaf_temp_filename(leaf, path, path_size, task);
     KND_TASK_ERR("failed to build a temp filename");
@@ -602,16 +620,16 @@ int knd_shared_set_leaf_marshall(struct kndSharedSet *self, struct kndStorageLea
     int err;
 
     if (DEBUG_SHARED_SET_GSP_LEVEL_2) {
-        if (!range->from_addr_size) {
+        if (!range->from_id_size) {
             knd_log(">> marshalling set from scratch");
         } else {
             knd_log(">> marshalling set {from-dir %.*s}",
-                    range->from_addr_size, range->from_addr);
+                    range->from_id_size, range->from_id);
         }
     }
 
     err = traverse_marshall(self, leaf, self->idx, idbuf, idbuf_size,
-                            range->from_addr, range->from_addr_size, cb, cb_ctx, &dir, task);
+                            range->from_id, range->from_id_size, cb, cb_ctx, &dir, task);
     KND_TASK_ERR("failed to marshall set idx");
 
     return knd_OK;
@@ -670,8 +688,9 @@ int knd_shared_set_marshall(struct kndSharedSet *idx, struct kndSetRange *range,
     /* split a set into a batch of leaves of max size */
     while (1) {
         leaf_count++;
-        err = storage_leaf_create(&leaf, leaf_count, idx, task);
-        KND_TASK_ERR("failed to create a new storage leaf");
+
+        //err = knd_storage_leaf_new(&leaf, leaf_count);
+        //KND_TASK_ERR("failed to alloc a storage leaf");
 
         err = knd_shared_set_leaf_marshall(idx, leaf, range, cb, cb_ctx, task);
         KND_TASK_ERR("failed to marshall a leaf of a shared set");
@@ -689,8 +708,8 @@ int knd_shared_set_marshall(struct kndSharedSet *idx, struct kndSetRange *range,
         append_leaf(&leaves, leaf);
 
         /* set next range offset */
-        memcpy(local_range.from_addr, leaf->range_to_addr, leaf->range_to_addr_size);
-        local_range.from_addr_size = leaf->range_to_addr_size;
+        memcpy(local_range.from_id, leaf->range_to_addr, leaf->range_to_addr_size);
+        local_range.from_id_size = leaf->range_to_addr_size;
         total_elems += leaf->num_elems;
 
 

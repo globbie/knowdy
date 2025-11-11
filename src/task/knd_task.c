@@ -55,28 +55,10 @@ void knd_task_reset(struct kndTask *self)
     self->user_ctx = self->default_user_ctx;
     self->repo = self->system_repo;
 
-    self->payload = NULL;
     self->out->reset(self->out);
     self->log->reset(self->log);
 
-    if (self->class_name_idx)
-        knd_dict_reset(self->class_name_idx);
-
-    if (self->class_inst_alias_idx)
-        knd_dict_reset(self->class_inst_alias_idx);
-
-    if (self->attr_name_idx)
-        knd_dict_reset(self->attr_name_idx);
-
-    if (self->proc_name_idx)
-        knd_dict_reset(self->proc_name_idx);
-
-    if (self->proc_arg_name_idx)
-        knd_dict_reset(self->proc_arg_name_idx);
-
-    knd_mempool_reset(self->ctx_mempool);
-    self->mempool = self->ctx_mempool;
-    // NB self->cache_mempool stays intact
+    knd_mempool_reset(self->mempool);
 }
 
 static int task_err_export_JSON(struct kndTask *task)
@@ -129,10 +111,12 @@ int knd_task_err_export(struct kndTask *task)
 
     switch (task->ctx->format) {
     case KND_FORMAT_JSON:
-        err = task_err_export_JSON(task);                                    RET_ERR();
+        err = task_err_export_JSON(task);
+        RET_ERR();
         break;
     default:
-        err = task_err_export_GSP(task);                                     RET_ERR();
+        err = task_err_export_GSP(task);
+        RET_ERR();
         break;
     }
     return knd_OK;
@@ -143,11 +127,10 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
     size_t total_size = 0;
     gsl_err_t parser_err;
 
-    assert (task->steward != NULL);
     assert (task->ctx != NULL);
     assert (task->mempool != NULL);
 
-    struct kndUser *user = task->steward->user;
+    struct kndUser *user = task->user;
     struct kndOutput *out = task->out;
     int err;
 
@@ -228,9 +211,42 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
 static int task_context_new(struct kndTaskContext **result)
 {
     struct kndTaskContext *ctx;
-    ctx = calloc(1, sizeof(struct kndUserContext));
+    ctx = calloc(1, sizeof(struct kndTaskContext));
     if (!ctx) return knd_NOMEM;
     *result = ctx;
+    return knd_OK;
+}
+
+static int init_cache(struct kndTaskCache *c, struct kndMemConfig *memconf)
+{
+    int err;
+
+    err = knd_mempool_create(&c->mempool, memconf, 2);
+    if (err) goto error;
+
+    err = knd_set_new(&c->cls_idx, KND_SET_UNIQUE_VALUES, c->mempool);
+    if (err) goto error;
+
+    err = knd_dict_new(&c->cls_name_idx, KND_SMALL_DICT_SIZE, c->mempool);
+    if (err) goto error;
+
+    return knd_OK;
+
+ error:
+    // TODO free
+    return err;
+}
+
+static int create_local_write_idxs(struct kndTask *task)
+{
+    int err;
+
+    err = knd_dict_new(&task->idxs.cls_name_idx, KND_SMALL_DICT_SIZE, task->mempool);
+    KND_TASK_ERR("failed to create a cls name idx");
+
+    err = knd_set_new(&task->idxs.cls_idx, KND_SET_UNIQUE_VALUES, task->mempool);
+    KND_TASK_ERR("failed to create a cls idx");
+
     return knd_OK;
 }
 
@@ -264,107 +280,87 @@ int knd_task_fetch_memblock(struct kndTask *task,
     return knd_OK;
 }
 
-void knd_task_cleanup(struct kndTask *task, struct kndSteward *steward)
+void knd_task_cleanup(struct kndTask *task)
 {
-    assert (steward != NULL);
-    assert (steward->repo != NULL);
-
     knd_mempool_reset(task->mempool);
-    knd_mempool_reset(task->cache_mempool);
 
-    task->user_ctx = task->default_user_ctx;
-    task->user_ctx->mempool = steward->mempool_write;
-    task->user_ctx->repo = steward->repo;
+    //task->user_ctx = task->default_user_ctx;
+    //task->user_ctx->mempool = steward->mempool_write;
+    //task->user_ctx->repo = steward->repo;
 
-    if (steward->user) {
+    /*if (steward->user) {
         task->user_ctx->mempool = steward->user->mempool_write;
         task->user_ctx->repo = steward->user->repo;
         task->user_ctx->acls = steward->user->default_acls;
+        }*/
+}
+
+void knd_task_monitor(struct kndTask *task, struct kndStorageConfig *storage_conf,
+                      struct kndResourceReport *report)
+{
+    struct kndMemPool *mempool = task->mempool;
+    struct kndMemPoolReport memrep = { 0 };
+
+    knd_mempool_report(mempool, &memrep);
+
+    report->mem_usage = memrep.total_mem_usage;
+    if (memrep.total_mem_usage >\
+        (mempool->capacity * storage_conf->snapshot_threshold_ratio)) {
+        report->mem_threshold_alert = true;
     }
 }
 
-int knd_task_init(struct kndTask *task, struct kndSteward *steward)
+static int task_init(struct kndTask *task,
+                     struct kndMemConfig *main_memconf, struct kndMemConfig *cache_memconf)
 {
-    assert (steward != NULL);
-    assert (steward->repo != NULL);
-
-    struct kndRepo *repo = steward->repo;
-    struct kndMemPool *mempool;
-    struct kndOutput *out = steward->out;
-    struct kndOutput *log = steward->log;
     int err;
 
-    task->steward = steward;
-    task->path = steward->path;
-    task->path_size = steward->path_size;
-
-    err = knd_mempool_create(&task->ctx_mempool, &steward->mem_ctx_config, 1);
-    KND_STEWARD_ERR("failed to init a local ctx mempool for writing");
-
-    err = knd_mempool_create(&task->ctx_cache_mempool, &steward->mem_ctx_config, 2);
-    KND_STEWARD_ERR("failed to init a local ctx cache mempool");
-
-    /* local name indices */
-    mempool = task->ctx_mempool;
-
-    err = knd_dict_new(&task->class_name_idx, mempool, KND_SMALL_DICT_SIZE);
-    if (err) goto error;
-    err = knd_dict_new(&task->class_inst_alias_idx, mempool, KND_SMALL_DICT_SIZE);
-    if (err) goto error;
-
-    err = knd_dict_new(&task->attr_name_idx, mempool, KND_SMALL_DICT_SIZE);
-    if (err) goto error;
-    err = knd_dict_new(&task->proc_name_idx, mempool, KND_SMALL_DICT_SIZE);
-    if (err) goto error;
-    err = knd_dict_new(&task->proc_arg_name_idx, mempool, KND_SMALL_DICT_SIZE);
-    if (err) goto error;
-
-
-    /* local cache */
-    mempool = task->ctx_cache_mempool;
-    err = knd_set_new(&task->cache_class_idx, KND_SET_UNIQUE_VALUES, mempool);
-    if (err) goto error;
-
-    /* system repo defaults */
-    task->system_repo = repo;
-    task->repo = repo;
-    task->repo_name_idx = steward->repo_name_idx;
+    err = knd_mempool_create(&task->mempool, main_memconf, 1);
+    if (err) {
+        knd_log("failed to init a task mempool for writing");
+    }
 
     err = task_context_new(&task->ctx);
     if (err) goto error;
 
+    err = init_cache(&task->cache, cache_memconf);
+    if (err) goto error;
+
+    switch (task->type) {
+    case KND_AGENT_WRITER:
+        err = create_local_write_idxs(task);
+        if (err) goto error;
+        break;
+    default:
+        break;
+    }
+    
     /* default user context */
     err = knd_user_context_new(&task->default_user_ctx);
     if (err) goto error;
     task->user_ctx = task->default_user_ctx;
-    task->user_ctx->mempool = steward->mempool_write;
-    task->user_ctx->repo = steward->repo;
 
-    if (steward->user) {
-        task->user_ctx->mempool = steward->user->mempool_write;
-        task->user_ctx->repo = steward->user->repo;
-        task->user_ctx->acls = steward->user->default_acls;
-    }
     return knd_OK;
 
  error:
     return err;
 }
 
-int knd_task_new(struct kndTask **result,
-                 knd_agent_role_type role, int task_id, struct kndSteward *steward)
+int knd_task_new(struct kndTask **result, knd_agent_role_type role, size_t task_id,
+                 struct kndMemConfig *main_memconf, struct kndMemConfig *cache_memconf,
+                 struct kndStorageConfig *storage_conf)
 {
     struct kndTask *task;
     int err;
 
     if (task_id == 0) {
-        if (role != KND_AGENT_AUX) {
+        if (role != KND_AGENT_SYSTEM) {
             knd_log("task id should be > 0 and < %zu", KND_MAX_TASKS);
             return knd_CONFLICT;
         }
     }
-    if (task_id >= KND_MAX_TASKS || task_id < 0) {
-        knd_log("task id should be > 0 and < %zu", KND_MAX_TASKS);
+    if (task_id >= KND_MAX_TASKS) {
+        knd_log("task id should be less than %zu", KND_MAX_TASKS);
         return knd_CONFLICT;
     }
 
@@ -382,11 +378,11 @@ int knd_task_new(struct kndTask **result,
     err = knd_output_new(&task->file_out, NULL, KND_FILE_BUF_SIZE);
     if (err) goto error;
 
-    // TODO add local LRU cache
-
-    err = knd_task_init(task, steward);
+    err = task_init(task, main_memconf, cache_memconf);
     if (err) goto error;
-    
+
+    task->storage_conf = storage_conf;
+
     *result = task;
     return knd_OK;
 

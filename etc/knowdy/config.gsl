@@ -9,11 +9,11 @@
       {memory
          {main
             {max-large-pages       300}
-            {max-base-pages        3000}
+            {max-base-pages        28000}
             {max-small-x4-pages    1000}
             {max-small-x2-pages    1000}
             {max-small-pages       4000}
-            {max-tiny-pages        10000}
+            {max-tiny-pages        42000}
          }
          {cache
             {max-large-pages       300}
@@ -23,12 +23,19 @@
             {max-small-pages       6000}
             {max-tiny-pages        20000}}
          {user
-            {max-base-pages        300000  }
+            {max-base-pages        320000  }
             {max-small-x4-pages    400000  }
             {max-small-x2-pages    80000   }
             {max-small-pages       3500000 }
-            {max-tiny-pages        1600000 }}
-         {ctx
+            {max-tiny-pages        1700000 }}
+         {task-ctx
+            {max-large-pages        10}
+            {max-base-pages        1000}
+            {max-small-x4-pages    1000}
+            {max-small-x2-pages    1000}
+            {max-small-pages       3000}
+            {max-tiny-pages        10000}}
+         {task-cache
             {max-large-pages        10}
             {max-base-pages        1000}
             {max-small-x4-pages    1000}
@@ -40,7 +47,8 @@
           {quota {unit M}
                  {total 200}}
           {leaf {unit M}
-                {max 100} {min 20}}
+                {min 20}
+                {max 100}}
           {snapshot
-                {threshold 0.75}}}
+                {threshold 0.1}}}
 }

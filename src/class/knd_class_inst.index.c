@@ -28,6 +28,7 @@
 #define DEBUG_INST_IDX_LEVEL_4 0
 #define DEBUG_INST_IDX_LEVEL_TMP 1
 
+#if 0
 static int update_attr_stm_indices(struct kndClassInstEntry *entry, struct kndRepo *unused_var(repo),
                                    struct kndTask *unused_var(task))
 {
@@ -51,20 +52,14 @@ static int update_attr_stm_indices(struct kndClassInstEntry *entry, struct kndRe
     }
     return knd_OK;
 }
+#endif
 
 int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *is_a,
                                   struct kndStateRef *state_refs, struct kndTask *task)
 {
     struct kndClassEntry *class_entry = is_a;
     struct kndClass *c;
-    struct kndStateRef *ref;
-    struct kndClassInstEntry *entry;
-    struct kndSharedDict *name_idx = NULL;
-    struct kndSharedDict *new_name_idx = NULL;
-    struct kndSharedSet *idx = NULL;
-    struct kndSharedSet *new_idx = NULL;
     struct kndCommit *commit = state_refs->state->commit;
-    struct kndMemPool *mempool = task->user_ctx->mempool;
     int err;
 
     assert(commit != NULL);
@@ -73,15 +68,14 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *is
     KND_TASK_ERR("failed to acquire class %.*s", is_a->name_size, is_a->name);
    
     if (DEBUG_INST_IDX_LEVEL_2) {
-        knd_log(".. {repo %.*s} to update inst indices of {repo %.*s {class %.*s}}",
-                repo->name_size, repo->name,
-                is_a->repo->name_size, is_a->repo->name, is_a->name_size, is_a->name);
+        knd_log(".. {repo %.*s} to update inst indices of {cls %.*s}}",
+                repo->name_size, repo->name, is_a->name_size, is_a->name);
     }
 
     /* user repo selected: activate copy-on-write */
     if (task->user_ctx) {
-        class_entry = knd_shared_dict_get(task->idxs->class_name_idx, is_a->name, is_a->name_size);
-        if (is_a->repo != repo) {
+        class_entry = knd_dict_get(task->idxs.cls_name_idx, is_a->name, is_a->name_size);
+        /*if (is_a->repo != repo) {
             if (!class_entry) {
                 if (DEBUG_INST_IDX_LEVEL_3) {
                     knd_log("NB: copy-on-write of class entry \"%.*s\" activated in repo %.*s",
@@ -90,7 +84,7 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *is
                 err = knd_class_entry_clone(is_a, repo, &class_entry, task);
                 KND_TASK_ERR("failed to clone class entry");
             }
-        }
+            }*/
     }
 
     if (!class_entry) {
@@ -98,13 +92,14 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *is
         KND_TASK_ERR("class entry not found: %.*s", is_a->name_size, is_a->name);
     }
 
+#if 0
     do {
         name_idx = atomic_load_explicit(&c->inst_name_idx, memory_order_acquire);
         if (name_idx) {
             // TODO free new_name_idx if (new_name_idx != NULL) 
             break;
         }
-        err = knd_shared_dict_new(&new_name_idx, KND_MEDIUM_DICT_SIZE, mempool, false);
+        err = knd_dict_new(&new_name_idx, KND_MEDIUM_DICT_SIZE, mempool);
         KND_TASK_ERR("failed to create inst name idx");
 
     } while (!atomic_compare_exchange_weak(&c->inst_name_idx, &name_idx, new_name_idx));
@@ -115,13 +110,13 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *is
             // TODO free new_idx if (new_idx != NULL) 
             break;
         }
-        err = knd_shared_set_new(&new_idx, mempool);
+        err = knd_set_new(&new_idx, mempool);
         KND_TASK_ERR("failed to create inst idx");
 
     } while (!atomic_compare_exchange_weak(&c->inst_idx, &idx, new_idx));
 
-    name_idx = atomic_load_explicit(&c->inst_name_idx, memory_order_acquire);
-    idx = atomic_load_explicit(&c->inst_idx, memory_order_acquire);
+    name_idx = c->inst_name_idx;
+    idx = c->inst_idx;
     
     FOREACH (ref, state_refs) {
         entry = ref->obj;
@@ -147,6 +142,8 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *is
             break;
         }
     }
+#endif
+
     return knd_OK;
 }
 

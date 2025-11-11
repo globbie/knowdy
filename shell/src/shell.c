@@ -35,6 +35,7 @@
 #include "knd_steward.h"
 #include "knd_memblock.h"
 #include "knd_user.h"
+#include "knd_task.h"
 #include "knd_text.h"
 #include "knd_utils.h"
 
@@ -112,12 +113,17 @@ static int knd_interact(struct kndSteward *steward)
     struct kndOutput *out = steward->out;
     struct kndOutput *log = steward->log;
     struct kndResourceReport report;
+    struct kndRepoSnapshot *snapshot = steward->task->snapshot;
     int err;
 
-    err = knd_task_new(&writer_task, KND_AGENT_ARBITER, 1, steward);
-    KND_STEWARD_ERR("failed to create a writer/arbiter task");
+    err = knd_task_new(&writer_task, KND_AGENT_WRITER, 1,
+                       &steward->mem_task_ctx_config, &steward->mem_task_cache_config,
+                       &steward->storage_config);
+    KND_STEWARD_ERR("failed to create a writer task");
 
-    err = knd_task_new(&reader_task, KND_AGENT_READER, 2, steward);
+    err = knd_task_new(&reader_task, KND_AGENT_READER, 2,
+                       &steward->mem_task_ctx_config, &steward->mem_task_cache_config,
+                       &steward->storage_config);
     KND_STEWARD_ERR("failed to create a reader task");
 
     /* start serving requests */
@@ -153,9 +159,7 @@ static int knd_interact(struct kndSteward *steward)
         }
 
         /* reader task is always the first to parse and validate the request */
-        knd_task_reset(reader_task);
         reader_task->ctx->max_depth = 3;
-        // reader_task->mode = KND_TASK_TRACE_MODE;
         
         err = knd_task_run(reader_task, block, block_size);
         if (err != knd_OK) {
@@ -182,8 +186,9 @@ static int knd_interact(struct kndSteward *steward)
                 knd_log("-- update block allocation failed");
                 goto next_line;
             }
-            
+
             knd_task_reset(writer_task);
+
             err = knd_task_run(writer_task, write_memblock->buf, write_memblock->buf_size);
             if (err != knd_OK) {
                 knd_log("-- update confirm failed: %.*s",
@@ -194,8 +199,9 @@ static int knd_interact(struct kndSteward *steward)
                     writer_task->output_size, writer_task->output);
 
             /* check system resource utilization */
-            knd_steward_monitor(steward, &report);
+            knd_task_monitor(writer_task, &steward->storage_config, &report);
             if (report.mem_threshold_alert) {
+
                 knd_log("!! mem utilization threshold reached");
 
                 /* build an on-disk snapshot up to the latest commit number */
@@ -204,19 +210,34 @@ static int knd_interact(struct kndSteward *steward)
 
                 /* suspend all writing tasks */
 
-                err = knd_steward_snapshot_activate(steward);
+                err = knd_steward_snapshot_activate(steward, &snapshot);
                 KND_STEWARD_ERR("steward cleanup failed");
 
                 /* re-initialize all writing tasks */
-                knd_task_cleanup(writer_task, steward);
+                knd_task_reset(writer_task);
             }
             break;
         default:
             break;
         }
-        
+
+        /* finalize reader task */
+        switch (reader_task->type) {
+        case KND_TASK_QUERY:
+            // fall through
+        case KND_TASK_COMMIT:
+            err = knd_task_cache_update(reader_task);
+            // add error handling
+            break;
+        default:
+            break;
+        }
+
+        knd_task_reset(reader_task);
+
         /* readline allocates a new buffer every time */
     next_line:
+
         free(buf);
         memblock = NULL;
         write_memblock = NULL;
@@ -224,21 +245,22 @@ static int knd_interact(struct kndSteward *steward)
     return knd_OK;
 }
 
-static int present_mempools(struct kndSteward *steward)
+static int present_mempools(struct kndTask *task)
 {
-    struct kndOutput *out;
-    struct kndMemPool *mempool;
+    struct kndOutput *out = task->out;
+    struct kndMemPool *mempool = task->mempool;
 
-    out = steward->task->out;
     out->reset(out);
-    mempool = steward->mempool_write;
+
     knd_mempool_present(mempool, out);
+
     knd_log("** System Mempool\n%.*s", out->buf_size, out->buf);
 
-    out->reset(out);
+    /*out->reset(out);
     mempool = steward->user->mempool_write;
     knd_mempool_present(mempool, out);
     knd_log("** User Space Mempool\n%.*s", out->buf_size, out->buf);
+    */
     return knd_OK;
 }
 
@@ -246,6 +268,7 @@ static int knd_start(const char *config, size_t config_size)
 {
     struct kndSteward *steward;
     struct kndResourceReport report;
+    struct kndTask *task;
     int err;
 
     err = knd_steward_new(&steward, config, config_size);
@@ -253,16 +276,18 @@ static int knd_start(const char *config, size_t config_size)
         knd_log("ERR >> failed to create a steward");
         return err;
     }
-    present_mempools(steward);
 
-    knd_steward_monitor(steward, &report);
+    task = steward->task;
+    present_mempools(task);
+
+    knd_task_monitor(task, &steward->storage_config, &report);
     if (report.mem_threshold_alert) {
         knd_log("!! init stage: mem utilization threshold reached");
 
         err = knd_steward_snapshot_create(steward);
         if (err) goto error;
 
-        err = knd_steward_snapshot_activate(steward);
+        err = knd_steward_snapshot_activate(steward, &task->snapshot);
         if (err) goto error;
     }
 

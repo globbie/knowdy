@@ -103,10 +103,10 @@ static int marshall_elems(struct kndFacet *facet, knd_set_elem_marshall_cb_t cb,
     int err;
 
     if (facet->idx) {
-        err = knd_set_leaf_marshall(facet->idx, leaf, range, cb, ctx, total_size, task);
+        err = knd_set_leaf_marshall(facet->idx, range, leaf, cb, ctx, task);
         KND_TASK_ERR("failed to marshall facet elems idx");
 
-        // footer
+        // facet footer
         return knd_OK;
     }
 
@@ -173,7 +173,7 @@ static int write_facet_footer(struct kndFacet *facet,
 
 static int facet_marshall(struct kndFacet *facet, struct kndStorageLeaf *leaf,
                           struct kndSetRange *range,
-                          knd_set_elem_marshall_cb_t cb, void *ctx, size_t *result_size,
+                          knd_set_elem_marshall_cb_t cb, void *cb_ctx, size_t *result_size,
                           struct kndTask *task)
 {
     //struct kndFacetHashSpec *spec = facet->hash_specs;
@@ -185,7 +185,7 @@ static int facet_marshall(struct kndFacet *facet, struct kndStorageLeaf *leaf,
     size_t cell_max_val = 1;
     int err;
 
-    err = marshall_elems(facet, cb, ctx, &elem_block_size, leaf, range, task);
+    err = marshall_elems(facet, cb, cb_ctx, &elem_block_size, leaf, range, task);
     KND_TASK_ERR("failed to marshall stored elems");
 
     if (facet->num_children) {
@@ -193,7 +193,7 @@ static int facet_marshall(struct kndFacet *facet, struct kndStorageLeaf *leaf,
             if (!facet->children[i]) continue;
             f = facet->children[i];
 
-            err = facet_marshall(f, leaf, range, cb, ctx, &subfacet_block_sizes[i], task);
+            err = facet_marshall(f, leaf, range, cb, cb_ctx, &subfacet_block_sizes[i], task);
             KND_TASK_ERR("failed to marshall a subfacet");
 
             if (subfacet_block_sizes[i] > cell_max_val) cell_max_val = subfacet_block_sizes[i];

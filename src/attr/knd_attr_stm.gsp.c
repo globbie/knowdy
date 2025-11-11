@@ -104,7 +104,7 @@ static int inner_attr_export_GSP(struct kndAttrStm *stm, struct kndTask *task)
         default:
             assert(item->val != NULL);
             assert(item->val_size != 0);
-            err = knd_charseq_fetch(task->repo, item->val, item->val_size, &seq, task);
+            err = knd_charseq_fetch(item->val, item->val_size, &seq, task);
             KND_TASK_ERR("failed to encode a charseq");
             OUT(seq->id, seq->id_size);
             break;
@@ -156,7 +156,7 @@ static int attr_stm_list_export_GSP(struct kndAttrStm *stm, struct kndTask *task
         case KND_ATTR_STR:
             assert (item->val != NULL);
             assert (item->val_size != 0);
-            err = knd_charseq_fetch(task->repo, item->val, item->val_size, &seq, task);
+            err = knd_charseq_fetch(item->val, item->val_size, &seq, task);
             KND_TASK_ERR("failed to encode a charseq");
             OUT(seq->id, seq->id_size);
             break;
@@ -229,7 +229,7 @@ int knd_attr_stm_export_GSP(struct kndAttrStm *stm, struct kndTask *task,
         break;
     default:
         if (stm->val_size) {
-            err = knd_charseq_fetch(task->repo, stm->val, stm->val_size, &seq, task);
+            err = knd_charseq_fetch(stm->val, stm->val_size, &seq, task);
             KND_TASK_ERR("failed to encode a charseq");
             OUT(seq->id, seq->id_size);
         }

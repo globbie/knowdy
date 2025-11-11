@@ -50,7 +50,7 @@ static int inherit_arg(void *elem, void *ctx_obj)
     ref->var = src_ref->var;
     ref->proc = src_ref->proc;
 
-    err = knd_set_add(self->arg_idx, arg->id, arg->id_size, (void*)ref);
+    err = knd_set_add(self->arg_idx, arg->id, arg->id_size, (void*)ref, task);
     KND_TASK_ERR("failed to idx a proc arg ref");
 
     if (DEBUG_PROC_RESOLVE_LEVEL_3) {
@@ -95,7 +95,7 @@ int knd_resolve_proc_ref(const char *name, size_t name_size,
     if (DEBUG_PROC_RESOLVE_LEVEL_2)
         knd_log(".. resolving proc ref:  %.*s", name_size, name);
 
-    entry = knd_shared_dict_get(task->idxs->proc_name_idx, name, name_size);
+    entry = knd_dict_get(task->idxs.proc_name_idx, name, name_size);
     if (!entry) {
         /*if (repo->base) {
             err = knd_get_proc(repo->base, name, name_size, result, task);
@@ -258,7 +258,7 @@ int knd_proc_resolve(struct kndProc *self, struct kndTask *task)
         KND_TASK_ERR("failed to alloc an arg ref");
         arg_ref->arg = arg;
         arg_ref->proc = self;
-        err = knd_set_add(self->arg_idx, arg->id, arg->id_size, (void*)arg_ref);
+        err = knd_set_add(self->arg_idx, arg->id, arg->id_size, (void*)arg_ref, task);
         KND_TASK_ERR("failed to idx an arg ref");
     }
 
@@ -278,7 +278,7 @@ int knd_proc_resolve(struct kndProc *self, struct kndTask *task)
         }
     }
     if (self->result_classname_size) {
-        err = knd_get_class_entry(repo, self->result_classname, self->result_classname_size, true, &self->result, task);
+        err = knd_get_cls_entry_by_name(self->result_classname, self->result_classname_size, &self->result, task);
         KND_TASK_ERR("no such class: %.*s", self->result_classname_size, self->result_classname);
         //knd_log("EFFECT: %.*s", self->result_classname_size, self->result_classname);
     }

@@ -24,7 +24,7 @@
 
 int knd_rel_resolve(struct kndRel *rel, struct kndTask *task)
 {
-    struct kndSharedDict *proc_name_idx = task->idxs->proc_name_idx;
+    struct kndDict *proc_name_idx = task->idxs.proc_name_idx;
     const char *proc_name = rel->ref_proc_name;
     size_t proc_name_size = rel->ref_proc_name_size;
     struct kndProcEntry *proc_entry;
@@ -43,10 +43,10 @@ int knd_rel_resolve(struct kndRel *rel, struct kndTask *task)
 
     assert(proc_name_size != 0 && proc_name != NULL);
 
-    proc_entry = knd_shared_dict_get(proc_name_idx, proc_name, proc_name_size);
+    proc_entry = knd_dict_get(proc_name_idx, proc_name, proc_name_size);
     if (!proc_entry) {
         err = knd_NO_MATCH;
-        KND_TASK_ERR("no such proc: \"%.*s\"", proc_name_size, proc_name);
+        KND_TASK_ERR("no such {proc %.*s}", proc_name_size, proc_name);
     }
 
     // TODO acquire

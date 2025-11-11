@@ -46,11 +46,8 @@
 static int index_ancestor(struct kndClass *self, struct kndClass *baseclass, struct kndTask *task)
 {
     struct kndClassEntry *entry = self->entry;
-    struct kndClassEntry *prev_entry;
     struct kndMemPool *mempool = task->mempool;
     struct kndSet *desc_idx;
-    struct kndClass *c;
-    struct kndDict *class_name_idx = task->class_name_idx;
     void *result;
     int err;
 
@@ -58,24 +55,6 @@ static int index_ancestor(struct kndClass *self, struct kndClass *baseclass, str
         knd_log(".. %.*s class to update desc_idx of an ancestor {cls %.*s}",
                 self->name_size, self->name,
                 baseclass->name_size, baseclass->name);
-    }
-
-    if (baseclass->entry->repo != entry->repo) {
-        prev_entry = knd_dict_get(class_name_idx, baseclass->name, baseclass->name_size);
-        if (prev_entry) {
-            err = knd_class_acquire(prev_entry, &c, task);
-            KND_TASK_ERR("failed to acquire {class %.*s}",
-                         prev_entry->name_size, prev_entry->name);
-
-            baseclass = c;
-        } else {
-            knd_log("-- {class %.*s} not found in {repo %.*s}",
-                    baseclass->name_size, baseclass->name,
-                    self->entry->repo->name_size, self->entry->repo->name);
-
-            //err = knd_class_clone(base_entry->class,
-            //                      self->entry->repo, &base, task);             RET_ERR();
-        }
     }
 
     desc_idx = baseclass->descendants;
@@ -99,7 +78,7 @@ static int index_ancestor(struct kndClass *self, struct kndClass *baseclass, str
     baseclass->num_descendants++;
 
     /* register as a descendant */
-    err = knd_set_add(desc_idx, entry->id, entry->id_size, (void*)entry);
+    err = knd_set_add(desc_idx, entry->id, entry->id_size, (void*)entry, task);
     KND_TASK_ERR("failed to register a descendant");
 
     return knd_OK;
@@ -148,7 +127,7 @@ static int register_desc(struct kndClass *base, struct kndClass *sub, struct knd
         }
     }
 
-    err = knd_set_add(desc_idx, entry->id, entry->id_size, (void*)entry);
+    err = knd_set_add(desc_idx, entry->id, entry->id_size, (void*)entry, task);
     KND_TASK_ERR("failed to register a descendant {cls %.*s}"
                  " within an ancestor {cls %.*s}  {err %d}",
                  entry->name_size, entry->name, base->name_size, base->name, err);

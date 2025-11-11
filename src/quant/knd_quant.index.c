@@ -104,8 +104,8 @@ static int add_elem(struct kndFacet *parent, const char *seq, size_t seq_size,
 }
 */
 
-int knd_quant_uint_index(struct kndFacet *facet, struct kndClassEntry *topic,
-                         struct kndAttrStm *stm, struct kndTask *task)
+int knd_quant_uint_index(struct kndFacet *unused_var(facet), struct kndClassEntry *topic,
+                         struct kndAttrStm *stm, struct kndTask *unused_var(task))
 {
     //struct kndAttrFacetElem *elem;
     struct kndQuantAttrStm *quant_attr_stm = stm->subtype;
@@ -127,7 +127,7 @@ int knd_quant_uint_index(struct kndFacet *facet, struct kndClassEntry *topic,
     return knd_OK;
 }
 
-int knd_quant_ureal_index(struct kndFacet *facet, struct kndClassEntry *topic,
+int knd_quant_ureal_index(struct kndFacet *unused_var(facet), struct kndClassEntry *topic,
                           struct kndAttrStm *stm, struct kndTask *unused_var(task))
 {
     //struct kndAttrStm *stm;
@@ -146,11 +146,11 @@ int knd_quant_ureal_index(struct kndFacet *facet, struct kndClassEntry *topic,
     return knd_OK;
 }
 
-int knd_quant_seq_len_hash(void *parent_key, void *curr_key, void *term_key,
-                           void **result, size_t *numval, struct kndTask *task)
+int knd_quant_seq_len_hash(void *unused_var(parent_key), void *unused_var(curr_key), void *term_key,
+                           void **result, size_t *numval, struct kndTask *unused_var(task))
 {
-    struct kndQuantUInt *parent_uint = parent_key;
-    struct kndQuantUInt *curr_uint = curr_key;
+    //struct kndQuantUInt *parent_uint = parent_key;
+    //struct kndQuantUInt *curr_uint = curr_key;
     struct kndQuantUInt *term_uint = term_key;
 
     *numval = term_uint->seq_size;
@@ -159,7 +159,7 @@ int knd_quant_seq_len_hash(void *parent_key, void *curr_key, void *term_key,
     return knd_NO_MATCH;
 }
 
-int knd_quant_seq_len_key_get(void *elem, void **result, struct kndTask *task)
+int knd_quant_seq_len_key_get(void *elem, void **result, struct kndTask *unused_var(task))
 {
     struct kndAttrStm *stm = elem;
     struct kndQuantAttrStm *quant_attr_stm = stm->subtype;
@@ -173,7 +173,7 @@ int knd_quant_seq_len_key_get(void *elem, void **result, struct kndTask *task)
     return knd_OK;
 }
 
-void knd_quant_seq_len_key_str(void *val, size_t depth)
+void knd_quant_seq_len_key_str(void *val, size_t unused_var(depth))
 {
     struct kndQuantUInt *uint = val; 
 
@@ -181,8 +181,8 @@ void knd_quant_seq_len_key_str(void *val, size_t depth)
             uint->seq_size, uint->seq, uint->seq_size);
 }
 
-int knd_quant_hash(void *parent_key, void *curr_key, void *obj,
-                   void **result_key, size_t *numval, struct kndTask *task)
+int knd_quant_hash(void *unused_var(parent_key), void *unused_var(curr_key), void *obj,
+                   void **result_key, size_t *numval, struct kndTask *unused_var(task))
 {
     struct kndAttrStm *stm = obj;
     struct kndQuantAttrStm *quant_attr_stm = stm->subtype;
@@ -197,7 +197,7 @@ int knd_quant_hash(void *parent_key, void *curr_key, void *obj,
     return knd_OK;
 }
 
-void knd_quant_str(void *val, size_t depth)
+void knd_quant_str(void *val, size_t unused_var(depth))
 {
     struct kndQuantUInt *uint = val;
 

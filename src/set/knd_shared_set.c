@@ -182,8 +182,8 @@ static int get_elem(struct kndSharedSet *self, struct kndSharedSetElemIdx *paren
     int idx_pos;
     int err;
 
-    if (DEBUG_SHARED_SET_LEVEL_2) {
-        knd_log(".. get elem by ID, remainder \"%.*s\"", id_size, id);
+    if (DEBUG_SHARED_SET_LEVEL_TMP) {
+        knd_log(".. get elem by ID, {remainder %.*s}", id_size, id);
     }
     assert(parent_idx != NULL);
 
@@ -228,7 +228,7 @@ int knd_shared_set_get(struct kndSharedSet *self, const char *key, size_t key_si
     return knd_OK;
 }
 
-static int traverse_idx(struct kndSharedSetElemIdx *parent_idx, map_cb_t cb, void *obj)
+static int traverse_idx(struct kndSharedSetElemIdx *parent_idx, map_cb_t cb, void *cb_ctx)
 {
     struct kndSharedSetElemIdx *idx;
     void *elem;
@@ -238,7 +238,7 @@ static int traverse_idx(struct kndSharedSetElemIdx *parent_idx, map_cb_t cb, voi
         elem = parent_idx->elems[i];
         if (!elem) continue;
 
-        err = cb(elem, obj);
+        err = cb(elem, cb_ctx);
         if (err) return err;
     }
 
@@ -246,22 +246,17 @@ static int traverse_idx(struct kndSharedSetElemIdx *parent_idx, map_cb_t cb, voi
         idx = parent_idx->idxs[i];
         if (!idx) continue;
 
-        err = traverse_idx(idx, cb, obj);
+        err = traverse_idx(idx, cb, cb_ctx);
         if (err) return err;
     }
     return knd_OK;
 }
 
-int knd_shared_set_map(struct kndSharedSet *self, map_cb_t cb, void *obj)
+int knd_shared_set_map(struct kndSharedSet *s, map_cb_t cb, void *cb_ctx)
 {
+    assert (s->idx != NULL);
     int err;
-
-    if (!self->idx) {
-        if (DEBUG_SHARED_SET_LEVEL_2)
-            knd_log("NB: -- set has no root idx");
-        return knd_OK;
-    }
-    err = traverse_idx(self->idx, cb, obj);
+    err = traverse_idx(s->idx, cb, cb_ctx);
     if (err) return err;
     return knd_OK;
 }

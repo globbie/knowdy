@@ -29,7 +29,8 @@ struct kndStateRef;
 struct kndMemPool;
 struct kndOutput;
 
-typedef enum knd_state_phase { KND_SELECTED,
+typedef enum knd_state_phase { KND_DEFAULT,
+                               KND_SELECTED,
                                KND_CREATED,
                                KND_UPDATED,
                                KND_REMOVED,

@@ -55,7 +55,6 @@ static int resolve_inner_cls(struct kndAttrStm *stm, struct kndTask *task)
     struct kndAttrStm *item;
     struct kndAttr *attr = stm->attr;
     struct kndClassInnerAttr *cls_inner_attr;
-    struct kndSharedDict *class_name_idx = task->idxs->class_name_idx;
     struct kndClassInnerAttrStm *inner_stm;
     int err;
 
@@ -81,26 +80,14 @@ static int resolve_inner_cls(struct kndAttrStm *stm, struct kndTask *task)
     c = template_c;
 
     if (DEBUG_ATTR_STM_RESOLVE_LEVEL_3) {
-        knd_log(".. resolving inner {cls %.*s}", c->name_size, c->name);
+        knd_log(".. resolving inner {cls %.*s {stm-val %.*s}}",
+                c->name_size, c->name, stm->val_size, stm->val);
     }
 
     /* explicit subclass is set */
     if (stm->val_size) {
-        entry = knd_shared_dict_get(class_name_idx, stm->val, stm->val_size);
-        if (!entry) {
-            err = knd_NO_MATCH;
-            KND_TASK_ERR("no such {cls %.*s}", stm->val_size, stm->val);
-        }
-
-        if (DEBUG_ATTR_STM_RESOLVE_LEVEL_3) {
-            knd_log(".. {inner %.*s {template %.*s}}"
-                    " with explicit subclass {cls %.*s}",
-                    attr->name_size, attr->name, attr->cls_name_size, attr->cls_name,
-                    stm->val_size, stm->val);
-        }
-
-        err = knd_class_acquire(entry, &c, task);
-        KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);
+        err = knd_get_cls_by_name(stm->val, stm->val_size, &c, task);
+        KND_TASK_ERR("no such {cls %.*s}", stm->val_size, stm->val);
 
         if (c->phase < KND_CLASS_RESOLVED) {
             err = knd_class_resolve(c, task);
@@ -150,7 +137,7 @@ static int resolve_cls_ref(struct kndAttrStm *stm, struct kndTask *task)
         KND_TASK_ERR("failed to resolve {class %.*s}", c->name_size, c->name);
     }
 
-    err = knd_resolve_cls_ref(task->repo, stm->val, stm->val_size, c, &ref_c, task);
+    err = knd_resolve_cls_ref(stm->val, stm->val_size, c, &ref_c, task);
     KND_TASK_ERR("failed to resolve {cls-ref %.*s}", stm->val_size,  stm->val);
 
     cls_ref_stm->cls_entry = ref_c->entry;

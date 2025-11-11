@@ -97,13 +97,15 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
     struct kndTask *task = obj;
     struct kndUserContext *user_ctx = task->user_ctx;
     struct kndRepoAccess *acl = user_ctx->acls;
+    struct kndClassEntry *entry;
     int err;
 
     assert(user_ctx->repo != NULL);
     assert(acl != NULL);
 
-    if (DEBUG_USER_LEVEL_3)
+    if (DEBUG_USER_LEVEL_3) {
         knd_log(".. parsing user class import: \"%.*s\"..", 64, rec);
+    }
 
     if (!acl->allow_write) {
         KND_TASK_LOG("writing not allowed");
@@ -119,7 +121,14 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
                                                                 memory_order_relaxed);
     }
 
-    return knd_class_import(user_ctx->repo, rec, total_size, task);
+    err = knd_class_import(user_ctx->repo, rec, total_size, &entry, task);
+    if (err) return make_gsl_err_external(err);
+
+    /* assign a unique class entry id */
+    entry->numid = ++task->idxs.cls_id_count;
+    knd_uid_create(entry->numid, entry->id, &entry->id_size);
+
+    return make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_size)
@@ -194,7 +203,7 @@ static int build_user_ctx(struct kndUser *self, struct kndClassInst *inst,
 static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
 {
     struct kndTask *task = obj;
-    struct kndUser *self = task->steward->user;
+    struct kndUser *self = task->user;
     struct kndUserContext *ctx;
     struct kndClassInst *inst;
     int err;
@@ -216,7 +225,7 @@ static gsl_err_t run_get_user(void *obj, const char *name, size_t name_size)
         task->user_ctx = ctx;
         return make_gsl_err(gsl_OK);
     }
-    
+
     err = knd_get_class_inst(self->class, name, name_size, task, &inst);
     if (err) {
         KND_TASK_LOG("no such user: %.*s", name_size, name);
@@ -306,7 +315,7 @@ static gsl_err_t run_present_user(void *obj, const char *unused_var(val), size_t
 static gsl_err_t parse_snapshot_task(void *obj, const char *unused_var(rec), size_t *total_size)
 {
     struct kndTask *task = obj;
-    struct kndRepo *repo = task->user_ctx ? task->user_ctx->repo : task->steward->user->repo;
+    struct kndRepo *repo = task->user_ctx ? task->user_ctx->repo : task->user->repo;
     int err;
 
     task->type = KND_TASK_BUILD_SNAPSHOT;
@@ -413,7 +422,7 @@ gsl_err_t knd_parse_select_user(void *obj, const char *rec, size_t *total_size)
 gsl_err_t knd_create_user(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
-    struct kndUser *self = task->steward->user;
+    struct kndUser *self = task->user;
     int err;
 
     if (!task->ctx->commit) {
@@ -459,95 +468,99 @@ static int init_mempool(struct kndSteward *steward, knd_mempool_t memtype, size_
     return knd_OK;
 }
 
-int knd_user_new(struct kndUser **user,
+int knd_user_new(struct kndUser **result,
                  const char *classname,   size_t classname_size,
                  const char *path,        size_t path_size,
                  const char *repo_name,    size_t repo_name_size,
                  const char *schema_path, size_t schema_path_size,
                  struct kndSteward *steward, struct kndTask *task)
 {
-    struct kndUser *self;
-    struct kndRepo *repo = task->repo;
+    struct kndUser *user;
     struct kndRepoAccess *acl;
     struct kndMemPool *mempool;
     struct kndOutput *out = steward->out;
     struct kndOutput *log = steward->log;
+    struct kndClassEntry *entry;
     int err;
 
-    self = calloc(1, sizeof(struct kndUser));
-    ALLOC_ERR(self);
-    self->classname = classname;
-    self->classname_size = classname_size;
+    user = calloc(1, sizeof(struct kndUser));
+    ALLOC_ERR(user);
+    user->classname = classname;
+    user->classname_size = classname_size;
 
-    err = knd_get_class_by_name(repo, classname, classname_size, &self->class, task);
+    err = knd_get_cls_entry_by_name(classname, classname_size, &entry, task);
     if (err) {
         KND_TASK_LOG("no such user {cls %.*s}", classname_size, classname);
         goto error;
     }
-    self->schema_path = schema_path;
-    self->schema_path_size = schema_path_size;
+
+    err = knd_class_acquire(entry, &user->class, task);
+    KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);
+
+    user->schema_path = schema_path;
+    user->schema_path_size = schema_path_size;
 
     if (strlen(KND_USERSPACE_DIR_NAME) + path_size >= KND_PATH_SIZE) {
         knd_log("path limit exceeded");
         goto error;
     }
 
-    self->path_size = path_size + strlen(KND_USERSPACE_DIR_NAME);
-    memcpy(self->path, path, path_size);
-    memcpy(self->path + path_size, KND_USERSPACE_DIR_NAME, strlen(KND_USERSPACE_DIR_NAME));
+    user->path_size = path_size + strlen(KND_USERSPACE_DIR_NAME);
+    memcpy(user->path, path, path_size);
+    memcpy(user->path + path_size, KND_USERSPACE_DIR_NAME, strlen(KND_USERSPACE_DIR_NAME));
 
-    err = knd_mkpath(self->path, self->path_size, 0755, false);
+    err = knd_mkpath(user->path, user->path_size, 0755, false);
     if (err != knd_OK) {
-        knd_log("-- failed to make {path %.*s}", self->path_size, self->path);
+        knd_log("-- failed to make {path %.*s}", user->path_size, user->path);
         goto error;
     }
 
-    err = init_mempool(steward, KND_ALLOC_INCR, 1, &self->mempool_read);
+    err = init_mempool(steward, KND_ALLOC_INCR, 1, &user->mempool_read);
     KND_STEWARD_ERR("failed to init a read mempool");
 
-    err = init_mempool(steward, KND_ALLOC_INCR, 2, &self->mempool_read_temp);
+    err = init_mempool(steward, KND_ALLOC_INCR, 2, &user->mempool_read_temp);
     KND_STEWARD_ERR("failed to init a temp read mempool");
 
-    err = init_mempool(steward, KND_ALLOC_SHARED, 3, &self->mempool_write);
+    err = init_mempool(steward, KND_ALLOC_SHARED, 3, &user->mempool_write);
     KND_STEWARD_ERR("failed to init a shared mempool");
 
-    err = init_mempool(steward, KND_ALLOC_SHARED, 4, &self->mempool_write_temp);
+    err = init_mempool(steward, KND_ALLOC_SHARED, 4, &user->mempool_write_temp);
     KND_STEWARD_ERR("failed to init a shared mempool");
 
     /* base repo for all users */
-    mempool = self->mempool_write;
-    self->repo_name = repo_name;
-    self->repo_name_size = repo_name_size;
-    err = knd_repo_new(&self->repo, repo_name, repo_name_size,
+    mempool = user->mempool_write;
+    user->repo_name = repo_name;
+    user->repo_name_size = repo_name_size;
+    err = knd_repo_new(&user->repo, repo_name, repo_name_size,
                        path, path_size, schema_path, schema_path_size);
     if (err) goto error;
 
-    err = knd_dict_set(steward->repo_name_idx, repo_name, repo_name_size, (void*)self->repo);
+    err = knd_dict_set(steward->repo_name_idx, repo_name, repo_name_size, (void*)user->repo);
     KND_TASK_ERR("failed to register {repo %.*s}", repo_name_size, repo_name);
 
     /* default acl */
     err = knd_repo_access_new(&acl, mempool);
     KND_TASK_ERR("failed to alloc repo acl");
-    acl->repo = self->repo;
+    acl->repo = user->repo;
     acl->allow_read = true;
     acl->allow_write = true;
-    self->default_acls = acl;
+    user->default_acls = acl;
 
-    task->user_ctx->repo = self->repo;
-    task->user_ctx->mempool = self->mempool_write;
-    task->user_ctx->acls = self->default_acls;
+    task->user_ctx->repo = user->repo;
+    task->user_ctx->mempool = user->mempool_write;
+    task->user_ctx->acls = user->default_acls;
     task->mempool = mempool;
 
-    err = knd_repo_read(self->repo, task);
+    err = knd_repo_read(user->repo, task);
     if (err) goto error;
 
-    err = knd_set_new(&self->user_idx, KND_SET_UNIQUE_VALUES, mempool);
+    err = knd_set_new(&user->user_idx, KND_SET_UNIQUE_VALUES, mempool);
     if (err) goto error;
 
-    *user = self;
+    *result = user;
     return knd_OK;
  error:
-    free(self);
+    free(user);
     return err;
 }
 

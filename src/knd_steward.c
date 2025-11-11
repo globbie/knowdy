@@ -3,6 +3,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <stdint.h> // for SIZE_MAX
 #include <time.h>
 
 #include "knd_steward.h"
@@ -60,7 +61,7 @@ static gsl_err_t parse_mem_main_config(void *obj, const char *rec, size_t *total
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static gsl_err_t parse_mem_ctx_config(void *obj, const char *rec, size_t *total_size)
+static gsl_err_t parse_mem_task_ctx_config(void *obj, const char *rec, size_t *total_size)
 {
     struct kndSteward *self = obj;
 
@@ -68,32 +69,71 @@ static gsl_err_t parse_mem_ctx_config(void *obj, const char *rec, size_t *total_
         {   .name = "max-large-pages",
             .name_size = strlen("max-large-pages"),
             .parse = gsl_parse_size_t,
-            .obj = &self->mem_ctx_config.num_large_pages
+            .obj = &self->mem_task_ctx_config.num_large_pages
         },
         {   .name = "max-base-pages",
             .name_size = strlen("max-base-pages"),
             .parse = gsl_parse_size_t,
-            .obj = &self->mem_ctx_config.num_base_pages
+            .obj = &self->mem_task_ctx_config.num_base_pages
         },
         {   .name = "max-small-x4-pages",
             .name_size = strlen("max-small-x4-pages"),
             .parse = gsl_parse_size_t,
-            .obj = &self->mem_ctx_config.num_small_x4_pages
+            .obj = &self->mem_task_ctx_config.num_small_x4_pages
         },
         {   .name = "max-small-x2-pages",
             .name_size = strlen("max-small-x2-pages"),
             .parse = gsl_parse_size_t,
-            .obj = &self->mem_ctx_config.num_small_x2_pages
+            .obj = &self->mem_task_ctx_config.num_small_x2_pages
         },
         {   .name = "max-small-pages",
             .name_size = strlen("max-small-pages"),
             .parse = gsl_parse_size_t,
-            .obj = &self->mem_ctx_config.num_small_pages
+            .obj = &self->mem_task_ctx_config.num_small_pages
         },
         {   .name = "max-tiny-pages",
             .name_size = strlen("max-tiny-pages"),
             .parse = gsl_parse_size_t,
-            .obj = &self->mem_ctx_config.num_tiny_pages
+            .obj = &self->mem_task_ctx_config.num_tiny_pages
+        }
+    };
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
+static gsl_err_t parse_mem_task_cache_config(void *obj, const char *rec, size_t *total_size)
+{
+    struct kndSteward *self = obj;
+
+    struct gslTaskSpec specs[] = {
+        {   .name = "max-large-pages",
+            .name_size = strlen("max-large-pages"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->mem_task_cache_config.num_large_pages
+        },
+        {   .name = "max-base-pages",
+            .name_size = strlen("max-base-pages"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->mem_task_cache_config.num_base_pages
+        },
+        {   .name = "max-small-x4-pages",
+            .name_size = strlen("max-small-x4-pages"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->mem_task_cache_config.num_small_x4_pages
+        },
+        {   .name = "max-small-x2-pages",
+            .name_size = strlen("max-small-x2-pages"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->mem_task_cache_config.num_small_x2_pages
+        },
+        {   .name = "max-small-pages",
+            .name_size = strlen("max-small-pages"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->mem_task_cache_config.num_small_pages
+        },
+        {   .name = "max-tiny-pages",
+            .name_size = strlen("max-tiny-pages"),
+            .parse = gsl_parse_size_t,
+            .obj = &self->mem_task_cache_config.num_tiny_pages
         }
     };
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
@@ -197,9 +237,14 @@ static gsl_err_t knd_parse_mem_main_config(void *obj, const char *rec, size_t *t
            .parse = parse_mem_user_config,
            .obj = self
        },
-       {   .name = "ctx",
-           .name_size = strlen("ctx"),
-           .parse = parse_mem_ctx_config,
+       {   .name = "task-ctx",
+           .name_size = strlen("task-ctx"),
+           .parse = parse_mem_task_ctx_config,
+           .obj = self
+       },
+       {   .name = "task-cache",
+           .name_size = strlen("task-cache"),
+           .parse = parse_mem_task_cache_config,
            .obj = self
        }
     };
@@ -244,6 +289,60 @@ static gsl_err_t parse_storage_quota(void *obj, const char *rec, size_t *total_s
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
+static int set_storage_limits(struct kndStorageConfig *conf)
+{
+    size_t unit_num_bytes = 1;
+    size_t leaf_min_size;
+    size_t leaf_max_size;
+
+    switch (conf->leaf_storage_unit) {
+    case KND_STORAGE_UNIT_KB:
+        unit_num_bytes = (size_t)1000;
+        break;
+    case KND_STORAGE_UNIT_MB:
+        unit_num_bytes = (size_t)1000 * 1000;
+        break;
+    case KND_STORAGE_UNIT_GB:
+        unit_num_bytes = (size_t)1000 * 1000 * 1000;
+        break;
+    case KND_STORAGE_UNIT_TB:
+        unit_num_bytes = (size_t)1000 * 1000 * 1000 * 1000;
+        break;
+    default:
+        break;
+    }
+
+    if (!conf->leaf_min_units_size) {
+        conf->leaf_min_size = unit_num_bytes * KND_SNAPSHOT_LEAF_MIN_THRESHOLD; 
+    } else {
+        leaf_min_size = unit_num_bytes * conf->leaf_min_units_size;
+
+        /* reverse overflow check */
+        if (conf->leaf_min_units_size != (leaf_min_size / unit_num_bytes))
+            return knd_LIMIT;
+
+        conf->leaf_min_size = leaf_min_size;
+    }
+
+    if (!conf->leaf_max_units_size) {
+        conf->leaf_max_size = unit_num_bytes * KND_SNAPSHOT_LEAF_MAX_THRESHOLD; 
+    } else {
+        leaf_max_size = unit_num_bytes * conf->leaf_max_units_size;
+
+        /* reverse overflow check */
+        if (conf->leaf_max_units_size != (leaf_max_size / unit_num_bytes))
+            return knd_LIMIT;
+
+        conf->leaf_max_size = leaf_max_size;
+    }
+
+    if (DEBUG_STEWARD_LEVEL_TMP) {
+        knd_log("{leaf-limits {min-bytes %zu} {max-bytes %zu}} {system-size-max %zu}",
+                conf->leaf_min_size, conf->leaf_max_size, SIZE_MAX);
+    }
+    return knd_OK;
+}
+
 static gsl_err_t set_storage_leaf_unit(void *obj, const char *name, size_t name_size)
 {
     struct kndSteward *self = obj;
@@ -266,6 +365,8 @@ static gsl_err_t set_storage_leaf_unit(void *obj, const char *name, size_t name_
 static gsl_err_t parse_storage_leaf(void *obj, const char *rec, size_t *total_size)
 {
     struct kndSteward *self = obj;
+    gsl_err_t parser_err;
+    int err;
 
     struct gslTaskSpec specs[] = {
         {   .name = "unit",
@@ -276,15 +377,29 @@ static gsl_err_t parse_storage_leaf(void *obj, const char *rec, size_t *total_si
         {   .name = "min",
             .name_size = strlen("min"),
             .parse = gsl_parse_size_t,
-            .obj = &self->storage_config.leaf_min_size
+            .obj = &self->storage_config.leaf_min_units_size
         },
         {   .name = "max",
             .name_size = strlen("max"),
             .parse = gsl_parse_size_t,
-            .obj = &self->storage_config.leaf_max_size
+            .obj = &self->storage_config.leaf_max_units_size
         }
     };
-    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) {
+        knd_log("-- config parse {error %d} {tag %.*s}", parser_err.code,
+                 parser_err.val_size, parser_err.val);
+        return parser_err;
+    }
+
+    err = set_storage_limits(&self->storage_config);
+    if (err) {
+        knd_log("failed to set storage limits in {steward-path %.*s}", self->path_size, self->path);
+        return make_gsl_err(gsl_LIMIT);
+    }
+
+    return make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t set_storage_snapshot_threshold(void *obj, const char *val, size_t val_size)
@@ -582,21 +697,27 @@ static int steward_init(struct kndSteward *steward)
     err = knd_mkpath(steward->path, steward->path_size, 0755, false);
     KND_STEWARD_ERR("failed to make {steward-path %.*s}", steward->path_size, steward->path);
 
-    /* system mempools for reading and writing */
-    steward->mem_cache_config.memtype = KND_ALLOC_INCR;
-    err = knd_mempool_create(&steward->mempool_read, &steward->mem_cache_config, 1);
-    KND_STEWARD_ERR("failed to init a read-only system cache mempool");
-
+    /* system wide mempool types */
     steward->mem_main_config.memtype = KND_ALLOC_INCR;
-    err = knd_mempool_create(&steward->mempool_write, &steward->mem_main_config, 1);
-    KND_STEWARD_ERR("failed to init a system mempool for writing");
+    steward->mem_cache_config.memtype = KND_ALLOC_INCR;
 
-    steward->mem_ctx_config.memtype = KND_ALLOC_INCR;
+    /* task local settings */
+    steward->mem_task_ctx_config.memtype = KND_ALLOC_INCR;
+    steward->mem_task_cache_config.memtype = KND_ALLOC_LIST;
 
-    err = knd_set_new(&steward->repo_idx, KND_SET_UNIQUE_VALUES, steward->mempool_write);
+    err = knd_task_new(&steward->task, KND_AGENT_SYSTEM, 0,
+                       &steward->mem_main_config, &steward->mem_cache_config, &steward->storage_config);
+    KND_STEWARD_ERR("failed to init steward main task");
+    task = steward->task;
+
+    err = knd_task_new(&steward->shift_task, KND_AGENT_SYSTEM, 0,
+                       &steward->mem_main_config, &steward->mem_cache_config, &steward->storage_config);
+    KND_STEWARD_ERR("failed to init steward sync task");
+
+    err = knd_set_new(&steward->repo_idx, KND_SET_UNIQUE_VALUES, task->mempool);
     KND_STEWARD_ERR("failed to create a set idx");
 
-    err = knd_dict_new(&steward->repo_name_idx, steward->mempool_write, KND_SMALL_DICT_SIZE);
+    err = knd_dict_new(&steward->repo_name_idx, KND_SMALL_DICT_SIZE, task->mempool);
     KND_STEWARD_ERR("failed to create a repo name idx");
 
     err = knd_repo_new(&repo, "/", 1, steward->path, steward->path_size,
@@ -608,13 +729,6 @@ static int steward_init(struct kndSteward *steward)
         repo->data_path_size = steward->data_path_size;
         repo->data_path = steward->data_path;
     }
-
-    /* auxiliary service task */
-    err = knd_task_new(&task, KND_AGENT_AUX, 0, steward);
-    KND_STEWARD_ERR("failed to init a steward task");
-    task->mempool = steward->mempool_write;
-    task->cache_mempool = steward->mempool_read;
-    steward->task = task;
 
     err = knd_repo_read(repo, task);
     knd_log("ERR: %.*s", task->log->buf_size, task->log->buf);
@@ -642,6 +756,9 @@ int knd_steward_new(struct kndSteward **result, const char *config, size_t confi
     err = knd_output_new(&steward->log, NULL, KND_TEMP_BUF_SIZE);
     if (err) return knd_NOMEM;
 
+    /* default settings */
+    steward->storage_config.snapshot_threshold_ratio = KND_SNAPSHOT_MEM_THRESHOLD_RATIO;
+    
     err = steward_read_config(steward, config, config_size);
     if (err) goto error;
 
@@ -662,50 +779,25 @@ void knd_steward_del(struct kndSteward *self)
     if (self->repo)
         knd_repo_del(self->repo);
 
-    if (self->mempool_read)
-        knd_mempool_del(self->mempool_read);
-    if (self->mempool_write)
-        knd_mempool_del(self->mempool_write);
-
     if (self->user)
         knd_user_del(self->user);
 
-    if (self->task)
-        knd_task_del(self->task);
+    knd_task_del(self->task);
+    knd_task_del(self->shift_task);
 
     free(self);
-}
-
-void knd_steward_monitor(struct kndSteward *steward, struct kndResourceReport *report)
-{
-    struct kndMemPool *mempool = steward->mempool_write;
-    struct kndMemPoolReport memrep = { 0 };
-
-    knd_mempool_report(mempool, &memrep);
-
-    report->mem_usage = memrep.total_mem_usage;
-    report->mem_threshold_alert = memrep.mem_threshold_alert;
 }
 
 int knd_steward_snapshot_create(struct kndSteward *steward)
 {
     struct kndOutput *out = steward->out;
     struct kndOutput *log = steward->log;
-    struct kndTask *task = steward->task;
+    struct kndTask *task = steward->shift_task;
     struct kndRepo *repo;
     int err;
 
-    err = knd_mempool_create(&steward->mempool_read_temp, &steward->mem_cache_config, 1);
-    KND_STEWARD_ERR("failed to init a cache read-only mempool");
-    steward->task->cache_mempool = steward->mempool_read_temp;
-
-    err = knd_mempool_create(&steward->mempool_write_temp, &steward->mem_main_config, 1);
-    KND_STEWARD_ERR("failed to init a write mempool");
-
     task->type = KND_TASK_BUILD_SNAPSHOT;
-    task->mode = KND_TASK_TRACE_MODE;
 
-    task->mempool = steward->mempool_write_temp;
     repo = steward->repo;
 
     err = knd_repo_snapshot_create(repo, task);
@@ -715,10 +807,9 @@ int knd_steward_snapshot_create(struct kndSteward *steward)
     KND_STEWARD_ERR("failed to build a sys repo temp snapshot");
 
     task->snapshot = repo->snapshot_temp;
-    task->idxs = &repo->snapshot_temp->idxs;
-    task->mempool = steward->mempool_read_temp;
+    //task->idxs = &repo->snapshot_temp->idxs;
 
-    err = knd_repo_snapshot_read(repo->snapshot_temp, task);
+    err = knd_repo_update_cache(repo->snapshot_temp, task);
     if (err) {
         log->write(log, task->log->buf, task->log->buf_size);
     }
@@ -727,27 +818,26 @@ int knd_steward_snapshot_create(struct kndSteward *steward)
     return knd_OK;
 }
 
-int knd_steward_snapshot_activate(struct kndSteward *steward)
+int knd_steward_snapshot_activate(struct kndSteward *steward, struct kndRepoSnapshot **result)
 {
     struct kndOutput *out = steward->out;
     struct kndOutput *log = steward->log;
     struct kndRepo *repo = steward->repo;
+    struct kndTask *task = steward->shift_task;
     int err;
 
     if (DEBUG_STEWARD_LEVEL_TMP) {
         knd_log(".. activating new snapshot ..");
     }
+
     // TODO iterate all repos
 
-    err = knd_repo_snapshot_activate(repo, steward->task);
+    /* swap tasks */
+    steward->shift_task = steward->task;
+    steward->task = task;
+
+    err = knd_repo_snapshot_activate(repo, result, task);
     KND_STEWARD_ERR("failed to activate a snapshot repo");
-
-    // free prev mempools
-    knd_mempool_del(steward->mempool_read);
-    knd_mempool_del(steward->mempool_write);
-
-    steward->mempool_read = steward->mempool_read_temp;
-    steward->mempool_write = steward->mempool_write_temp;
- 
+    
     return knd_OK;
 }

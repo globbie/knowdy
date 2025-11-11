@@ -58,10 +58,6 @@ void knd_mempool_report(struct kndMemPool *self, struct kndMemPoolReport *report
         (small_x4_pages_used * KND_SMALL_X4_MEMPAGE_SIZE);
 
     report->max_mem_usage = self->capacity;
-
-    if (report->total_mem_usage > (self->capacity * KND_SNAPSHOT_MEM_THRESHOLD_RATIO)) {
-        report->mem_threshold_alert = true;
-    }
 }
 
 int knd_mempool_present(struct kndMemPool *self, struct kndOutput *out)

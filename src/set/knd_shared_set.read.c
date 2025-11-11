@@ -93,6 +93,7 @@ static int payload_linear_scan(struct kndSharedSetDir *dir,
     const char *b, *c;
     size_t remainder = block_size - 1;
     size_t val_size;
+    size_t rec_size;
     void *result;
     int err;
 
@@ -110,7 +111,7 @@ static int payload_linear_scan(struct kndSharedSetDir *dir,
         case '\0':
             val_size = c - b;
             if (cb) {
-                err = cb(idbuf, idbuf_size, b, val_size, NULL, &result, task);
+                err = cb(idbuf, idbuf_size, b, val_size, NULL, &rec_size, &result, task);
                 KND_TASK_ERR("failed to unmarshall {elem %.*s}", idbuf_size, idbuf);
             }
             dir->num_term_elems++;
@@ -127,7 +128,7 @@ static int payload_linear_scan(struct kndSharedSetDir *dir,
     }
     val_size = c - b;
     if (cb) {
-        err = cb(idbuf, idbuf_size, b, val_size, NULL, &result, task);
+        err = cb(idbuf, idbuf_size, b, val_size, NULL, &rec_size, &result, task);
         KND_TASK_ERR("failed to unmarshall {elem %.*s}", idbuf_size, idbuf);
     }
     dir->num_term_elems++;
@@ -143,6 +144,7 @@ static int fetch_elem_linear_scan(const char *id, size_t id_size,
     const char *b, *c;
     size_t remainder = block_size - 1;
     size_t val_size;
+    size_t rec_size;
     int err;
     assert(cb != NULL);
 
@@ -159,7 +161,7 @@ static int fetch_elem_linear_scan(const char *id, size_t id_size,
         case '\0':
             val_size = c - b;
             if (curr_id == *id) {
-                err = cb(id, id_size, b, val_size, ctx, result, task);
+                err = cb(id, id_size, b, val_size, ctx, &rec_size, result, task);
                 KND_TASK_ERR("failed to unmarshall {elem %.*s}", id_size, id);
                 return knd_OK;
             }
@@ -177,7 +179,7 @@ static int fetch_elem_linear_scan(const char *id, size_t id_size,
     }
     val_size = c - b;
     if (curr_id == *id) {
-        err = cb(id, id_size, b, val_size, ctx, result, task);
+        err = cb(id, id_size, b, val_size, ctx, &rec_size, result, task);
         KND_TASK_ERR("failed to unmarshall elem \"%.*s\"", id_size, id);
         return knd_OK;
     }
@@ -201,6 +203,7 @@ static int unmarshall_elems(struct kndSharedSetDir *dir, char *block, size_t blo
     size_t remainder;
     size_t elem_id_val = 0;
     size_t num_term_elems = KND_RADIX_BASE;
+    size_t rec_size;
     void *result;
     int err;
 
@@ -281,7 +284,7 @@ static int unmarshall_elems(struct kndSharedSetDir *dir, char *block, size_t blo
 
         /* activate callback function */
         if (cb) {
-            err = cb(idbuf, idbuf_size + 1, e, numval, NULL, &result, task);
+            err = cb(idbuf, idbuf_size + 1, e, numval, NULL, &rec_size, &result, task);
             KND_TASK_ERR("failed to unmarshall {elem %.*s}", idbuf_size + 1, idbuf);
         }
 
@@ -616,6 +619,7 @@ static int read_elem(struct kndStorageLeaf *leaf, struct kndSharedSetDir *dir,
     size_t buf_size;
     int idx_pos;
     size_t elem_block_size, elem_offset = 0;
+    size_t rec_size;
     int err;
 
     if (DEBUG_SHARED_SET_READ_LEVEL_2) {
@@ -681,7 +685,7 @@ static int read_elem(struct kndStorageLeaf *leaf, struct kndSharedSetDir *dir,
         return knd_OK;
     }
 
-    err = cb(id, id_size, buf, buf_size, ctx, result, task);
+    err = cb(id, id_size, buf, buf_size, ctx, &rec_size, result, task);
     KND_TASK_ERR("failed to unmarshall {elem %.*s}", id_size, id);
 
     return knd_OK;

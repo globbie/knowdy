@@ -32,8 +32,7 @@ static int dict_item_new(struct kndSharedDict *self, struct kndSharedDictItem **
     return knd_OK;
 }
 
-static size_t 
-knd_shared_dict_hash(const char *key, size_t key_size)
+static size_t knd_shared_dict_hash(const char *key, size_t key_size)
 {
     const char *p = key;
     size_t h = 0;

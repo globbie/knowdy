@@ -50,7 +50,7 @@ typedef enum knd_task_type {
     KND_TASK_DEFAULT,
     KND_TASK_QUERY,
     KND_TASK_COMMIT,
-    KND_TASK_READ_SNAPSHOT,
+    KND_TASK_UPDATE_CACHE,
     KND_TASK_BUILD_SNAPSHOT,
     KND_TASK_INNER,
     KND_TASK_INNER_COMMIT,
@@ -158,18 +158,63 @@ struct kndTaskContext {
     struct kndTaskContext *next;
 };
 
+struct kndTaskCache {
+    struct kndMemPool *mempool;
+
+    struct kndSet *cls_idx;
+    struct kndDict *cls_name_idx;
+
+    struct kndClassEntry *cls_head;
+    struct kndClassEntry *cls_tail;
+    size_t num_cls;
+};
+
+struct kndTaskIndices
+{
+    struct kndDict *repo_name_idx;
+
+    struct kndDict *cls_name_idx;
+    struct kndSet *cls_idx;
+
+    size_t   cls_id_count;
+    size_t   num_cls;
+
+    char cls_name_idx_path[KND_PATH_SIZE + 1];
+    size_t cls_name_idx_path_size;
+
+    char cls_idx_path[KND_PATH_SIZE + 1];
+    size_t cls_idx_path_size;
+    
+    struct kndDict *attr_name_idx;
+    struct kndSet  *attr_idx;
+    size_t   attr_id_count;
+    size_t   num_attrs;
+
+    struct kndDict *proc_name_idx;
+    struct kndSet *proc_idx;
+
+    struct kndDict *proc_arg_name_idx;
+    struct kndSet *proc_arg_idx;
+
+    size_t proc_arg_id_count;
+
+    struct kndSet  *str_idx;
+    struct kndDict *str_dict;
+};
+
 struct kndTask
 {
     knd_agent_role_type role;
     knd_task_type type;
-    int id;
+    size_t id;
     knd_state_phase phase;
     knd_task_mode_t mode;
 
-    struct kndSteward *steward;
+    struct kndStorageConfig *storage_conf;
 
     /* ctx can be persisted and continued by another task */
     struct kndTaskContext *ctx;
+    struct kndUser *user;
 
     const char *input;
     size_t input_size;
@@ -199,11 +244,8 @@ struct kndTask
     struct kndRepo *repo;
     struct kndRepoSnapshot *snapshot;
 
-    struct kndRepoCache *cache;
-    struct kndRepoCache *local_cache;
-    struct kndRepoIndices *idxs;
-
-    void *payload;
+    struct kndTaskCache cache;
+    struct kndTaskIndices idxs;
 
     struct kndConcFolder *folders;
     size_t num_folders;
@@ -211,48 +253,36 @@ struct kndTask
     struct kndSet *sets[KND_MAX_CLAUSES];
     size_t num_sets;
 
-    struct kndSet     *ctx_idx;
-
     struct kndOutput  *out;
     struct kndOutput  *log;
     struct kndOutput  *file_out;
 
     struct kndMemPool *mempool;
-    struct kndMemPool *cache_mempool;
-
-    struct kndMemPool *ctx_mempool;
-    struct kndMemPool *ctx_cache_mempool;
-
-    bool keep_local_WAL;
 
     struct kndMemBlock *blocks;
     size_t num_blocks;
     size_t total_block_size;
 
-    struct kndDict *repo_name_idx;
-
-    struct kndDict *class_name_idx;
-    struct kndSet  *class_idx;
-    struct kndDict *class_inst_alias_idx;
-
-    struct kndDict *attr_name_idx;
-    struct kndDict *proc_name_idx;
-    struct kndDict *proc_arg_name_idx;
-
     size_t trace_level;
-    /* cache */
-    struct kndSet  *cache_class_idx;
 };
 
-int knd_task_new(struct kndTask **result,
-                 knd_agent_role_type role, int task_id, struct kndSteward *steward);
-int knd_task_init(struct kndTask *task, struct kndSteward *steward);
-void knd_task_del(struct kndTask *self);
-void knd_task_reset(struct kndTask *self);
-void knd_task_cleanup(struct kndTask *task, struct kndSteward *steward);
+int knd_task_new(struct kndTask **result, knd_agent_role_type role, size_t task_id,
+                 struct kndMemConfig *main_memconf, struct kndMemConfig *cache_memconf,
+                 struct kndStorageConfig *storage_conf);
 
-int knd_task_err_export(struct kndTask *self);
-int knd_task_run(struct kndTask *self, const char *input, size_t input_size);
+void knd_task_del(struct kndTask *task);
+
+void knd_task_reset(struct kndTask *task);
+void knd_task_cleanup(struct kndTask *task);
+void knd_task_monitor(struct kndTask *task, struct kndStorageConfig *storage_conf,
+                      struct kndResourceReport *report);
+
+int knd_task_err_export(struct kndTask *task);
+
+int knd_task_run(struct kndTask *task, const char *input, size_t input_size);
+
+// knd_task.cache.c
+int knd_task_cache_update(struct kndTask *task);
 
 // knd_task.select.c
 gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size);

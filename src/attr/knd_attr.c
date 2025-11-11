@@ -101,14 +101,14 @@ static int get_immediate_attr(struct kndClass *owner, const char *id, size_t id_
 int knd_attr_find(struct kndClass *cls, const char *name, size_t name_size,
                   struct kndAttr **result, struct kndTask *task)
 {
-    struct kndSharedDict *attr_name_idx = task->idxs->attr_name_idx;
+    struct kndDict *attr_name_idx = task->idxs.attr_name_idx;
     struct kndAttrRef *refs, *ref = NULL;
     struct kndAttr *attr = NULL;
     struct kndClassEntry *entry;
     struct kndClass *c;
     int err;
 
-    refs = knd_shared_dict_get(attr_name_idx, name, name_size);
+    refs = knd_dict_get(attr_name_idx, name, name_size);
     if (!refs) {
         err = knd_NO_MATCH;
         KND_TASK_ERR("no such attr %.*s", name_size, name);
@@ -119,9 +119,9 @@ int knd_attr_find(struct kndClass *cls, const char *name, size_t name_size,
             entry = ref->cls_entry;
         } else {
             assert (ref->owner_id_size != 0 && ref->owner_id != NULL);
-            err = knd_shared_set_get(task->idxs->class_idx,
-                                     ref->owner_id, ref->owner_id_size, (void**)&entry);
-            KND_TASK_ERR("failed to get a {class-entry %.*s}",
+            err = knd_set_get(task->idxs.cls_idx,
+                              ref->owner_id, ref->owner_id_size, (void**)&entry);
+            KND_TASK_ERR("failed to get a {cls-entry %.*s}",
                          ref->owner_id_size, ref->owner_id);
         }
 
@@ -140,8 +140,7 @@ int knd_attr_find(struct kndClass *cls, const char *name, size_t name_size,
         }
 
         err = knd_class_acquire(entry, &c, task);
-        KND_TASK_ERR("failed to acquire class {entry %.*s}",
-                     entry->name_size, entry->name);
+        KND_TASK_ERR("failed to acquire {cls-entry %.*s}", entry->name_size, entry->name);
 
         err = knd_class_is_base(c, cls);
         if (err) continue;
@@ -153,7 +152,7 @@ int knd_attr_find(struct kndClass *cls, const char *name, size_t name_size,
 
         /* get attr from owner class */
         err = get_immediate_attr(cls, ref->id, ref->id_size, &attr);
-        KND_TASK_ERR("no immediate {attr %.*s} in {class %.*s}",
+        KND_TASK_ERR("no immediate {attr %.*s} in {cls %.*s}",
                      ref->name_size, ref->name, cls->name_size, cls->name);
         break;
     }
@@ -165,6 +164,69 @@ int knd_attr_find(struct kndClass *cls, const char *name, size_t name_size,
     }
 
     *result = attr;
+    return knd_OK;
+}
+
+int knd_attr_register(struct kndAttr *attr, struct kndClass *cls, struct kndTask *task)
+{
+    struct kndMemPool *mempool = task->mempool;
+    struct kndDict *attr_name_idx = task->idxs.attr_name_idx;
+    struct kndSet *attr_idx = task->idxs.attr_idx;
+    struct kndAttrRef *attr_ref, *attr_refs;
+    const char *name = attr->name;
+    size_t name_size = attr->name_size;
+    int err;
+
+    if (DEBUG_ATTR_LEVEL_3) {
+        knd_log(".. register {cls %.*s {attr %.*s}}",
+                cls->name_size, cls->name, name_size, name);
+    }
+
+    attr->numid = ++task->idxs.attr_id_count;
+    knd_uid_create(attr->numid, attr->id, &attr->id_size);
+
+    err = knd_attr_ref_new(&attr_ref, mempool);
+    KND_TASK_ERR("failed to alloc kndAttrRef")
+    attr_ref->attr = attr;
+    attr_ref->cls_entry = cls->entry;
+
+    switch (task->type) {
+    case KND_TASK_RESTORE:
+        // fall through
+    case KND_TASK_BULK_LOAD:
+        attr_refs = knd_dict_get(attr_name_idx, name, name_size);
+        if (!attr_refs) {
+            err = knd_dict_set(attr_name_idx, attr->name, attr->name_size, (void*)attr_ref);
+            KND_TASK_ERR("failed to globally register {attr %.*s}", name_size, name);
+        } else {
+            if (attr_refs->tail) {
+                attr_refs->tail->next = attr_ref;
+                attr_refs->tail = attr_ref;
+            } else {
+                attr_refs->next = attr_ref;
+            }
+            attr_refs->tail = attr_ref;
+        }
+
+        err = knd_set_add(attr_idx, attr->id, attr->id_size, (void*)attr_ref, task);
+        KND_TASK_ERR("failed to globally register numid of {attr %.*s}", name_size, name);
+
+        err = knd_set_add(cls->attr_idx, attr->id, attr->id_size, (void*)attr_ref, task);
+        KND_TASK_ERR("failed to locally register numid of {attr %.*s}", name_size, name);
+
+        return knd_OK;
+    default:
+        break;
+    }
+
+    /* local task name idx */
+    err = knd_dict_set(task->idxs.attr_name_idx, name, name_size, (void*)attr_ref);
+    KND_TASK_ERR("failed to register {attr %.*s}", name_size, name);
+
+    if (DEBUG_ATTR_LEVEL_2) {
+        knd_log("++ commit import: new primary {attr %.*s {id %.*s}}",
+                name_size, name, attr->id_size, attr->id);
+    }
     return knd_OK;
 }
 

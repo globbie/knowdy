@@ -99,6 +99,7 @@ int knd_export_class_state_JSON(struct kndClass *self, struct kndTask *task)
         err = out->writec(out, '}');                                              RET_ERR();
     }
 
+    /*
     state = self->inst_states;
     if (state) {
         latest_state_numid = self->init_inst_state + self->num_inst_states;
@@ -114,6 +115,7 @@ int knd_export_class_state_JSON(struct kndClass *self, struct kndTask *task)
         err = out->writef(out, "%zu", total);                                     RET_ERR();
         err = out->writec(out, '}');                                              RET_ERR();
     }
+    */
     
     // TODO
     /*time(&commit->timestamp);
@@ -126,6 +128,7 @@ int knd_export_class_state_JSON(struct kndClass *self, struct kndTask *task)
     return knd_OK;
 }
 
+/*
 int knd_export_class_inst_state_JSON(struct kndClass *self, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
@@ -147,6 +150,7 @@ int knd_export_class_inst_state_JSON(struct kndClass *self, struct kndTask *task
     }
     return knd_OK;
 }
+*/
 
 #if 0
 static int export_class_ref(void *obj, const char *unused_var(elem_id), size_t unused_var(elem_id_size),
@@ -661,19 +665,16 @@ int knd_class_export_JSON(struct kndClass *self, struct kndTask *task,
                           bool unused_var(is_list_item), size_t depth)
 {
     struct kndClassEntry *entry = self->entry;
-    struct kndClassEntry *orig_entry = entry->orig;
-    struct kndClass *c;
     struct kndOutput *out = task->out;
     struct kndState *state = self->states;
     size_t indent_size = task->ctx->format_indent;
     int err;
 
-    if (DEBUG_JSON_LEVEL_2)
-        knd_log(".. JSON export: {repo %.*s {class %.*s}}  depth:%zu max depth:%zu",
-                entry->repo->name_size, entry->repo->name,
+    if (DEBUG_JSON_LEVEL_2) {
+        knd_log(".. JSON export: {cls %.*s}}  depth:%zu max depth:%zu",
                 self->name_size, self->name,
                 task->depth, task->ctx->max_depth);
-
+    }
     OUT("{", 1);
     if (indent_size) {
         OUT("\n", 1);
@@ -730,11 +731,11 @@ int knd_class_export_JSON(struct kndClass *self, struct kndTask *task,
     }
 
     /* state info */
-    if (self->num_states) {
+    /* if (self->num_states) {
         err = out->writec(out, ',');
         if (err) return err;
         err = knd_export_class_state_JSON(self, task);                            RET_ERR();
-    }
+        }*/
 
     /* display base classes only once */
     if (self->num_base_preds) {
@@ -742,25 +743,9 @@ int knd_class_export_JSON(struct kndClass *self, struct kndTask *task,
         KND_TASK_ERR("failed to export baseclass JSON");
     }
 
-    /*else {
-        if (orig_entry && orig_entry->class->num_base_preds) {
-            err = export_base_preds(orig_entry->class, task);         RET_ERR();
-        }
-        }*/
-
     if (self->attrs) {
         err = export_attrs(self, task);
         KND_TASK_ERR("failed to export attrs JSON");
-    } else {
-        if (orig_entry) {
-            err = knd_class_acquire(orig_entry, &c, task);
-            KND_TASK_ERR("failed to acquire class %.*s", orig_entry->name_size, orig_entry->name);
-
-            if (c->num_attrs) {
-                err = export_attrs(c, task);
-                RET_ERR();
-            }
-        }
     }
 
     if (self->num_children) {
@@ -771,10 +756,10 @@ int knd_class_export_JSON(struct kndClass *self, struct kndTask *task,
     /* instances */
     if (self->inst_idx) {
         OUT(",\"instances\":{", strlen(",\"instances\":{"));
-        if (self->inst_states) {
+        /*if (self->inst_states) {
             err = knd_export_class_inst_state_JSON(self, task);
             RET_ERR();
-        }
+            }*/
 
         // TODO navigation facets?
         err = out->writec(out, '}');

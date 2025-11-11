@@ -53,17 +53,16 @@ struct LocalContext {
     struct kndClassBasePred *base_pred;
 };
 
-static int update_class_name_idx(struct kndRepo *repo, struct kndClass *c,
-                                 const char *name, size_t name_size, struct kndTask *task)
+static int init_load_update_class_name_idx(struct kndClass *c, const char *name, size_t name_size,
+                                           struct kndTask *task)
 {
     struct kndCharSeq *seq;
     struct kndClassEntry *entry;
     int err;
 
     err = knd_class_entry_new(&entry, task->mempool);
-    KND_TASK_ERR("failed to alloc a class entry");
-    entry->repo = repo;
-    entry->cached_version = c;
+    KND_TASK_ERR("failed to alloc a cls entry");
+    entry->cls = c;
     c->entry = entry;
 
     entry->name = name;
@@ -72,11 +71,11 @@ static int update_class_name_idx(struct kndRepo *repo, struct kndClass *c,
     c->name_size = name_size;
 
     /* register as a unique class name */
-    err = knd_shared_dict_set(task->idxs->class_name_idx, name, name_size, (void*)entry);
+    err = knd_dict_set(task->idxs.cls_name_idx, name, name_size, (void*)entry);
     KND_TASK_ERR("failed to register a class name");
 
     /* class name as a charseq */
-    err = knd_charseq_fetch(repo, name, name_size, &seq, task);
+    err = knd_charseq_fetch(name, name_size, &seq, task);
     KND_TASK_ERR("failed to encode a class name {seq %.*s}", name_size, name);
     entry->seq = seq;
 
@@ -88,30 +87,24 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     struct LocalContext *ctx = obj;
     struct kndClass *c = ctx->class;
     struct kndTask *task = ctx->task;
-    struct kndRepo *repo = ctx->repo;
     struct kndClassEntry *entry;
     int err;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_2) {
-        knd_log("set {class %.*s} {num-strs %zu}", name_size, name, task->idxs->num_strs);
-    }
-    assert(repo != NULL);
-
-    /* task mode: initial bulk load */
+    /* initial bulk load */
     switch (task->type) {
     case KND_TASK_BULK_LOAD:
         knd_build_conc_abbr(name, name_size, c->abbr, &c->abbr_size);
 
-        entry = knd_shared_dict_get(task->idxs->class_name_idx, name, name_size);
+        entry = knd_dict_get(task->idxs.cls_name_idx, name, name_size);
         if (entry) {
-            KND_TASK_LOG("{class %.*s} already exists", name_size, name);
+            KND_TASK_LOG("{cls %.*s} already exists", name_size, name);
             err = KND_CONFLICT;
             return make_gsl_err_external(err);
         }
 
-        err = update_class_name_idx(repo, c, name, name_size, task);
+        err = init_load_update_class_name_idx(c, name, name_size, task);
         if (err) {
-            KND_TASK_LOG("failed to update class name idx with {class %.*s}", name_size, name);
+            KND_TASK_LOG("failed to update class name idx with {cls %.*s}", name_size, name);
             return make_gsl_err_external(err);
         }
         return make_gsl_err(gsl_OK);
@@ -120,28 +113,28 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
     }
 
     /* commit in progress */
-    err = knd_get_class_by_name(repo, name, name_size, &c, task);
+    err = knd_get_cls_by_name(name, name_size, &c, task);
     if (!err) {
-        KND_TASK_LOG("{class %.*s} already exists in {repo %.*s}", name_size, name);
+        KND_TASK_LOG("{cls %.*s} already exists", name_size, name);
         task->ctx->error = KND_CONFLICT;
         return make_gsl_err(gsl_FAIL);
     }
 
     /* check user shared repo */
-    if (task->user_ctx->base_repo) {
+    /*if (task->user_ctx->base_repo) {
         err = knd_get_class_by_name(task->user_ctx->base_repo, name, name_size, &c, task);
         if (!err) {
-            KND_TASK_LOG("\"%.*s\" class already exists in a base repo: %.*s",
+            KND_TASK_LOG("{cls %.*s} already exists in a base {repo %.*s}",
                          name_size, name,
                          task->user_ctx->base_repo->name_size,
                          task->user_ctx->base_repo->name);
             task->ctx->error = KND_CONFLICT;
             return make_gsl_err(gsl_FAIL);
         }
-    }
+    }*/
 
     /* update local task idx */
-    entry = knd_dict_get(task->class_name_idx, name, name_size);
+    entry = knd_dict_get(task->idxs.cls_name_idx, name, name_size);
     if (!entry) {
 
         /*entry->name = name;
@@ -154,7 +147,7 @@ static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
         return make_gsl_err(gsl_OK);
     }
 
-    KND_TASK_LOG("current commit already has a doublet of {class %.*s}", name_size, name);
+    KND_TASK_LOG("current commit already has a doublet of {cls %.*s}", name_size, name);
     task->ctx->error = KND_CONFLICT;
     return make_gsl_err(gsl_FAIL);
 }
@@ -449,10 +442,10 @@ static gsl_err_t parse_uniq_attr_constraint(void *obj, const char *rec, size_t *
     return make_gsl_err(gsl_OK);
 }
 
-gsl_err_t knd_class_import(struct kndRepo *repo, const char *rec, size_t *total_size,
-                           struct kndTask *task)
+int knd_class_import(struct kndRepo *repo, const char *rec, size_t *total_size,
+                     struct kndClassEntry **result, struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->user_ctx->mempool;
+    struct kndMemPool *mempool = task->mempool;
     struct kndClass *c;
     gsl_err_t parser_err;
     int err;
@@ -461,10 +454,7 @@ gsl_err_t knd_class_import(struct kndRepo *repo, const char *rec, size_t *total_
         knd_log(".. {worker %zu} to import {cls %.*s}", task->id, 128, rec);
     }
     err = knd_class_new(&c, mempool);
-    if (err) {
-        KND_TASK_LOG("mempool failed to alloc a class");
-        return make_gsl_err_external(err);
-    }
+    KND_TASK_ERR("failed to alloc a class");
 
     struct LocalContext ctx = {
         .task = task,
@@ -507,22 +497,22 @@ gsl_err_t knd_class_import(struct kndRepo *repo, const char *rec, size_t *total_
     if (parser_err.code) {
         switch (parser_err.code) {
         case gsl_NO_MATCH:
-            KND_TASK_LOG("unrecognized {tag %.*s} in {cls %.*s}",
+            err = knd_FORMAT;
+            KND_TASK_ERR("unrecognized {tag %.*s} in {cls %.*s}",
                          parser_err.val_size, parser_err.val,
                          c->name_size, c->name);
             break;
         default:
-            KND_TASK_LOG("{cls %.*s} parsing error: %d",
+            err = knd_FORMAT;
+            KND_TASK_ERR("{cls %.*s} parsing error: %d",
                          c->name_size, c->name, parser_err.code);
             break;
         }
-        goto final;
     }
 
     if (!c->name_size) {
-        KND_TASK_LOG("no class name specified");
-        parser_err = make_gsl_err(gsl_FAIL);
-        goto final;
+        err = knd_FORMAT;
+        KND_TASK_ERR("no class name specified");
     }
 
     /* reassign glosses */
@@ -542,18 +532,12 @@ gsl_err_t knd_class_import(struct kndRepo *repo, const char *rec, size_t *total_
         // fall through
     case KND_TASK_COMMIT:
         err = knd_class_commit_state(c->entry, KND_CREATED, task);
-        if (err) {
-            return make_gsl_err_external(err);
-        }
+        KND_TASK_ERR("failed to commit a task state");
         break;
     default:
         break;
     }
-    return make_gsl_err(gsl_OK);
 
- final:
-
-    // TODO free resources
-    
-    return parser_err;
+    *result = c->entry;
+    return knd_OK;
 }

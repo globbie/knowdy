@@ -12,7 +12,6 @@
 #include "knd_user.h"
 #include "knd_query.h"
 #include "knd_task.h"
-#include "knd_shared_dict.h"
 #include "knd_class.h"
 #include "knd_class_inst.h"
 #include "knd_proc.h"
@@ -28,6 +27,7 @@
 #define DEBUG_REPO_CACHE_LEVEL_3 0
 #define DEBUG_REPO_CACHE_LEVEL_TMP 1
 
+#if 0
 static bool detect_if_cacheable(struct kndClassEntry *unused_var(entry))
 {
     //size_t num_requests = atomic_load_explicit(&entry->num_requests, memory_order_relaxed);
@@ -58,21 +58,44 @@ static int build_cls_cache_item(void *elem, void *ctx)
     }
     return knd_OK;
 }
+#endif
 
-int knd_repo_cache_update(struct kndRepoSnapshot *snapshot, struct kndTask *task)
+int knd_repo_update_cache(struct kndRepoSnapshot *snapshot, struct kndTask *unused_var(task))
 {
-    struct kndSharedDict *class_name_idx = snapshot->idxs.class_name_idx;
-    struct kndRepo *repo = snapshot->repo;
-    int err;
+    struct kndDict *class_name_idx = snapshot->cache.class_name_idx;
 
-    if (DEBUG_REPO_CACHE_LEVEL_2) {
-        knd_log(".. rebuilding cache for {repo %.*s}", repo->name_size, repo->name);
+    //struct kndSet *class_idx = snapshot->idxs.class_idx;
+    //struct kndDict *attr_name_idx = snapshot->idxs.attr_name_idx;
+    //struct kndSet *str_idx = snapshot->idxs.str_idx;
+    //int err;
+
+    if (DEBUG_REPO_CACHE_LEVEL_TMP) {
+        knd_log(".. update cache from {snapshot %.*s}", snapshot->path_size, snapshot->path);
+        knd_log(">> {cls-name-dict %zu}", class_name_idx->num_items);
     }
 
-    // TODO sort entries by usage
+    // TODO pass a set of cached entries as cb_ctx
 
-    err = knd_shared_dict_map(class_name_idx, build_cls_cache_item, (void*)task);
-    KND_TASK_ERR("failed to build class cache for {repo %.*s}", repo->name_size, repo->name);
+    /*err = knd_dict_read(class_name_idx, knd_class_entry_unmarshall, NULL, task);
+    KND_TASK_ERR("failed to read class name idx in {snapshot #%zu {path %.*s}}",
+                 snapshot->numid, snapshot->path_size, snapshot->path);
+    */
 
+    /*err = read_class_entries(class_idx, task);
+    KND_TASK_ERR("failed to read class entries in {snapshot #%zu {path %.*s}}",
+                 snapshot->numid, snapshot->path_size, snapshot->path);
+
+    err = read_attr_name_idx(attr_name_idx, task);
+    KND_TASK_ERR("failed to read attr name idx in {snapshot #%zu {path %.*s}}",
+                 snapshot->numid, snapshot->path_size, snapshot->path);
+
+    err = read_str_idx(str_idx, task);
+    KND_TASK_ERR("failed to read strings idx in {snapshot #%zu {path %.*s}}",
+                 snapshot->numid, snapshot->path_size, snapshot->path);
+    */
+
+    //err = knd_repo_cache_update(snapshot, task);
+    //KND_TASK_ERR("failed to update a repo cache");
+    
     return knd_OK;
 }

@@ -33,13 +33,15 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
     struct kndProcInst *self = ctx->inst;
-    struct kndProcInstEntry *entry;
-    struct kndSharedDict *name_idx = ctx->task->idxs->proc_inst_name_idx;
-    struct kndOutput *log = ctx->task->log;
-    int err;
+    //struct kndProcInstEntry *entry;
+    // TODO
+    //struct kndDict *name_idx = ctx->task->idxs.proc_inst_name_idx;
+    //struct kndOutput *log = ctx->task->log;
+    //int err;
 
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
+    /*
     entry = knd_shared_dict_get(name_idx, name, name_size);
     if (entry) {
         if (entry->inst && entry->inst->states->phase == KND_REMOVED) {
@@ -56,8 +58,8 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
                          strlen(" proc inst name already exists"));
         if (err) return make_gsl_err_external(err);
         return make_gsl_err(gsl_EXISTS);
-    }
-    assign_name:
+        }*/
+    //    assign_name:
     self->name = name;
     self->name_size = name_size;
     self->entry->name = name;

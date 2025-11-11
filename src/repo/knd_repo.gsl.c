@@ -9,12 +9,10 @@
 #include "knd_attr.h"
 #include "knd_facet.h"
 #include "knd_set.h"
-#include "knd_shared_set.h"
 #include "knd_user.h"
 #include "knd_query.h"
 #include "knd_task.h"
 #include "knd_dict.h"
-#include "knd_shared_dict.h"
 #include "knd_class.h"
 #include "knd_class_inst.h"
 #include "knd_proc.h"
@@ -45,6 +43,8 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
     struct kndUserContext *ctx = task->user_ctx;
     struct kndRepo *repo = ctx->repo ? ctx->repo : task->repo;
     struct kndCommit *commit = task->ctx->commit;
+    struct kndSet *class_idx = task->idxs.cls_idx;
+    struct kndClassEntry *entry;
     int err;
 
     if (task->type != KND_TASK_BULK_LOAD) {
@@ -58,7 +58,24 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
             task->ctx->commit = commit;
         }
     }
-    return knd_class_import(repo, rec, total_size, task);
+
+    err = knd_class_import(repo, rec, total_size, &entry, task);
+    if (err) {
+        KND_TASK_LOG("failed to import a class");
+        return make_gsl_err_external(err);
+    }
+
+    /* assign a unique class entry id */
+    entry->numid = task->idxs.cls_id_count++;
+    knd_uid_create(entry->numid, entry->id, &entry->id_size);
+
+    err = knd_set_add(class_idx, entry->id, entry->id_size, (void*)entry, task);
+    if (err) {
+        KND_TASK_LOG("failed to register {cls %.*s} in class idx",
+                     entry->name_size, entry->name);
+        return make_gsl_err_external(err);
+    }
+    return make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_size)
@@ -205,9 +222,9 @@ static gsl_err_t run_read_include(void *obj, const char *name, size_t name_size)
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
 
-    if (DEBUG_REPO_GSL_LEVEL_2)
+    if (DEBUG_REPO_GSL_LEVEL_2) {
         knd_log(".. include {file %.*s}", name_size, name);
-
+    }
     err = knd_conc_folder_new(&folder, mempool);
     if (err) {
         knd_log("failed to alloc a conc folder");
@@ -406,12 +423,12 @@ static int resolve_class(void *elem, void *ctx)
     int err;
 
     err = knd_class_acquire(entry, &c, task);
-    KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
+    KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);
 
     if (c->phase >= KND_CLASS_RESOLVED) return knd_OK;
 
     err = knd_class_resolve(c, task);
-    KND_TASK_ERR("failed to resolve {class %.*s}", entry->name_size, entry->name);
+    KND_TASK_ERR("failed to resolve {cls %.*s}", entry->name_size, entry->name);
 
     return knd_OK;
 }
@@ -421,7 +438,6 @@ static int index_class(void *elem, void *ctx)
     struct kndClassEntry *entry = elem;
     struct kndTask *task = ctx;
     struct kndClass *c;
-    struct kndSharedSet *class_idx = task->idxs->class_idx;
     int err;
 
     err = knd_class_acquire(entry, &c, task);
@@ -432,9 +448,6 @@ static int index_class(void *elem, void *ctx)
     err = knd_class_index(c, task);
     KND_TASK_ERR("failed to index {cls %.*s}", entry->name_size, entry->name);
 
-    err = knd_shared_set_add(class_idx, entry->id, entry->id_size, (void*)entry);
-    KND_TASK_ERR("failed to register {cls %.*s} in class idx",
-                 entry->name_size, entry->name);
     return knd_OK;
 }
 
@@ -446,9 +459,9 @@ static int index_class_insts(struct kndClass *c, struct kndTask *task)
     struct kndSharedDict *name_idx = c->inst_name_idx;
     int err;
 
-    if (DEBUG_REPO_GSL_LEVEL_2)
-        knd_log(".. resolving insts of {class %.*s}..", c->name_size, c->name);
-
+    if (DEBUG_REPO_GSL_LEVEL_2) {
+        knd_log(".. resolving insts of {cls %.*s}..", c->name_size, c->name);
+    }
     // TODO: iterate func in kndSharedDict
     for (size_t i = 0; i < name_idx->size; i++) {
         items = atomic_load_explicit(&name_idx->hash_array[i], memory_order_relaxed);
@@ -529,7 +542,7 @@ static int write_meta_file(struct kndRepo *repo, const char *rec, size_t rec_siz
 
     out->reset(out);
     OUT(repo->path, repo->path_size);
-    OUT("repo.gsl", strlen("repo.gsl"));
+    OUT("state.gsl", strlen("state.gsl"));
 
     err = rename((const char*)name_buf, (const char*)out->buf);
     KND_TASK_ERR("failed renaming {file %.*s} to {file %.*s}",
@@ -537,8 +550,7 @@ static int write_meta_file(struct kndRepo *repo, const char *rec, size_t rec_siz
 
     return knd_OK;
 }
-static int present_idx_meta(struct kndSharedSet *idx,
-                            const char *name, size_t name_size,
+static int present_idx_meta(struct kndSet *idx, const char *name, size_t name_size,
                             struct kndTask *task)
 {
     struct kndStorageLeaf *leaf;
@@ -616,13 +628,21 @@ int knd_repo_save_meta(struct kndRepoSnapshot *s, struct kndTask *task)
                            "attr-name-idx", strlen("attr-name-idx"), task);
     KND_TASK_ERR("failed to present attr name idx meta");
     */
-    err = present_idx_meta(s->idxs.class_idx,
+
+    if (s->cache.class_name_idx->idx) {
+        err = present_idx_meta(s->cache.class_name_idx->idx,
+                               "cls-name-idx", strlen("cls-name-idx"), task);
+        KND_TASK_ERR("failed to present cls name idx meta");
+    }
+
+    err = present_idx_meta(s->cache.class_idx,
                            "classes", strlen("classes"), task);
     KND_TASK_ERR("failed to present classes idx meta");
 
-    err = present_idx_meta(s->idxs.str_idx,
+    /*    err = present_idx_meta(s->idxs.str_idx,
                            "strings", strlen("strings"), task);
     KND_TASK_ERR("failed to present strings idx meta");
+    */
 
     if (DEBUG_REPO_GSL_LEVEL_3) {
         knd_log(">> update repo meta %.*s", out->buf_size, out->buf);
@@ -633,7 +653,7 @@ int knd_repo_save_meta(struct kndRepoSnapshot *s, struct kndTask *task)
 
     err = write_meta_file(repo, out->buf, out->buf_size, task);
     KND_TASK_ERR("failed saving meta file of {repo %.*s}", repo->name_size, repo->name);
-    
+
     return knd_OK;
 }
 
@@ -648,28 +668,27 @@ int knd_repo_read_sources(struct kndRepo *self, struct kndTask *task)
 
     /* read a system-wide schema */
     task->type = KND_TASK_BULK_LOAD;
-    err = read_GSL_file(self, NULL, KND_PACKAGE_INDEX_NAME, strlen(KND_PACKAGE_INDEX_NAME),
-                        KND_GSL_SCHEMA, task);
+    err = read_GSL_file(self, NULL, KND_PACKAGE_INDEX_NAME, strlen(KND_PACKAGE_INDEX_NAME), KND_GSL_SCHEMA, task);
     KND_TASK_ERR("schema import failed");
 
     /* resolve class references */
-    err = knd_shared_dict_map(task->idxs->class_name_idx, resolve_class, (void*)task);
-    KND_TASK_ERR("failed to resolve all entries in class name idx");
+    err = knd_set_map(task->idxs.cls_idx, NULL, NULL, NULL, resolve_class, (void*)task);
+    KND_TASK_ERR("failed to resolve all entries in class idx");
 
     //err = resolve_procs(self, task);
     //KND_TASK_ERR("proc resolving failed");
 
-    /* build indices */
-    err = knd_shared_dict_map(task->idxs->class_name_idx, index_class, (void*)task);
-    KND_TASK_ERR("failed to index all entries in class name idx");
+    /* build reverse indices */
+    err = knd_set_map(task->idxs.cls_idx, NULL, NULL, NULL, index_class, (void*)task);
+    KND_TASK_ERR("failed to index all entries in class idx");
 
     /* any instances to load? */
     if (self->data_path_size) {
-        if (DEBUG_REPO_GSL_LEVEL_3)
+        if (DEBUG_REPO_GSL_LEVEL_3) {
             knd_log(".. initial loading of data files");
+        }
         task->type = KND_TASK_BULK_LOAD;
-        err = read_GSL_file(self, NULL,
-                            KND_PACKAGE_INDEX_NAME, strlen(KND_PACKAGE_INDEX_NAME),
+        err = read_GSL_file(self, NULL, KND_PACKAGE_INDEX_NAME, strlen(KND_PACKAGE_INDEX_NAME),
                             KND_GSL_INIT_DATA, task);
         KND_TASK_ERR("init data import failed");
 

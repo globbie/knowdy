@@ -47,8 +47,7 @@ int knd_class_inst_entry_unmarshall(const char *elem_id, size_t elem_id_size, co
 {
     struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndClassInstEntry *entry = NULL;
-    struct kndRepo *repo = task->repo;
-    struct kndClassEntry *is_a = task->payload;
+    struct kndClassEntry *is_a = NULL; //task->payload;
     struct kndClass *cls;
     struct kndCharSeq *seq;
     const char *c, *name = rec;
@@ -84,7 +83,7 @@ int knd_class_inst_entry_unmarshall(const char *elem_id, size_t elem_id_size, co
     entry->name_size = name_size;
     /* check charseq decoding */
     if (name_size <= KND_ID_SIZE) {
-        err = knd_shared_set_get(task->idxs->str_idx, name, name_size, (void**)&seq);
+        err = knd_set_get(task->idxs.str_idx, name, name_size, (void**)&seq);
         if (!err) {
             entry->name = seq->val;
             entry->name_size = seq->val_size;
@@ -93,17 +92,17 @@ int knd_class_inst_entry_unmarshall(const char *elem_id, size_t elem_id_size, co
     }
 
     err = knd_class_acquire(is_a, &cls, task);
-    KND_TASK_ERR("failed to acquire {class %.*s}", is_a->name_size, is_a->name);
+    KND_TASK_ERR("failed to acquire {cls %.*s}", is_a->name_size, is_a->name);
 
-    err = knd_shared_dict_set(cls->inst_name_idx, entry->name, entry->name_size, (void*)entry);
+    err = knd_dict_set(cls->inst_name_idx, entry->name, entry->name_size, (void*)entry);
     KND_TASK_ERR("failed to register class inst name");
 
-    err = knd_shared_set_add(cls->inst_idx, entry->id, entry->id_size, (void*)entry);
-    KND_TASK_ERR("failed to register class inst entry \"%.*s\"", entry->id_size, entry->id);
+    err = knd_set_add(cls->inst_idx, entry->id, entry->id_size, (void*)entry, task);
+    KND_TASK_ERR("failed to register {cls-inst %.*s}", entry->id_size, entry->id);
 
     if (DEBUG_CLASS_INST_GSP_LEVEL_3) {
-        knd_log("== class inst name decoded \"%.*s\" => \"%.*s\" {repo %.*s}",
-                entry->id_size, entry->id, entry->name_size, entry->name, repo->name_size, repo->name);
+        knd_log("== class inst name decoded \"%.*s\" => \"%.*s\"",
+                entry->id_size, entry->id, entry->name_size, entry->name);
     }
     *result = entry;
     return knd_OK;

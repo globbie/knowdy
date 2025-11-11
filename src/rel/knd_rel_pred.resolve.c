@@ -26,7 +26,7 @@
 
 int knd_rel_pred_resolve(struct kndAttrStm *var, struct kndTask *task)
 {
-    struct kndSharedDict *class_name_idx = task->idxs->class_name_idx;
+    struct kndDict *class_name_idx = task->idxs.cls_name_idx;
     struct kndAttr *attr = var->attr;
     struct kndRel *rel = attr->subtype;
     struct kndClassEntry *entry;
@@ -47,29 +47,29 @@ int knd_rel_pred_resolve(struct kndAttrStm *var, struct kndTask *task)
                 rel->impl_arg_name_size, rel->impl_arg_name);
     }
 
-    entry = knd_shared_dict_get(class_name_idx, var->val, var->val_size);
+    entry = knd_dict_get(class_name_idx, var->val, var->val_size);
     if (!entry) {
 	 err = knd_NO_MATCH;
-         KND_TASK_ERR("no such {class %.*s} "
+         KND_TASK_ERR("no such {cls %.*s} "
                       "failed to resolve {rel %.*s",
                       var->val_size, var->val, var->name_size, var->name);
     }
     
     err = knd_class_acquire(entry, &c, task);
-    KND_TASK_ERR("failed to acquire class \"%.*s\"", entry->name_size, entry->name);
+    KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);
 
     if (c->phase < KND_CLASS_RESOLVED) {
         err = knd_class_resolve(c, task);
-        KND_TASK_ERR("failed to resolve class %.*s", c->name_size, c->name);
+        KND_TASK_ERR("failed to resolve {cls %.*s}", c->name_size, c->name);
     }
     
     entry = rel->impl_arg->template;
     if (!entry) {
-        entry = knd_shared_dict_get(class_name_idx,
-                                    rel->impl_arg->classname, rel->impl_arg->classname_size);
+        entry = knd_dict_get(class_name_idx,
+                             rel->impl_arg->classname, rel->impl_arg->classname_size);
         if (!entry) {
             err = knd_NO_MATCH;
-            KND_TASK_ERR("no such {class %.*s} "
+            KND_TASK_ERR("no such {cls %.*s} "
                          "failed to resolve {rel %.*s",
                          var->val_size, var->val, var->name_size, var->name);
         }
@@ -77,10 +77,10 @@ int knd_rel_pred_resolve(struct kndAttrStm *var, struct kndTask *task)
     }
 
     err = knd_class_acquire(entry, &template_c, task);
-    KND_TASK_ERR("failed to acquire template class \"%.*s\"", entry->name_size, entry->name);
+    KND_TASK_ERR("failed to acquire template {cls %.*s}", entry->name_size, entry->name);
 
     err = knd_class_is_base(template_c, c);
-    KND_TASK_ERR("no inheritance from %.*s to %.*s",
+    KND_TASK_ERR("no inheritance from {cls %.*s} to {cls %.*s}",
                  template_c->name_size, template_c->name, c->name_size, c->name);
 
     /* other args */

@@ -89,7 +89,7 @@ int knd_text_resolve(struct kndAttrStm *attr_stm, struct kndTask *task)
     err = knd_text_new(&text, mempool);
     KND_TASK_ERR("failed to alloc a text field %.*s", attr_stm->name_size, attr_stm->name);
 
-    err = knd_charseq_fetch(task->repo, attr_stm->val, attr_stm->val_size, &text->seq, task);
+    err = knd_charseq_fetch(attr_stm->val, attr_stm->val_size, &text->seq, task);
     KND_TASK_ERR("failed to fetch a charseq of %.*s", attr_stm->name_size, attr_stm->name);
     
     attr_stm->subtype = text;

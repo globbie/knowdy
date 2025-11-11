@@ -65,7 +65,7 @@ static gsl_err_t parse_get_inst_by_numid(void *obj, const char *rec, size_t *tot
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndSharedSet *inst_idx = atomic_load_explicit(&ctx->class->inst_idx, memory_order_acquire);
+    struct kndSet *inst_idx = ctx->class->inst_idx;
     struct kndClassInstEntry *entry;
     char id[KND_ID_SIZE];
     size_t id_size;
@@ -81,9 +81,9 @@ static gsl_err_t parse_get_inst_by_numid(void *obj, const char *rec, size_t *tot
     if (DEBUG_INST_LEVEL_2)
         knd_log("class inst id: %zu => \"%.*s\" [size: %zu]", numid, (int)id_size, id, id_size);
 
-    err = knd_shared_set_get(inst_idx, id, id_size, (void**)&entry);
+    err = knd_set_get(inst_idx, id, id_size, (void**)&entry);
     if (err) {
-        KND_TASK_LOG("failed to open class inst \"%.*s\"", id_size, id);
+        KND_TASK_LOG("failed to open {cls {inst %.*s}}", id_size, id);
         return make_gsl_err_external(err);
     }
 

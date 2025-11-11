@@ -30,8 +30,6 @@ int knd_class_inst_unmarshall(const char *elem_id, size_t elem_id_size, const ch
     size_t total_size = rec_size;
     int err;
 
-    assert(task->payload != NULL);
-
     if (DEBUG_CLASS_INST_READ_LEVEL_2)
         knd_log(">> GSP class inst \"%.*s\" => \"%.*s\"", elem_id_size, elem_id, rec_size, rec);
 
@@ -48,39 +46,18 @@ int knd_class_inst_unmarshall(const char *elem_id, size_t elem_id_size, const ch
 int knd_class_inst_acquire(struct kndClassInstEntry *entry, struct kndClassInst **result,
                            struct kndTask *task)
 {
-    struct kndClassInst *inst = NULL, *prev_inst;
+    struct kndClassInst *inst = NULL;
     struct kndClass *c;
-    struct kndStorageLeaf *leaf;
+    //struct kndStorageLeaf *leaf;
     int err;
 
     assert(entry->is_a != NULL);
 
     err = knd_class_acquire(entry->is_a, &c, task);
-    KND_TASK_ERR("failed to acquire class %.*s", entry->is_a->name_size, entry->is_a->name);
-    leaf = c->class_inst_idx_leaf;
+    KND_TASK_ERR("failed to acquire {cls %.*s}", entry->is_a->name_size, entry->is_a->name);
 
-    do {
-        prev_inst = atomic_load_explicit(&entry->inst, memory_order_relaxed);
-        if (prev_inst) {
-            // TODO if inst - free 
-            *result = prev_inst;
-            return knd_OK;
-        }
-        if (!inst) {
-
-            /*err = knd_get_leaf(c->inst_idx, entry->is_a, &leaf, task);
-            KND_TASK_ERR("no storage leaf found for unmarshalling class entry %.*d",
-                         entry->id_size, entry->id);
-            task->payload = entry->is_a;
-            err = knd_storage_leaf_read_elem(, entry->id, entry->id_size,
-                                             leaf->filepath, leaf->filepath_size,
-                                             knd_class_inst_unmarshall, (void**)&inst, task);
-            if (err) return err;
-            inst->entry = entry;
-            inst->name = entry->name;
-            inst->name_size = entry->name_size; */
-        }
-    } while (!atomic_compare_exchange_weak(&entry->inst, &prev_inst, inst));
+    //    leaf = c->class_inst_idx_leaf;
+    // TODO
 
     *result = inst;
     return knd_OK;
@@ -146,9 +123,10 @@ static gsl_err_t read_attr_stm_list(void *obj, const char *name, size_t name_siz
 int knd_class_inst_read(struct kndClassInst *self, const char *rec, size_t *total_size,
                         struct kndTask *task)
 {
-    struct kndClassEntry *entry = task->payload;
+    struct kndClassEntry *entry = NULL;
     struct kndClass *c;
     int err;
+
     assert(entry != NULL);
 
     if (DEBUG_CLASS_INST_READ_LEVEL_2) {

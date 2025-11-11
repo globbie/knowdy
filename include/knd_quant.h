@@ -133,7 +133,7 @@ struct kndQuantAttrStm
     struct kndQuantUReal *ureal;
     //struct kndQuantURealRange *ureal_range;
 
-    struct kndSet *match;
+    struct kndSet *matchset;
     struct kndQuantAttrStm *next;
 };
 

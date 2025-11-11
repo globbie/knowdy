@@ -109,7 +109,7 @@ struct kndAttrStm
     struct kndAttrStm *list_tail;
     size_t num_list_elems;
 
-    struct kndSet *match;
+    struct kndSet *matchset;
     size_t num_matches;
     size_t min_query_ops;
 
