@@ -53,9 +53,9 @@ struct LocalContext {
     struct kndRepo *repo;
     struct kndAttrStm *attr_stm;
     struct kndClassEntry *entry;
-    struct kndClass *class;
+    struct kndClass *cls;
     struct kndClass *baseclass;
-    struct kndClassRef *class_ref;
+    struct kndClassRef *cls_ref;
     struct kndClassInst *class_inst;
     struct kndClassInstRef *class_inst_ref;
     struct kndClassBasePred *base_pred;
@@ -121,9 +121,7 @@ static gsl_err_t set_baseclass(void *obj, const char *id, size_t id_size)
     memcpy(base_pred->id, id, id_size);
     base_pred->id_size = id_size;
 
-    // TODO get by id
-
-    err = knd_set_get(task->idxs.cls_idx, id, id_size, (void**)&entry);
+    err = knd_get_cls_entry_by_id(id, id_size, &entry, task);
     if (err) {
         KND_TASK_LOG("{cls %.*s} not found", id_size, id);
         return make_gsl_err(gsl_FAIL);
@@ -134,20 +132,23 @@ static gsl_err_t set_baseclass(void *obj, const char *id, size_t id_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t set_class_ref(void *obj, const char *id, size_t id_size)
+static gsl_err_t set_cls_ref(void *obj, const char *id, size_t id_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndClassRef *ref = ctx->class_ref;
+    struct kndClassRef *ref = ctx->cls_ref;
     struct kndClassEntry *entry;
     int err;
 
     if (!id_size) return make_gsl_err(gsl_FORMAT);
     if (id_size > KND_ID_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    // TODO get by id
+    err = knd_class_ref_new(&ref, task->mempool);
+    if (err) return make_gsl_err_external(err);
 
-    err = knd_set_get(task->idxs.cls_idx, id, id_size, (void**)&entry);
+    ctx->cls_ref = ref;
+
+    err = knd_get_cls_entry_by_id(id, id_size, &entry, task);
     if (err) {
         KND_TASK_LOG("{cls %.*s} not found", id_size, id);
         return make_gsl_err(gsl_FAIL);
@@ -159,7 +160,7 @@ static gsl_err_t set_class_ref(void *obj, const char *id, size_t id_size)
 static gsl_err_t parse_baseclass_array_item(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndClass *cls = ctx->class;
+    struct kndClass *cls = ctx->cls;
     struct kndClassBasePred *base_pred;
     struct kndMemPool *mempool = ctx->task->mempool;
     int err;
@@ -195,7 +196,7 @@ static gsl_err_t parse_baseclass_array_item(void *obj, const char *rec, size_t *
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t set_class_name(void *obj, const char *name, size_t name_size)
+static gsl_err_t set_cls_entry_name(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
     struct kndClassEntry *entry = ctx->entry;
@@ -240,18 +241,15 @@ static gsl_err_t parse_baseclass_array(void *obj, const char *rec, size_t *total
 static gsl_err_t parse_ancestor_array_item(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndClass *self = ctx->class;
-    struct kndMemPool *mempool = ctx->task->user_ctx->mempool;
+    struct kndClass *self = ctx->cls;
+    struct kndMemPool *mempool = ctx->task->mempool;
     struct kndClassRef *ref;
     int err;
 
-    err = knd_class_ref_new(&ref, mempool);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
-    ctx->class_ref = ref;
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = set_class_ref,
+          .run = set_cls_ref,
           .obj = ctx
         }
     };
@@ -259,6 +257,8 @@ static gsl_err_t parse_ancestor_array_item(void *obj, const char *rec, size_t *t
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return parser_err;
+
+    ref = ctx->cls_ref;
 
     // append
     ref->next = self->ancestors;
@@ -282,18 +282,18 @@ static gsl_err_t parse_ancestor_array(void *obj, const char *rec, size_t *total_
 static gsl_err_t parse_child_item(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndClass *self = ctx->class;
-    struct kndMemPool *mempool = ctx->task->user_ctx->mempool;
+    struct kndClass *self = ctx->cls;
+    struct kndMemPool *mempool = ctx->task->mempool;
     struct kndClassRef *ref;
     int err;
 
     err = knd_class_ref_new(&ref, mempool);
     if (err) return *total_size = 0, make_gsl_err_external(err);
-    ctx->class_ref = ref;
+    ctx->cls_ref = ref;
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = set_class_ref,
+          .run = set_cls_ref,
           .obj = ctx
         }
     };
@@ -325,7 +325,7 @@ static gsl_err_t set_descendant_ref(void *obj, const char *id, size_t id_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndClass *c = ctx->class;
+    struct kndClass *c = ctx->cls;
     struct kndClassEntry *entry;
     int err;
 
@@ -368,7 +368,7 @@ static gsl_err_t parse_descendant_array(void *obj, const char *rec, size_t *tota
 {
     struct LocalContext *ctx = obj;
     struct kndMemPool *mempool = ctx->task->mempool;
-    struct kndClass *c = ctx->class;
+    struct kndClass *c = ctx->cls;
     int err;
 
     if (!c->descendants) {
@@ -406,7 +406,7 @@ static gsl_err_t read_attr(void *obj, const char *name, size_t name_size,
     struct LocalContext *ctx = obj;
     struct kndTask    *task = ctx->task;
     struct kndMemPool *mempool = task->mempool;
-    struct kndClass *self = ctx->class;
+    struct kndClass *self = ctx->cls;
     struct kndAttr *attr;
     struct kndQuantAttr *quant_attr;
     struct kndClassRefAttr *cls_ref_attr;
@@ -433,7 +433,7 @@ static gsl_err_t read_attr(void *obj, const char *name, size_t name_size,
 
     switch (attr->type) {
     case KND_ATTR_NONE:
-        knd_log("{attr-type %.*s} is not supported for {class %.*s}",
+        knd_log("{attr-type %.*s} is not supported for {cls %.*s}",
                 name_size, name, self->name_size, self->name);
         return make_gsl_err_external(knd_NO_MATCH);
     case KND_ATTR_UINT:
@@ -503,7 +503,7 @@ static gsl_err_t read_glosses(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndClass *self = ctx->class;
+    struct kndClass *self = ctx->cls;
     gsl_err_t parser_err;
 
     parser_err = knd_read_gloss_array((void*)task, rec, total_size);
@@ -531,7 +531,7 @@ int knd_class_read(struct kndClass *self, const char *rec, size_t *total_size, s
 
     struct LocalContext ctx = {
         .task = task,
-        .class = self,
+        .cls = self,
         .repo = task->repo
     };
 
@@ -650,19 +650,18 @@ int knd_class_unmarshall(const char *unused_var(elem_id), size_t unused_var(elem
     return knd_OK;
 }
 
-int knd_class_entry_unmarshall(const char *unused_var(elem_id), size_t unused_var(elem_id_size),
+int knd_class_entry_unmarshall(const char *elem_id, size_t elem_id_size,
                                const char *rec, size_t rec_size,
-                               void *unused_var(ctx), void **unused_var(result), struct kndTask *task)
+                               void *unused_var(ctx), size_t *total_size,
+                               void **result, struct kndTask *task)
 {
-    struct kndSet *class_idx = task->idxs.cls_idx;
-    struct kndDict *class_name_idx = task->idxs.cls_name_idx;
+    struct kndSet *cls_idx = task->idxs.cls_idx;
     struct kndClassEntry *entry;
-    size_t total_size = rec_size;
     gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_CLASS_READ_LEVEL_3) {
-        knd_log(">> class names block:  %.*s", rec_size, rec);
+    if (DEBUG_CLASS_READ_LEVEL_TMP) {
+        knd_log(">> unmarshall cls entry {rec  %.*s}", rec_size, rec);
     }
 
     err = knd_class_entry_new(&entry, task->mempool);
@@ -676,7 +675,7 @@ int knd_class_entry_unmarshall(const char *unused_var(elem_id), size_t unused_va
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = set_class_name,
+          .run = set_cls_entry_name,
           .obj = &ctx
         },
         { .name = "id",
@@ -687,15 +686,16 @@ int knd_class_entry_unmarshall(const char *unused_var(elem_id), size_t unused_va
         }
     };
 
-    parser_err = gsl_parse_task(rec, &total_size, specs, sizeof specs / sizeof specs[0]);
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
     knd_calc_num_id(entry->id, entry->id_size, &entry->numid);
 
-    err = knd_dict_set(class_name_idx, entry->name, entry->name_size, (void*)entry);
-    KND_TASK_ERR("{cls-entry %.*s} already registered?", entry->name_size, entry->name);
-
-    err = knd_set_add(class_idx, entry->id, entry->id_size, (void*)entry, task);
+    err = knd_set_add(cls_idx, entry->id, entry->id_size, (void*)entry, task);
     KND_TASK_ERR("{cls-entry %.*s} already registered?", entry->id_size, entry->id);
-    
+
+    //*seq = entry->name;
+    //*seq_size = entry->name_size;
+
+    *result = entry;
     return knd_OK;
 }

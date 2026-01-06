@@ -337,8 +337,8 @@ static int set_storage_limits(struct kndStorageConfig *conf)
     }
 
     if (DEBUG_STEWARD_LEVEL_TMP) {
-        knd_log("{leaf-limits {min-bytes %zu} {max-bytes %zu}} {system-size-max %zu}",
-                conf->leaf_min_size, conf->leaf_max_size, SIZE_MAX);
+        knd_log("{leaf-limits {min-bytes %zu} {max-bytes %zu}}",
+                conf->leaf_min_size, conf->leaf_max_size);
     }
     return knd_OK;
 }
@@ -647,6 +647,7 @@ static int steward_read_config(struct kndSteward *steward, const char *config, s
     return knd_OK;
 }
 
+#if 0
 static int init_user_space(struct kndSteward *steward, struct kndTask *task)
 {
     struct kndRepoAccess *acl;
@@ -683,6 +684,7 @@ static int init_user_space(struct kndSteward *steward, struct kndTask *task)
 
     return knd_OK;
 }
+#endif
 
 static int steward_init(struct kndSteward *steward)
 {
@@ -705,10 +707,10 @@ static int steward_init(struct kndSteward *steward)
     steward->mem_task_ctx_config.memtype = KND_ALLOC_INCR;
     steward->mem_task_cache_config.memtype = KND_ALLOC_LIST;
 
-    err = knd_task_new(&steward->task, KND_AGENT_SYSTEM, 0,
+    err = knd_task_new(&task, KND_AGENT_SYSTEM, 0,
                        &steward->mem_main_config, &steward->mem_cache_config, &steward->storage_config);
     KND_STEWARD_ERR("failed to init steward main task");
-    task = steward->task;
+    steward->task = task;
 
     err = knd_task_new(&steward->shift_task, KND_AGENT_SYSTEM, 0,
                        &steward->mem_main_config, &steward->mem_cache_config, &steward->storage_config);
@@ -731,14 +733,18 @@ static int steward_init(struct kndSteward *steward)
     }
 
     err = knd_repo_read(repo, task);
-    knd_log("ERR: %.*s", task->log->buf_size, task->log->buf);
+    if (task->log->buf_size) {
+        knd_log("ERR: %.*s", task->log->buf_size, task->log->buf);
+    }
     KND_STEWARD_ERR("failed to open a repo");
 
     /* depends on {class User} from the system repo */
-    err = init_user_space(steward, task);
-    knd_log("ERR: %.*s", task->log->buf_size, task->log->buf);
+    /*err = init_user_space(steward, task);
+    if (task->log->buf_size) {
+        knd_log("ERR: %.*s", task->log->buf_size, task->log->buf);
+    }
     KND_STEWARD_ERR("failed to init user space");
-
+    */
     return knd_OK;
 }
 
@@ -792,26 +798,25 @@ int knd_steward_snapshot_create(struct kndSteward *steward)
 {
     struct kndOutput *out = steward->out;
     struct kndOutput *log = steward->log;
-    struct kndTask *task = steward->shift_task;
-    struct kndRepo *repo;
+    struct kndTask *main_task = steward->task;
+    struct kndTask *shift_task = steward->shift_task;
+    struct kndRepo *repo = steward->repo;
     int err;
 
-    task->type = KND_TASK_BUILD_SNAPSHOT;
+    shift_task->type = KND_TASK_BUILD_SNAPSHOT;
+    knd_log("{main %p} {shift %p}", main_task, shift_task);
 
-    repo = steward->repo;
-
-    err = knd_repo_snapshot_create(repo, task);
+    err = knd_repo_build_snapshot(repo, main_task, shift_task);
     if (err) {
-        log->write(log, task->log->buf, task->log->buf_size);
+        log->write(log, shift_task->log->buf, shift_task->log->buf_size);
     }
     KND_STEWARD_ERR("failed to build a sys repo temp snapshot");
 
-    task->snapshot = repo->snapshot_temp;
-    //task->idxs = &repo->snapshot_temp->idxs;
+    shift_task->snapshot = repo->snapshot_temp;
 
-    err = knd_repo_update_cache(repo->snapshot_temp, task);
+    err = knd_repo_update_cache(repo->snapshot_temp, shift_task);
     if (err) {
-        log->write(log, task->log->buf, task->log->buf_size);
+        log->write(log, shift_task->log->buf, shift_task->log->buf_size);
     }
     KND_STEWARD_ERR("failed to read a sys repo temp snapshot");
 

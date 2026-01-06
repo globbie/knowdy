@@ -68,11 +68,12 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
 
     /* inner obj? */
     if (self->type == KND_OBJ_INNER) {
-        class_entry = knd_dict_get(class_name_idx, name, name_size);
-        if (!class_entry) {
+        err = knd_dict_get(class_name_idx, name, name_size, (void**)&class_entry, task);
+        // TODO
+        /*if (!class_entry) {
             KND_TASK_LOG("inner obj: no such {cls %.*s}", name_size, name);
             return make_gsl_err(gsl_FAIL);
-        }
+            }*/
 
         err = knd_class_acquire(class_entry, &inner_c, task);
         if (err) {
@@ -91,7 +92,7 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     }
 
     if (name_idx) {
-        entry = knd_dict_get(name_idx, name, name_size);
+        //entry = knd_dict_get(name_idx, name, name_size);
         if (entry) {
             /*if (entry->inst && entry->inst->states->phase == KND_REMOVED) {
               knd_log("-- this class instance has been removed lately: %.*s",
@@ -222,7 +223,7 @@ static gsl_err_t import_class_inst(struct kndClassInst *self, const char *rec, s
 
 static int generate_uniq_inst_name(struct kndClassInst *inst, struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndMemPool *mempool = task->mempool;
     struct kndOutput *out = task->out;
     struct kndNameBuf *namebuf;
     int err;
@@ -243,7 +244,7 @@ static int generate_uniq_inst_name(struct kndClassInst *inst, struct kndTask *ta
 static int register_by_name(struct kndClassInstEntry *entry, struct kndTask *task)
 {
     struct kndDict *name_idx;
-    struct kndMemPool *mempool = task->user_ctx->mempool;
+    struct kndMemPool *mempool = task->mempool;
     struct kndClass *c;
     int err;
 
@@ -258,7 +259,7 @@ static int register_by_name(struct kndClassInstEntry *entry, struct kndTask *tas
         c->inst_name_idx = name_idx;
     }
 
-    err = knd_dict_set(name_idx, entry->name, entry->name_size, (void*)entry);
+    err = knd_dict_set(name_idx, entry->name, entry->name_size, (void*)entry, task);
     KND_TASK_ERR("name idx failed to register {cls-inst %.*s}", entry->name_size, entry->name);
 
     return knd_OK;
@@ -267,7 +268,7 @@ static int register_by_name(struct kndClassInstEntry *entry, struct kndTask *tas
 int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *total_size,
                           struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->user_ctx->mempool;
+    struct kndMemPool *mempool = task->mempool;
     struct kndClass *c;
     struct kndClassInst *inst;
     struct kndClassInstEntry *inst_entry;

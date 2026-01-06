@@ -639,7 +639,7 @@ static gsl_err_t parse_class_idx(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
     struct kndRepoSnapshot *snapshot = task->snapshot;
-    struct kndSet *idx = snapshot->cache.class_idx;
+    struct kndSet *idx = snapshot->cache.cls_idx;
     const char *pref = "classes";
     size_t pref_size = strlen(pref);
     char path[KND_PATH_SIZE + 1];
@@ -830,11 +830,10 @@ static int read_repo_state(struct kndRepo *repo, struct kndTask *task)
 
 int knd_repo_read(struct kndRepo *repo, struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->user_ctx->mempool;
     struct kndRepoSnapshot *snapshot;
     int err;
 
-    assert(mempool != NULL);
+    assert(task->user_ctx != NULL);
 
     if (DEBUG_REPO_LEVEL_TMP) {
         const char *owner_name = "/";

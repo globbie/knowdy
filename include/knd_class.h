@@ -84,15 +84,17 @@ struct kndClassIdx
 
 struct kndClassRef
 {
-    struct kndClassEntry *entry;
+    char id[KND_ID_SIZE];
+    size_t id_size;
     size_t numid;
 
-    struct kndAttr       *attr;
-    struct kndClassInstRef *insts;
-    struct kndSet        *inst_idx;
+    struct kndClassEntry *entry;
 
-    struct kndClassIdx   *idx;
-    struct kndProcIdx    *proc_idx;
+    struct kndAttr       *attr;
+    //struct kndClassInstRef *insts;
+    //struct kndSet        *inst_idx;
+    //struct kndClassIdx   *idx;
+    //struct kndProcIdx    *proc_idx;
     struct kndClassRef   *next;
 };
 
@@ -135,8 +137,10 @@ struct kndClassEntry
 
     struct kndUsageMetrics metrics;
 
+    struct kndCacheItem *cached; // LRU cache
+
     struct kndClassEntry *next;
-    struct kndClassEntry *prev; // for LRU cache
+    struct kndClassEntry *prev; 
 };
 
 struct kndClass
@@ -201,9 +205,11 @@ struct kndClass
     atomic_size_t    inst_id_count;
 
     bool reading_in_progress;
-    bool is_read;
 
     bool state_top;
+
+    struct kndClass *prev;
+    struct kndClass *next;
 };
   
 int knd_get_cls_entry_by_name(const char *name, size_t name_size,
@@ -256,7 +262,8 @@ int knd_class_name_marshall(void *elem, void *ctx, struct kndStorageLeaf *leaf,
                             size_t *output_size, struct kndTask *task);
 int knd_class_entry_unmarshall(const char *elem_id, size_t elem_id_size,
                                const char *rec, size_t rec_size,
-                               void *ctx, void **result, struct kndTask *task);
+                               void *unused_var(ctx), size_t *total_size,
+                               void **result, struct kndTask *task);
 
 int knd_class_marshall(void *elem, void *ctx, struct kndStorageLeaf *leaf,
                        size_t *output_size, struct kndTask *task);
@@ -273,7 +280,7 @@ int knd_class_export_commits_GSP(struct kndClass *self, struct kndClassCommit *c
 int knd_class_decode(struct kndClass *c, struct kndTask *task);
 
 // knd_class.import.c
-int knd_class_import(struct kndRepo *repo, const char *rec, size_t *total_size,
+int knd_class_import(const char *rec, size_t *total_size,
                      struct kndClassEntry **result, struct kndTask *task);
 
 int knd_inherit_attrs(struct kndClass *self, struct kndClass *base, struct kndTask *task);

@@ -95,8 +95,8 @@ int knd_resolve_proc_ref(const char *name, size_t name_size,
     if (DEBUG_PROC_RESOLVE_LEVEL_2)
         knd_log(".. resolving proc ref:  %.*s", name_size, name);
 
-    entry = knd_dict_get(task->idxs.proc_name_idx, name, name_size);
-    if (!entry) {
+    err = knd_dict_get(task->idxs.proc_name_idx, name, name_size, (void**)&entry, task);
+    if (err) {
         /*if (repo->base) {
             err = knd_get_proc(repo->base, name, name_size, result, task);
             KND_TASK_ERR("no such proc: \"%.*s\"", name_size, name);

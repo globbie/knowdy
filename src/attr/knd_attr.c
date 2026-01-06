@@ -108,11 +108,8 @@ int knd_attr_find(struct kndClass *cls, const char *name, size_t name_size,
     struct kndClass *c;
     int err;
 
-    refs = knd_dict_get(attr_name_idx, name, name_size);
-    if (!refs) {
-        err = knd_NO_MATCH;
-        KND_TASK_ERR("no such attr %.*s", name_size, name);
-    }
+    err = knd_dict_get(attr_name_idx, name, name_size, (void**)&refs, task);
+    KND_TASK_ERR("no such {attr %.*s}", name_size, name);
 
     FOREACH (ref, refs) {
         if (ref->cls_entry) {
@@ -177,7 +174,7 @@ int knd_attr_register(struct kndAttr *attr, struct kndClass *cls, struct kndTask
     size_t name_size = attr->name_size;
     int err;
 
-    if (DEBUG_ATTR_LEVEL_3) {
+    if (DEBUG_ATTR_LEVEL_2) {
         knd_log(".. register {cls %.*s {attr %.*s}}",
                 cls->name_size, cls->name, name_size, name);
     }
@@ -194,11 +191,9 @@ int knd_attr_register(struct kndAttr *attr, struct kndClass *cls, struct kndTask
     case KND_TASK_RESTORE:
         // fall through
     case KND_TASK_BULK_LOAD:
-        attr_refs = knd_dict_get(attr_name_idx, name, name_size);
-        if (!attr_refs) {
-            err = knd_dict_set(attr_name_idx, attr->name, attr->name_size, (void*)attr_ref);
-            KND_TASK_ERR("failed to globally register {attr %.*s}", name_size, name);
-        } else {
+        err = knd_dict_get(attr_name_idx, name, name_size, (void**)&attr_refs, task);
+        switch (err) {
+        case knd_OK:
             if (attr_refs->tail) {
                 attr_refs->tail->next = attr_ref;
                 attr_refs->tail = attr_ref;
@@ -206,6 +201,13 @@ int knd_attr_register(struct kndAttr *attr, struct kndClass *cls, struct kndTask
                 attr_refs->next = attr_ref;
             }
             attr_refs->tail = attr_ref;
+            break;
+        case knd_NO_MATCH:
+            err = knd_dict_set(attr_name_idx, attr->name, attr->name_size, (void*)attr_ref, task);
+            KND_TASK_ERR("failed to globally register {attr %.*s}", name_size, name);
+            break;
+        default:
+            return err;
         }
 
         err = knd_set_add(attr_idx, attr->id, attr->id_size, (void*)attr_ref, task);
@@ -220,7 +222,7 @@ int knd_attr_register(struct kndAttr *attr, struct kndClass *cls, struct kndTask
     }
 
     /* local task name idx */
-    err = knd_dict_set(task->idxs.attr_name_idx, name, name_size, (void*)attr_ref);
+    err = knd_dict_set(task->idxs.attr_name_idx, name, name_size, (void*)attr_ref, task);
     KND_TASK_ERR("failed to register {attr %.*s}", name_size, name);
 
     if (DEBUG_ATTR_LEVEL_2) {

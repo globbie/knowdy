@@ -216,7 +216,7 @@ static int update_indices(struct kndRepo *self, struct kndCommit *commit, struct
                         self->name_size, self->name, entry->name_size, entry->name);
             }
             /* register new class */
-            err = knd_dict_set(name_idx, entry->name,  entry->name_size, (void*)entry);
+            err = knd_dict_set(name_idx, entry->name,  entry->name_size, (void*)entry, task);
             KND_TASK_ERR("failed to register {cls %.*s}", entry->name_size, entry->name);
             continue;
         case KND_REMOVED:

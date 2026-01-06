@@ -134,8 +134,9 @@ int knd_proc_get_arg(struct kndProc *self, const char *name, size_t name_size,
                 self->entry->repo->name_size, self->entry->repo->name, name_size, name);
     }
 
-    ref = knd_dict_get(arg_name_idx, name, name_size);
-    if (!ref) {
+    err = knd_dict_get(arg_name_idx, name, name_size, (void**)&ref, task);
+    // TODO
+    if (err) {
         if (self->entry->repo->base) {
             // TODO
             //arg_name_idx = self->entry->repo->base->idxs.proc_arg_name_idx;
@@ -218,8 +219,9 @@ int knd_get_proc(struct kndRepo *repo, const char *name, size_t name_size,
         knd_log(".. \"%.*s\" repo to get proc: \"%.*s\"..",
                 repo->name_size, repo->name, name_size, name);
 
-    entry = knd_dict_get(task->idxs.proc_name_idx, name, name_size);
-    if (!entry) {
+    err = knd_dict_get(task->idxs.proc_name_idx, name, name_size, (void**)&entry, task);
+    // TODO
+    if (err) {
         if (repo->base) {
             err = knd_get_proc(repo->base, name, name_size, result, task);
             KND_TASK_ERR("no such proc: \"%.*s\"", name_size, name);
@@ -256,8 +258,8 @@ int knd_get_proc_entry(struct kndRepo *repo, const char *name, size_t name_size,
         knd_log(".. {repo %.*s} to get {proc-entry %.*s}",
                 repo->name_size, repo->name, name_size, name);
 
-    entry = knd_dict_get(proc_name_idx, name, name_size);
-    if (!entry) {
+    err = knd_dict_get(proc_name_idx, name, name_size, (void**)&entry, task);
+    if (err) {
         if (DEBUG_PROC_LEVEL_2)
             knd_log("no local {proc %.*s} found", name_size, name);
 
@@ -327,7 +329,7 @@ int knd_proc_entry_clone(struct kndProcEntry *self, struct kndRepo *repo,
     entry->num_ancestors = self->num_ancestors;
     entry->descendants = self->descendants;
 
-    err = knd_dict_set(name_idx, entry->name,  entry->name_size, (void*)entry);
+    err = knd_dict_set(name_idx, entry->name,  entry->name_size, (void*)entry, task);
     KND_TASK_ERR("failed to register {proc %.*s}", entry->name_size, entry->name);
 
     *result = entry;

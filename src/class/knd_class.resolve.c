@@ -88,11 +88,12 @@ static int inherit_attr(void *elem, void *ctx_obj)
         }
     }
 
-    if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
+    if (DEBUG_CLASS_RESOLVE_LEVEL_3) {
         knd_log("..  {attr %.*s {id %.*s}} inherited by {cls %.*s}",
                 attr->name_size, attr->name, attr->id_size, attr->id,
                 self->name_size, self->name);
     }
+
     if (ref) {
         if (src_ref->attr_stm) {
             ref->attr_stm = src_ref->attr_stm;
@@ -109,7 +110,7 @@ static int inherit_attr(void *elem, void *ctx_obj)
     ref->cls_entry = src_ref->cls_entry;
 
     err = knd_set_add(attr_idx, attr->id, attr->id_size, (void*)ref, task);
-    KND_TASK_ERR("failed to update attr idx of %.*s", self->name_size, self->name);
+    KND_TASK_ERR("failed to update attr idx of {cls %.*s}", self->name_size, self->name);
 
     return knd_OK;
 }
@@ -134,8 +135,7 @@ static int inherit_attrs(struct kndClass *self, struct kndClass *base, struct kn
         .baseclass = base
     };
 
-    err = knd_set_map(base->attr_idx, NULL, NULL, NULL,
-                      inherit_attr, (void*)&ctx);
+    err = knd_set_map(base->attr_idx, NULL, NULL, NULL, inherit_attr, (void*)&ctx);
     KND_TASK_ERR("{cls %.*s} failed to inherit attrs from {cls %.*s}",
                  self->name_size, self->name, base->name_size, base->name);
     return knd_OK;
@@ -208,6 +208,9 @@ int knd_class_link_base(struct kndClass *cls, struct kndClass *base, struct kndT
 
     /* copy the ancestors */
     FOREACH (baseref, base->ancestors) {
+
+        // get entry by id
+
         err = knd_class_acquire(baseref->entry, &c, task);
         KND_TASK_ERR("failed to acquire {cls %.*s}", baseref->entry->name_size, baseref->entry->name);
 
@@ -249,8 +252,7 @@ static int resolve_baseclasses(struct kndClass *cls, struct kndTask *task)
     FOREACH (bp, cls->base_preds) {
         if (!bp->name_size) {
             err = knd_FAIL;
-            KND_TASK_ERR("no base class name specified in {cls %.*s}",
-                         cls->name_size, cls->name);
+            KND_TASK_ERR("no base class name specified in {cls %.*s}", cls->name_size, cls->name);
         }
         err = knd_get_cls_by_name(bp->name, bp->name_size, &c, task);
         KND_TASK_ERR("no {cls %.*s} found", bp->name_size, bp->name);
@@ -310,14 +312,12 @@ int knd_class_resolve(struct kndClass *self, struct kndTask *task)
     /* primary attrs */
     if (self->num_attrs) {
         err = knd_resolve_primary_attrs(self, task);
-        KND_TASK_ERR("failed to resolve primary attrs of {cls %.*s}",
-                     entry->name_size, entry->name);
+        KND_TASK_ERR("failed to resolve primary attrs of {cls %.*s}", entry->name_size, entry->name);
     }
 
     if (self->phase < KND_CLASS_BASE_RESOLVED) {
         err = resolve_baseclasses(self, task);
-        KND_TASK_ERR("failed to resolve base classes of {cls %.*s}",
-                     self->name_size, self->name);
+        KND_TASK_ERR("failed to resolve base classes of {cls %.*s}", self->name_size, self->name);
     }
 
     FOREACH (bp, self->base_preds) {
@@ -398,7 +398,7 @@ int knd_resolve_cls_ref(const char *name, size_t name_size,
         if (base) {
             if (base->phase < KND_CLASS_BASE_RESOLVED) {
                 err = resolve_base(base, task);
-                KND_TASK_ERR("failed to resolve base classes of %.*s", name_size, name);
+                KND_TASK_ERR("failed to resolve base classes of {cls %.*s}", name_size, name);
             }
             if (base != c) {
                 err = knd_class_is_base(base, c);

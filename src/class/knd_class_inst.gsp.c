@@ -45,7 +45,7 @@ int knd_class_inst_marshall(void *obj, size_t *output_size, struct kndTask *task
 int knd_class_inst_entry_unmarshall(const char *elem_id, size_t elem_id_size, const char *rec, size_t rec_size,
                                     void **result, struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->user_ctx->mempool;
+    struct kndMemPool *mempool = task->mempool;
     struct kndClassInstEntry *entry = NULL;
     struct kndClassEntry *is_a = NULL; //task->payload;
     struct kndClass *cls;
@@ -94,7 +94,7 @@ int knd_class_inst_entry_unmarshall(const char *elem_id, size_t elem_id_size, co
     err = knd_class_acquire(is_a, &cls, task);
     KND_TASK_ERR("failed to acquire {cls %.*s}", is_a->name_size, is_a->name);
 
-    err = knd_dict_set(cls->inst_name_idx, entry->name, entry->name_size, (void*)entry);
+    err = knd_dict_set(cls->inst_name_idx, entry->name, entry->name_size, (void*)entry, task);
     KND_TASK_ERR("failed to register class inst name");
 
     err = knd_set_add(cls->inst_idx, entry->id, entry->id_size, (void*)entry, task);

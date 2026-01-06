@@ -8,12 +8,12 @@
       {-- init-data-path /etc/knowdy/data --}
       {memory
          {main
-            {max-large-pages       300}
-            {max-base-pages        28000}
+            {max-large-pages       1}
+            {max-base-pages        2500}
             {max-small-x4-pages    1000}
             {max-small-x2-pages    1000}
             {max-small-pages       4000}
-            {max-tiny-pages        42000}
+            {max-tiny-pages        10000}
          }
          {cache
             {max-large-pages       300}

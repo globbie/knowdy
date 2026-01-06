@@ -44,12 +44,14 @@
 static int check_attr_name_conflict(struct kndClass *self, struct kndAttr *attr_candidate,
                                     struct kndTask *task)
 {
-    struct kndAttrRef *attr_ref;
+    struct kndAttrRef *attr_ref, *attr_refs;
     struct kndAttr *attr;
     void *obj;
     struct kndSet *attr_idx = self->attr_idx;
-    struct kndDict *attr_name_idx = task->idxs.attr_name_idx;
+    struct kndDict *attr_name_idx = task->idxs.attr_name_idx;    
     int err;
+
+    assert (attr_name_idx != NULL);
 
     if (DEBUG_ATTR_RESOLVE_LEVEL_2) {
         knd_log(".. checking attr name conflict: %.*s",
@@ -57,10 +59,18 @@ static int check_attr_name_conflict(struct kndClass *self, struct kndAttr *attr_
     }
 
     /* global attr name search */
-    attr_ref = knd_dict_get(attr_name_idx, attr_candidate->name, attr_candidate->name_size);
-    if (!attr_ref) return knd_OK;
+    err = knd_dict_get(attr_name_idx, attr_candidate->name, attr_candidate->name_size,
+                            (void**)&attr_refs, task);
+    switch (err) {
+    case knd_OK:
+        break;
+    case knd_NO_MATCH:
+        return knd_OK;
+    default:
+        return err;
+    }
 
-    while (attr_ref) {
+    FOREACH (attr_ref, attr_refs) {
         attr = attr_ref->attr;
 
         err = knd_set_get(attr_idx, attr->id, attr->id_size, &obj);
@@ -70,7 +80,6 @@ static int check_attr_name_conflict(struct kndClass *self, struct kndAttr *attr_
                          attr_candidate->name_size, attr_candidate->name,
                          self->name_size, self->name);
         }
-        attr_ref = attr_ref->next;
     }
     return knd_OK;
 }
@@ -150,7 +159,7 @@ int knd_resolve_primary_attrs(struct kndClass *cls, struct kndTask *task)
     struct kndAttr *attr;
     int err;
 
-    if (DEBUG_ATTR_RESOLVE_LEVEL_2) {
+    if (DEBUG_ATTR_RESOLVE_LEVEL_TMP) {
         knd_log(".. resolving primary attrs of {cls %.*s {total-attrs %zu}}",
                 cls->name_size, cls->name, cls->num_attrs);
     }

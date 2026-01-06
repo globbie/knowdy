@@ -47,8 +47,8 @@ int knd_rel_pred_resolve(struct kndAttrStm *var, struct kndTask *task)
                 rel->impl_arg_name_size, rel->impl_arg_name);
     }
 
-    entry = knd_dict_get(class_name_idx, var->val, var->val_size);
-    if (!entry) {
+    err = knd_dict_get(class_name_idx, var->val, var->val_size, (void**)&entry, task);
+    if (err) {
 	 err = knd_NO_MATCH;
          KND_TASK_ERR("no such {cls %.*s} "
                       "failed to resolve {rel %.*s",
@@ -65,9 +65,9 @@ int knd_rel_pred_resolve(struct kndAttrStm *var, struct kndTask *task)
     
     entry = rel->impl_arg->template;
     if (!entry) {
-        entry = knd_dict_get(class_name_idx,
-                             rel->impl_arg->classname, rel->impl_arg->classname_size);
-        if (!entry) {
+        err = knd_dict_get(class_name_idx,
+                           rel->impl_arg->classname, rel->impl_arg->classname_size, (void**)&entry, task);
+        if (err) {
             err = knd_NO_MATCH;
             KND_TASK_ERR("no such {cls %.*s} "
                          "failed to resolve {rel %.*s",

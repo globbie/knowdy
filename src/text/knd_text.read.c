@@ -92,7 +92,7 @@ static gsl_err_t read_gloss_item(void *obj, const char *rec, size_t *total_size)
     struct kndText *t;
     int err;
 
-    err = knd_text_new(&t, task->user_ctx->mempool);
+    err = knd_text_new(&t, task->mempool);
     if (err) {
         KND_TASK_LOG("failed to alloc a text");
         return *total_size = 0, make_gsl_err_external(err);
@@ -253,7 +253,7 @@ static gsl_err_t parse_synode_spec(void *obj, const char *rec, size_t *total_siz
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndMemPool *mempool = task->user_ctx->mempool;
+    struct kndMemPool *mempool = task->mempool;
     struct kndSyNode *base_synode = ctx->synode;
     struct kndSyNodeSpec *spec;
     gsl_err_t parser_err;
@@ -289,7 +289,7 @@ static gsl_err_t parse_term_synode(void *obj, const char *rec, size_t *total_siz
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndMemPool *mempool = task->user_ctx->mempool;
+    struct kndMemPool *mempool = task->mempool;
     struct kndSyNode *base_synode = ctx->synode;
     struct kndSyNode *synode;
     gsl_err_t parser_err;
@@ -331,7 +331,7 @@ static gsl_err_t parse_synode(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndMemPool *mempool = task->mempool;
     struct kndSyNode *base_synode = ctx->synode;
     struct kndSyNodeSpec *spec = ctx->synode_spec;
     struct kndSyNode *synode;
@@ -393,7 +393,7 @@ static gsl_err_t parse_subj(void *obj, const char *rec, size_t *total_size)
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
     struct kndClause *clause = ctx->clause;
-    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndMemPool *mempool = task->mempool;
     struct kndSyNode *synode;
     gsl_err_t parser_err;
     int err;
@@ -441,7 +441,7 @@ static gsl_err_t parse_pred(void *obj, const char *rec, size_t *total_size)
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
     struct kndClause *clause = ctx->clause;
-    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndMemPool *mempool = task->mempool;
     struct kndSyNode *synode;
     gsl_err_t parser_err;
     int err;
@@ -479,7 +479,7 @@ static gsl_err_t parse_clause(void *obj, const char *rec, size_t *total_size)
     struct kndSentence *sent = ctx->sent;
     // struct kndClause *parent_clause = ctx->clause;
     struct kndClause *clause;
-    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndMemPool *mempool = task->mempool;
     gsl_err_t parser_err;
     int err;
 
@@ -567,7 +567,7 @@ static gsl_err_t parse_statement(void *obj, const char *rec, size_t *total_size)
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
     struct kndSentence *sent = ctx->sent;
-    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndMemPool *mempool = task->mempool;
     struct kndStatement *stm;
     gsl_err_t parser_err;
     int err;
@@ -594,7 +594,7 @@ static gsl_err_t parse_sentence(void *obj, const char *rec, size_t *total_size)
     struct kndTask *task = ctx->task;
     struct kndPar *par = ctx->par;
     struct kndSentence *sent;
-    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndMemPool *mempool = task->mempool;
     gsl_err_t parser_err;
     int err;
 
@@ -695,7 +695,7 @@ static gsl_err_t parse_par(void *obj, const char *rec, size_t *total_size)
     struct kndTask *task = ctx->task;
     struct kndText *text = ctx->text;
     struct kndPar *par;
-    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndMemPool *mempool = task->mempool;
     gsl_err_t parser_err;
     int err;
 
@@ -765,7 +765,7 @@ static gsl_err_t parse_translation(void *obj, const char *rec, size_t *total_siz
     struct kndTask *task = ctx->task;
     struct kndText *orig_text = ctx->text;
     struct kndText *trn;
-    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndMemPool *mempool = task->mempool;
     gsl_err_t parser_err;
     int err;
 

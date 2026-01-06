@@ -323,20 +323,25 @@ static gsl_err_t parse_attr_ref_array_item(void *obj, const char *rec, size_t *t
         knd_log(".. register {attr %.*s}", ref->name_size, ref->name);
     }
 
-    refs = knd_dict_get(attr_name_idx, ref->name, ref->name_size);
-    if (refs) {
+    err = knd_dict_get(attr_name_idx, ref->name, ref->name_size, (void**)&refs, task);
+    switch (err) {
+    case knd_OK:
         if (refs->tail) {
             refs->tail->next = ref;
         } else {
             refs->next = ref;
         }
         refs->tail = ref;
-    } else {
-        err = knd_dict_set(attr_name_idx, ref->name, ref->name_size, (void*)ref);
+        break;
+    case knd_NO_MATCH:
+        err = knd_dict_set(attr_name_idx, ref->name, ref->name_size, (void*)ref, task);
         if (err) {
             KND_TASK_LOG("failed to register {attr %.*s}", ref->name_size, ref->name);
             return make_gsl_err_external(err);
         }
+        break;
+    default:
+        return make_gsl_err_external(err);
     }
 
     err = knd_set_add(attr_idx, ref->id, ref->id_size, (void*)ref, task);

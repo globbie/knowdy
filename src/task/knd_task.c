@@ -130,13 +130,13 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
     assert (task->ctx != NULL);
     assert (task->mempool != NULL);
 
-    struct kndUser *user = task->user;
+    //struct kndUser *user = task->user;
     struct kndOutput *out = task->out;
     int err;
 
-    task->user_ctx->repo = user->repo;
-    task->user_ctx->acls = user->default_acls;
-    task->user_ctx->mempool = user->mempool_write;
+    //task->user_ctx->repo = user->repo;
+    //task->user_ctx->acls = user->default_acls;
+    //task->user_ctx->mempool = user->mempool_write;
 
     task->input = input;
     task->input_size = input_size;
@@ -230,6 +230,8 @@ static int init_cache(struct kndTaskCache *c, struct kndMemConfig *memconf)
     err = knd_dict_new(&c->cls_name_idx, KND_SMALL_DICT_SIZE, c->mempool);
     if (err) goto error;
 
+    c->max_cls_entries = KND_CACHE_MAX_ITEMS;
+
     return knd_OK;
 
  error:
@@ -246,6 +248,24 @@ static int create_local_write_idxs(struct kndTask *task)
 
     err = knd_set_new(&task->idxs.cls_idx, KND_SET_UNIQUE_VALUES, task->mempool);
     KND_TASK_ERR("failed to create a cls idx");
+
+    err = knd_dict_new(&task->idxs.attr_name_idx, KND_SMALL_DICT_SIZE, task->mempool);
+    KND_TASK_ERR("failed to create an attr name idx");
+
+    err = knd_set_new(&task->idxs.attr_idx, KND_SET_UNIQUE_VALUES, task->mempool);
+    KND_TASK_ERR("failed to create an attr idx");
+    
+    err = knd_dict_new(&task->idxs.str_dict, KND_SMALL_DICT_SIZE, task->mempool);
+    KND_TASK_ERR("failed to create a str dict");
+
+    err = knd_set_new(&task->idxs.str_idx, KND_SET_UNIQUE_VALUES, task->mempool);
+    KND_TASK_ERR("failed to create a str idx");
+
+    err = knd_dict_new(&task->idxs.proc_name_idx, KND_SMALL_DICT_SIZE, task->mempool);
+    KND_TASK_ERR("failed to create a proc name idx");
+
+    err = knd_set_new(&task->idxs.proc_idx, KND_SET_UNIQUE_VALUES, task->mempool);
+    KND_TASK_ERR("failed to create a proc idx");
 
     return knd_OK;
 }
@@ -284,15 +304,6 @@ void knd_task_cleanup(struct kndTask *task)
 {
     knd_mempool_reset(task->mempool);
 
-    //task->user_ctx = task->default_user_ctx;
-    //task->user_ctx->mempool = steward->mempool_write;
-    //task->user_ctx->repo = steward->repo;
-
-    /*if (steward->user) {
-        task->user_ctx->mempool = steward->user->mempool_write;
-        task->user_ctx->repo = steward->user->repo;
-        task->user_ctx->acls = steward->user->default_acls;
-        }*/
 }
 
 void knd_task_monitor(struct kndTask *task, struct kndStorageConfig *storage_conf,
@@ -326,7 +337,9 @@ static int task_init(struct kndTask *task,
     err = init_cache(&task->cache, cache_memconf);
     if (err) goto error;
 
-    switch (task->type) {
+    switch (task->role) {
+    case KND_AGENT_SYSTEM:
+        // fall through
     case KND_AGENT_WRITER:
         err = create_local_write_idxs(task);
         if (err) goto error;

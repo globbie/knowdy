@@ -28,7 +28,6 @@ int knd_task_cache_update(struct kndTask *unused_var(task))
 {
     knd_log(".. update task cache..");
 
-
     
     return knd_OK;
 }

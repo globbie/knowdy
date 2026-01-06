@@ -25,7 +25,7 @@ struct LocalContext {
 int knd_class_inst_unmarshall(const char *elem_id, size_t elem_id_size, const char *rec, size_t rec_size,
                               void **result, struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->user_ctx->mempool;
+    struct kndMemPool *mempool = task->mempool;
     struct kndClassInst *inst = NULL;
     size_t total_size = rec_size;
     int err;

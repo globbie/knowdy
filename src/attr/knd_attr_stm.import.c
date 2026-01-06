@@ -67,7 +67,7 @@ static gsl_err_t import_nested_attr_stm_list(void *obj, const char *name, size_t
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndMemPool *mempool = task->user_ctx->mempool;
+    struct kndMemPool *mempool = task->mempool;
     struct kndAttrStm *parent_attr_stm = ctx->attr_stm;
     struct kndAttrStm *attr_stm;
     int err;
@@ -78,7 +78,8 @@ static gsl_err_t import_nested_attr_stm_list(void *obj, const char *name, size_t
     }
     err = knd_attr_stm_new(&attr_stm, parent_attr_stm->subj, mempool);
     if (err) {
-        return make_gsl_err(err);
+        KND_TASK_LOG("failed to alloc an attr stm");
+        return *total_size = 0, make_gsl_err_external(knd_NOMEM);
     }
     attr_stm->name = name;
     attr_stm->name_size = name_size;
@@ -175,7 +176,10 @@ static gsl_err_t import_attr_stm_list_item(void *obj, const char *rec, size_t *t
     int err;
 
     err = knd_attr_stm_new(&attr_stm, self->subj, mempool);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
+    if (err) {
+        KND_TASK_LOG("failed to alloc an attr stm");
+        return *total_size = 0, make_gsl_err_external(knd_NOMEM);
+    }
     ctx->attr_stm = attr_stm;
 
     if (DEBUG_ATTR_STM_LEVEL_2) {
@@ -220,8 +224,7 @@ int knd_import_attr_stm_list(struct kndAttrStm *attr_stm, const char *name, size
     gsl_err_t parser_err;
 
     if (DEBUG_ATTR_STM_LEVEL_2) {
-        knd_log("== import attr attr_stm list: \"%.*s\" REC: %.*s",
-                name_size, name, 32, rec);
+        knd_log(">> import attr attr_stm list [%.*s ..] REC: %.*s", name_size, name, 32, rec);
     }
 
     struct LocalContext ctx = {
@@ -236,7 +239,9 @@ int knd_import_attr_stm_list(struct kndAttrStm *attr_stm, const char *name, size
     };
 
     parser_err = gsl_parse_array(&import_attr_stm_spec, rec, total_size);
-    if (parser_err.code) return parser_err.code;
+    if (parser_err.code) {
+        return gsl_err_external_to_ext_code(parser_err);
+    }
 
     assert (attr_stm->list != NULL);
 
@@ -250,12 +255,15 @@ static gsl_err_t import_nested_attr_stm(void *obj, const char *name, size_t name
     struct kndAttrStm *self = ctx->attr_stm;
     struct kndTask    *task = ctx->task;
     struct kndAttrStm *attr_stm;
-    struct kndMemPool *mempool = task->user_ctx->mempool;
+    struct kndMemPool *mempool = task->mempool;
     gsl_err_t parser_err;
     int err;
  
     err = knd_attr_stm_new(&attr_stm, self->subj, mempool);
-    if (err) return *total_size = 0, make_gsl_err_external(err);
+    if (err) {
+        KND_TASK_LOG("failed to alloc an attr stm");
+        return *total_size = 0, make_gsl_err_external(knd_NOMEM);
+    }
     attr_stm->parent = self;
     attr_stm->name = name;
     attr_stm->name_size = name_size;

@@ -2,32 +2,18 @@
 
 #pragma once
 
-#include <stdatomic.h>
 #include "knd_config.h"
 
-typedef void (*cell_free_cb)(void *obj);
-
-struct kndCacheCell
+typedef enum knd_cache_item_t { KND_CACHE_WRITABLE,
+                                KND_CACHE_READ_ONLY } knd_cache_item_t;
+struct kndCacheItem
 {
-    atomic_int num_readers;
-    atomic_size_t data_mem_size;
-    atomic_size_t state;
+    knd_cache_item_t type;
     size_t num_hits;
-    void * _Atomic data;
+    void *data;
+
+    struct kndCacheItem *prev;
+    struct kndCacheItem *next;
 };
 
-struct kndCache
-{
-    struct kndCacheCell *cells;
-    size_t num_cells;
-    size_t max_mem_size;
-    atomic_size_t state;
-    cell_free_cb cb;
-};
-
-int knd_cache_new(struct kndCache **self, size_t num_cells, size_t max_mem_size, cell_free_cb cb);
-void knd_cache_del(struct kndCache *self);
-
-int knd_cache_set(struct kndCache *self, void *data, size_t *cell_num);
-int knd_cache_get(struct kndCache *self, size_t cell_num, void **result);
-int knd_cache_release(struct kndCache *self, size_t cell_num, void *data);
+int knd_cache_item_new(struct kndCacheItem **result, struct kndMemPool *mempool);

@@ -71,7 +71,7 @@ struct kndSetDir
     char id[KND_ID_SIZE];
     size_t id_size;
     struct kndSetDir *subdirs[KND_RADIX_BASE];
-    void *elems[KND_RADIX_BASE];
+    struct kndSetElem *elems[KND_RADIX_BASE];
     struct kndSetDirBlock *blocks;
     size_t num_blocks;
 };

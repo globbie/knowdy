@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 #include "knd_storage.h"
 #include "knd_utils.h"
@@ -18,6 +20,7 @@ int knd_storage_leaf_new(struct kndStorageLeaf **result, size_t numid,
     char buf[KND_ID_SIZE];
     size_t buf_size;
     char *b;
+    int fd;
     int err;
 
     assert (path_size != 0);
@@ -56,7 +59,7 @@ int knd_storage_leaf_new(struct kndStorageLeaf **result, size_t numid,
     b += buf_size;
 
     memcpy(b, ".gsp", strlen(".gsp"));
-    //knd_log("{leaf-path %.*s}", leaf->filepath_size, leaf->filepath);
+    knd_log(">> new {leaf-filepath %.*s}", leaf->filepath_size, leaf->filepath);
 
     leaf->min_size = min_size ? min_size : KND_SNAPSHOT_LEAF_MIN_THRESHOLD;
     leaf->max_size = max_size ? max_size : KND_SNAPSHOT_LEAF_MAX_THRESHOLD;
@@ -67,6 +70,9 @@ int knd_storage_leaf_new(struct kndStorageLeaf **result, size_t numid,
         return knd_LIMIT;
     }
 
+    fd = open(leaf->filepath, O_WRONLY | O_TRUNC | O_CREAT, 0644);
+    if (fd < 0) return knd_IO_FAIL;
+    
     *result = leaf;
     return knd_OK;
 

@@ -125,7 +125,7 @@ static gsl_err_t parse_proc_inst_import(void *obj, const char *rec, size_t *tota
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndMemPool *mempool = task->mempool;
     struct kndProcEntry *entry = ctx->entry;
     struct kndCommit *commit = task->ctx->commit;
     int err;

@@ -43,6 +43,7 @@ struct kndConcFolder;
 struct kndText;
 struct kndDict;
 struct kndRepoCache;
+struct kndCacheItem;
 
 typedef int (*task_cb_t)(void *obj, const char *msg, size_t msg_size, void *ctx);
 
@@ -51,11 +52,11 @@ typedef enum knd_task_type {
     KND_TASK_QUERY,
     KND_TASK_COMMIT,
     KND_TASK_UPDATE_CACHE,
-    KND_TASK_BUILD_SNAPSHOT,
     KND_TASK_INNER,
     KND_TASK_INNER_COMMIT,
     KND_TASK_BULK_LOAD,
     KND_TASK_CACHE_UPDATE,
+    KND_TASK_BUILD_SNAPSHOT,
     KND_TASK_RESTORE
 } knd_task_type;
 
@@ -164,9 +165,10 @@ struct kndTaskCache {
     struct kndSet *cls_idx;
     struct kndDict *cls_name_idx;
 
-    struct kndClassEntry *cls_head;
-    struct kndClassEntry *cls_tail;
-    size_t num_cls;
+    struct kndCacheItem *cls_entries;
+    struct kndCacheItem *cls_entries_tail;
+    size_t num_cls_entries;
+    size_t max_cls_entries;
 };
 
 struct kndTaskIndices
@@ -249,9 +251,6 @@ struct kndTask
 
     struct kndConcFolder *folders;
     size_t num_folders;
-
-    struct kndSet *sets[KND_MAX_CLAUSES];
-    size_t num_sets;
 
     struct kndOutput  *out;
     struct kndOutput  *log;

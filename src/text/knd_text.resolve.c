@@ -76,7 +76,7 @@ static gsl_err_t parse_text(void *obj, const char *rec, size_t *total_size)
 
 int knd_text_resolve(struct kndAttrStm *attr_stm, struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->user_ctx->mempool;
+    struct kndMemPool *mempool = task->mempool;
     struct kndText *text;
     int err;
 

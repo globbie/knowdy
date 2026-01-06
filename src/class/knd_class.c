@@ -16,6 +16,7 @@
 
 #include "knd_config.h"
 #include "knd_mempool.h"
+#include "knd_cache.h"
 #include "knd_repo.h"
 #include "knd_state.h"
 #include "knd_commit.h"
@@ -138,8 +139,7 @@ void knd_class_str(struct kndClass *self, size_t depth)
     }
 
     /* no range limits, no filtering */
-    err = knd_set_map(self->attr_idx, NULL, NULL, NULL,
-                      str_attr_idx_rec, (void*)self);
+    err = knd_set_map(self->attr_idx, NULL, NULL, NULL, str_attr_idx_rec, (void*)self);
     if (err) return;
 
     knd_log("%*s the end of %.*s}", depth * KND_OFFSET_SIZE, "",
@@ -174,7 +174,7 @@ int knd_get_class_inst(struct kndClass *self, const char *name, size_t name_size
     }
 
     err = knd_class_inst_acquire(entry, &inst, task);
-    KND_TASK_ERR("failed to acquire class inst %.*s", entry->name_size, entry->name);
+    KND_TASK_ERR("failed to acquire {cls-inst %.*s}", entry->name_size, entry->name);
 
     if (inst->states && inst->states->phase == KND_REMOVED) {
         KND_TASK_LOG("\"%s\" class inst was removed", name);
@@ -362,8 +362,7 @@ int knd_class_get_attr(struct kndClass *self, const char *name, size_t name_size
     int err;
 
     /* no range limits, no filtering */
-    err = knd_set_map(self->attr_idx, NULL, NULL, NULL,
-                      match_attr, &ctx);
+    err = knd_set_map(self->attr_idx, NULL, NULL, NULL, match_attr, &ctx);
     switch (err) {
     case knd_EXISTS:
         ref = ctx.attr_ref;
@@ -385,8 +384,7 @@ int knd_class_get_attr_stm(struct kndClass *self, const char *name, size_t name_
     };
     int err;
 
-    err = knd_set_map(self->attr_idx, NULL, NULL, NULL,
-                      match_attr, &ctx);
+    err = knd_set_map(self->attr_idx, NULL, NULL, NULL, match_attr, &ctx);
     switch (err) {
     case knd_EXISTS:
         ref = ctx.attr_ref;
@@ -414,56 +412,137 @@ int knd_class_set_export(struct kndSet *self, knd_format format, struct kndTask 
     return knd_FAIL;
 }
 
+static int update_cls_cache(struct kndClassEntry *entry, struct kndTask *task)
+{
+    struct kndTaskCache *cache = &task->cache;
+    struct kndCacheItem *item, *prev_item;
+    struct kndClassEntry *prev_entry;
+    int err;
+
+    assert (cache->max_cls_entries > 0);
+    assert (cache->mempool != NULL);
+
+    knd_log(">> cache {num %zu {max %zu}} {entry %.*s {cache %p}}",
+            cache->num_cls_entries, cache->max_cls_entries,
+            entry->name_size, entry->name, entry->cached);
+
+    /* cache item already exists */
+    if (entry->cached) {
+        item = entry->cached;
+        item->num_hits++;
+
+        if (cache->cls_entries == item) {
+            return knd_OK;
+        }
+
+        if (cache->cls_entries_tail == item) {
+            cache->cls_entries_tail = item->prev;
+            item->prev->next = NULL;
+
+            cache->cls_entries->prev = item;
+
+            item->next = cache->cls_entries;
+            cache->cls_entries = item;
+            return knd_OK;
+        }
+
+        assert (item->prev != NULL);
+
+        item->prev->next = item->next;
+        item->next->prev = item->prev;
+
+        cache->cls_entries->prev = item;
+
+        item->next = cache->cls_entries;
+        cache->cls_entries = item;
+
+        return knd_OK;
+    }
+
+    if (!cache->num_cls_entries) {
+        err = knd_cache_item_new(&item, cache->mempool);
+        KND_TASK_ERR("failed to alloc a cache item");
+
+        item->data = entry;
+        item->num_hits = 1;
+
+        cache->cls_entries = item;
+        cache->cls_entries_tail = item;
+        cache->num_cls_entries = 1;
+
+        entry->cached = item;
+        return knd_OK;
+    }
+
+    if (cache->num_cls_entries < cache->max_cls_entries) {
+        err = knd_cache_item_new(&item, cache->mempool);
+        KND_TASK_ERR("failed to alloc a cache item");
+
+        item->data = entry;
+        item->num_hits++;
+
+        cache->cls_entries->prev = item;
+
+        item->next = cache->cls_entries;
+        cache->cls_entries = item;
+
+        cache->num_cls_entries++;
+        entry->cached = item;
+        return knd_OK;
+    }
+
+    item = cache->cls_entries_tail;
+    prev_entry = item->data;
+    prev_entry->cached = NULL;
+
+    item->data = entry;
+    item->num_hits = 1;
+
+    prev_item = item->prev;
+    if (prev_item) {
+        prev_item->next = NULL;
+        cache->cls_entries_tail = prev_item;
+    }
+
+    item->prev = NULL;
+    item->next = cache->cls_entries;
+    cache->cls_entries->prev = item;
+    cache->cls_entries = item;
+
+    return knd_OK;
+}
+
 static int init_load_get_cls_entry_by_name(const char *name, size_t name_size,
                                            struct kndClassEntry **result, struct kndTask *task)
 {
-     struct kndDict *name_idx = task->snapshot->cache.class_name_idx;
-     struct kndSharedDict *shared_name_idx = task->snapshot->idxs.class_name_idx;
-     struct kndClassEntry *entry;
+    /* task local idx */
+    struct kndDict *name_idx = task->idxs.cls_name_idx;
+    struct kndClassEntry *entry;
+    int err;
 
-     /* lookup global read-only cache */
-    entry = knd_dict_get(name_idx, name, name_size);
-    if (entry) {
-        *result = entry;
-        return knd_OK;
-    }
+    assert (name_idx != NULL);
 
-    /* lookup global write idx */
-    entry = knd_shared_dict_get(shared_name_idx, name, name_size);
-    if (entry) {
-        *result = entry;
-        return knd_OK;
-    }
+    err = knd_dict_get(name_idx, name, name_size, (void**)&entry, task);
+    if (err) return err;
 
-    /* lookup task local cache */
-    name_idx = task->cache.cls_name_idx;
-    entry = knd_dict_get(name_idx, name, name_size);
-    if (entry) {
-        *result = entry;
-        return knd_OK;
-    }
+    err = update_cls_cache(entry, task);
+    KND_TASK_ERR("failed to update cls cache");
 
-    /* lookup task local write idx */
-    name_idx = task->idxs.cls_name_idx;
-    entry = knd_dict_get(name_idx, name, name_size);
-    if (entry) {
-        *result = entry;
-        return knd_OK;
-    }
-
-    return knd_NO_MATCH;
+    *result = entry;
+    return knd_OK;
 }
 
 static int query_get_cls_entry_by_name(const char *name, size_t name_size,
                                        struct kndClassEntry **result, struct kndTask *task)
 {
-     struct kndDict *name_idx = task->snapshot->cache.class_name_idx;
-     struct kndSharedDict *shared_name_idx = task->snapshot->idxs.class_name_idx;
+     struct kndDict *name_idx = task->snapshot->cache.cls_name_idx;
+     struct kndSharedDict *shared_name_idx = task->snapshot->idxs.cls_name_idx;
      struct kndClassEntry *entry;
 
+#if 0
      /* lookup task local write idx */
     name_idx = task->idxs.cls_name_idx;
-    entry = knd_dict_get(name_idx, name, name_size);
+    err = knd_dict_get(name_idx, name, name_size, (void**)&entry, task);
     if (entry) {
         *result = entry;
         return knd_OK;
@@ -490,7 +569,7 @@ static int query_get_cls_entry_by_name(const char *name, size_t name_size,
         *result = entry;
         return knd_OK;
     }
-
+#endif
     return knd_NO_MATCH;
 }
 
@@ -501,12 +580,10 @@ int knd_get_cls_entry_by_name(const char *name, size_t name_size,
 
     switch (task->type) {
     case KND_TASK_BULK_LOAD:
-        err = init_load_get_cls_entry_by_name(name, name_size, result, task);
-        KND_TASK_ERR("no such {cls %.*s}", name_size, name);
-        return knd_OK;
+        return init_load_get_cls_entry_by_name(name, name_size, result, task);
     case KND_TASK_QUERY:
         err = query_get_cls_entry_by_name(name, name_size, result, task);
-        KND_TASK_ERR("no such {cls %.*s}", name_size, name);
+        KND_TASK_ERR("no entry of {cls %.*s}", name_size, name);
         return knd_OK;
     default:
         break;
@@ -542,8 +619,7 @@ int knd_class_acquire(struct kndClassEntry *entry, struct kndClass **result,
         knd_log(">> acquire {cls %.*s {id %.*s}}",
                 entry->name_size, entry->name, entry->id_size, entry->id);
     }
-
-
+    
     if (c) {
         // check curr status, maybe deleted?
         *result = c;
@@ -695,7 +771,7 @@ int knd_class_copy(struct kndClass *orig, struct kndClass **result,
 int knd_class_entry_clone(struct kndClassEntry *self, struct kndRepo *unused_var(repo),
                           struct kndClassEntry **result, struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->user_ctx->mempool;
+    struct kndMemPool *mempool = task->mempool;
     struct kndClassEntry *entry;
     struct kndDict *name_idx = task->idxs.cls_name_idx;
     int err;
@@ -706,7 +782,7 @@ int knd_class_entry_clone(struct kndClassEntry *self, struct kndRepo *unused_var
     entry->name = self->name;
     entry->name_size = self->name_size;
 
-    err = knd_dict_set(name_idx, entry->name,  entry->name_size, (void*)entry);
+    err = knd_dict_set(name_idx, entry->name,  entry->name_size, (void*)entry, task);
     KND_TASK_ERR("failed to register {cls %.*s}", entry->name_size, entry->name);
 
     *result = entry;

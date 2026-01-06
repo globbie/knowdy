@@ -345,6 +345,7 @@ static_assert(KND_MAX_FACETS <= KND_RADIX_BASE, "Max facets must not exceed the 
 #define KND_CACHE_NUM_CELLS 64
 #define KND_CACHE_MAX_MEM_SIZE 1024 * 1024 * 10
 #define KND_CACHE_STATE_INTERVAL 32
+#define KND_CACHE_MAX_ITEMS 64
 
 #define KND_MAX_DESCENDANTS_IDX_SIZE 64
 

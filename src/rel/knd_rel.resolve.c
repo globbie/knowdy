@@ -43,8 +43,8 @@ int knd_rel_resolve(struct kndRel *rel, struct kndTask *task)
 
     assert(proc_name_size != 0 && proc_name != NULL);
 
-    proc_entry = knd_dict_get(proc_name_idx, proc_name, proc_name_size);
-    if (!proc_entry) {
+    err = knd_dict_get(proc_name_idx, proc_name, proc_name_size, (void**)&proc_entry, task);
+    if (err) {
         err = knd_NO_MATCH;
         KND_TASK_ERR("no such {proc %.*s}", proc_name_size, proc_name);
     }

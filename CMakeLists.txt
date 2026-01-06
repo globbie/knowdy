@@ -109,7 +109,7 @@ set(SOURCES src/attr/knd_attr.c src/attr/knd_attr.import.c src/attr/knd_attr.res
         src/facet/knd_facet.read.c src/facet/knd_facet.select.c
         src/utils/knd_ignore.c
         src/text/knd_logic.c src/text/knd_logic.import.c
-        src/mem/knd_memblock.c src/mem/knd_mempool.c src/mem/knd_output.c
+        src/mem/knd_memblock.c src/mem/knd_mempool.c src/mem/knd_cache.c src/mem/knd_output.c
         src/proc/knd_proc.c src/proc/knd_proc.import.c
         src/proc/knd_proc.resolve.c src/proc/knd_proc.select.c 
         src/proc/knd_proc.gsl.c src/proc/knd_proc.json.c

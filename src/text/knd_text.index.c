@@ -29,7 +29,7 @@ static int index_class_inst(struct kndClass *c, struct kndClassDeclar *decl,
 {
     struct kndClassRef *ref = NULL;
     struct kndTextLoc *loc = NULL;
-    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndMemPool *mempool = task->mempool;
     int err;
 
     assert(c != NULL);
@@ -82,7 +82,7 @@ static int index_class_inst(struct kndClass *c, struct kndClassDeclar *decl,
 
 static int append_child_idx(struct kndClassIdx *idx, struct kndClassIdx *child_idx, struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndMemPool *mempool = task->mempool;
     struct kndClassRef *orig_children, *ref = NULL;
     size_t num_children;
     int err;
@@ -118,7 +118,7 @@ static int append_child_idx(struct kndClassIdx *idx, struct kndClassIdx *child_i
 static int get_class_idx(struct kndClass *c, struct kndAttrStm *var, struct kndClassInst *src,
                          struct kndClassIdx **result, struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndMemPool *mempool = task->mempool;
     struct kndClassRef *orig_idxs, *ref = NULL;
     int err;
 
@@ -196,7 +196,7 @@ static int index_class_declar(struct kndClassDeclar *decl, struct kndSentence *s
 {
     struct kndClassRef *ref;
     struct kndClassIdx *idx;
-    // struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    // struct kndMemPool *mempool = task->mempool;
     //struct kndTextLoc *loc;
     struct kndClassEntry *entry;
     int err;
@@ -260,7 +260,7 @@ static int index_proc_inst(struct kndProcEntry *entry, struct kndProcDeclar *dec
 {
     struct kndClassRef *ref = NULL;
     struct kndTextLoc *loc = NULL;
-    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndMemPool *mempool = task->mempool;
     int err;
 
     if (DEBUG_TEXT_IDX_LEVEL_3) {
@@ -365,7 +365,7 @@ int knd_text_index(struct kndText *self, struct kndRepo *repo, struct kndTask *t
 {
     struct kndAttrStm *var = self->attr_stm;
     struct kndClassInst *inst = var->base_pred->parent_inst;
-    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndMemPool *mempool = task->mempool;
     struct kndPar *par;
     struct kndSentence *sent;
     //struct kndClassDeclar *decl;

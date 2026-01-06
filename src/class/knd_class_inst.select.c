@@ -258,7 +258,6 @@ static gsl_err_t present_inst_selection(void *obj, const char *unused_var(val),
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
     struct kndOutput *out = task->out;
-    struct kndSet *set;
     struct kndClass *c = ctx->class;
     int err;
 
@@ -267,26 +266,8 @@ static gsl_err_t present_inst_selection(void *obj, const char *unused_var(val),
 
     out->reset(out);
     if (task->type == KND_TASK_QUERY) {
-        /* no sets found? */
-        if (!task->num_sets) {
-            /*if (entry->inst_idx) {
-                set = entry->inst_idx;
-
-                task->show_removed_objs = false;
-
-                err = knd_class_inst_set_export_JSON(set, task);
-                if (err) return make_gsl_err_external(err);
-                return make_gsl_err(gsl_OK);
-            }
-            */
-            // TODO
-            err = out->write(out, "{}", strlen("{}"));
-            if (err) return make_gsl_err_external(err);
-            return make_gsl_err(gsl_OK);
-        }
 
         /* TODO: intersection cache lookup  */
-        set = task->sets[0];
 
         /* intersection required */
         /*if (task->num_sets > 1) {
@@ -299,12 +280,6 @@ static gsl_err_t present_inst_selection(void *obj, const char *unused_var(val),
             err = set->intersect(set, task->sets, task->num_sets);
             if (err) return make_gsl_err_external(err);
             }*/
-
-        if (!set->num_elems) {
-            err = out->write(out, "{}", strlen("{}"));
-            if (err) return make_gsl_err_external(err);
-            return make_gsl_err(gsl_OK);
-        }
 
         /* final presentation in JSON
            TODO: choose output format */

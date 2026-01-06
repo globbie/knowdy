@@ -251,10 +251,9 @@ static int present_mempools(struct kndTask *task)
     struct kndMemPool *mempool = task->mempool;
 
     out->reset(out);
-
     knd_mempool_present(mempool, out);
 
-    knd_log("** System Mempool\n%.*s", out->buf_size, out->buf);
+    knd_log("** System Mempool %p\n%.*s", task->mempool, out->buf_size, out->buf);
 
     /*out->reset(out);
     mempool = steward->user->mempool_write;

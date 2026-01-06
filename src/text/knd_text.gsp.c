@@ -52,7 +52,7 @@ int knd_charseq_marshall(void *elem, void *unused_var(ctx), struct kndStorageLea
 int knd_charseq_unmarshall(const char *elem_id, size_t elem_id_size,
                            const char *val, size_t val_size, void **result, struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->user_ctx->mempool;
+    struct kndMemPool *mempool = task->mempool;
     struct kndCharSeq *seq;
     struct kndSet *str_idx = task->idxs.str_idx;
     struct kndDict *str_dict = task->idxs.str_dict;
@@ -69,7 +69,7 @@ int knd_charseq_unmarshall(const char *elem_id, size_t elem_id_size,
     err = knd_set_add(str_idx, elem_id, elem_id_size, (void*)seq, task);
     KND_TASK_ERR("failed to register {seq %.*s {err %s}}", val_size, val, knd_err_names[err]);
 
-    err = knd_dict_set(str_dict, val, val_size, (void*)seq);
+    err = knd_dict_set(str_dict, val, val_size, (void*)seq, task);
     KND_TASK_ERR("failed to register {seq %.*s} in str dict {err %s}",
                  val_size, val, knd_err_names[err]);
     

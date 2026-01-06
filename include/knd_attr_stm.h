@@ -53,8 +53,12 @@ struct kndAttrStmRef
 
 struct kndClassInnerAttrStm
 {
+    char id[KND_ID_SIZE];
+    size_t id_size;
+
     const char *cls_name;
     size_t cls_name_size;
+
     struct kndClassEntry *cls_entry;
 
     struct kndClass *cls;
@@ -63,6 +67,9 @@ struct kndClassInnerAttrStm
 
 struct kndClassRefAttrStm
 {
+    char id[KND_ID_SIZE];
+    size_t id_size;
+
     const char *cls_name;
     size_t cls_name_size;
     struct kndClassEntry *cls_entry;

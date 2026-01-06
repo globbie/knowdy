@@ -100,7 +100,6 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
     struct kndClassEntry *entry;
     int err;
 
-    assert(user_ctx->repo != NULL);
     assert(acl != NULL);
 
     if (DEBUG_USER_LEVEL_3) {
@@ -121,7 +120,7 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
                                                                 memory_order_relaxed);
     }
 
-    err = knd_class_import(user_ctx->repo, rec, total_size, &entry, task);
+    err = knd_class_import(rec, total_size, &entry, task);
     if (err) return make_gsl_err_external(err);
 
     /* assign a unique class entry id */
@@ -139,6 +138,7 @@ static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_si
         KND_TASK_LOG("no user selected");
         return make_gsl_err(gsl_FAIL);
     }
+
     /* check private repo first */
     if (task->user_ctx->repo) {
         parser_err = knd_class_select(task->user_ctx->repo, rec, total_size, task);
@@ -312,21 +312,6 @@ static gsl_err_t run_present_user(void *obj, const char *unused_var(val), size_t
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_snapshot_task(void *obj, const char *unused_var(rec), size_t *total_size)
-{
-    struct kndTask *task = obj;
-    struct kndRepo *repo = task->user_ctx ? task->user_ctx->repo : task->user->repo;
-    int err;
-
-    task->type = KND_TASK_BUILD_SNAPSHOT;
-    err = knd_repo_snapshot_create(repo, task);
-    if (err) {
-        KND_TASK_LOG("failed to build a snapshot of user repo");
-        return *total_size = 0, make_gsl_err(gsl_FAIL);
-    }
-    return *total_size = 0, make_gsl_err(gsl_OK);
-}
-
 gsl_err_t knd_parse_select_user(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
@@ -387,12 +372,6 @@ gsl_err_t knd_parse_select_user(void *obj, const char *rec, size_t *total_size)
         { .name = "text",
           .name_size = strlen("text"),
           .parse = parse_text_search,
-          .obj = task
-        },
-        { .type = GSL_SET_STATE,
-          .name = "snapshot",
-          .name_size = strlen("snapshot"),
-          .parse = parse_snapshot_task,
           .obj = task
         },
         { .is_default = true,
@@ -535,7 +514,7 @@ int knd_user_new(struct kndUser **result,
                        path, path_size, schema_path, schema_path_size);
     if (err) goto error;
 
-    err = knd_dict_set(steward->repo_name_idx, repo_name, repo_name_size, (void*)user->repo);
+    err = knd_dict_set(steward->repo_name_idx, repo_name, repo_name_size, (void*)user->repo, task);
     KND_TASK_ERR("failed to register {repo %.*s}", repo_name_size, repo_name);
 
     /* default acl */
@@ -551,8 +530,8 @@ int knd_user_new(struct kndUser **result,
     task->user_ctx->acls = user->default_acls;
     task->mempool = mempool;
 
-    err = knd_repo_read(user->repo, task);
-    if (err) goto error;
+    //err = knd_repo_read(user->repo, task);
+    //if (err) goto error;
 
     err = knd_set_new(&user->user_idx, KND_SET_UNIQUE_VALUES, mempool);
     if (err) goto error;

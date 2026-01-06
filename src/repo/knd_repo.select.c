@@ -27,9 +27,10 @@
 static int find_repo(struct kndRepo **result, const char *name, size_t name_size, struct kndTask *task)
 {
     struct kndRepo *repo;
+    int err;
 
-    repo = knd_dict_get(task->idxs.repo_name_idx, name, name_size);
-    if (!repo) return knd_NO_MATCH;
+    err = knd_dict_get(task->idxs.repo_name_idx, name, name_size, (void**)&repo, task);
+    if (err) return knd_NO_MATCH;
 
     *result = repo;
     return knd_OK;
@@ -112,8 +113,6 @@ static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_si
 static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
-    struct kndUserContext *ctx = task->user_ctx;
-    struct kndRepo *repo = ctx->repo ? ctx->repo : task->repo;
     struct kndClassEntry *entry;
     int err;
 
@@ -128,7 +127,7 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
         }
     }
 
-    err = knd_class_import(repo, rec, total_size, &entry, task);
+    err = knd_class_import(rec, total_size, &entry, task);
     if (err) return make_gsl_err_external(err);
 
     /* assign a unique class entry id */

@@ -391,7 +391,7 @@ int knd_class_name_marshall(void *elem, void *unused_var(ctx),
     OUT(entry->id, entry->id_size);
     OUT("}", strlen("}"));
 
-    if (DEBUG_CLASS_ENCODE_LEVEL_2) {
+    if (DEBUG_CLASS_ENCODE_LEVEL_TMP) {
         knd_log("== {cls %.*s {id %.*s}} {GSP {size %zu}}", 
                 entry->name_size,  entry->name, 
                 entry->id_size, entry->id, out->buf_size);
@@ -405,6 +405,7 @@ int knd_class_name_marshall(void *elem, void *unused_var(ctx),
     default:
         err = knd_append_file((const char*)leaf->filepath, out->buf, out->buf_size);
         KND_TASK_ERR("cls name write failure");
+        leaf->curr_size += out->buf_size;
         break;
     }
 
@@ -440,9 +441,9 @@ int knd_class_marshall(void *elem, void *unused_var(ctx),
     default:
         err = knd_append_file((const char*)leaf->filepath, out->buf, out->buf_size);
         KND_TASK_ERR("cls GSP write failure");
+        leaf->curr_size += out->buf_size;
     }
 
-    leaf->curr_size += out->buf_size;
     *output_size = out->buf_size;
     return knd_OK;
 }

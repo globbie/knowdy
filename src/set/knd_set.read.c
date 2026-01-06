@@ -39,7 +39,7 @@ int knd_set_read_leaf(struct kndSet *s, struct kndStorageLeaf *leaf,
 
     assert (filename_size != 0);
 
-    if (DEBUG_SET_READ_LEVEL_2) {
+    if (DEBUG_SET_READ_LEVEL_TMP) {
         knd_log(".. open storage {leaf %.*s {filepath %.*s} {size %zu}}",
                 leaf->name_size, leaf->name, filename_size, filename,
                 leaf->curr_size);
@@ -75,8 +75,6 @@ int knd_set_read_leaf(struct kndSet *s, struct kndStorageLeaf *leaf,
         //dir->global_offset = offset;
         s->dir = dir;
     }
-
-
 
     //err = unmarshall_block(s, dir, fd, st.st_size - offset, idbuf, idbuf_size, cb, task);
     //if (err) goto final;

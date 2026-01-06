@@ -93,7 +93,7 @@ static gsl_err_t import_arg_var(void *obj, const char *name, size_t name_size, c
     struct kndProcArgRef *ref = NULL;
     struct kndProcArgVar *var = NULL;
     struct kndTask *task = ctx->task;
-    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndMemPool *mempool = task->mempool;
     int err;
     gsl_err_t parser_err;
 
@@ -202,7 +202,7 @@ static gsl_err_t import_proc_inst(struct kndProcInstEntry *entry, const char *re
 int knd_import_proc_inst(struct kndProcEntry *self, const char *rec, size_t *total_size,
                          struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->user_ctx ? task->user_ctx->mempool : task->mempool;
+    struct kndMemPool *mempool = task->mempool;
     struct kndProcInst *inst;
     struct kndProcInstEntry *entry;
     struct kndState *state;

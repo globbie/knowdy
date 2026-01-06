@@ -153,6 +153,7 @@ static int build_elems_footer(struct kndSetDirBlock *block, struct kndStorageLea
     default:
         err = knd_append_file(leaf->filepath, out->buf, out->buf_size);
         KND_TASK_ERR("failed to append write to {file %.*s}", leaf->filepath_size, leaf->filepath);
+        leaf->curr_size += out->buf_size;
         break;
     }
     return knd_OK;
@@ -215,6 +216,7 @@ static int build_subdirs_footer(struct kndSetDir *dir, struct kndSetDirBlock *bl
         default:
             err = knd_append_file(leaf->filepath, out->buf, out->buf_size);
             KND_TASK_ERR("failed to append write to {file %.*s}", leaf->filepath_size, leaf->filepath);
+            leaf->curr_size += out->buf_size;
             break;
         }
         return knd_OK;
@@ -252,6 +254,7 @@ static int build_subdirs_footer(struct kndSetDir *dir, struct kndSetDirBlock *bl
     default:
         err = knd_append_file(leaf->filepath, out->buf, out->buf_size);
         KND_TASK_ERR("failed to append write to {file %.*s}", leaf->filepath_size, leaf->filepath);
+        leaf->curr_size += out->buf_size;
         break;
     }
     return knd_OK;
@@ -324,7 +327,6 @@ int knd_set_leaf_marshall(struct kndSet *s, struct kndSetRange *range,
         err = knd_FAIL;
         KND_TASK_ERR("no payload written");
     }
-
     return knd_OK;
 }
 
@@ -359,16 +361,19 @@ int knd_set_marshall(struct kndSet *s, struct kndSetRange *range,
         err = knd_set_leaf_marshall(s, range, leaf, cb, cb_ctx, task);
         KND_TASK_ERR("failed to marshall a set storage leaf");
 
+        assert (leaf->curr_size > 0);
+
         if (DEBUG_SET_GSP_LEVEL_TMP) {
             knd_log("{leaf %zu {size %zu}} {total-items %zu}",
                     leaf_count, leaf->curr_size, s->num_elems);
         }
 
-        // empty leaf?
+        /* empty leaf?
         if (!leaf->curr_size) {
+            knd_log("-- empty leaf?");
             knd_storage_leaf_del(leaf);
             break;
-        }
+            }*/
 
         append_leaf(s, leaf);
 
@@ -379,7 +384,7 @@ int knd_set_marshall(struct kndSet *s, struct kndSetRange *range,
 
     } while (has_more_elems(s, range, leaf));
 
-    if (DEBUG_SET_GSP_LEVEL_2) {
+    if (DEBUG_SET_GSP_LEVEL_TMP) {
         knd_log("++ set GSP complete {path %.*s} {num-leaves %zu}", path_size, path, s->num_leaves);
     }
     return knd_OK;

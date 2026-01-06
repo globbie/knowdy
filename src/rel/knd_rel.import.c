@@ -92,7 +92,7 @@ static gsl_err_t parse_proc_ref(void *obj, const char *rec, size_t *total_size)
 gsl_err_t knd_rel_import(struct kndAttr *attr, struct kndTask *task,
                          const char *rec, size_t *total_size)
 {
-    struct kndMemPool *mempool = task->user_ctx->mempool;
+    struct kndMemPool *mempool = task->mempool;
     struct kndRel *rel;
     gsl_err_t parser_err;
     int err;
