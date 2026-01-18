@@ -73,7 +73,6 @@ static int apply_cb(struct kndFacet *facet, void *key,
     int err;
 
     struct LocalContext ctx = {
-        .task = task,
         .spec = spec,
         .key = key,
         .filter_cb = filter_cb,
@@ -107,13 +106,13 @@ static int apply_cb(struct kndFacet *facet, void *key,
                     KND_TASK_ERR("failed to apply a filter func {err %d}", err);
                 }
             }
-            err = map_cb(elem, map_ctx);
+            err = map_cb(elem, map_ctx, task);
             KND_TASK_ERR("failed to call a facet cb func to a cached elem");
         }
     }
 
     if (facet->idx) {
-        err = knd_set_map(facet->idx, NULL, match_elem, &ctx, map_cb, map_ctx);
+        err = knd_set_map(facet->idx, NULL, match_elem, &ctx, map_cb, map_ctx, task);
         KND_TASK_ERR("failed to apply a facet cb func to an idx");
     }
 

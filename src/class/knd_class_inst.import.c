@@ -38,7 +38,7 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
     struct LocalContext *ctx = obj;
     struct kndClassInst *self = ctx->class_inst;
     struct kndClassEntry *class_entry;
-    struct kndClassInstEntry *entry;
+    struct kndClassInstEntry *entry = NULL;
     struct kndTask *task = ctx->task;
     struct kndDict *class_name_idx = task->idxs.cls_name_idx;
     struct kndDict *name_idx;
@@ -49,7 +49,7 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
 
     err = knd_class_acquire(self->entry->is_a, &c, task);
     if (err) {
-        KND_TASK_LOG("failed to acquire class %.*s",
+        KND_TASK_LOG("failed to acquire {cls %.*s}",
                      self->entry->is_a->name_size, self->entry->is_a->name);
         return make_gsl_err_external(err);
     }

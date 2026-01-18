@@ -155,7 +155,7 @@ int knd_shared_dict_remove(struct kndSharedDict *self, const char *key, size_t k
     return knd_OK;
 }
 
-int knd_shared_dict_map(struct kndSharedDict *idx, map_cb_t cb, void *ctx)
+int knd_shared_dict_map(struct kndSharedDict *idx, map_cb_t cb, void *ctx, struct kndTask *task)
 {
     struct kndSharedDictItem *item = NULL;
     int err;
@@ -163,7 +163,7 @@ int knd_shared_dict_map(struct kndSharedDict *idx, map_cb_t cb, void *ctx)
     for (size_t i = 0; i < idx->size; i++) {
         item = atomic_load_explicit(&idx->hash_array[i], memory_order_acquire);
         for (; item; item = item->next) {
-            err = cb(item->data, ctx);
+            err = cb(item->data, ctx, task);
             if (err) return err;
         }
     }

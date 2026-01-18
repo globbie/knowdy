@@ -89,7 +89,7 @@ static gsl_err_t select_cls_attr(void *obj, const char *name, size_t name_size,
                 attr->owner->name_size, attr->owner->name);
 
         if (attr->facet) {
-            knd_facet_str(attr->facet, knd_attr_stm_present_subj, 0);
+            knd_facet_str(attr->facet, knd_attr_stm_present_subj, task, 0);
         }
     }
 

@@ -138,13 +138,13 @@ static gsl_err_t parse_src_attr(void *obj, const char *name, size_t name_size, c
     entry = ctx->report->entry;
     err = knd_class_acquire(entry, &c, task);
     if (err) {
-        KND_TASK_LOG("failed to acquire class %.*s", entry->name_size, entry->name);
+        KND_TASK_LOG("failed to acquire {cls %.*s}", entry->name_size, entry->name);
         return *total_size = 0, make_gsl_err_external(err);
     }
 
-    err = knd_class_get_attr(c, name, name_size, &attr_ref);
+    err = knd_class_get_attr(c, name, name_size, &attr_ref, task);
     if (err) {
-        KND_TASK_LOG("{attr %.*s} not found in {class %.*s}",
+        KND_TASK_LOG("{attr %.*s} not found in {cls %.*s}",
                      name_size, name, c->name_size, c->name);
         return *total_size = 0, make_gsl_err_external(err);
     }

@@ -81,7 +81,7 @@ static gsl_err_t parse_get_inst_by_numid(void *obj, const char *rec, size_t *tot
     if (DEBUG_INST_LEVEL_2)
         knd_log("class inst id: %zu => \"%.*s\" [size: %zu]", numid, (int)id_size, id, id_size);
 
-    err = knd_set_get(inst_idx, id, id_size, (void**)&entry);
+    err = knd_set_get(inst_idx, id, id_size, (void**)&entry, task);
     if (err) {
         KND_TASK_LOG("failed to open {cls {inst %.*s}}", id_size, id);
         return make_gsl_err_external(err);

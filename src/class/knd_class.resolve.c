@@ -53,11 +53,10 @@ struct LocalContext {
 
 static int resolve_base(struct kndClass *self, struct kndTask *task);
 
-static int inherit_attr(void *elem, void *ctx_obj)
+static int inherit_attr(void *elem, void *ctx_obj, struct kndTask *task)
 {
     struct kndAttrRef *src_ref = elem;
     struct LocalContext *ctx = ctx_obj;
-    struct kndTask    *task = ctx->task;
     struct kndMemPool *mempool = task->mempool;
     struct kndClass   *self = ctx->class;
     struct kndSet     *attr_idx = self->attr_idx;
@@ -65,7 +64,7 @@ static int inherit_attr(void *elem, void *ctx_obj)
     struct kndAttrRef *ref = NULL;
     int err;
 
-    err = knd_set_get(attr_idx, attr->id, attr->id_size, (void**)&ref);
+    err = knd_set_get(attr_idx, attr->id, attr->id_size, (void**)&ref, task);
     if (!err) {
         if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
             knd_log("..  {attr %.*s {id %.*s}} already active in {cls %.*s}..",
@@ -135,7 +134,7 @@ static int inherit_attrs(struct kndClass *self, struct kndClass *base, struct kn
         .baseclass = base
     };
 
-    err = knd_set_map(base->attr_idx, NULL, NULL, NULL, inherit_attr, (void*)&ctx);
+    err = knd_set_map(base->attr_idx, NULL, NULL, NULL, inherit_attr, (void*)&ctx, task);
     KND_TASK_ERR("{cls %.*s} failed to inherit attrs from {cls %.*s}",
                  self->name_size, self->name, base->name_size, base->name);
     return knd_OK;
@@ -336,7 +335,7 @@ int knd_class_resolve(struct kndClass *self, struct kndTask *task)
 
     /* uniq attr constraints */
     FOREACH (ref, self->uniq) {
-        err = knd_class_get_attr(self, ref->name, ref->name_size, &attr_ref);
+        err = knd_class_get_attr(self, ref->name, ref->name_size, &attr_ref, task);
         KND_TASK_ERR("no uniq {attr %.*s} in {cls %.*s}",
                      ref->name_size, ref->name, self->name_size, self->name);
         ref->attr = attr_ref->attr;

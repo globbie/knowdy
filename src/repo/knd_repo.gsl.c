@@ -415,10 +415,9 @@ static int read_GSL_file(struct kndRepo *repo, struct kndConcFolder *parent_fold
     return knd_OK;
 }
 
-static int resolve_class(void *elem, void *ctx)
+static int resolve_class(void *elem, void *unused_var(ctx), struct kndTask *task)
 {
     struct kndClassEntry *entry = elem;
-    struct kndTask *task = ctx;
     struct kndClass *c;
     int err;
 
@@ -433,10 +432,9 @@ static int resolve_class(void *elem, void *ctx)
     return knd_OK;
 }
 
-static int index_class(void *elem, void *ctx)
+static int index_class(void *elem, void *unused_var(ctx), struct kndTask *task)
 {
     struct kndClassEntry *entry = elem;
-    struct kndTask *task = ctx;
     struct kndClass *c;
     int err;
 
@@ -641,7 +639,7 @@ int knd_repo_save_meta(struct kndRepoSnapshot *s, struct kndTask *task)
     //err = present_idx_meta(s->cache.cls_idx, "classes", strlen("classes"), task);
     //KND_TASK_ERR("failed to present classes idx meta");
 
-    knd_log(">> meta of {task %p {cls-idx-cache %p}}", task, task->cache.cls_idx);
+    knd_log(".. present meta of {task %p {cls-idx-cache %p}}", task, task->cache.cls_idx);
 
     err = present_idx_meta(task->cache.cls_idx, "cls-cache", strlen("cls-cache"), task);
     KND_TASK_ERR("failed to present cls cache meta");
@@ -677,7 +675,8 @@ int knd_repo_read_sources(struct kndRepo *repo, struct kndTask *task)
     task->type = KND_TASK_BULK_LOAD;
     task->repo = repo;
 
-    err = read_GSL_file(repo, NULL, KND_PACKAGE_INDEX_NAME, strlen(KND_PACKAGE_INDEX_NAME), KND_GSL_SCHEMA, task);
+    err = read_GSL_file(repo, NULL, KND_PACKAGE_INDEX_NAME,
+                        strlen(KND_PACKAGE_INDEX_NAME), KND_GSL_SCHEMA, task);
     KND_TASK_ERR("schema import failed");
 
     if (DEBUG_REPO_GSL_LEVEL_2) {
@@ -685,14 +684,14 @@ int knd_repo_read_sources(struct kndRepo *repo, struct kndTask *task)
     }
 
     /* resolve class references */
-    err = knd_set_map(task->idxs.cls_idx, NULL, NULL, NULL, resolve_class, (void*)task);
+    err = knd_set_map(task->idxs.cls_idx, NULL, NULL, NULL, resolve_class, NULL, task);
     KND_TASK_ERR("failed to resolve all entries in class idx");
 
     //err = resolve_procs(repo, task);
     //KND_TASK_ERR("proc resolving failed");
 
     /* build reverse indices */
-    err = knd_set_map(task->idxs.cls_idx, NULL, NULL, NULL, index_class, (void*)task);
+    err = knd_set_map(task->idxs.cls_idx, NULL, NULL, NULL, index_class, NULL, task);
     KND_TASK_ERR("failed to index all entries in class idx");
 
     /* any instances to load? */

@@ -65,7 +65,7 @@ static int index_ancestor(struct kndClass *self, struct kndClass *baseclass, str
         baseclass->descendants = desc_idx;
     }
 
-    err = knd_set_get(desc_idx, entry->id, entry->id_size, &result);
+    err = knd_set_get(desc_idx, entry->id, entry->id_size, &result, task);
     if (!err) {
         if (DEBUG_CLASS_INDEX_LEVEL_2) {
             knd_log("== index already present between {cls %.*s {id %.*s}}"
@@ -119,7 +119,7 @@ static int register_desc(struct kndClass *base, struct kndClass *sub, struct knd
         KND_TASK_ERR("failed to alloc a desc idx set");
         base->descendants = desc_idx;
     } else {
-        err = knd_set_get(desc_idx, entry->id, entry->id_size, (void**)&match);
+        err = knd_set_get(desc_idx, entry->id, entry->id_size, (void**)&match, task);
         if (!err) {
             //knd_log("-- {desc-idx %p} descendant class already registered? {base %.*s} {match %.*s}",
             //        desc_idx, base->name_size, base->name, match->name_size, match->name);

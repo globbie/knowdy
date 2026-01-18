@@ -52,7 +52,7 @@ struct LocalContext {
     size_t name_size;
 };
 
-static int match_attr(void *elem, void *ctx_obj)
+static int match_attr(void *elem, void *ctx_obj, struct kndTask *unused_var(task))
 {
     struct LocalContext *ctx = ctx_obj;
     struct kndAttrRef *ref = elem;
@@ -66,7 +66,7 @@ static int match_attr(void *elem, void *ctx_obj)
     return knd_EXISTS;
 }
 
-static int str_attr_idx_rec(void *elem, void *unused_var(ctx))
+static int str_attr_idx_rec(void *elem, void *unused_var(ctx), struct kndTask *unused_var(task))
 {
     struct kndAttrRef *src_ref = elem;
 
@@ -76,7 +76,7 @@ static int str_attr_idx_rec(void *elem, void *unused_var(ctx))
     return knd_OK;
 }
 
-void knd_class_str(struct kndClass *self, size_t depth)
+void knd_class_str(struct kndClass *self, size_t depth, struct kndTask *task)
 {
     struct kndText *tr;
     struct kndClassBasePred *item;
@@ -139,7 +139,7 @@ void knd_class_str(struct kndClass *self, size_t depth)
     }
 
     /* no range limits, no filtering */
-    err = knd_set_map(self->attr_idx, NULL, NULL, NULL, str_attr_idx_rec, (void*)self);
+    err = knd_set_map(self->attr_idx, NULL, NULL, NULL, str_attr_idx_rec, (void*)self, task);
     if (err) return;
 
     knd_log("%*s the end of %.*s}", depth * KND_OFFSET_SIZE, "",
@@ -352,7 +352,7 @@ int knd_is_equal_or_subclass(struct kndClass *c, struct kndClass *base)
 }
 
 int knd_class_get_attr(struct kndClass *self, const char *name, size_t name_size,
-                       struct kndAttrRef **result)
+                       struct kndAttrRef **result, struct kndTask *task)
 {
     struct kndAttrRef *ref;
     struct LocalContext ctx = {
@@ -362,7 +362,7 @@ int knd_class_get_attr(struct kndClass *self, const char *name, size_t name_size
     int err;
 
     /* no range limits, no filtering */
-    err = knd_set_map(self->attr_idx, NULL, NULL, NULL, match_attr, &ctx);
+    err = knd_set_map(self->attr_idx, NULL, NULL, NULL, match_attr, &ctx, task);
     switch (err) {
     case knd_EXISTS:
         ref = ctx.attr_ref;
@@ -375,7 +375,7 @@ int knd_class_get_attr(struct kndClass *self, const char *name, size_t name_size
 }
 
 int knd_class_get_attr_stm(struct kndClass *self, const char *name, size_t name_size,
-                           struct kndAttrStm **result)
+                           struct kndAttrStm **result, struct kndTask *task)
 {
     struct kndAttrRef *ref;
     struct LocalContext ctx = {
@@ -384,7 +384,7 @@ int knd_class_get_attr_stm(struct kndClass *self, const char *name, size_t name_
     };
     int err;
 
-    err = knd_set_map(self->attr_idx, NULL, NULL, NULL, match_attr, &ctx);
+    err = knd_set_map(self->attr_idx, NULL, NULL, NULL, match_attr, &ctx, task);
     switch (err) {
     case knd_EXISTS:
         ref = ctx.attr_ref;
@@ -422,9 +422,11 @@ static int update_cls_cache(struct kndClassEntry *entry, struct kndTask *task)
     assert (cache->max_cls_entries > 0);
     assert (cache->mempool != NULL);
 
-    knd_log(">> cache {num %zu {max %zu}} {entry %.*s {cache %p}}",
-            cache->num_cls_entries, cache->max_cls_entries,
-            entry->name_size, entry->name, entry->cached);
+    if (DEBUG_CLASS_LEVEL_2) {
+        knd_log(">> cache {num %zu {max %zu}} {entry %.*s {cache %p}}",
+                cache->num_cls_entries, cache->max_cls_entries,
+                entry->name_size, entry->name, entry->cached);
+    }
 
     /* cache item already exists */
     if (entry->cached) {
@@ -599,7 +601,7 @@ int knd_get_cls_entry_by_id(const char *id, size_t id_size,
     struct kndSet *class_idx = task->idxs.cls_idx;
     int err;
 
-    err = knd_set_get(class_idx, id, id_size, (void**)&entry);
+    err = knd_set_get(class_idx, id, id_size, (void**)&entry, task);
     if (err == knd_OK) {
         *result = entry;
         return knd_OK;

@@ -116,8 +116,9 @@ int knd_attr_find(struct kndClass *cls, const char *name, size_t name_size,
             entry = ref->cls_entry;
         } else {
             assert (ref->owner_id_size != 0 && ref->owner_id != NULL);
-            err = knd_set_get(task->idxs.cls_idx,
-                              ref->owner_id, ref->owner_id_size, (void**)&entry);
+
+            err = knd_set_get(task->idxs.cls_idx, ref->owner_id, ref->owner_id_size,
+                              (void**)&entry, task);
             KND_TASK_ERR("failed to get a {cls-entry %.*s}",
                          ref->owner_id_size, ref->owner_id);
         }

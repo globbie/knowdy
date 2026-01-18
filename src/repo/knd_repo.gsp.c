@@ -90,7 +90,7 @@ static int marshall_cls_names(struct kndDict *name_idx, const char *path, size_t
 
     assert (path_size != 0);
 
-    if (DEBUG_REPO_GSP_LEVEL_TMP) {
+    if (DEBUG_REPO_GSP_LEVEL_2) {
         knd_log(">> marshalling class names in {path %.*s} {num-items %zu}",
                 path_size, path, name_idx->num_items);
     }
@@ -226,11 +226,6 @@ static int marshall_cache(const char *path, size_t path_size,
 
     idx = task->cache.cls_idx;
 
-    knd_log("{task %p {cls-idx-cache %p}}", task, idx);
-
-    //err = knd_set_new(&idx, KND_SET_UNIQUE_VALUES, task->mempool);
-    //KND_TASK_ERR("failed to alloc a set of cached cls entries");
-
     FOREACH (item, cache->cls_entries) {
         count++;
         entry = item->data;
@@ -262,9 +257,6 @@ static int marshall_cache(const char *path, size_t path_size,
     default:
         break;
     }
-
-    knd_log("++ {task %p {idx %p {num-leaves %zu}}}", task, idx, idx->num_leaves);
-
     return knd_OK;
 }
 
@@ -292,7 +284,7 @@ static int marshall_strings(struct kndRepoSnapshot *s, struct kndTask *task)
     memcpy(path, out->buf, out->buf_size);
     path_size = out->buf_size;
 
-    if (DEBUG_REPO_GSP_LEVEL_TMP) {
+    if (DEBUG_REPO_GSP_LEVEL_2) {
         knd_log(".. marshall strings {num-elems %zu}", task->idxs->str_idx->num_elems);
     }
 

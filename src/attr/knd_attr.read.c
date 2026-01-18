@@ -59,7 +59,7 @@ static gsl_err_t set_attr_id(void *obj, const char *id, size_t id_size)
     memcpy(attr->id, id, id_size);
     attr->id_size = id_size;
 
-    err = knd_set_get(task->idxs.attr_idx, id, id_size, (void**)&ref);
+    err = knd_set_get(task->idxs.attr_idx, id, id_size, (void**)&ref, task);
     if (err) {
         KND_TASK_LOG("failed to get {attr %.*s}", id_size, id);
         return make_gsl_err_external(err);
@@ -115,7 +115,7 @@ static gsl_err_t set_template_cls(void *obj, const char *id, size_t id_size)
     if (!id_size) return make_gsl_err(gsl_FORMAT);
     if (id_size > KND_ID_SIZE) return make_gsl_err(gsl_FORMAT);
 
-    err = knd_set_get(task->idxs.cls_idx, id, id_size, (void**)&entry);
+    err = knd_set_get(task->idxs.cls_idx, id, id_size, (void**)&entry, task);
     if (err) {
         KND_TASK_LOG("no such {cls %.*s}", id_size, id);
         return make_gsl_err_external(err);

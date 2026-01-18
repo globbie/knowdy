@@ -159,7 +159,7 @@ int knd_proc_get_arg(struct kndProc *self, const char *name, size_t name_size,
     }
     if (!arg) return knd_NO_MATCH;
 
-    err = knd_set_get(arg_idx, arg->id, arg->id_size, (void**)&ref);
+    err = knd_set_get(arg_idx, arg->id, arg->id_size, (void**)&ref, task);
     if (err) return knd_NO_MATCH;
 
     *result = ref;

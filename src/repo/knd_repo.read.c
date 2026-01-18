@@ -363,7 +363,7 @@ int knd_repo_restore(struct kndRepo *self, struct kndRepoSnapshot *snapshot, str
 
     // TODO use set_reduce to aggregate
     task->repo = self;
-    err = knd_set_map(snapshot->commit_idx, NULL, NULL, NULL, knd_apply_commit, (void*)task);
+    err = knd_set_map(snapshot->commit_idx, NULL, NULL, NULL, knd_apply_commit, NULL, task);
     KND_TASK_ERR("failed to apply commits");
 
     atomic_store_explicit(&snapshot->num_commits, snapshot->commit_idx->num_elems,

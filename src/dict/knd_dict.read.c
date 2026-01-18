@@ -149,7 +149,7 @@ static int dict_read_leaf(struct kndDict *dict, struct kndStorageLeaf *leaf,
          .task = task
     };
 
-    err = knd_set_read_leaf(idx, leaf, unmarshall_dict_entry, &ctx, task);
+    err = knd_set_read_leaf(idx, leaf, NULL, unmarshall_dict_entry, &ctx, task);
     KND_TASK_ERR("failed to read a dict set leaf");
 
     return knd_OK;

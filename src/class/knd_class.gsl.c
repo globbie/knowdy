@@ -78,10 +78,9 @@ int knd_export_class_state_GSL(struct kndClass *self, struct kndTask *task)
     return knd_OK;
 }
 
-static int export_conc_elem_GSL(void *elem, void *ctx)
+static int export_conc_elem_GSL(void *elem, void *unused_var(ctx), struct kndTask *task)
 {
     struct kndClassEntry *entry = elem;
-    struct kndTask *task = ctx;
     struct kndQueryView *view = task->ctx->query->view;
     struct kndBatchLimits *batch = view->batch;
     if (batch->size >= batch->max_items) return knd_RANGE;
@@ -92,7 +91,7 @@ static int export_conc_elem_GSL(void *elem, void *ctx)
     int err;
 
     err = knd_class_acquire(entry, &c, task);
-    KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
+    KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);
 
     if (!view->show_removed_objs) {
         state = c->states;
@@ -157,7 +156,7 @@ int knd_class_set_export_GSL(struct kndSet *set, struct kndTask *task)
                      strlen("[cls"));                                            RET_ERR();
 
     err = knd_set_map(set, NULL, NULL, NULL,
-                      export_conc_elem_GSL, (void*)task);
+                      export_conc_elem_GSL, NULL, task);
     if (err && err != knd_RANGE) return err;
     
     err = out->writec(out, ']');                                                  RET_ERR();

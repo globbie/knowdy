@@ -38,7 +38,7 @@ static int update_index(struct kndFacet *facet, void *elem, struct kndTask *task
     err = knd_set_add(facet->idx, key, key_size, elem, task);
     KND_TASK_ERR("failed to add an elem to facet idx {err %d}", err);
 
-    err = knd_set_get(facet->idx, key, key_size, &result);
+    err = knd_set_get(facet->idx, key, key_size, &result, task);
     KND_TASK_ERR("failed to get an elem from facet idx {err %d}", err);
 
     return knd_OK;

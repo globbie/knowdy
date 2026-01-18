@@ -23,18 +23,17 @@ struct LocalContext {
     struct kndProc *base;
 };
 
-static int inherit_arg(void *elem, void *ctx_obj)
+static int inherit_arg(void *elem, void *ctx_obj, struct kndTask *task)
 {
     struct kndProcArgRef *src_ref = elem;
     struct LocalContext  *ctx = ctx_obj;
-    struct kndTask       *task = ctx->task;
     struct kndProc       *self = ctx->proc;
     struct kndProcArg    *arg    = src_ref->arg;
     struct kndProc       *base = arg->parent;
     struct kndProcArgRef *ref = NULL;
     int err;
 
-    err = knd_set_get(self->arg_idx, arg->id, arg->id_size, (void**)&ref);
+    err = knd_set_get(self->arg_idx, arg->id, arg->id_size, (void**)&ref, task);
     if (!err) {
         if (DEBUG_PROC_RESOLVE_LEVEL_2)
             knd_log("== \"%.*s\" (id:%.*s) arg is already registered in \"%.*s\"",
@@ -81,7 +80,8 @@ static int inherit_args(struct kndProc *self, struct kndProc *base, struct kndRe
     };
 
     err = knd_set_map(base->arg_idx, NULL, NULL, NULL,
-                      inherit_arg, (void*)&ctx);             RET_ERR();
+                      inherit_arg, (void*)&ctx, task);
+    KND_TASK_ERR("failed to inherit proc args");
     return knd_OK;
 }
 

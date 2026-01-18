@@ -372,7 +372,7 @@ static int build_elems_block(struct kndSharedSetElemIdx *parent_idx,
 
     switch (task->mode) {
     case KND_TASK_TRACE_MODE:
-        knd_log(".. write elems payload {size %zu} to file %.*s",
+        knd_log(".. write elems payload {size %zu} to {file %.*s}",
                 out->buf_size, leaf->filepath_size, leaf->filepath);
         break;
     default:
@@ -380,7 +380,7 @@ static int build_elems_block(struct kndSharedSetElemIdx *parent_idx,
         KND_TASK_ERR("set idx write failure");
         break;
     }
-    
+
     dir->payload_block_size = out->buf_size;
     dir->total_elems = dir->num_term_elems;
     dir->total_size  = dir->payload_block_size;

@@ -187,7 +187,7 @@ int knd_attr_stm_match(struct kndAttrStm *self, struct kndAttrStm *template);
 int knd_attr_parse_query_stm(struct kndAttrStm *stm,
                              const char *rec, size_t *total_size, struct kndTask *task);
 
-int knd_attr_stm_present_subj(void *obj, void *ctx_obj);
+int knd_attr_stm_present_subj(void *obj, void *ctx_obj, struct kndTask *task);
 
 int knd_facet_cls_key_get(void *elem, void **result, struct kndTask *task);
 int knd_attr_stm_get_elem_key(void *obj, const char **key, size_t *key_size);

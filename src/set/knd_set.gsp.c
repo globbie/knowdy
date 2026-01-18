@@ -108,28 +108,32 @@ static int create_dir_block(struct kndSetDir *dir, struct kndSetRange *unused_va
     return knd_OK;
 }
 
-static int build_elems_footer(struct kndSetDirBlock *block, struct kndStorageLeaf *leaf,
-                              struct kndTask *task)
+static int build_elems_footer(struct kndSetDir *dir, struct kndSetDirBlock *block,
+                              struct kndStorageLeaf *leaf, struct kndTask *task)
 {
     unsigned char buf[KND_NAME_SIZE];
     struct kndOutput *out = task->out;
-    size_t block_size;
+    struct kndSetElem *elem;
     size_t idx_val_size = 0;
     size_t byte_size;
     unsigned int i;
     int err;
 
-    idx_val_size = knd_min_bytes(block->elem_block_max_size);
+    out->reset(out);
+
+    idx_val_size = knd_min_bytes(block->max_elem_size);
 
     for (i = block->from_elem; i < block->to_elem; i++) {
-        block_size = block->elem_block_sizes[i];
+        elem = dir->elems[i];
+
         if (block->use_elem_keys) {
-            if (!block_size) continue;
+            if (!elem->size) continue;
             OUTC(obj_id_seq[i]);
         }
-        knd_pack_int(buf, block_size, idx_val_size);
+        knd_pack_int(buf, elem->size, idx_val_size);
         OUT((const char*)buf, idx_val_size);
     }
+
     /* idx of variable length = num_elems * idx_val_size  */
     if (block->use_elem_keys) {
         OUTC((int)block->num_elems);
@@ -137,10 +141,9 @@ static int build_elems_footer(struct kndSetDirBlock *block, struct kndStorageLea
     OUTC((int)idx_val_size);
     OUTC((char)block->use_elem_keys);
 
-    /* payload size */
-    if (block->elems_payload_size) {
-        byte_size = knd_min_bytes(block->elems_payload_size);
-        knd_pack_int(buf, block->elems_payload_size, byte_size);
+    if (block->elems_rec_size) {
+        byte_size = knd_min_bytes(block->elems_rec_size);
+        knd_pack_int(buf, block->elems_rec_size, byte_size);
         OUT((const char*)buf, byte_size);
         OUTC((char)byte_size);
     } else {
@@ -156,6 +159,9 @@ static int build_elems_footer(struct kndSetDirBlock *block, struct kndStorageLea
         leaf->curr_size += out->buf_size;
         break;
     }
+
+    block->elems_footer_size = out->buf_size;
+    block->size += out->buf_size;
     return knd_OK;
 }
 
@@ -164,7 +170,7 @@ static int marshall_elems(struct kndSetDir *dir, struct kndSetDirBlock *block,
                           knd_set_elem_marshall_cb_t cb, void *cb_ctx, knd_set_type set_type,
                           struct kndStorageLeaf *leaf, struct kndTask *task)
 {
-    void *elem;
+    struct kndSetElem *elem;
     size_t curr_size = 0;
     size_t num_empty_entries = 0;
     unsigned int i;
@@ -181,17 +187,19 @@ static int marshall_elems(struct kndSetDir *dir, struct kndSetDirBlock *block,
         err = apply_cb(elem, cb, cb_ctx, set_type, &curr_size, leaf, task);
         KND_TASK_ERR("failed calling a cb on {elem %zu}", i);
 
-        block->elem_block_sizes[i] = curr_size;
-        block->elems_payload_size += curr_size;
-        block->total_size += curr_size;
+        elem->size = curr_size;
+        block->elems_rec_size += curr_size;
         block->num_elems++;
 
         /* leaf limit reached? */
+        // TODO:  mark last elem
         if (leaf->curr_size > leaf->max_size) break; 
     }
 
-    err = build_elems_footer(block, leaf, task);
-    KND_TASK_ERR("failed to build set elems footer");
+    block->size += block->elems_rec_size;
+
+    err = build_elems_footer(dir, block, leaf, task);
+    KND_TASK_ERR("failed to build GSP elems footer");
 
     return knd_OK;
 }
@@ -207,8 +215,9 @@ static int build_subdirs_footer(struct kndSetDir *dir, struct kndSetDirBlock *bl
     int err;
 
     out->reset(out);
+
     /* no subdirs */
-    if (!block->subdir_block_size) {
+    if (!block->subdirs_rec_size) {
         OUTC('\0');
         switch (task->mode) {
         case KND_TASK_TRACE_MODE:
@@ -219,10 +228,13 @@ static int build_subdirs_footer(struct kndSetDir *dir, struct kndSetDirBlock *bl
             leaf->curr_size += out->buf_size;
             break;
         }
+
+        block->subdirs_footer_size = out->buf_size;
+        block->size += out->buf_size;
         return knd_OK;
     }
 
-    idx_val_size = knd_min_bytes(block->subdir_block_max_size);
+    idx_val_size = knd_min_bytes(block->max_subdir_size);
 
     for (size_t i = block->from_dir; i < block->to_dir; i++) {
         subdir = dir->subdirs[i];
@@ -230,7 +242,7 @@ static int build_subdirs_footer(struct kndSetDir *dir, struct kndSetDirBlock *bl
         if (!subdir)
             subdir_block_size = 0;
         else
-            subdir_block_size = subdir->blocks->total_size;
+            subdir_block_size = subdir->blocks->size;
 
         if (block->use_dir_keys) {
             if (!subdir_block_size) continue;
@@ -257,6 +269,10 @@ static int build_subdirs_footer(struct kndSetDir *dir, struct kndSetDirBlock *bl
         leaf->curr_size += out->buf_size;
         break;
     }
+
+    block->subdirs_footer_size = out->buf_size;
+    block->size += out->buf_size;
+
     return knd_OK;
 }
 
@@ -276,9 +292,10 @@ static int marshall_subdirs(struct kndSetDir *dir, struct kndSetDirBlock *block,
         err = marshall_dir(subdir, range, cb, cb_ctx, set_type, leaf, task);
         KND_TASK_ERR("failed to marshall {subdir %.*s}", subdir->id_size, subdir->id);
 
-        block->subdir_block_size += subdir->blocks->total_size;
-        block->total_size += subdir->blocks->total_size;
+        block->subdirs_rec_size += subdir->blocks->size;
     }
+
+    block->size += block->subdirs_rec_size;
 
     err = build_subdirs_footer(dir, block, leaf, task);
     KND_TASK_ERR("failed to build set subdirs footer");
@@ -323,7 +340,7 @@ int knd_set_leaf_marshall(struct kndSet *s, struct kndSetRange *range,
         err = knd_FAIL;
         KND_TASK_ERR("no elems marshalled");
     }
-    if (!s->dir->blocks->total_size) {
+    if (!s->dir->blocks->size) {
         err = knd_FAIL;
         KND_TASK_ERR("no payload written");
     }
@@ -363,7 +380,7 @@ int knd_set_marshall(struct kndSet *s, struct kndSetRange *range,
 
         assert (leaf->curr_size > 0);
 
-        if (DEBUG_SET_GSP_LEVEL_TMP) {
+        if (DEBUG_SET_GSP_LEVEL_3) {
             knd_log("{leaf %zu {size %zu}} {total-items %zu}",
                     leaf_count, leaf->curr_size, s->num_elems);
         }
@@ -384,7 +401,7 @@ int knd_set_marshall(struct kndSet *s, struct kndSetRange *range,
 
     } while (has_more_elems(s, range, leaf));
 
-    if (DEBUG_SET_GSP_LEVEL_TMP) {
+    if (DEBUG_SET_GSP_LEVEL_3) {
         knd_log("++ set GSP complete {path %.*s} {num-leaves %zu}", path_size, path, s->num_leaves);
     }
     return knd_OK;

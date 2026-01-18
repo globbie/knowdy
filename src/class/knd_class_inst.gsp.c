@@ -81,9 +81,10 @@ int knd_class_inst_entry_unmarshall(const char *elem_id, size_t elem_id_size, co
     }
     entry->name = name;
     entry->name_size = name_size;
+
     /* check charseq decoding */
     if (name_size <= KND_ID_SIZE) {
-        err = knd_set_get(task->idxs.str_idx, name, name_size, (void**)&seq);
+        err = knd_set_get(task->idxs.str_idx, name, name_size, (void**)&seq, task);
         if (!err) {
             entry->name = seq->val;
             entry->name_size = seq->val_size;

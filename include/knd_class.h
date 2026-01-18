@@ -226,9 +226,9 @@ int knd_class_is_direct_child(struct kndClass *base, struct kndClass *cls, size_
 
 int knd_is_subclass_or_equals(struct kndClass *c, struct kndClass *base);
 
-// int knd_class_get_attr(struct kndClass *self, const char *name, size_t name_size, struct kndAttrRef **result);
-int knd_class_get_attr(struct kndClass *self, const char *name, size_t name_size, struct kndAttrRef **result);
-int knd_class_get_attr_stm(struct kndClass *self, const char *name, size_t name_size, struct kndAttrStm **result);
+int knd_class_get_attr(struct kndClass *self, const char *name, size_t name_size,
+                       struct kndAttrRef **result, struct kndTask *task);
+int knd_class_get_attr_stm(struct kndClass *self, const char *name, size_t name_size, struct kndAttrStm **result, struct kndTask *task);
 
 int knd_export_class_state_JSON(struct kndClass *self, struct kndTask *task);
 int knd_empty_set_export_JSON(struct kndClass *self, struct kndTask *task);
@@ -357,7 +357,7 @@ int knd_resolve_cls_ref(const char *name, size_t name_size,
 int knd_class_update_indices(struct kndRepo *repo, struct kndClassEntry *self, struct kndState *state, struct kndTask *task);
 int knd_class_index(struct kndClass *self, struct kndTask *task);
 
-void knd_class_str(struct kndClass *self, size_t depth);
+void knd_class_str(struct kndClass *self, size_t depth, struct kndTask *task);
 
 static inline void knd_class_append_attr(struct kndClass *self, struct kndAttr *attr)
 {

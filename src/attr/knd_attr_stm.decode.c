@@ -263,7 +263,7 @@ int knd_decode_attr_stms(struct kndClass *base, struct kndAttrStm *attr_stms, st
     }
 
     FOREACH (stm, attr_stms) {
-        err = knd_set_get(base->attr_idx, stm->id, stm->id_size, (void**)&ref);
+        err = knd_set_get(base->attr_idx, stm->id, stm->id_size, (void**)&ref, task);
         KND_TASK_ERR("no {attr %.*s} in {cls %.*s}",
                      stm->id_size, stm->id, base->name_size, base->name);
 

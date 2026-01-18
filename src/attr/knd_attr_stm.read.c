@@ -134,7 +134,7 @@ static gsl_err_t read_nested_attr_stm_list(void *obj, const char *id, size_t id_
     }
     assert(ctx->class != NULL);
 
-    err = knd_set_get(ctx->class->attr_idx, id, id_size, (void**)&ref);
+    err = knd_set_get(ctx->class->attr_idx, id, id_size, (void**)&ref, task);
     if (err) {
         KND_TASK_LOG("{cls %.*s} has no list attr: %.*s",
                      ctx->class->name_size, ctx->class->name, id_size, id);

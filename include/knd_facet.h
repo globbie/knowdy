@@ -133,7 +133,7 @@ int knd_facet_map(struct kndFacet *facet, void *key,
                   filter_cb_t filter_cb, void *filter_ctx,
                   map_cb_t map_cb, void *map_ctx, struct kndTask *task);
 
-void knd_facet_str(struct kndFacet *facet, map_cb_t map_cb, size_t depth);
+void knd_facet_str(struct kndFacet *facet, map_cb_t map_cb, struct kndTask *task, size_t depth);
 
 int knd_facet_acquire(struct kndAttr *attr, struct kndFacet **result, struct kndTask *task);
 

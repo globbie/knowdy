@@ -102,7 +102,7 @@ void knd_attr_stm_str(struct kndAttrStm *stm, size_t depth)
     }
 }
 
-int knd_attr_stm_present_subj(void *obj, void *ctx_obj)
+int knd_attr_stm_present_subj(void *obj, void *ctx_obj, struct kndTask *unused_var(task))
 {
     struct kndAttrStm *stm = obj;
     struct kndClass *c = stm->subj;    

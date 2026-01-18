@@ -73,7 +73,7 @@ int knd_dict_get(struct kndDict *self, const char *key, size_t key_size, void **
 int knd_dict_set(struct kndDict *self, const char *key, size_t key_size, void *data, struct kndTask *task);
 
 int knd_dict_remove(struct kndDict *self, const char *key, size_t key_size);
-int knd_dict_map(struct kndDict *self, map_cb_t cb, void *obj);
+int knd_dict_map(struct kndDict *dict, map_cb_t cb, void *ctx, struct kndTask *task);
 
 int knd_dict_marshall(struct kndDict *dict, struct kndDictRange *range,
                       const char *path, size_t path_size,

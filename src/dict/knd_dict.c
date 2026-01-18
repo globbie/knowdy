@@ -117,7 +117,7 @@ int knd_dict_set(struct kndDict *dict, const char *key, size_t key_size, void *d
     int err;
 
     if (!entry) {
-        err = knd_dict_entry_new(&entry, dict->mempool);
+        err = knd_dict_entry_new(&entry, task->mempool);
         if (err) return err;
         dict->hash_array[h] = entry;
         return add_item(dict, entry, key, key_size, data, task);
@@ -176,7 +176,7 @@ int knd_dict_remove(struct kndDict *dict, const char *key, size_t key_size)
     return knd_NO_MATCH;
 }
 
-int knd_dict_map(struct kndDict *dict, map_cb_t cb, void *ctx)
+int knd_dict_map(struct kndDict *dict, map_cb_t cb, void *ctx, struct kndTask *task)
 {
     struct kndDictEntry *entry;
     struct kndDictItem *item;
@@ -186,7 +186,7 @@ int knd_dict_map(struct kndDict *dict, map_cb_t cb, void *ctx)
         entry = dict->hash_array[i];
         if (!entry) continue;
         FOREACH (item, entry->items) {
-            err = cb(item->data, ctx);
+            err = cb(item->data, ctx, task);
             if (err) return err;
         }
     }

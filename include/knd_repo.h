@@ -192,7 +192,7 @@ int knd_repo_commit_indices(struct kndRepo *self, struct kndTaskContext *ctx);
 int knd_repo_check_conflicts(struct kndRepo *self, struct kndTaskContext *ctx);
 gsl_err_t knd_repo_parse_commit(void *obj, const char *rec, size_t *total_size);
 
-int knd_apply_commit(void *elem, void *ctx);
+int knd_apply_commit(void *elem, void *ctx, struct kndTask *task);
 
 /* snapshots */
 int knd_repo_snapshot_new(struct kndRepoSnapshot **result, size_t numid, size_t latest_commit_id,

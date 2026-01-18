@@ -176,8 +176,8 @@ int knd_resolve_attr_stm(struct kndClass *cls, struct kndAttrStm *stm, struct kn
     } else {
         assert (stm->name_size != 0);
 
-        err = knd_class_get_attr(cls, stm->name, stm->name_size, &attr_ref);
-        KND_TASK_ERR("no {attr %.*s} in {class %.*s}",
+        err = knd_class_get_attr(cls, stm->name, stm->name_size, &attr_ref, task);
+        KND_TASK_ERR("no {attr %.*s} in {cls %.*s}",
                      stm->name_size, stm->name, cls->name_size, cls->name);
         attr = attr_ref->attr;
     

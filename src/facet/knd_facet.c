@@ -19,7 +19,7 @@
 #define DEBUG_FACET_LEVEL_TMP 1
 
 void knd_facet_str(struct kndFacet *facet,
-                   map_cb_t cb, size_t depth)
+                   map_cb_t cb, struct kndTask *task, size_t depth)
 {
     struct kndFacetHashSpec *spec = facet->hash_specs;
     assert (spec != NULL);
@@ -42,20 +42,20 @@ void knd_facet_str(struct kndFacet *facet,
 
     if (facet->cache_size) {
         for (size_t i = 0; i < facet->cache_size; i++) {
-            cb(facet->cache[i], &depth);
+            cb(facet->cache[i], &depth, task);
         }
     }
 
     if (facet->idx) {
         err = knd_set_map(facet->idx, NULL, NULL, NULL,
-                          cb, &depth);
+                          cb, &depth, task);
         if (err) return;
     }
 
     if (facet->num_children) {
         for (size_t i = 0; i < KND_MAX_FACETS; i++) {
             if (!facet->children[i]) continue;
-            knd_facet_str(facet->children[i], cb, depth);
+            knd_facet_str(facet->children[i], cb, task, depth);
         }
     }
 

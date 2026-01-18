@@ -44,22 +44,24 @@ struct kndSetDirEntry
 
 struct kndSetDirBlock
 {
-    size_t elem_block_sizes[KND_RADIX_BASE];
-    size_t elem_block_max_size;
-    size_t num_elems;
-    size_t elems_payload_size;
-
-    size_t subdir_block_max_size;
-    size_t num_subdirs;
-    size_t subdir_block_size;
-
-    size_t total_size;
+    size_t offset;
+    size_t size;
 
     /* effective range */
     unsigned int from_elem;
     unsigned int to_elem;
     unsigned int from_dir;
     unsigned int to_dir;
+
+    size_t num_elems;
+    size_t max_elem_size;
+    size_t elems_rec_size;
+    size_t elems_footer_size;
+
+    size_t num_subdirs;
+    size_t max_subdir_size;
+    size_t subdirs_rec_size;
+    size_t subdirs_footer_size;
 
     bool use_elem_keys;
     bool use_dir_keys;
@@ -70,16 +72,26 @@ struct kndSetDir
 {
     char id[KND_ID_SIZE];
     size_t id_size;
+
     struct kndSetDir *subdirs[KND_RADIX_BASE];
     struct kndSetElem *elems[KND_RADIX_BASE];
+
+    size_t total_elems;
+
     struct kndSetDirBlock *blocks;
     size_t num_blocks;
 };
 
 struct kndSetElem
 {
+    char id[KND_ID_SIZE];
+    size_t id_size;
+
     void *val;
     size_t numval;
+
+    size_t size;
+
     struct kndSetElem *next;
 };
 
@@ -112,7 +124,7 @@ struct kndSet
 };
 
 typedef int (*filter_cb_t)(void *elem, void *ctx);
-typedef int (*map_cb_t)(void *elem, void *ctx);
+typedef int (*map_cb_t)(void *elem, void *ctx, struct kndTask *task);
 typedef int (*reduce_cb_t)(void *elem, void *ctx);
 typedef int (*compare_cb_t)(void *elem, void *ctx);
 
@@ -130,12 +142,12 @@ int knd_set_dir_new(struct kndSetDir **result, const char *parent_id, size_t par
 int knd_set_dir_block_new(struct kndSetDirBlock **result, struct kndMemPool *mempool);
 
 int knd_set_add(struct kndSet *self, const char *key, size_t key_size, void *elem, struct kndTask *task);
-int knd_set_get(struct kndSet *set, const char *key, size_t key_size, void **elem);
+int knd_set_get(struct kndSet *set, const char *key, size_t key_size, void **elem, struct kndTask *task);
 
 int knd_set_filter(struct kndSet *set, filter_cb_t filter_cb, void *filter_ctx, struct kndSet **result);
 int knd_set_map(struct kndSet *set, struct kndSetRange *range,
                 filter_cb_t filter_cb, void *filter_ctx,
-                map_cb_t map_cb, void *map_ctx);
+                map_cb_t map_cb, void *map_ctx, struct kndTask *task);
 int knd_set_reduce(struct kndSet *set, struct kndSetRange *range,
                    map_cb_t reduce_cb, void *reduce_ctx);
 
@@ -155,5 +167,5 @@ int knd_set_leaf_marshall(struct kndSet *s, struct kndSetRange *range, struct kn
 
 int knd_set_build_path(struct kndSet *idx, const char *path, size_t path_size,
                        const char *pref, size_t pref_size, struct kndTask *task);
-int knd_set_read_leaf(struct kndSet *idx, struct kndStorageLeaf *leaf,
+int knd_set_read_leaf(struct kndSet *idx, struct kndStorageLeaf *leaf, struct kndSetRange *range,
                       knd_set_elem_unmarshall_cb_t cb, void *cb_ctx, struct kndTask *task);

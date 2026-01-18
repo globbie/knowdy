@@ -101,7 +101,7 @@ static gsl_err_t set_cls_name(void *obj, const char *name, size_t name_size)
     err = register_cls_entry(c, task);
     if (err) return make_gsl_err_external(err);
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_TMP) {
+    if (DEBUG_CLASS_IMPORT_LEVEL_3) {
         knd_log(">> registered {cls %.*s}", name_size, name);
     }
     return make_gsl_err(gsl_OK);

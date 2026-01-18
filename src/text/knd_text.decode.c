@@ -35,7 +35,7 @@ int knd_charseq_decode(const char *id, size_t id_size, struct kndCharSeq **resul
         knd_log(".. decoding {seq {id %.*s}}", id_size, id);
     }
 
-    err = knd_set_get(str_idx, id, id_size, (void**)&seq);
+    err = knd_set_get(str_idx, id, id_size, (void**)&seq, task);
     if (!err) {
         *result = seq;
         return knd_OK;

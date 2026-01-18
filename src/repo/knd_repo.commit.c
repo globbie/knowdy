@@ -397,10 +397,9 @@ int knd_confirm_commit(struct kndRepo *self, struct kndTask *task)
     return knd_OK;
 }
 
-int knd_apply_commit(void *elem, void *ctx)
+int knd_apply_commit(void *elem, void *ctx, struct kndTask *task)
 {
     struct kndCommit *commit = elem;
-    struct kndTask *task = ctx;
     struct kndUserContext *user_ctx = task->user_ctx;
     struct kndMemPool *mempool = task->mempool;
     struct kndCommit *head_commit;

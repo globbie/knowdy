@@ -59,7 +59,6 @@ int knd_storage_leaf_new(struct kndStorageLeaf **result, size_t numid,
     b += buf_size;
 
     memcpy(b, ".gsp", strlen(".gsp"));
-    knd_log(">> new {leaf-filepath %.*s}", leaf->filepath_size, leaf->filepath);
 
     leaf->min_size = min_size ? min_size : KND_SNAPSHOT_LEAF_MIN_THRESHOLD;
     leaf->max_size = max_size ? max_size : KND_SNAPSHOT_LEAF_MAX_THRESHOLD;

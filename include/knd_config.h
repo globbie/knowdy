@@ -450,6 +450,8 @@ static_assert(KND_MAX_FACETS <= KND_RADIX_BASE, "Max facets must not exceed the 
 #define KND_SET_MIN_FOOTER_SIZE 64
 #define KND_MAX_IDX_OVERHEAD 0.125
 
+#define GSP_SUBDIRS_SPEC_SIZE 3
+
 #define KND_FEATURED_SIZE 5
 #define KND_FEATURED_MAX_SIZE 10
 

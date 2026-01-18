@@ -332,7 +332,7 @@ static gsl_err_t set_descendant_ref(void *obj, const char *id, size_t id_size)
     if (!id_size) return make_gsl_err(gsl_FORMAT);
     if (id_size > KND_ID_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    err = knd_set_get(task->idxs.cls_idx, id, id_size, (void**)&entry);
+    err = knd_set_get(task->idxs.cls_idx, id, id_size, (void**)&entry, task);
     if (err) {
         KND_TASK_LOG("{cls %.*s} not found", id_size, id);
         return make_gsl_err(gsl_FAIL);
@@ -390,7 +390,7 @@ static int update_attr_idx_cache(struct kndAttr *attr, struct kndTask *task)
     struct kndAttrRef *ref;
     int err;
 
-    err = knd_set_get(attr_idx, attr->id, attr->id_size, (void**)&ref);
+    err = knd_set_get(attr_idx, attr->id, attr->id_size, (void**)&ref, task);
     if (err) {
         knd_log("no such {attr %.*s} in attr idx", attr->name_size, attr->name);
         return knd_CONFLICT;

@@ -181,10 +181,9 @@ static int export_children(struct kndClass *self, struct kndTask *task)
     return knd_OK;
 }
 
-static int export_class_ref(void *elem, void *ctx)
+static int export_class_ref(void *elem, void *unused_var(ctx), struct kndTask *task)
 {
     struct kndClassEntry *entry = elem;
-    struct kndTask *task = ctx;
     struct kndOutput *out = task->out;
     OUT("{", 1);
     OUT(entry->id, entry->id_size);
@@ -205,7 +204,7 @@ static int export_descendants(struct kndClass *self, struct kndTask *task)
     }
 
     OUT("[desc", strlen("[desc"));
-    err = knd_set_map(self->descendants, NULL, NULL, NULL, export_class_ref, (void*)task);
+    err = knd_set_map(self->descendants, NULL, NULL, NULL, export_class_ref, NULL, task);
     KND_TASK_ERR("failed to export descendants");
     OUT("]", 1);
 
@@ -391,7 +390,7 @@ int knd_class_name_marshall(void *elem, void *unused_var(ctx),
     OUT(entry->id, entry->id_size);
     OUT("}", strlen("}"));
 
-    if (DEBUG_CLASS_ENCODE_LEVEL_TMP) {
+    if (DEBUG_CLASS_ENCODE_LEVEL_2) {
         knd_log("== {cls %.*s {id %.*s}} {GSP {size %zu}}", 
                 entry->name_size,  entry->name, 
                 entry->id_size, entry->id, out->buf_size);

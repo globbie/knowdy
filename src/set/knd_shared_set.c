@@ -228,7 +228,8 @@ int knd_shared_set_get(struct kndSharedSet *self, const char *key, size_t key_si
     return knd_OK;
 }
 
-static int traverse_idx(struct kndSharedSetElemIdx *parent_idx, map_cb_t cb, void *cb_ctx)
+static int traverse_idx(struct kndSharedSetElemIdx *parent_idx, map_cb_t cb, void *cb_ctx,
+                        struct kndTask *task)
 {
     struct kndSharedSetElemIdx *idx;
     void *elem;
@@ -238,7 +239,7 @@ static int traverse_idx(struct kndSharedSetElemIdx *parent_idx, map_cb_t cb, voi
         elem = parent_idx->elems[i];
         if (!elem) continue;
 
-        err = cb(elem, cb_ctx);
+        err = cb(elem, cb_ctx, task);
         if (err) return err;
     }
 
@@ -246,17 +247,17 @@ static int traverse_idx(struct kndSharedSetElemIdx *parent_idx, map_cb_t cb, voi
         idx = parent_idx->idxs[i];
         if (!idx) continue;
 
-        err = traverse_idx(idx, cb, cb_ctx);
+        err = traverse_idx(idx, cb, cb_ctx, task);
         if (err) return err;
     }
     return knd_OK;
 }
 
-int knd_shared_set_map(struct kndSharedSet *s, map_cb_t cb, void *cb_ctx)
+int knd_shared_set_map(struct kndSharedSet *s, map_cb_t cb, void *cb_ctx, struct kndTask *task)
 {
     assert (s->idx != NULL);
     int err;
-    err = traverse_idx(s->idx, cb, cb_ctx);
+    err = traverse_idx(s->idx, cb, cb_ctx, task);
     if (err) return err;
     return knd_OK;
 }

@@ -73,7 +73,7 @@ static int check_attr_name_conflict(struct kndClass *self, struct kndAttr *attr_
     FOREACH (attr_ref, attr_refs) {
         attr = attr_ref->attr;
 
-        err = knd_set_get(attr_idx, attr->id, attr->id_size, &obj);
+        err = knd_set_get(attr_idx, attr->id, attr->id_size, &obj, task);
         if (!err) {
             err = knd_CONFLICT;
             KND_TASK_ERR("{attr %.*s} already present in {cls %.*s}",
@@ -159,7 +159,7 @@ int knd_resolve_primary_attrs(struct kndClass *cls, struct kndTask *task)
     struct kndAttr *attr;
     int err;
 
-    if (DEBUG_ATTR_RESOLVE_LEVEL_TMP) {
+    if (DEBUG_ATTR_RESOLVE_LEVEL_2) {
         knd_log(".. resolving primary attrs of {cls %.*s {total-attrs %zu}}",
                 cls->name_size, cls->name, cls->num_attrs);
     }

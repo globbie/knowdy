@@ -804,7 +804,6 @@ int knd_steward_snapshot_create(struct kndSteward *steward)
     int err;
 
     shift_task->type = KND_TASK_BUILD_SNAPSHOT;
-    knd_log("{main %p} {shift %p}", main_task, shift_task);
 
     err = knd_repo_build_snapshot(repo, main_task, shift_task);
     if (err) {

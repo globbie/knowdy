@@ -182,7 +182,8 @@ int knd_set_add(struct kndSet *self, const char *key, size_t key_size, void *ele
     return knd_OK;
 }
 
-int knd_set_get(struct kndSet *self, const char *key, size_t key_size, void **elem)
+int knd_set_get(struct kndSet *self, const char *key, size_t key_size, void **elem,
+                struct kndTask *unused_var(task))
 {
     int err;
     if (!self->dir) return knd_FAIL;
@@ -191,20 +192,20 @@ int knd_set_get(struct kndSet *self, const char *key, size_t key_size, void **el
     return knd_OK;
 }
 
-static int apply_map_cb(struct kndSet *self, void *obj, map_cb_t cb, void *ctx)
+static int apply_map_cb(struct kndSet *self, void *obj, map_cb_t cb, void *ctx, struct kndTask *task)
 {
     struct kndSetElem *elems, *elem;
     int err;
 
     switch (self->type) {
     case KND_SET_UNIQUE_VALUES:
-        err = cb(obj, ctx);
+        err = cb(obj, ctx, task);
         if (err) return err;
         return knd_OK;
     case KND_SET_MULTIPLE_VALUES:
         elems = obj;
         FOREACH (elem, elems) {
-            err = cb(elem->val, ctx);
+            err = cb(elem->val, ctx, task);
             if (err) return err;
         }
         return knd_OK;
@@ -216,7 +217,7 @@ static int apply_map_cb(struct kndSet *self, void *obj, map_cb_t cb, void *ctx)
 
 static int apply_filter_cb(struct kndSet *self, void *obj,
                            filter_cb_t filter_cb, void *filter_ctx,
-                           map_cb_t map_cb, void *map_ctx)
+                           map_cb_t map_cb, void *map_ctx, struct kndTask *task)
 {
     struct kndSetElem *elems, *elem;
     int err;
@@ -229,7 +230,7 @@ static int apply_filter_cb(struct kndSet *self, void *obj,
         err = filter_cb(obj, filter_ctx);
         switch (err) {
         case knd_OK:
-            err = map_cb(obj, map_ctx);
+            err = map_cb(obj, map_ctx, task);
             if (err) return err;
             break;
         case knd_NO_MATCH:
@@ -244,7 +245,7 @@ static int apply_filter_cb(struct kndSet *self, void *obj,
             err = filter_cb(elem->val, filter_ctx);
             switch (err) {
             case knd_OK:
-                err = map_cb(elem->val, map_ctx);
+                err = map_cb(elem->val, map_ctx, task);
                 if (err) return err;
                 break;
             case knd_NO_MATCH:
@@ -263,7 +264,7 @@ static int apply_filter_cb(struct kndSet *self, void *obj,
 static int traverse_dir(struct kndSet *self, struct kndSetDir *parent_dir,
                         struct kndSetRange *range,
                         filter_cb_t filter_cb, void *filter_ctx,
-                        map_cb_t map_cb, void *map_ctx)
+                        map_cb_t map_cb, void *map_ctx, struct kndTask *task)
 {
     struct kndSetDir *dir;
     void *obj;
@@ -276,12 +277,12 @@ static int traverse_dir(struct kndSet *self, struct kndSetDir *parent_dir,
         // TODO: apply range
 
         if (!filter_cb) {
-            err = apply_map_cb(self, obj, map_cb, map_ctx);
+            err = apply_map_cb(self, obj, map_cb, map_ctx, task);
             if (err) return err;
             continue;
         }
 
-        err = apply_filter_cb(self, obj, filter_cb, filter_ctx, map_cb, map_ctx);
+        err = apply_filter_cb(self, obj, filter_cb, filter_ctx, map_cb, map_ctx, task);
         if (err) return err;
     }
 
@@ -291,7 +292,7 @@ static int traverse_dir(struct kndSet *self, struct kndSetDir *parent_dir,
 
         // TODO: apply range
 
-        err = traverse_dir(self, dir, range, filter_cb, filter_ctx, map_cb, map_ctx);
+        err = traverse_dir(self, dir, range, filter_cb, filter_ctx, map_cb, map_ctx, task);
         if (err) return err;
     }
     return knd_OK;
@@ -299,7 +300,7 @@ static int traverse_dir(struct kndSet *self, struct kndSetDir *parent_dir,
 
 int knd_set_map(struct kndSet *self, struct kndSetRange *range,
                 filter_cb_t filter_cb, void *filter_ctx,
-                map_cb_t map_cb, void *map_ctx)
+                map_cb_t map_cb, void *map_ctx, struct kndTask *task)
 {
     int err;
 
@@ -309,7 +310,7 @@ int knd_set_map(struct kndSet *self, struct kndSetRange *range,
         return knd_OK;
     }
 
-    err = traverse_dir(self, self->dir, range, filter_cb, filter_ctx, map_cb, map_ctx);
+    err = traverse_dir(self, self->dir, range, filter_cb, filter_ctx, map_cb, map_ctx, task);
     if (err) return err;
 
     return knd_OK;
@@ -353,6 +354,7 @@ int knd_set_dir_new(struct kndSetDir **result, const char *parent_id, size_t par
     if (parent_id_size) {
         memcpy(dir->id, parent_id, parent_id_size);
     }
+
     if (*curr_id) {
         dir->id[parent_id_size] = *curr_id;
         dir->id_size = parent_id_size + 1;
