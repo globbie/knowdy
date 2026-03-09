@@ -54,6 +54,8 @@ struct kndSetDirBlock
     unsigned int to_dir;
 
     size_t num_elems;
+    size_t total_elems;
+
     size_t max_elem_size;
     size_t elems_rec_size;
     size_t elems_footer_size;
@@ -79,7 +81,7 @@ struct kndSetDir
     size_t total_elems;
 
     struct kndSetDirBlock *blocks;
-    size_t num_blocks;
+    //size_t num_blocks;
 };
 
 struct kndSetElem
@@ -132,7 +134,8 @@ typedef int (*knd_set_elem_marshall_cb_t)(void *elem, void *ctx, struct kndStora
                                           size_t *output_size, struct kndTask *task);
 typedef int (*knd_set_elem_unmarshall_cb_t)(const char *elem_id, size_t elem_id_size,
                                             const char *rec, size_t rec_size,
-                                            void *ctx, size_t *result_size, void **result, struct kndTask *task);
+                                            void *ctx, size_t *result_size,
+                                            void **result, struct kndTask *task);
 
 int knd_set_new(struct kndSet **result, knd_set_type type, struct kndMemPool *mempool);
 int knd_set_elem_new(struct kndSetElem **result, struct kndMemPool *mempool);

@@ -39,7 +39,7 @@
 #define DEBUG_ATTR_JSON_LEVEL_5 0
 #define DEBUG_ATTR_JSON_LEVEL_TMP 1
 
-int knd_attr_export_JSON(struct kndAttr *self, struct kndTask *task, size_t depth)
+int knd_attr_export_JSON(struct kndAttr *self, struct kndRepo *repo, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     struct kndProc *p;
@@ -72,7 +72,7 @@ int knd_attr_export_JSON(struct kndAttr *self, struct kndTask *task, size_t dept
    }
 
     if (self->tr) {
-        err = knd_text_gloss_export_JSON(self->tr, task, depth + 1);
+        err = knd_text_gloss_export_JSON(self->tr, repo, task, depth + 1);
         KND_TASK_ERR("failed to export attr gloss JSON");
     }
 
@@ -80,7 +80,7 @@ int knd_attr_export_JSON(struct kndAttr *self, struct kndTask *task, size_t dept
         err = out->write(out, ",\"proc\":", strlen(",\"proc\":"));
         if (err) return err;
         p = self->proc;
-        err = knd_proc_export(p, KND_FORMAT_JSON, task, out);
+        err = knd_proc_export(p, KND_FORMAT_JSON, repo, task, out);
         if (err) return err;
     }
     OUT("}", 1);

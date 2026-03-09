@@ -25,7 +25,6 @@
 
 #include "knd_config.h"
 #include "knd_state.h"
-#include "knd_memblock.h"
 #include "knd_steward.h"
 #include "knd_repo.h"
 
@@ -44,6 +43,7 @@ struct kndText;
 struct kndDict;
 struct kndRepoCache;
 struct kndCacheItem;
+struct kndMemBlock;
 
 typedef int (*task_cb_t)(void *obj, const char *msg, size_t msg_size, void *ctx);
 
@@ -212,6 +212,7 @@ struct kndTask
     knd_state_phase phase;
     knd_task_mode_t mode;
 
+    struct kndSteward *steward;
     struct kndStorageConfig *storage_conf;
 
     /* ctx can be persisted and continued by another task */
@@ -241,11 +242,7 @@ struct kndTask
 
     struct kndUserContext *user_ctx;
     struct kndUserContext *default_user_ctx;
-
-    struct kndRepo *system_repo;
-    struct kndRepo *repo;
-    struct kndRepoSnapshot *snapshot;
-
+ 
     struct kndTaskCache cache;
     struct kndTaskIndices idxs;
 
@@ -267,7 +264,7 @@ struct kndTask
 
 int knd_task_new(struct kndTask **result, knd_agent_role_type role, size_t task_id,
                  struct kndMemConfig *main_memconf, struct kndMemConfig *cache_memconf,
-                 struct kndStorageConfig *storage_conf);
+                 struct kndStorageConfig *storage_conf, struct kndSteward *steward);
 
 void knd_task_del(struct kndTask *task);
 
@@ -285,6 +282,3 @@ int knd_task_cache_update(struct kndTask *task);
 
 // knd_task.select.c
 gsl_err_t knd_parse_task(void *obj, const char *rec, size_t *total_size);
-
-int knd_task_fetch_memblock(struct kndTask *task, size_t space_required,
-                            struct kndMemBlock **result);

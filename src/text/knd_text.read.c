@@ -13,6 +13,7 @@
 #include "knd_user.h"
 #include "knd_utils.h"
 #include "knd_mempool.h"
+#include "knd_memblock.h"
 #include "knd_output.h"
 
 #define DEBUG_TEXT_READ_LEVEL_0 0
@@ -21,9 +22,14 @@
 #define DEBUG_TEXT_READ_LEVEL_3 0
 #define DEBUG_TEXT_READ_LEVEL_TMP 1
 
-struct LocalContext {
-    struct kndTask       *task;
+struct ExternalContext {
     struct kndRepo       *repo;
+    struct kndTask       *task;
+};
+
+struct LocalContext {
+    struct kndRepo       *repo;
+    struct kndTask       *task;
     struct kndText       *text;
     struct kndPar        *par;
     struct kndSentence   *sent;
@@ -88,7 +94,9 @@ static gsl_err_t set_gloss_abbr(void *obj, const char *val, size_t val_size)
 
 static gsl_err_t read_gloss_item(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndTask *task = obj;
+    struct ExternalContext *ext_ctx = obj;
+    struct kndTask *task = ext_ctx->task;
+    struct kndRepo *repo = ext_ctx->repo;
     struct kndText *t;
     int err;
 
@@ -97,9 +105,10 @@ static gsl_err_t read_gloss_item(void *obj, const char *rec, size_t *total_size)
         KND_TASK_LOG("failed to alloc a text");
         return *total_size = 0, make_gsl_err_external(err);
     }
+
     struct LocalContext ctx = {
         .task = task,
-        .repo = task->repo,
+        .repo = repo,
         .text = t
     };
 
@@ -140,12 +149,10 @@ static gsl_err_t read_gloss_item(void *obj, const char *rec, size_t *total_size)
 
 gsl_err_t knd_read_gloss_array(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndTask *task = obj;
-
     struct gslTaskSpec item_spec = {
         .is_list_item = true,
         .parse = read_gloss_item,
-        .obj = task
+        .obj = obj
     };
     return gsl_parse_array(&item_spec, rec, total_size);
 }
@@ -185,12 +192,14 @@ static gsl_err_t set_synode_spec_class(void *obj, const char *name, size_t name_
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
+    struct kndRepo *repo = ctx->repo;
     struct kndSyNodeSpec *spec = ctx->synode_spec;
     int err;
+
     spec->name = name;
     spec->name_size = name_size;
 
-    err = knd_get_cls_by_name(name, name_size, &spec->class, ctx->task);
+    err = knd_get_cls_by_name(repo, name, name_size, &spec->class, ctx->task);
     if (err) {
         KND_TASK_LOG("no such {cls %.*s}", name_size, name);
         return make_gsl_err(gsl_NO_MATCH);
@@ -202,12 +211,14 @@ static gsl_err_t set_synode_class(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
+    struct kndRepo *repo = ctx->repo;
     struct kndSyNode *synode = ctx->synode;
     int err;
+
     synode->name = name;
     synode->name_size = name_size;
 
-    err = knd_get_cls_by_name(name, name_size, &synode->role, ctx->task);
+    err = knd_get_cls_by_name(repo, name, name_size, &synode->role, ctx->task);
     if (err) {
         KND_TASK_LOG("no such {cls %.*s}", name_size, name);
         return make_gsl_err(gsl_NO_MATCH);
@@ -536,12 +547,13 @@ static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_si
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
+    struct kndRepo *repo = ctx->repo;
     knd_task_type orig_task_type = task->type;
     gsl_err_t parser_err;
 
     /* switch to statement's local scope */
     task->type = KND_TASK_INNER;
-    parser_err = knd_class_select(task->repo, rec, total_size, task);
+    parser_err = knd_class_select(rec, total_size, repo, task);
     task->type = orig_task_type;
 
     return parser_err;
@@ -551,13 +563,15 @@ static gsl_err_t parse_proc_select(void *obj, const char *rec, size_t *total_siz
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
+    struct kndRepo *repo = ctx->repo;
     knd_task_type orig_task_type = task->type;
     gsl_err_t parser_err;
 
-    knd_log("proc inner state  repo:%.*s", task->repo->name_size, task->repo->name);
+    knd_log("proc inner state  {repo %.*s}", repo->name_size, repo->name);
+
     /* switch to statement's local scope */
     task->type = KND_TASK_INNER;
-    parser_err = knd_proc_select(task->repo, rec, total_size, task);
+    parser_err = knd_proc_select(rec, total_size, repo, task);
     task->type = orig_task_type;
     return parser_err;
 }
@@ -913,7 +927,7 @@ int knd_string_unmarshall(const char *elem_id, size_t elem_id_size,
     memcpy(seq->id, elem_id, elem_id_size);
     seq->id_size = elem_id_size;
 
-    err = knd_task_fetch_memblock(task, rec_size, &memblock);
+    err = knd_memblock_fetch(&memblock, rec_size, task);
     KND_TASK_ERR("failed to fetch a memblock");
 
     err = knd_memblock_write(memblock, rec, rec_size, &b);

@@ -70,33 +70,31 @@ int knd_set_intersect(struct kndSet **sets, size_t num_sets,
     return knd_OK;
 }
 
-static int save_list_elem(struct kndSet *self, struct kndSetDir *parent_dir,
-                          int dir_pos, void *val)
+static int save_list_elem(struct kndSet *s, struct kndSetDir *parent_dir,
+                          int dir_pos, void *obj, struct kndTask *task)
 {
-    struct kndSetElem *ref, *prev;
+    struct kndSetElem *elem, *prev;
     int err;
 
-    err = knd_set_elem_new(&ref, self->mempool);
-    if (err) {
-        knd_log("-- set elem mempool limit reached");
-        return err;
-    }
-    ref->val = val;
+    err = knd_set_elem_new(&elem, task->mempool);
+    KND_TASK_ERR("failed to alloc a set elem");
+    elem->val = obj;
 
     if (parent_dir->elems[dir_pos]) {
         prev = parent_dir->elems[dir_pos];
-        ref->next = prev;
-        ref->numval = prev->numval + 1;
+        elem->next = prev;
+        elem->numval = prev->numval + 1;
     }
 
-    parent_dir->elems[dir_pos] = ref;
+    parent_dir->elems[dir_pos] = elem;
     return knd_OK;
 }
 
-static int save_elem(struct kndSet *self, struct kndSetDir *parent_dir,
-                     void *elem, const char *id, size_t id_size, struct kndTask *task)
+static int save_elem(struct kndSet *s, struct kndSetDir *parent_dir,
+                     void *obj, const char *id, size_t id_size, struct kndTask *task)
 {
     struct kndSetDir *dir;
+    struct kndSetElem *elem;
     int dir_pos;
     int err;
 
@@ -108,27 +106,32 @@ static int save_elem(struct kndSet *self, struct kndSetDir *parent_dir,
     if (id_size > 1) {
         dir = parent_dir->subdirs[dir_pos];
         if (!dir) {
-            err = knd_set_dir_new(&dir, parent_dir->id, parent_dir->id_size, id, self->mempool);
+            err = knd_set_dir_new(&dir, parent_dir->id, parent_dir->id_size, id, task->mempool);
             KND_TASK_ERR("failed to alloc a set dir");
             
             parent_dir->subdirs[dir_pos] = dir;
         }
-        err = save_elem(self, dir, elem, id + 1, id_size - 1, task);
+        err = save_elem(s, dir, obj, id + 1, id_size - 1, task);
         if (err) return err;
         return knd_OK;
     }
 
     /* assign elem */
-    switch (self->type) {
+    switch (s->type) {
     case KND_SET_UNIQUE_VALUES:
         if (parent_dir->elems[dir_pos] != NULL) return knd_CONFLICT;
+
+        err = knd_set_elem_new(&elem, task->mempool);
+        KND_TASK_ERR("failed to alloc a set elem");
+
+        elem->val = obj;
         parent_dir->elems[dir_pos] = elem;
-        self->num_elems++;
+        s->num_elems++;
         return knd_OK;
     case KND_SET_MULTIPLE_VALUES:
-        err = save_list_elem(self, parent_dir, dir_pos, elem);
+        err = save_list_elem(s, parent_dir, dir_pos, elem, task);
         if (err) return err;
-        self->num_elems++;
+        s->num_elems++;
         return knd_OK;
     default:
         break;
@@ -136,7 +139,7 @@ static int save_elem(struct kndSet *self, struct kndSetDir *parent_dir,
     return knd_FAIL;
 }
 
-static int get_elem(struct kndSet *self, struct kndSetDir *parent_dir,
+static int get_elem(struct kndSet *s, struct kndSetDir *parent_dir,
                     void **result, const char *id, size_t id_size)
 {
     struct kndSetDir *dir;
@@ -154,7 +157,7 @@ static int get_elem(struct kndSet *self, struct kndSetDir *parent_dir,
         dir = parent_dir->subdirs[dir_pos];
         if (!dir) return knd_NO_MATCH;
 
-        err = get_elem(self, dir, result, id + 1, id_size - 1);
+        err = get_elem(s, dir, result, id + 1, id_size - 1);
         if (err) return err;
 
         return knd_OK;
@@ -169,41 +172,41 @@ static int get_elem(struct kndSet *self, struct kndSetDir *parent_dir,
     return knd_OK;
 }
 
-int knd_set_add(struct kndSet *self, const char *key, size_t key_size, void *elem, struct kndTask *task)
+int knd_set_add(struct kndSet *s, const char *key, size_t key_size, void *elem, struct kndTask *task)
 {
     int err;
     assert(key_size != 0);
     assert(key != NULL);
     assert(elem != NULL);
 
-    err = save_elem(self, self->dir, elem, key, key_size, task);
+    err = save_elem(s, s->dir, elem, key, key_size, task);
     KND_TASK_ERR("failed to add an elem to a set");
 
     return knd_OK;
 }
 
-int knd_set_get(struct kndSet *self, const char *key, size_t key_size, void **elem,
+int knd_set_get(struct kndSet *s, const char *key, size_t key_size, void **elem,
                 struct kndTask *unused_var(task))
 {
     int err;
-    if (!self->dir) return knd_FAIL;
-    err = get_elem(self, self->dir, elem, key, key_size);
+    if (!s->dir) return knd_FAIL;
+    err = get_elem(s, s->dir, elem, key, key_size);
     if (err) return err;
     return knd_OK;
 }
 
-static int apply_map_cb(struct kndSet *self, void *obj, map_cb_t cb, void *ctx, struct kndTask *task)
+static int apply_map_cb(struct kndSet *s, struct kndSetElem *elems, map_cb_t cb, void *ctx,
+                        struct kndTask *task)
 {
-    struct kndSetElem *elems, *elem;
+    struct kndSetElem *elem;
     int err;
 
-    switch (self->type) {
+    switch (s->type) {
     case KND_SET_UNIQUE_VALUES:
-        err = cb(obj, ctx, task);
+        err = cb(elems->val, ctx, task);
         if (err) return err;
         return knd_OK;
     case KND_SET_MULTIPLE_VALUES:
-        elems = obj;
         FOREACH (elem, elems) {
             err = cb(elem->val, ctx, task);
             if (err) return err;
@@ -215,22 +218,22 @@ static int apply_map_cb(struct kndSet *self, void *obj, map_cb_t cb, void *ctx, 
     return knd_FAIL;
 }
 
-static int apply_filter_cb(struct kndSet *self, void *obj,
+static int apply_filter_cb(struct kndSet *s, struct kndSetElem *elems,
                            filter_cb_t filter_cb, void *filter_ctx,
                            map_cb_t map_cb, void *map_ctx, struct kndTask *task)
 {
-    struct kndSetElem *elems, *elem;
+    struct kndSetElem *elem;
     int err;
 
     assert (filter_cb != NULL);
     assert (map_cb != NULL);
 
-    switch (self->type) {
+    switch (s->type) {
     case KND_SET_UNIQUE_VALUES:
-        err = filter_cb(obj, filter_ctx);
+        err = filter_cb(elems->val, filter_ctx);
         switch (err) {
         case knd_OK:
-            err = map_cb(obj, map_ctx, task);
+            err = map_cb(elems->val, map_ctx, task);
             if (err) return err;
             break;
         case knd_NO_MATCH:
@@ -240,7 +243,6 @@ static int apply_filter_cb(struct kndSet *self, void *obj,
         }
         return knd_OK;
     case KND_SET_MULTIPLE_VALUES:
-        elems = obj;
         FOREACH (elem, elems) {
             err = filter_cb(elem->val, filter_ctx);
             switch (err) {
@@ -261,28 +263,29 @@ static int apply_filter_cb(struct kndSet *self, void *obj,
     return knd_FAIL;
 }
 
-static int traverse_dir(struct kndSet *self, struct kndSetDir *parent_dir,
+static int traverse_dir(struct kndSet *s, struct kndSetDir *parent_dir,
                         struct kndSetRange *range,
                         filter_cb_t filter_cb, void *filter_ctx,
                         map_cb_t map_cb, void *map_ctx, struct kndTask *task)
 {
+    struct kndSetElem *elem;
     struct kndSetDir *dir;
     void *obj;
     int err;
 
     for (size_t i = 0; i < KND_RADIX_BASE; i++) {
-        obj = parent_dir->elems[i];
-        if (!obj) continue;
+        elem = parent_dir->elems[i];
+        if (!elem) continue;
 
         // TODO: apply range
 
         if (!filter_cb) {
-            err = apply_map_cb(self, obj, map_cb, map_ctx, task);
+            err = apply_map_cb(s, elem, map_cb, map_ctx, task);
             if (err) return err;
             continue;
         }
 
-        err = apply_filter_cb(self, obj, filter_cb, filter_ctx, map_cb, map_ctx, task);
+        err = apply_filter_cb(s, obj, filter_cb, filter_ctx, map_cb, map_ctx, task);
         if (err) return err;
     }
 
@@ -292,25 +295,25 @@ static int traverse_dir(struct kndSet *self, struct kndSetDir *parent_dir,
 
         // TODO: apply range
 
-        err = traverse_dir(self, dir, range, filter_cb, filter_ctx, map_cb, map_ctx, task);
+        err = traverse_dir(s, dir, range, filter_cb, filter_ctx, map_cb, map_ctx, task);
         if (err) return err;
     }
     return knd_OK;
 }
 
-int knd_set_map(struct kndSet *self, struct kndSetRange *range,
+int knd_set_map(struct kndSet *s, struct kndSetRange *range,
                 filter_cb_t filter_cb, void *filter_ctx,
                 map_cb_t map_cb, void *map_ctx, struct kndTask *task)
 {
     int err;
 
-    if (!self->dir) {
+    if (!s->dir) {
         if (DEBUG_SET_LEVEL_3)
             knd_log("NB: -- set has no root dir");
         return knd_OK;
     }
 
-    err = traverse_dir(self, self->dir, range, filter_cb, filter_ctx, map_cb, map_ctx, task);
+    err = traverse_dir(s, s->dir, range, filter_cb, filter_ctx, map_cb, map_ctx, task);
     if (err) return err;
 
     return knd_OK;
@@ -345,7 +348,9 @@ int knd_set_dir_new(struct kndSetDir **result, const char *parent_id, size_t par
     struct kndSetDir *dir;
     void *page;
     int err;
+
     assert(mempool->base_page_size >= sizeof(struct kndSetDir));
+
     err = knd_mempool_page(mempool, KND_MEMPAGE_BASE, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndSetDir));

@@ -93,7 +93,7 @@ int knd_repo_update_cache(struct kndRepoSnapshot *snapshot, struct kndTask *task
     //struct kndSet *str_idx = snapshot->idxs.str_idx;
     int err;
 
-    if (DEBUG_REPO_CACHE_LEVEL_2) {
+    if (DEBUG_REPO_CACHE_LEVEL_TMP) {
         knd_log(".. update cache from {snapshot %.*s}",
                 snapshot->path_size, snapshot->path);
     }

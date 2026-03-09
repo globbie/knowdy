@@ -282,8 +282,9 @@ struct kndText
 };
 
 void knd_text_str(struct kndText *self, size_t depth);
-gsl_err_t knd_text_import(struct kndText *self, const char *rec, size_t *total_size, struct kndTask *task);
-int knd_text_resolve(struct kndAttrStm *attr_stm, struct kndTask *task);
+gsl_err_t knd_text_import(struct kndText *self, const char *rec, size_t *total_size,
+                          struct kndRepo *repo, struct kndTask *task);
+int knd_text_resolve(struct kndAttrStm *attr_stm, struct kndRepo *repo, struct kndTask *task);
 
 gsl_err_t knd_text_read(struct kndText *self, const char *rec, size_t *total_size, struct kndTask *task);
 int knd_text_index(struct kndText *self, struct kndRepo *repo, struct kndTask *task);
@@ -293,20 +294,23 @@ gsl_err_t knd_statement_import(struct kndStatement *stm, const char *rec, size_t
 gsl_err_t knd_statement_read(struct kndStatement *stm, const char *rec, size_t *total_size, struct kndTask *task);
 int knd_statement_resolve(struct kndStatement *stm, struct kndTask *task);
 
-int knd_text_export(struct kndText *self, knd_format format, struct kndTask *task, size_t depth);
+int knd_text_export(struct kndText *self, knd_format format,
+                    struct kndRepo *repo, struct kndTask *task, size_t depth);
 
 int knd_text_export_query_report(struct kndTask *task);
 int knd_text_export_query_report_GSL(struct kndTask *task);
 
-int knd_text_export_GSL(struct kndText *text, struct kndTask *task, size_t depth);
-int knd_text_gloss_export_GSL(struct kndText *text, bool use_locale, struct kndTask *task, size_t depth);
-int knd_text_gloss_export_JSON(struct kndText *text, struct kndTask *task, size_t depth);
+int knd_text_export_GSL(struct kndText *text, struct kndRepo *repo, struct kndTask *task, size_t depth);
+int knd_text_gloss_export_GSL(struct kndText *text, bool use_locale,
+                              struct kndRepo *repo, struct kndTask *task, size_t depth);
+int knd_text_gloss_export_JSON(struct kndText *text,
+                               struct kndRepo *repo, struct kndTask *task, size_t depth);
 
-int knd_text_export_GSP(struct kndText *self, struct kndTask *task);
-int knd_text_export_JSON(struct kndText *self, struct kndTask *task, size_t depth);
-int knd_text_build_JSON(const char *rec, size_t rec_size, struct kndTask *task);
+int knd_text_export_GSP(struct kndText *self, struct kndRepo *repo, struct kndTask *task);
+int knd_text_export_JSON(struct kndText *self, struct kndRepo *repo, struct kndTask *task, size_t depth);
+int knd_text_build_JSON(const char *rec, size_t rec_size, struct kndRepo *repo, struct kndTask *task);
 
-int knd_par_export_GSL(struct kndPar *par, struct kndTask *task);
+int knd_par_export_GSL(struct kndPar *par, struct kndRepo *repo, struct kndTask *task);
 
 int knd_charseq_new(struct kndCharSeq **result, struct kndMemPool *mempool);
 void knd_charseq_free(struct kndCharSeq *seq, struct kndMemPool *mempool);

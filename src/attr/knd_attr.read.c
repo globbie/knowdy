@@ -22,6 +22,7 @@
 #include "knd_state.h"
 #include "knd_user.h"
 #include "knd_mempool.h"
+#include "knd_memblock.h"
 #include "knd_text.h"
 #include "knd_rel.h"
 #include "knd_proc.h"
@@ -369,20 +370,19 @@ static gsl_err_t set_attr_name(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndRepoSnapshot *snapshot = task->snapshot;
     struct kndMemBlock *memblock;
     const char *b;
     int err;
 
-    err = knd_repo_snapshot_fetch_memblock(snapshot, name_size, &memblock, task);
+    err = knd_memblock_fetch(&memblock, name_size, task);
     if (err) {
-        KND_TASK_LOG("failed to fetch a memblock to save attr name %.*s", name_size, name);
+        KND_TASK_LOG("failed to fetch a memblock to save {attr-name %.*s}", name_size, name);
         return make_gsl_err_external(err);
     }
 
     err = knd_memblock_write(memblock, name, name_size, &b);
     if (err) {
-        KND_TASK_LOG("failed to to save attr name %.*s", name_size, name);
+        KND_TASK_LOG("failed to to save {attr-name %.*s}", name_size, name);
         return make_gsl_err_external(err);
     }
 

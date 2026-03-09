@@ -136,10 +136,6 @@ struct kndRepoSnapshot
     atomic_size_t  commit_id_count;
     size_t         max_commits;
 
-    struct kndMemBlock *blocks;
-    size_t num_blocks;
-    size_t total_block_size;
-
     /* array of integers => each task/writer can produce a number of WAL journals */
     size_t num_journals[KND_MAX_TASKS];
     size_t max_journals;
@@ -206,8 +202,6 @@ int knd_repo_restore(struct kndRepo *self, struct kndRepoSnapshot *snapshot, str
 int knd_repo_update_cache(struct kndRepoSnapshot *snapshot, struct kndTask *task);
 
 void knd_repo_snapshot_del(struct kndRepoSnapshot *snapshot);
-int knd_repo_snapshot_fetch_memblock(struct kndRepoSnapshot *self, size_t space_required,
-                                     struct kndMemBlock **result, struct kndTask *task);
 
 int knd_repo_save_meta(struct kndRepoSnapshot *s, struct kndTask *task);
 

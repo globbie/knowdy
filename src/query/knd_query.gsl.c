@@ -109,6 +109,7 @@ int knd_query_obj_export_GSL(struct kndQuery *query, struct kndTask *task,
                              size_t unused_var(depth))
 {
     struct kndOutput *out = task->out;
+    struct kndRepo *repo = query->repo;
     struct kndClass *c;
     int err;
 
@@ -126,7 +127,7 @@ int knd_query_obj_export_GSL(struct kndQuery *query, struct kndTask *task,
         assert (query->cls != NULL);
         c = query->cls;
 
-        err = knd_class_export_GSL(c, task, false, 1);
+        err = knd_class_export_GSL(c, task, false, repo, 1);
         KND_TASK_ERR("failed to export {cls %.*s} GSL", c->name_size, c->name);
         break;
     default:

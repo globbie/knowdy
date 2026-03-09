@@ -203,49 +203,8 @@ int knd_repo_snapshot_activate(struct kndRepo *repo, struct kndRepoSnapshot **re
     return knd_OK;
 }
 
-int knd_repo_snapshot_fetch_memblock(struct kndRepoSnapshot *self,
-                                     size_t space_required,
-                                     struct kndMemBlock **result,
-                                     struct kndTask *task)
-{
-    struct kndMemBlock *block, *curr_block;
-    int err;
-
-    if (space_required >= KND_MEMBLOCK_BUF_SIZE) return knd_LIMIT;
-
-    if (!self->blocks) {
-        err = knd_memblock_new(&block, 0, KND_MEMBLOCK_BUF_SIZE);
-        KND_TASK_ERR("failed to alloc a memblock");
-        self->blocks = block;
-        *result = block;
-        return knd_OK;
-    }
-
-    curr_block = self->blocks;
-    if ((curr_block->capacity - curr_block->buf_size) >= space_required) {
-        *result = curr_block;
-        return knd_OK;
-    }
-
-    err = knd_memblock_new(&block, 0, KND_MEMBLOCK_BUF_SIZE);
-    KND_TASK_ERR("failed to alloc a memblock");
-    block->next = curr_block;
-    self->blocks = block;
-    self->num_blocks++;
-    *result = block;
-    return knd_OK;
-}
-
 void knd_repo_snapshot_del(struct kndRepoSnapshot *snapshot)
 {
-    struct kndMemBlock *block, *next_block;
-
-    for (block = snapshot->blocks; block; block = next_block) {
-        next_block = block->next;
-        if (block->buf)
-            free(block->buf);
-        free(block);
-    }
     free(snapshot);
 }
 

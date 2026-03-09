@@ -238,23 +238,26 @@ static int export_class_ref(void *obj, const char *unused_var(elem_id), size_t u
 }
 #endif
 
-static int export_concise_JSON(struct kndClass *self, struct kndTask *task)
+static int export_concise_JSON(struct kndClass *self, struct kndRepo *repo,
+                               struct kndTask *task)
 {
     struct kndClassBasePred *item;
     int err;
 
-    if (DEBUG_JSON_LEVEL_2)
-        knd_log(".. export concise JSON for %.*s..",
-                self->entry->name_size, self->entry->name);
+    if (DEBUG_JSON_LEVEL_2) {
+        knd_log(".. export concise JSON for {cls %.*s}",
+                self->name_size, self->name);
+    }
 
     FOREACH (item, self->base_preds) {
         if (!item->attr_stms) continue;
-        err = knd_attr_stms_export_JSON(item->attr_stms, task, 0);
+        err = knd_attr_stms_export_JSON(item->attr_stms, repo, task, 0);
         KND_TASK_ERR("failed to export attr vars JSON");
     }
-    if (DEBUG_JSON_LEVEL_2)
-        knd_log(".. export inherited attrs of %.*s..",
-                self->entry->name_size, self->entry->name);
+
+    if (DEBUG_JSON_LEVEL_2) {
+        knd_log(".. export inherited attrs of {cls %.*s}", self->name_size, self->name);
+    }
 
     /* inherited attrs */
     //err = self->attr_idx->map(self->attr_idx,
@@ -331,7 +334,8 @@ extern int knd_class_set_export_JSON(struct kndSet *set, struct kndTask *task)
 }
 #endif
 
-static int present_subclass(struct kndClassRef *ref, struct kndTask *task, size_t depth)
+static int present_subclass(struct kndClassRef *ref,
+                            struct kndRepo *repo, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     struct kndClassEntry *entry = ref->entry;
@@ -366,10 +370,10 @@ static int present_subclass(struct kndClassRef *ref, struct kndTask *task, size_
         }*/
 
     /* get localized gloss */
-    err = knd_class_acquire(entry, &c, task);
-    KND_TASK_ERR("failed to acquire a subclass %.*s", entry->name_size, entry->name);
+    err = knd_class_acquire(entry, &c, repo, task);
+    KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);
     if (c->tr) {
-        err = knd_text_gloss_export_JSON(c->tr, task, depth + 1);
+        err = knd_text_gloss_export_JSON(c->tr, repo, task, depth + 1);
         KND_TASK_ERR("failed to export subclass gloss JSON");
     }
     if (indent_size) {
@@ -381,7 +385,8 @@ static int present_subclass(struct kndClassRef *ref, struct kndTask *task, size_
     return knd_OK;
 }
 
-static int present_subclasses(struct kndClass *self, struct kndTask *task, size_t depth)
+static int present_subclasses(struct kndClass *self,
+                              struct kndRepo *repo, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     struct kndClassRef *ref;
@@ -423,7 +428,7 @@ static int present_subclasses(struct kndClass *self, struct kndTask *task, size_
         if (in_list) {
             OUT(",", 1);
         }
-        err = present_subclass(ref, task, depth + 1);
+        err = present_subclass(ref, repo, task, depth + 1);
         KND_TASK_ERR("failed to present subclass JSON");
         in_list = true;
     }
@@ -436,7 +441,7 @@ static int present_subclasses(struct kndClass *self, struct kndTask *task, size_
     return knd_OK;
 }
 
-static int export_attrs(struct kndClass *self, struct kndTask *task)
+static int export_attrs(struct kndClass *self, struct kndRepo *repo, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndAttr *attr;
@@ -447,7 +452,7 @@ static int export_attrs(struct kndClass *self, struct kndTask *task)
         if (count) {
             OUT(",", 1);
         }
-        err = knd_attr_export(attr, KND_FORMAT_JSON, task);
+        err = knd_attr_export(attr, KND_FORMAT_JSON, repo, task);
         KND_TASK_ERR("failed to export %.*s attr", attr->name_size, attr->name);
         count++;
     }
@@ -582,7 +587,8 @@ static int export_inverse_rels(struct kndClass *self, struct kndTask *task, size
 }
 #endif
 
-static int export_baseclasses(struct kndClass *self, struct kndTask *task, size_t depth)
+static int export_baseclasses(struct kndClass *self, struct kndRepo *repo,
+                              struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     struct kndClassBasePred *bp;
@@ -592,7 +598,7 @@ static int export_baseclasses(struct kndClass *self, struct kndTask *task, size_
     int err;
 
     if (DEBUG_JSON_LEVEL_2)
-        knd_log(".. export baseclasses of %.*s", self->name_size, self->name);
+        knd_log(".. export baseclasses of {cls %.*s}", self->name_size, self->name);
 
     OUT(",", 1);
     if (indent_size) {
@@ -631,16 +637,16 @@ static int export_baseclasses(struct kndClass *self, struct kndTask *task, size_
         OUT("\"", 1);
 
         /* get localized gloss */
-        err = knd_class_acquire(bp->entry, &c, task);
+        err = knd_class_acquire(bp->entry, &c, repo, task);
         KND_TASK_ERR("failed to acquire base class %.*s", bp->entry->name_size, bp->entry->name);
         if (c->tr) {
-            err = knd_text_gloss_export_JSON(c->tr, task, depth + 2);
+            err = knd_text_gloss_export_JSON(c->tr, repo, task, depth + 2);
             KND_TASK_ERR("failed to export baseclass gloss JSON");
         }
 
         /* attr vars */
         if (bp->attr_stms) {
-            err = knd_attr_stms_export_JSON(bp->attr_stms, task, depth + 2);
+            err = knd_attr_stms_export_JSON(bp->attr_stms, repo, task, depth + 2);
             KND_TASK_ERR("failed to export attr vars JSON");
         }
 
@@ -660,8 +666,9 @@ static int export_baseclasses(struct kndClass *self, struct kndTask *task, size_
     OUT("]", 1);
     return knd_OK;
 }
-                                     
-int knd_class_export_JSON(struct kndClass *self, struct kndTask *task,
+
+
+int knd_class_export_JSON(struct kndClass *self, struct kndRepo *repo, struct kndTask *task,
                           bool unused_var(is_list_item), size_t depth)
 {
     struct kndClassEntry *entry = self->entry;
@@ -690,7 +697,7 @@ int knd_class_export_JSON(struct kndClass *self, struct kndTask *task,
     OUT("\"", 1);
 
     if (self->tr) {
-        err = knd_text_gloss_export_JSON(self->tr, task, depth + 1);
+        err = knd_text_gloss_export_JSON(self->tr, repo, task, depth + 1);
         KND_TASK_ERR("failed to export gloss JSON");
     }
 
@@ -726,7 +733,7 @@ int knd_class_export_JSON(struct kndClass *self, struct kndTask *task,
     }
 
     if (task->depth > task->ctx->max_depth) {
-        err = export_concise_JSON(self, task);                                    RET_ERR();
+        err = export_concise_JSON(self, repo, task);                                    RET_ERR();
         goto final;
     }
 
@@ -739,17 +746,17 @@ int knd_class_export_JSON(struct kndClass *self, struct kndTask *task,
 
     /* display base classes only once */
     if (self->num_base_preds) {
-        err = export_baseclasses(self, task, depth + 1);
+        err = export_baseclasses(self, repo, task, depth + 1);
         KND_TASK_ERR("failed to export baseclass JSON");
     }
 
     if (self->attrs) {
-        err = export_attrs(self, task);
+        err = export_attrs(self, repo, task);
         KND_TASK_ERR("failed to export attrs JSON");
     }
 
     if (self->num_children) {
-        err = present_subclasses(self, task, depth + 1);
+        err = present_subclasses(self, repo, task, depth + 1);
         KND_TASK_ERR("failed to export subclasses in JSON");
     }
 

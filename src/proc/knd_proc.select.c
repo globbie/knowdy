@@ -63,6 +63,7 @@ static gsl_err_t present_proc_selection(void *obj, const char *unused_var(val), 
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
+    struct kndRepo *repo = ctx->repo;
     struct kndProc *proc = ctx->proc;
     knd_format format = task->ctx->format;
     struct kndOutput *out = task->out;
@@ -76,7 +77,7 @@ static gsl_err_t present_proc_selection(void *obj, const char *unused_var(val), 
     out->reset(out);
     
     /* export BODY */
-    err = knd_proc_export(proc, format, task, out);
+    err = knd_proc_export(proc, format, repo, task, out);
     if (err) return make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);
@@ -111,8 +112,8 @@ static gsl_err_t remove_proc(void *obj, const char *name, size_t name_size)
         err = knd_commit_new(&task->ctx->commit, task->mempool);
         if (err) return make_gsl_err_external(err);
 
-        task->ctx->commit->orig_state_id = atomic_load_explicit(&task->snapshot->num_commits,
-                                                                memory_order_relaxed);
+        //task->ctx->commit->orig_state_id = atomic_load_explicit(&task->snapshot->num_commits,
+        //                                                        memory_order_relaxed);
     }
 
     err = knd_proc_commit_state(proc, KND_REMOVED, task);
@@ -152,7 +153,7 @@ static gsl_err_t parse_proc_inst_import(void *obj, const char *rec, size_t *tota
         if (!commit) {
             err = knd_commit_new(&commit, mempool);
             if (err) return make_gsl_err_external(err);
-            commit->orig_state_id = atomic_load_explicit(&task->snapshot->num_commits, memory_order_relaxed);
+            //commit->orig_state_id = atomic_load_explicit(&task->snapshot->num_commits, memory_order_relaxed);
             task->ctx->commit = commit;
         }
         break;
@@ -165,7 +166,7 @@ static gsl_err_t parse_proc_inst_import(void *obj, const char *rec, size_t *tota
     return make_gsl_err(gsl_OK);
 }
 
-gsl_err_t knd_proc_select(struct kndRepo *repo, const char *rec, size_t *total_size, struct kndTask *task)
+gsl_err_t knd_proc_select(const char *rec, size_t *total_size, struct kndRepo *repo, struct kndTask *task)
 {
     struct LocalContext ctx = {
         .task = task,
@@ -174,9 +175,9 @@ gsl_err_t knd_proc_select(struct kndRepo *repo, const char *rec, size_t *total_s
     gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_PROC_SELECT_LEVEL_2)
+    if (DEBUG_PROC_SELECT_LEVEL_2) {
         knd_log(".. proc selection: \"%.*s\"", 16, rec);
-
+    }
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .is_selector = true,

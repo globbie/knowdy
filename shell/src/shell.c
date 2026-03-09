@@ -113,17 +113,17 @@ static int knd_interact(struct kndSteward *steward)
     struct kndOutput *out = steward->out;
     struct kndOutput *log = steward->log;
     struct kndResourceReport report;
-    struct kndRepoSnapshot *snapshot = steward->task->snapshot;
+    struct kndRepoSnapshot *snapshot = steward->repo->snapshot;
     int err;
 
     err = knd_task_new(&writer_task, KND_AGENT_WRITER, 1,
                        &steward->mem_task_ctx_config, &steward->mem_task_cache_config,
-                       &steward->storage_config);
+                       &steward->storage_config, steward);
     KND_STEWARD_ERR("failed to create a writer task");
 
     err = knd_task_new(&reader_task, KND_AGENT_READER, 2,
                        &steward->mem_task_ctx_config, &steward->mem_task_cache_config,
-                       &steward->storage_config);
+                       &steward->storage_config, steward);
     KND_STEWARD_ERR("failed to create a reader task");
 
     /* start serving requests */
@@ -160,7 +160,7 @@ static int knd_interact(struct kndSteward *steward)
 
         /* reader task is always the first to parse and validate the request */
         reader_task->ctx->max_depth = 3;
-        
+
         err = knd_task_run(reader_task, block, block_size);
         if (err != knd_OK) {
             knd_log("-- task run failed: %.*s",
@@ -267,6 +267,7 @@ static int knd_start(const char *config, size_t config_size)
 {
     struct kndSteward *steward;
     struct kndResourceReport report;
+    struct kndRepoSnapshot *snapshot;
     struct kndTask *task;
     int err;
 
@@ -286,7 +287,7 @@ static int knd_start(const char *config, size_t config_size)
         err = knd_steward_snapshot_create(steward);
         if (err) goto error;
 
-        err = knd_steward_snapshot_activate(steward, &task->snapshot);
+        err = knd_steward_snapshot_activate(steward, &snapshot);
         if (err) goto error;
     }
 

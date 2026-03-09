@@ -210,18 +210,19 @@ int knd_register_attr_ref(void *obj, const char *elem_id, size_t elem_id_size,
 int knd_get_arg_value(struct kndAttrStm *src, struct kndAttrStm *query,
                       struct kndProcCallArg *arg, struct kndTask *task);
 
-int knd_attr_export_GSL(struct kndAttr *self, struct kndTask *task, size_t depth);
-int knd_attr_export_JSON(struct kndAttr *self, struct kndTask *task, size_t depth);
-int knd_attr_export_GSP(struct kndAttr *self, struct kndTask *task);
+int knd_attr_export_GSL(struct kndAttr *self, struct kndRepo *repo, struct kndTask *task, size_t depth);
+int knd_attr_export_JSON(struct kndAttr *self, struct kndRepo *repo, struct kndTask *task, size_t depth);
+int knd_attr_export_GSP(struct kndAttr *self, struct kndRepo *repo, struct kndTask *task);
 
-int knd_attr_export(struct kndAttr *self, knd_format format, struct kndTask *task);
+int knd_attr_export(struct kndAttr *self, knd_format format, struct kndRepo *repo, struct kndTask *task);
 void knd_attr_str(struct kndAttr *attr, size_t depth);
 
 int knd_attr_new(struct kndAttr **result, struct kndMemPool *mempool);
 int knd_attr_ref_new(struct kndAttrRef **result, struct kndMemPool *mempool);
 
 // knd_attr.import.c
-gsl_err_t knd_attr_import(struct kndAttr *attr, struct kndTask *task, const char *rec, size_t *total_size);
+gsl_err_t knd_attr_import(struct kndAttr *attr, const char *rec, size_t *total_size,
+                          struct kndRepo *repo, struct kndTask *task);
 
 // knd_attr.gsp.c
 gsl_err_t knd_attr_read(struct kndAttr *self, struct kndTask *task,
@@ -231,8 +232,8 @@ int knd_attr_select_clause(struct kndAttr *attr, struct kndClass *cls,
                            const char *rec, size_t *total_size, struct kndTask *task);
 
 // knd_attr.resolve.c
-int knd_attr_resolve(struct kndAttr *attr, struct kndTask *task);
-int knd_resolve_primary_attrs(struct kndClass *self, struct kndTask *task);
+int knd_attr_resolve(struct kndAttr *attr, struct kndRepo *repo, struct kndTask *task);
+int knd_resolve_primary_attrs(struct kndClass *self, struct kndRepo *repo, struct kndTask *task);
 
 gsl_err_t knd_attr_idx(void *obj, const char *name, size_t name_size);
 gsl_err_t knd_attr_implied(void *obj, const char *name, size_t name_size);
@@ -259,7 +260,7 @@ int knd_cls_inst_ref_attr_new(struct kndClassInstRefAttr **result,
                               struct kndMemPool *mempool);
 
 int knd_attr_find(struct kndClass *cls, const char *name, size_t name_size,
-                  struct kndAttr **result, struct kndTask *task);
+                  struct kndAttr **result, struct kndRepo *repo, struct kndTask *task);
 
 int knd_cls_attrs_select(struct kndQuery *query,
                          const char *rec, size_t *total_size, struct kndTask *task);

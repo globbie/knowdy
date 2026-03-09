@@ -305,7 +305,7 @@ int knd_import_proc_inst(struct kndProcEntry *self, const char *rec, size_t *tot
     if (!ctx->commit) {
         err = knd_commit_new(&ctx->commit, task->mempool);
         KND_TASK_ERR("commit alloc failed");
-        ctx->commit->orig_state_id = atomic_load_explicit(&task->snapshot->num_commits, memory_order_relaxed);
+        //ctx->commit->orig_state_id = atomic_load_explicit(&task->snapshot->num_commits, memory_order_relaxed);
     }
     state->commit = ctx->commit;
     return knd_OK;

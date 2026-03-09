@@ -119,45 +119,48 @@ int knd_class_inst_ref_new(struct kndClassInstRef **result, struct kndMemPool *m
 int knd_class_inst_entry_new(struct kndClassInstEntry **result, struct kndMemPool *mempool);
 
 int knd_class_inst_export(struct kndClassInst *self, knd_format format, bool is_list_item,
-                          knd_state_phase phase, struct kndTask *task);
+                          knd_state_phase phase, struct kndRepo *repo, struct kndTask *task);
 int knd_class_inst_set_export(struct kndClassInst *self, knd_format format, struct kndTask *task);
 
 int knd_class_inst_commit_state(struct kndClass *self, struct kndStateRef *children, size_t num_children,
                                 struct kndTask *task);
-int knd_class_inst_export_commit(struct kndStateRef *state_refs,
-                                 struct kndTask *task);
+int knd_class_inst_export_commit(struct kndStateRef *state_refs, struct kndRepo *repo, struct kndTask *task);
 int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *baseclass,
                                   struct kndStateRef *state_refs, struct kndTask *task);
 
 // knd_class_inst.gsp.c
-int knd_class_inst_export_GSP(struct kndClassInst *self,  struct kndTask *task);
-int knd_class_inst_marshall(void *obj, size_t *output_size, struct kndTask *task);
+int knd_class_inst_export_GSP(struct kndClassInst *self, struct kndRepo *repo, struct kndTask *task);
+int knd_class_inst_marshall(void *obj, size_t *output_size, struct kndRepo *repo, struct kndTask *task);
 int knd_class_inst_entry_unmarshall(const char *elem_id, size_t elem_id_size, const char *rec, size_t rec_size,
-                                    void **result, struct kndTask *task);
+                                    void **result, struct kndRepo *repo, struct kndTask *task);
 int knd_class_inst_unmarshall(const char *elem_id, size_t elem_id_size, const char *rec, size_t rec_size,
-                              void **result, struct kndTask *task);
+                              void **result, struct kndRepo *repo, struct kndTask *task);
 int knd_class_inst_acquire(struct kndClassInstEntry *entry, struct kndClassInst **result,
-                           struct kndTask *task);
-int knd_class_inst_read(struct kndClassInst *self, const char *rec, size_t *total_size, struct kndTask *task);
+                           struct kndRepo *repo, struct kndTask *task);
+int knd_class_inst_read(struct kndClassInst *self, const char *rec, size_t *total_size,
+                         struct kndRepo *repo, struct kndTask *task);
 
 // knd_class_inst.gsl.c
-int knd_class_inst_export_GSL(struct kndClassInst *self, bool is_list_item, knd_state_phase phase, struct kndTask *task, size_t depth);
+int knd_class_inst_export_GSL(struct kndClassInst *self, bool is_list_item, knd_state_phase phase,
+                              struct kndRepo *repo, struct kndTask *task, size_t depth);
 
 // knd_class_inst.import.c
-int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *total_size, struct kndTask *task);
+int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *total_size,
+                          struct kndRepo *repo, struct kndTask *task);
 gsl_err_t knd_class_inst_read_state(struct kndClassInst *self, const char *rec, size_t *total_size, struct kndTask *task);
 
 // knd_class_inst.json.c
-int knd_class_inst_export_JSON(struct kndClassInst *self, bool is_list_item, knd_state_phase phase, struct kndTask *task, size_t depth);
+int knd_class_inst_export_JSON(struct kndClassInst *self, bool is_list_item, knd_state_phase phase,
+                               struct kndRepo *repo, struct kndTask *task, size_t depth);
 
 // knd_class_inst.select.c
 gsl_err_t knd_select_class_inst(struct kndClass *c, const char *rec, size_t *total_size, struct kndTask *task);
 
 // knd_class_inst.resolve.c
-int knd_class_inst_resolve(struct kndClassInst *self, struct kndTask *task);
+int knd_class_inst_resolve(struct kndClassInst *self, struct kndRepo *repo, struct kndTask *task);
 
 // knd_class_inst.index.c
-int knd_class_inst_index(struct kndClassInst *self, struct kndTask *task);
+int knd_class_inst_index(struct kndClassInst *self, struct kndRepo *repo, struct kndTask *task);
 
 int knd_class_inst_iterate_export_JSON(void *obj, const char *id, size_t id_size, size_t count, void *elem);
 

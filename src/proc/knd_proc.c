@@ -91,13 +91,14 @@ void knd_proc_str(struct kndProc *self, size_t depth)
             depth * KND_OFFSET_SIZE, "");
 }
 
-int knd_proc_export(struct kndProc *self, knd_format format, struct kndTask *task, struct kndOutput *out)
+int knd_proc_export(struct kndProc *self, knd_format format,
+                    struct kndRepo *repo, struct kndTask *task, struct kndOutput *out)
 {
     int err;
 
     switch (format) {
     case KND_FORMAT_JSON:
-        err = knd_proc_export_JSON(self, task, out, 0);
+        err = knd_proc_export_JSON(self, repo, task, out, 0);
         if (err) return err;
         break;
         /*case KND_FORMAT_GSP:
@@ -109,7 +110,7 @@ int knd_proc_export(struct kndProc *self, knd_format format, struct kndTask *tas
         if (err) return err;
         break;
     default:
-        err = knd_proc_export_GSL(self, task, false, 0);
+        err = knd_proc_export_GSL(self, repo, task, false, 0);
         if (err) return err;
         break;
     }

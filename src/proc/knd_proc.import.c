@@ -333,7 +333,7 @@ int knd_inner_proc_import(struct kndProc *proc, const char *rec, size_t *total_s
     return knd_OK;
 }
 
-gsl_err_t knd_proc_import(struct kndRepo *repo, const char *rec, size_t *total_size, struct kndTask *task)
+gsl_err_t knd_proc_import(const char *rec, size_t *total_size, struct kndRepo *repo, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
     struct kndProcEntry *entry;

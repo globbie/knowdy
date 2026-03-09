@@ -67,6 +67,7 @@ static gsl_err_t select_cls_attr(void *obj, const char *name, size_t name_size,
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
     struct kndClass *bc = ctx->base_cls;
+    struct kndRepo *repo = ctx->repo;
     struct kndAttr *attr;
     struct kndAttrStm *stm;
     int err;
@@ -76,7 +77,7 @@ static gsl_err_t select_cls_attr(void *obj, const char *name, size_t name_size,
         return *total_size = 0, make_gsl_err_external(knd_FAIL);
     }
 
-    err = knd_attr_find(bc, name, name_size, &attr, task);
+    err = knd_attr_find(bc, name, name_size, &attr, repo, task);
     if (err) {
         KND_TASK_LOG("no {attr %.*s} in {cls %.*s}",
                      name_size, name, bc->name_size, bc->name);
@@ -97,7 +98,7 @@ static gsl_err_t select_cls_attr(void *obj, const char *name, size_t name_size,
     if (err) return make_gsl_err_external(err);   
     stm->attr = attr;
 
-    err = knd_attr_parse_query_stm(stm, rec, total_size, task);
+    err = knd_attr_parse_query_stm(stm, rec, total_size, repo, task);
     if (err) return make_gsl_err_external(err);
 
     knd_query_append_attr_stm(ctx->query, stm);
@@ -108,6 +109,7 @@ static gsl_err_t select_cls_attr(void *obj, const char *name, size_t name_size,
 static gsl_err_t get_cls_by_name(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
+    struct kndRepo *repo = ctx->repo;
     struct kndTask *task = ctx->task;
     struct kndQuery *query = ctx->query;
     struct kndClassEntry *entry;
@@ -116,14 +118,14 @@ static gsl_err_t get_cls_by_name(void *obj, const char *name, size_t name_size)
 
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    err = knd_get_cls_entry_by_name(name, name_size, &entry, task);
+    err = knd_get_cls_entry_by_name(repo, name, name_size, &entry, task);
     if (err) {
         KND_TASK_LOG("{cls %.*s} not found", name_size, name);
         task->ctx->error = knd_NO_MATCH;
         return make_gsl_err(gsl_FAIL);
     }
 
-    err = knd_class_acquire(entry, &c, task);
+    err = knd_class_acquire(entry, &c, repo, task);
     if (err) {
         KND_TASK_LOG("failed to acquire {cls %.*s}", entry->name_size, entry->name);
         return make_gsl_err_external(err);
@@ -138,6 +140,7 @@ static gsl_err_t get_cls_by_name(void *obj, const char *name, size_t name_size)
 static gsl_err_t get_base_cls(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
+    struct kndRepo *repo = ctx->repo;
     struct kndTask *task = ctx->task;
     struct kndMemPool *mempool = task->mempool;
     struct kndQuery *query = ctx->query;
@@ -148,14 +151,14 @@ static gsl_err_t get_base_cls(void *obj, const char *name, size_t name_size)
 
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    err = knd_get_cls_entry_by_name(name, name_size, &entry, task);
+    err = knd_get_cls_entry_by_name(repo, name, name_size, &entry, task);
     if (err) {
         KND_TASK_LOG("{cls %.*s} not found", name_size, name);
         task->ctx->error = knd_NO_MATCH;
         return make_gsl_err(gsl_FAIL);
     }
 
-    err = knd_class_acquire(entry, &c, task);
+    err = knd_class_acquire(entry, &c, repo, task);
     if (err) {
         KND_TASK_LOG("failed to acquire {cls %.*s}", entry->name_size, entry->name);
         return make_gsl_err_external(err);
@@ -178,6 +181,7 @@ static gsl_err_t get_base_cls(void *obj, const char *name, size_t name_size)
 static gsl_err_t get_subj_base_class(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
+    struct kndRepo *repo = ctx->repo;
     struct kndTask *task = ctx->task;
     struct kndClassEntry *entry;
     struct kndClass *c;
@@ -185,14 +189,14 @@ static gsl_err_t get_subj_base_class(void *obj, const char *name, size_t name_si
 
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    err = knd_get_cls_entry_by_name(name, name_size, &entry, task);
+    err = knd_get_cls_entry_by_name(repo, name, name_size, &entry, task);
     if (err) {
         KND_TASK_LOG("{cls %.*s} not found", name_size, name);
         task->ctx->error = knd_NO_MATCH;
         return make_gsl_err(gsl_FAIL);
     }
 
-    err = knd_class_acquire(entry, &c, task);
+    err = knd_class_acquire(entry, &c, repo, task);
     if (err) {
         KND_TASK_LOG("failed to acquire {cls %.*s}", entry->name_size, entry->name);
         return make_gsl_err_external(err);
@@ -371,15 +375,17 @@ static gsl_err_t import_class_inst(void *obj, const char *rec, size_t *total_siz
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
+    struct kndRepo *repo = ctx->repo;
     struct kndCommit *commit = task->ctx->commit;
     struct kndMemPool *mempool = task->mempool;
-    struct kndRepoSnapshot *snapshot = task->snapshot;
+    struct kndRepoSnapshot *snapshot = ctx->repo->snapshot;
     struct kndClass *c = ctx->cls;
     int err;
 
     if (DEBUG_CLASS_SELECT_LEVEL_2) {
         knd_log("parse import class inst");
     }
+
     if (!c) {
         KND_TASK_LOG("no cls selected");
         return *total_size = 0, make_gsl_err_external(knd_FORMAT);
@@ -400,7 +406,7 @@ static gsl_err_t import_class_inst(void *obj, const char *rec, size_t *total_siz
         break;
     }
 
-    err = knd_import_class_inst(c->entry, rec, total_size, task);
+    err = knd_import_class_inst(c->entry, rec, total_size, repo, task);
     if (err) return *total_size = 0, make_gsl_err_external(err);
     return make_gsl_err(gsl_OK);
 }
@@ -446,8 +452,8 @@ static gsl_err_t remove_class(void *obj, const char *unused_var(name), size_t na
 #endif
 }
 
-gsl_err_t knd_class_select(struct kndRepo *repo, const char *rec, size_t *total_size,
-                           struct kndTask *task)
+gsl_err_t knd_class_select(const char *rec, size_t *total_size,
+                           struct kndRepo *repo, struct kndTask *task)
 {
     struct kndQuery *query = task->ctx->query;
     gsl_err_t parser_err;

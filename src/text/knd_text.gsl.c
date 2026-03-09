@@ -21,7 +21,7 @@
 #define DEBUG_TEXT_EXPORT_LEVEL_3 0
 #define DEBUG_TEXT_EXPORT_LEVEL_TMP 1
 
-static int export_class_declars(struct kndClassDeclar *declars, struct kndTask *task)
+static int export_class_declars(struct kndClassDeclar *declars, struct kndRepo *repo, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndClassInstEntry *entry;
@@ -32,7 +32,7 @@ static int export_class_declars(struct kndClassDeclar *declars, struct kndTask *
         OUT(decl->entry->name, decl->entry->name_size);
 
         FOREACH (entry, decl->insts) {
-            err = knd_class_inst_export_GSL(entry->inst, false, KND_CREATED, task, 0);
+            err = knd_class_inst_export_GSL(entry->inst, false, KND_CREATED, repo, task, 0);
             KND_TASK_ERR("failed to export class inst GSL");
         }
         OUT("}", 1);
@@ -60,7 +60,7 @@ static int export_proc_declars(struct kndProcDeclar *decl, struct kndTask *task)
 }
 #endif
 
-static int stm_export_GSL(struct kndStatement *stm, struct kndTask *task)
+static int stm_export_GSL(struct kndStatement *stm, struct kndRepo *repo, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     int err;
@@ -69,7 +69,7 @@ static int stm_export_GSL(struct kndStatement *stm, struct kndTask *task)
     OUT(stm->schema_name, stm->schema_name_size);
 
     if (stm->declars) {
-        err = export_class_declars(stm->declars, task);                      RET_ERR();
+        err = export_class_declars(stm->declars, repo, task);                      RET_ERR();
     }
 
     OUT("}", 1);
@@ -120,7 +120,7 @@ static int clause_export_GSL(struct kndClause *clause, struct kndTask *task)
     return knd_OK;
 }
 
-static int sent_export_GSL(struct kndSentence *sent, struct kndTask *task)
+static int sent_export_GSL(struct kndSentence *sent, struct kndRepo *repo, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     int err;
@@ -129,7 +129,7 @@ static int sent_export_GSL(struct kndSentence *sent, struct kndTask *task)
     err = out->write(out, sent->seq->val, sent->seq->val_size);   RET_ERR();
 
     if (sent->stm) {
-        err = stm_export_GSL(sent->stm, task);           RET_ERR();
+        err = stm_export_GSL(sent->stm, repo, task);           RET_ERR();
     }
     if (sent->clause) {
         err = clause_export_GSL(sent->clause, task);           RET_ERR();
@@ -139,7 +139,7 @@ static int sent_export_GSL(struct kndSentence *sent, struct kndTask *task)
     return knd_OK;
 }
 
-int knd_text_export_GSL(struct kndText *self, struct kndTask *task, size_t unused_var(depth))
+int knd_text_export_GSL(struct kndText *self, struct kndRepo *repo, struct kndTask *task, size_t unused_var(depth))
 {
     struct kndOutput *out = task->out;
     struct kndPar *par;
@@ -181,7 +181,7 @@ int knd_text_export_GSL(struct kndText *self, struct kndTask *task, size_t unuse
     if (self->num_pars) {
         OUT("[p", strlen("[p"));
         FOREACH (par, self->pars) {
-            err = knd_par_export_GSL(par, task);
+            err = knd_par_export_GSL(par, repo, task);
             KND_TASK_ERR("failed to export a text paragraph");
         }
         OUT("]", 1);
@@ -189,7 +189,7 @@ int knd_text_export_GSL(struct kndText *self, struct kndTask *task, size_t unuse
     return knd_OK;
 }
 
-int knd_par_export_GSL(struct kndPar *par, struct kndTask *task)
+int knd_par_export_GSL(struct kndPar *par, struct kndRepo *repo, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndSentence *sent;
@@ -198,7 +198,7 @@ int knd_par_export_GSL(struct kndPar *par, struct kndTask *task)
     if (par->num_sents) {
         OUT("[s", strlen("[s"));
         FOREACH (sent, par->sents) {
-            err = sent_export_GSL(sent, task);
+            err = sent_export_GSL(sent, repo, task);
             KND_TASK_ERR("failed to export sentence GSL");
         }
         OUT("]", 1);
@@ -290,7 +290,7 @@ int knd_text_export_query_report(struct kndTask *task)
 }
 
 int knd_text_gloss_export_GSL(struct kndText *trs, bool use_locale,
-                              struct kndTask *task, size_t depth)
+                              struct kndRepo *repo, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     const char *locale = task->ctx->locale;

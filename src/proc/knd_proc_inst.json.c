@@ -24,7 +24,7 @@
 
 int knd_proc_inst_export_JSON(struct kndProcInst *self, bool unused_var(is_list_item),
                               knd_state_phase unused_var(phase),
-                              struct kndTask *task, size_t depth)
+                              struct kndRepo *repo, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     struct kndProcArgVar *var;
@@ -53,7 +53,7 @@ int knd_proc_inst_export_JSON(struct kndProcInst *self, bool unused_var(is_list_
             OUT(var->arg->name, var->arg->name_size);
             OUT("\"", 1);
             OUT(":", 1);
-            knd_proc_arg_var_export_JSON(var, task, depth + 2);
+            knd_proc_arg_var_export_JSON(var, repo, task, depth + 2);
             arg_count++;
         }
         OUT("}", 1);

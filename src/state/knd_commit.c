@@ -112,7 +112,8 @@ int knd_commit_new(struct kndCommit **result, struct kndMemPool *mempool)
     return knd_OK;
 }
 
-static int resolve_class_inst_commit(struct kndStateRef *state_refs, struct kndCommit *commit, struct kndTask *task)
+static int resolve_class_inst_commit(struct kndStateRef *state_refs, struct kndCommit *commit,
+                                     struct kndRepo *repo, struct kndTask *task)
 {
     struct kndState *state;
     struct kndClassInstEntry *entry;
@@ -127,7 +128,7 @@ static int resolve_class_inst_commit(struct kndStateRef *state_refs, struct kndC
         switch (state->phase) {
         case KND_CREATED:
             if (!entry->inst->is_resolved) {
-                err = knd_class_inst_resolve(entry->inst, task);
+                err = knd_class_inst_resolve(entry->inst, repo, task);
                 KND_TASK_ERR("failed to resolve class inst %.*s", entry->name_size, entry->name);
             }
             break;
@@ -140,7 +141,7 @@ static int resolve_class_inst_commit(struct kndStateRef *state_refs, struct kndC
     return knd_OK;
 }
 
-int knd_commit_dedup(struct kndCommit *commit, struct kndTask *unused_var(task))
+int knd_commit_dedup(struct kndCommit *commit, struct kndRepo *repo, struct kndTask *unused_var(task))
 {
     // struct kndState *state;
     struct kndClassEntry *entry;
@@ -152,8 +153,9 @@ int knd_commit_dedup(struct kndCommit *commit, struct kndTask *unused_var(task))
         }
         entry = ref->obj;
 
-        if (DEBUG_COMMIT_LEVEL_2)
-            knd_log(".. dedup class \"%.*s\"", entry->name_size, entry->name);
+        if (DEBUG_COMMIT_LEVEL_2) {
+            knd_log(".. dedup {cls %.*s}", entry->name_size, entry->name);
+        }
 
         //err = knd_class_dedup(entry->class, task);
         //KND_TASK_ERR("failed to dedup class \"%.*s\"", entry->name_size, entry->name);
@@ -169,7 +171,7 @@ int knd_commit_dedup(struct kndCommit *commit, struct kndTask *unused_var(task))
     return knd_OK;
 }
 
-int knd_commit_resolve(struct kndCommit *commit, struct kndTask *task)
+int knd_commit_resolve(struct kndCommit *commit, struct kndRepo *repo, struct kndTask *task)
 {
     struct kndState *state;
     struct kndProcEntry *proc_entry;
@@ -188,7 +190,7 @@ int knd_commit_resolve(struct kndCommit *commit, struct kndTask *task)
         state->commit = commit;
         if (!state->children) continue;
 
-        err = resolve_class_inst_commit(state->children, commit, task);
+        err = resolve_class_inst_commit(state->children, commit, repo, task);
         KND_TASK_ERR("failed to resolve commit of class insts");
     }
 
@@ -202,7 +204,7 @@ int knd_commit_resolve(struct kndCommit *commit, struct kndTask *task)
 
         /* proc resolving */
         if (!proc_entry->proc->is_resolved) {
-            err = knd_proc_resolve(proc_entry->proc, task);
+            err = knd_proc_resolve(proc_entry->proc, repo, task);
             KND_TASK_ERR("failed to resolve proc commit");
         }
     }

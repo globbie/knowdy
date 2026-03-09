@@ -26,16 +26,18 @@
 #define DEBUG_INST_IMPORT_LEVEL_TMP 1
 
 static gsl_err_t import_class_inst(struct kndClassInst *self, const char *rec,
-                                   size_t *total_size, struct kndTask *task);
+                                   size_t *total_size, struct kndRepo *repo, struct kndTask *task);
 
 struct LocalContext {
     struct kndClassInst *class_inst;
     struct kndTask *task;
+    struct kndRepo *repo;
 };
 
 static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
+    struct kndRepo *repo = ctx->repo;
     struct kndClassInst *self = ctx->class_inst;
     struct kndClassEntry *class_entry;
     struct kndClassInstEntry *entry = NULL;
@@ -47,7 +49,7 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
 
     assert(self->entry->is_a != NULL);
 
-    err = knd_class_acquire(self->entry->is_a, &c, task);
+    err = knd_class_acquire(self->entry->is_a, &c, repo, task);
     if (err) {
         KND_TASK_LOG("failed to acquire {cls %.*s}",
                      self->entry->is_a->name_size, self->entry->is_a->name);
@@ -75,7 +77,7 @@ static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)
             return make_gsl_err(gsl_FAIL);
             }*/
 
-        err = knd_class_acquire(class_entry, &inner_c, task);
+        err = knd_class_acquire(class_entry, &inner_c, repo, task);
         if (err) {
             KND_TASK_LOG("failed to acquire {cls %.*s}", class_entry->name_size, class_entry->name);
             return make_gsl_err_external(err);
@@ -171,13 +173,14 @@ static gsl_err_t check_empty_inst(void *obj, const char *unused_var(name), size_
 }
 
 static gsl_err_t import_class_inst(struct kndClassInst *self, const char *rec, size_t *total_size,
-                                   struct kndTask *task)
+                                   struct kndRepo *repo, struct kndTask *task)
 {
     if (DEBUG_INST_IMPORT_LEVEL_2)
         knd_log(".. class inst to import REC: %.*s", 128, rec);
 
     struct LocalContext ctx = {
         .class_inst = self,
+        .repo = repo,
         .task = task
     };
     struct gslTaskSpec specs[] = {
@@ -241,14 +244,14 @@ static int generate_uniq_inst_name(struct kndClassInst *inst, struct kndTask *ta
     return knd_OK;
 }
 
-static int register_by_name(struct kndClassInstEntry *entry, struct kndTask *task)
+static int register_by_name(struct kndClassInstEntry *entry, struct kndRepo *repo, struct kndTask *task)
 {
     struct kndDict *name_idx;
     struct kndMemPool *mempool = task->mempool;
     struct kndClass *c;
     int err;
 
-    err = knd_class_acquire(entry->is_a, &c, task);
+    err = knd_class_acquire(entry->is_a, &c, repo, task);
     KND_TASK_ERR("failed to acquire class %.*s", entry->is_a->name_size, entry->is_a->name);
 
     name_idx = c->inst_name_idx;
@@ -266,7 +269,7 @@ static int register_by_name(struct kndClassInstEntry *entry, struct kndTask *tas
 }
 
 int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *total_size,
-                          struct kndTask *task)
+                          struct kndRepo *repo, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
     struct kndClass *c;
@@ -284,8 +287,8 @@ int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *
                 entry->name_size, entry->name,  64, rec, task->type);
     }
 
-    err = knd_class_acquire(entry, &c, task);
-    KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
+    err = knd_class_acquire(entry, &c, repo, task);
+    KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);
    
     switch (task->type) {
     case KND_TASK_BULK_LOAD:
@@ -309,7 +312,7 @@ int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *
     inst->entry = inst_entry;
     inst_entry->inst = inst;
 
-    parser_err = import_class_inst(inst, rec, total_size, task);
+    parser_err = import_class_inst(inst, rec, total_size, repo, task);
     if (parser_err.code) return parser_err.code;
 
     /* reassign glosses if any */
@@ -335,7 +338,7 @@ int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *
                     entry->name_size, entry->name, inst->name_size, inst->name,
                     inst->entry->numid);
         /* register class inst by name */
-        err = register_by_name(inst_entry, task);
+        err = register_by_name(inst_entry, repo, task);
         KND_TASK_ERR("failed to register class inst by name");
         return knd_OK;
 

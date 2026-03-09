@@ -33,6 +33,7 @@ struct LocalContext {
     struct kndClass *class;
     struct kndClassInst *inst;
     struct kndTask *task;
+    struct kndRepo *repo;
 };
 
 static gsl_err_t run_get_inst(void *obj, const char *name, size_t name_size)
@@ -257,6 +258,7 @@ static gsl_err_t present_inst_selection(void *obj, const char *unused_var(val),
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
+    struct kndRepo *repo = ctx->repo;
     struct kndOutput *out = task->out;
     struct kndClass *c = ctx->class;
     int err;
@@ -298,7 +300,7 @@ static gsl_err_t present_inst_selection(void *obj, const char *unused_var(val),
 
     if (task->ctx->max_depth == 0) task->ctx->max_depth = 1;
 
-    err = knd_class_inst_export(ctx->inst, task->ctx->format, false, KND_SELECTED, task);
+    err = knd_class_inst_export(ctx->inst, task->ctx->format, false, KND_SELECTED, repo, task);
     if (err) return make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);

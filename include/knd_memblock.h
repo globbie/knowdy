@@ -3,6 +3,7 @@
 #include "knd_config.h"
 
 struct kndMemBlock;
+struct kndTask;
 
 struct kndMemBlock {
     size_t numid;
@@ -27,3 +28,5 @@ int knd_memblock_write(struct kndMemBlock *self, const char *buf, size_t buf_siz
                        const char **result);
 int knd_memblock_read_file(struct kndMemBlock *self, const char *filename, size_t filename_size);
 void knd_memblock_free(struct kndMemBlock *self);
+
+int knd_memblock_fetch(struct kndMemBlock **result, size_t space_required, struct kndTask *task);

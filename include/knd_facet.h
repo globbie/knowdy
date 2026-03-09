@@ -42,12 +42,15 @@ static const char* const knd_facet_type_names[] = {
     "cls"
 };
 
-typedef int (*knd_facet_key_get_cb)(void *elem, void **result_key, struct kndTask *task);
-typedef int (*knd_facet_key_encode_cb)(void *key, void *ctx, struct kndTask *task);
+typedef int (*knd_facet_key_get_cb)(void *elem, void **result_key,
+                                    struct kndRepo *repo, struct kndTask *task);
+typedef int (*knd_facet_key_encode_cb)(void *key, void *ctx,
+                                       struct kndRepo *repo, struct kndTask *task);
 
 typedef void (*knd_facet_key_str_cb)(void *key, size_t depth);
 typedef int (*knd_facet_hash_cb)(void *parent_val, void *curr_val, void *term_val,
-                                 void **result, size_t *numval, struct kndTask *task);
+                                 void **result, size_t *numval,
+                                 struct kndRepo *repo, struct kndTask *task);
 
 typedef int (*knd_facet_elem_id_cb)(void *elem, const char **key, size_t *key_size);
 
@@ -124,21 +127,26 @@ int knd_facet_hash_spec_new(struct kndFacetHashSpec **result, knd_facet_type fac
                             knd_facet_hash_cb hash_cb,
                             struct kndMemPool *mempool);
 
-int knd_facet_add(struct kndFacet *facet, void *elem, struct kndTask *task);
+int knd_facet_add(struct kndFacet *facet, void *elem, struct kndRepo *repo, struct kndTask *task);
 int knd_facet_get(struct kndFacet *facet, void *key,
-                  struct kndFacet **result, struct kndTask *task);
+                  struct kndFacet **result,
+                   struct kndRepo *repo, struct kndTask *task);
 
 int knd_facet_map(struct kndFacet *facet, void *key,
                   struct kndSetRange *range,
                   filter_cb_t filter_cb, void *filter_ctx,
-                  map_cb_t map_cb, void *map_ctx, struct kndTask *task);
+                  map_cb_t map_cb, void *map_ctx,
+                  struct kndRepo *repo, struct kndTask *task);
 
 void knd_facet_str(struct kndFacet *facet, map_cb_t map_cb, struct kndTask *task, size_t depth);
 
-int knd_facet_acquire(struct kndAttr *attr, struct kndFacet **result, struct kndTask *task);
+int knd_facet_acquire(struct kndAttr *attr, struct kndFacet **result,
+                      struct kndRepo *repo, struct kndTask *task);
 
 int knd_facet_leaf_marshall(struct kndFacet *facet, knd_attr_type attr_type,
                             struct kndStorageLeaf *leaf, struct kndSetRange *range,
-                            size_t *output_size, struct kndTask *task);
+                            size_t *output_size, struct kndRepo *repo, struct kndTask *task);
 
 int knd_facet_read(struct kndFacet *facet, knd_attr_type attr_type, struct kndTask *task);
+
+int knd_facet_cls_key_get(void *elem, void **result, struct kndRepo *repo, struct kndTask *task);

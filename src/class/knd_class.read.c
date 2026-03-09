@@ -48,9 +48,9 @@
 #define DEBUG_CLASS_READ_LEVEL_TMP 1
 
 struct LocalContext {
+    struct kndRepo *repo;
     struct kndTask *task;
     struct kndRepoSnapshot *snapshot;
-    struct kndRepo *repo;
     struct kndAttrStm *attr_stm;
     struct kndClassEntry *entry;
     struct kndClass *cls;
@@ -111,6 +111,7 @@ static gsl_err_t set_baseclass(void *obj, const char *id, size_t id_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
+    struct kndRepo *repo = ctx->repo;
     struct kndClassBasePred *base_pred = ctx->base_pred;
     struct kndClassEntry *entry;
     int err;
@@ -121,7 +122,7 @@ static gsl_err_t set_baseclass(void *obj, const char *id, size_t id_size)
     memcpy(base_pred->id, id, id_size);
     base_pred->id_size = id_size;
 
-    err = knd_get_cls_entry_by_id(id, id_size, &entry, task);
+    err = knd_get_cls_entry_by_id(repo, id, id_size, &entry, task);
     if (err) {
         KND_TASK_LOG("{cls %.*s} not found", id_size, id);
         return make_gsl_err(gsl_FAIL);
@@ -136,6 +137,7 @@ static gsl_err_t set_cls_ref(void *obj, const char *id, size_t id_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
+    struct kndRepo *repo = ctx->repo;
     struct kndClassRef *ref = ctx->cls_ref;
     struct kndClassEntry *entry;
     int err;
@@ -148,7 +150,7 @@ static gsl_err_t set_cls_ref(void *obj, const char *id, size_t id_size)
 
     ctx->cls_ref = ref;
 
-    err = knd_get_cls_entry_by_id(id, id_size, &entry, task);
+    err = knd_get_cls_entry_by_id(repo, id, id_size, &entry, task);
     if (err) {
         KND_TASK_LOG("{cls %.*s} not found", id_size, id);
         return make_gsl_err(gsl_FAIL);
@@ -201,13 +203,11 @@ static gsl_err_t set_cls_entry_name(void *obj, const char *name, size_t name_siz
     struct LocalContext *ctx = obj;
     struct kndClassEntry *entry = ctx->entry;
     struct kndTask *task = ctx->task;
-    struct kndRepoSnapshot *s = ctx->snapshot;
     struct kndMemBlock *memblock;
     const char *b;
     int err;
 
-    /* make a mem copy of class names */
-    err = knd_repo_snapshot_fetch_memblock(s, name_size, &memblock, task);
+    err = knd_memblock_fetch(&memblock, name_size, task);
     if (err) {
         KND_TASK_LOG("failed to fetch a memblock to save {cls-entry-name %.*s}",
                      entry->name_size, entry->name);
@@ -506,7 +506,7 @@ static gsl_err_t read_glosses(void *obj, const char *rec, size_t *total_size)
     struct kndClass *self = ctx->cls;
     gsl_err_t parser_err;
 
-    parser_err = knd_read_gloss_array((void*)task, rec, total_size);
+    parser_err = knd_read_gloss_array(obj, rec, total_size);
     if (parser_err.code) return *total_size = 0, parser_err;
 
     if (task->ctx->tr) {
@@ -516,7 +516,8 @@ static gsl_err_t read_glosses(void *obj, const char *rec, size_t *total_size)
     return make_gsl_err(gsl_OK);
 }
 
-int knd_class_read(struct kndClass *self, const char *rec, size_t *total_size, struct kndTask *task)
+int knd_class_read(struct kndClass *self, const char *rec, size_t *total_size,
+                   struct kndRepo *repo, struct kndTask *task)
 {
     if (DEBUG_CLASS_READ_LEVEL_2) {
         knd_log(".. reading {cls %.*s} GSP {rec %.*s}",
@@ -532,7 +533,7 @@ int knd_class_read(struct kndClass *self, const char *rec, size_t *total_size, s
     struct LocalContext ctx = {
         .task = task,
         .cls = self,
-        .repo = task->repo
+        .repo = repo
     };
 
     struct gslTaskSpec specs[] = {
@@ -608,10 +609,12 @@ int knd_class_read(struct kndClass *self, const char *rec, size_t *total_size, s
 
 int knd_class_unmarshall(const char *unused_var(elem_id), size_t unused_var(elem_id_size),
                          const char *rec, size_t rec_size,
-                         void *ctx, void **result, struct kndTask *task)
+                         void *ctx_obj, void **result, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
-    struct kndClassEntry *entry = ctx;
+    struct LocalContext *ctx = ctx_obj;
+    struct kndClassEntry *entry = ctx->entry;
+    struct kndRepo *repo = ctx->repo;
     struct kndClass *c;
     size_t total_size = rec_size;
     int err;
@@ -632,7 +635,7 @@ int knd_class_unmarshall(const char *unused_var(elem_id), size_t unused_var(elem
     c->name = entry->name;
     c->name_size = entry->name_size;
 
-    err = knd_class_read(c, rec, &total_size, task);
+    err = knd_class_read(c, rec, &total_size, repo, task);
     KND_TASK_ERR("failed to read GSP of {cls %.*s}", c->name_size, c->name);
 
     switch (task->type) {
@@ -652,7 +655,7 @@ int knd_class_unmarshall(const char *unused_var(elem_id), size_t unused_var(elem
 
 int knd_class_entry_unmarshall(const char *elem_id, size_t elem_id_size,
                                const char *rec, size_t rec_size,
-                               void *unused_var(ctx), size_t *total_size,
+                               void *ctx, size_t *total_size,
                                void **result, struct kndTask *task)
 {
     struct kndSet *cls_idx = task->idxs.cls_idx;
@@ -660,23 +663,22 @@ int knd_class_entry_unmarshall(const char *elem_id, size_t elem_id_size,
     gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_CLASS_READ_LEVEL_TMP) {
-        knd_log(">> unmarshall cls entry {rec  %.*s}", rec_size, rec);
+    if (DEBUG_CLASS_READ_LEVEL_3) {
+        knd_log(">> unmarshall cls entry {rec %.*s}", rec_size, rec);
     }
 
     err = knd_class_entry_new(&entry, task->mempool);
     KND_TASK_ERR("failed to alloc a cls entry");
 
-    struct LocalContext ctx = {
+    struct LocalContext local_ctx = {
         .task = task,
-        .entry = entry,
-        .snapshot = task->snapshot
+        .entry = entry
     };
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = set_cls_entry_name,
-          .obj = &ctx
+          .obj = &local_ctx
         },
         { .name = "id",
           .name_size = strlen("id"),
@@ -691,10 +693,14 @@ int knd_class_entry_unmarshall(const char *elem_id, size_t elem_id_size,
     knd_calc_num_id(entry->id, entry->id_size, &entry->numid);
 
     err = knd_set_add(cls_idx, entry->id, entry->id_size, (void*)entry, task);
-    KND_TASK_ERR("{cls-entry %.*s} already registered?", entry->id_size, entry->id);
+    KND_TASK_ERR("failed to register {cls-entry %.*s} ", entry->name_size, entry->name);
 
-    //*seq = entry->name;
-    //*seq_size = entry->name_size;
+    // TODO cls name idx
+
+    if (DEBUG_CLASS_READ_LEVEL_TMP) {
+        knd_log("++ {cls %.*s {id %.*s}} unmarshalled",
+                entry->name_size, entry->name, entry->id_size, entry->id);
+    }
 
     *result = entry;
     return knd_OK;

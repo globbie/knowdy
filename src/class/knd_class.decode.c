@@ -134,7 +134,7 @@ static int inherit_attrs(struct kndClass *c, struct kndClass *base, struct kndTa
     return knd_OK;
 }
 
-static int decode_baseclasses(struct kndClass *c, struct kndTask *task)
+static int decode_baseclasses(struct kndClass *c, struct kndRepo *repo, struct kndTask *task)
 {
     struct kndClassBasePred *bp;
     struct kndClass *base;
@@ -152,13 +152,12 @@ static int decode_baseclasses(struct kndClass *c, struct kndTask *task)
     }
 
     FOREACH (bp, c->base_preds) {
-        err = knd_class_acquire(bp->entry, &base, task);
+        err = knd_class_acquire(bp->entry, &base, repo, task);
         KND_TASK_ERR("failed to acquire {base %.*s} of {cls %.*s}",
-                     bp->entry->name_size, bp->entry->name,
-                     c->name_size, c->name);
+                     bp->entry->name_size, bp->entry->name, c->name_size, c->name);
 
         if (base->phase < KND_CLASS_BASE_DECODED) {
-            err = decode_baseclasses(base, task);
+            err = decode_baseclasses(base, repo, task);
             KND_TASK_ERR("failed to decode base classes of {cls %.*s}",
                          base->name_size, base->name);
         }
@@ -173,7 +172,7 @@ static int decode_baseclasses(struct kndClass *c, struct kndTask *task)
             continue;
         }
 
-        err = knd_class_link_base(c, base, task);
+        err = knd_class_link_base(c, base, repo, task);
         KND_TASK_ERR("failed to link {cls %.*s} to base {cls %.*s}",
                      c->name_size, c->name, base->name_size, base->name);
     }
@@ -203,7 +202,7 @@ static int register_attr(struct kndClass *self, struct kndAttr *attr, struct knd
     return knd_OK;
 }
 
-int knd_class_decode(struct kndClass *c, struct kndTask *task)
+int knd_class_decode(struct kndClass *c, struct kndRepo *repo, struct kndTask *task)
 {
     struct kndClassBasePred *bp;
     struct kndText *t;
@@ -242,7 +241,7 @@ int knd_class_decode(struct kndClass *c, struct kndTask *task)
     }
 
     if (c->phase < KND_CLASS_BASE_DECODED) {
-        err = decode_baseclasses(c, task);
+        err = decode_baseclasses(c, repo, task);
         KND_TASK_ERR("failed to decode base classes of {cls %.*s}", c->name_size, c->name);
     }
 
@@ -255,17 +254,16 @@ int knd_class_decode(struct kndClass *c, struct kndTask *task)
     }
 
     FOREACH (bp, c->base_preds) {
-        err = knd_class_acquire(bp->entry, &base, task);
+        err = knd_class_acquire(bp->entry, &base, repo, task);
         KND_TASK_ERR("failed to acquire {base %.*s} of {cls %.*s}",
-                     bp->entry->name_size, bp->entry->name,
-                     c->name_size, c->name);
+                     bp->entry->name_size, bp->entry->name, c->name_size, c->name);
 
         err = inherit_attrs(c, base, task);
         KND_TASK_ERR("failed to inherit attrs from {cls %.*s}",
                      base->name_size, base->name);
 
         if (bp->attr_stms) {
-            err = knd_decode_attr_stms(base, bp->attr_stms, task);
+            err = knd_decode_attr_stms(base, bp->attr_stms, repo, task);
             KND_TASK_ERR("failed to decode attr stms of {cls %.*s}",
                          base->name_size, base->name);
         }

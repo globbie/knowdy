@@ -233,10 +233,11 @@ int knd_proc_inst_entry_new(struct kndProcInstEntry **result, struct kndMemPool 
 
 void knd_proc_str(struct kndProc *self, size_t depth);
 void knd_proc_inst_str(struct kndProcInst *self, size_t depth);
+
 int knd_proc_inst_export_GSL(struct kndProcInst *self, bool is_list_item, knd_state_phase phase,
-                             struct kndTask *task, size_t depth);
+                             struct kndRepo *repo, struct kndTask *task, size_t depth);
 int knd_proc_inst_export_JSON(struct kndProcInst *self, bool is_list_item, knd_state_phase phase,
-                              struct kndTask *task, size_t depth);
+                              struct kndRepo *repo, struct kndTask *task, size_t depth);
 
 int knd_import_proc_inst(struct kndProcEntry *self, const char *rec, size_t *total_size, struct kndTask *task);
 int knd_inner_proc_import(struct kndProc *self, const char *rec, size_t *total_size, struct kndRepo *repo,
@@ -251,28 +252,25 @@ int knd_resolve_proc_ref(const char *name, size_t name_size,
                          struct kndProc *unused_var(base), struct kndProcEntry **result,
                          struct kndTask *unused_var(task));
 
-int knd_proc_export(struct kndProc *self, knd_format format, struct kndTask *task, struct kndOutput *out);
+int knd_proc_export(struct kndProc *self, knd_format format, struct kndRepo *repo, struct kndTask *task, struct kndOutput *out);
 
-gsl_err_t knd_proc_select(struct kndRepo *repo, const char *rec, size_t *total_size, struct kndTask *task);
+gsl_err_t knd_proc_select(const char *rec, size_t *total_size, struct kndRepo *repo, struct kndTask *task);
 
 int knd_proc_entry_clone(struct kndProcEntry *self, struct kndRepo *target_repo, struct kndProcEntry **result, struct kndTask *task);
 
-int knd_proc_resolve(struct kndProc *self, struct kndTask *task);
+int knd_proc_resolve(struct kndProc *self, struct kndRepo *repo, struct kndTask *task);
 //int knd_proc_compute(struct kndProc *self, struct kndTask *task);
 
 // knd_proc.import.c
-gsl_err_t knd_proc_import(struct kndRepo *repo, const char *rec, size_t *total_size, struct kndTask *task);
+gsl_err_t knd_proc_import(const char *rec, size_t *total_size, struct kndRepo *repo, struct kndTask *task);
 
 // knd_proc.gsl.c
-int knd_proc_export_GSL(struct kndProc *self,
-                        struct kndTask *task,
-                        bool is_list_item,
-                        size_t depth);
+int knd_proc_export_GSL(struct kndProc *self, struct kndRepo *repo,
+                        struct kndTask *task, bool is_list_item, size_t depth);
 // knd_proc.json.c
 int knd_proc_export_JSON(struct kndProc *self,
-                         struct kndTask *task,
-                         bool is_list_item,
-                         size_t depth);
+                         struct kndRepo *repo, struct kndTask *task,
+                         bool is_list_item, size_t depth);
 
 // knd_proc.svg.c
 int knd_proc_export_SVG(struct kndProc *self,

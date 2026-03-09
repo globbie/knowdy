@@ -46,18 +46,19 @@
 #define DEBUG_CLASS_IMPORT_LEVEL_TMP 1
 
 struct LocalContext {
+    struct kndRepo *repo;
     struct kndTask *task;
     struct kndClass *class;
     struct kndClassBasePred *base_pred;
 };
 
-static int register_cls_entry(struct kndClass *c, struct kndTask *task)
+static int register_cls_entry(struct kndClass *c, struct kndRepo *repo, struct kndTask *task)
 {
     struct kndCharSeq *seq;
     struct kndClassEntry *entry;
     int err;
 
-    err = knd_get_cls_entry_by_name(c->name, c->name_size, &entry, task);
+    err = knd_get_cls_entry_by_name(repo, c->name, c->name_size, &entry, task);
     switch (err) {
     case knd_OK:
         return knd_CONFLICT;
@@ -92,13 +93,14 @@ static gsl_err_t set_cls_name(void *obj, const char *name, size_t name_size)
     struct LocalContext *ctx = obj;
     struct kndClass *c = ctx->class;
     struct kndTask *task = ctx->task;
+    struct kndRepo *repo = ctx->repo;
     int err;
 
     c->name = name;
     c->name_size = name_size;
     knd_build_conc_abbr(name, name_size, c->abbr, &c->abbr_size);
 
-    err = register_cls_entry(c, task);
+    err = register_cls_entry(c, repo, task);
     if (err) return make_gsl_err_external(err);
 
     if (DEBUG_CLASS_IMPORT_LEVEL_3) {
@@ -150,6 +152,7 @@ static gsl_err_t parse_attr(void *obj, const char *name, size_t name_size,
     struct LocalContext *ctx = obj;
     struct kndClass *self = ctx->class;
     struct kndTask *task = ctx->task;
+    struct kndRepo *repo = ctx->repo;
     struct kndAttr *attr;
     struct kndQuantAttr *quant_attr;
     struct kndClassRefAttr *cls_ref_attr;
@@ -231,7 +234,7 @@ static gsl_err_t parse_attr(void *obj, const char *name, size_t name_size,
         break;
     }
 
-    parser_err = knd_attr_import(attr, task, rec, total_size);
+    parser_err = knd_attr_import(attr, rec, total_size, repo, task);
     if (parser_err.code) {
         return parser_err;
     }
@@ -417,7 +420,7 @@ static gsl_err_t parse_uniq_attr_constraint(void *obj, const char *rec, size_t *
 }
 
 int knd_class_import(const char *rec, size_t *total_size,
-                     struct kndClassEntry **result, struct kndTask *task)
+                     struct kndClassEntry **result, struct kndRepo *repo, struct kndTask *task)
 {
     struct kndClass *c;
     gsl_err_t parser_err;
@@ -431,6 +434,7 @@ int knd_class_import(const char *rec, size_t *total_size,
     KND_TASK_ERR("failed to alloc a class");
 
     struct LocalContext ctx = {
+        .repo = repo,
         .task = task,
         .class = c
     };
@@ -449,7 +453,7 @@ int knd_class_import(const char *rec, size_t *total_size,
           .name = "gloss",
           .name_size = strlen("gloss"),
           .parse = knd_parse_gloss_array,
-          .obj = task
+          .obj = &ctx
         },
         { .name = "uniq",
           .name_size = strlen("uniq"),

@@ -21,9 +21,14 @@
 #define DEBUG_TEXT_IMPORT_LEVEL_3 0
 #define DEBUG_TEXT_IMPORT_LEVEL_TMP 1
 
-struct LocalContext {
-    struct kndTask       *task;
+struct ExternalContext {
     struct kndRepo       *repo;
+    struct kndTask       *task;
+};
+
+struct LocalContext {
+    struct kndRepo       *repo;
+    struct kndTask       *task;
     struct kndText       *text;
     struct kndPar        *par;
     struct kndSentence   *sent;
@@ -48,6 +53,7 @@ static gsl_err_t set_gloss_value(void *obj, const char *val, size_t val_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
+    //struct kndRepo *repo = ctx->repo;
     int err;
 
     assert(val_size != 0);
@@ -79,7 +85,9 @@ static gsl_err_t set_gloss_abbr(void *obj, const char *val, size_t val_size)
 
 static gsl_err_t parse_gloss_item(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndTask *task = obj;
+    struct ExternalContext *ext_ctx = obj;
+    struct kndTask *task = ext_ctx->task;
+    struct kndRepo *repo = ext_ctx->repo;
     struct kndText *t;
     int err;
 
@@ -90,9 +98,10 @@ static gsl_err_t parse_gloss_item(void *obj, const char *rec, size_t *total_size
         KND_TASK_LOG("failed to alloc a text");
         return *total_size = 0, make_gsl_err_external(err);
     }
+
     struct LocalContext ctx = {
         .task = task,
-        .repo = task->repo,
+        .repo = repo,
         .text = t
     };
 
@@ -133,13 +142,12 @@ static gsl_err_t parse_gloss_item(void *obj, const char *rec, size_t *total_size
 
 gsl_err_t knd_parse_gloss_array(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndTask *task = obj;
     gsl_err_t parser_err;
 
     struct gslTaskSpec item_spec = {
         .is_list_item = true,
         .parse = parse_gloss_item,
-        .obj = task
+        .obj = obj
     };
 
     parser_err = gsl_parse_array(&item_spec, rec, total_size);
@@ -182,7 +190,7 @@ static gsl_err_t set_synode_spec_class(void *obj, const char *name, size_t name_
     spec->name = name;
     spec->name_size = name_size;
 
-    err = knd_get_cls_by_name(name, name_size, &spec->class, ctx->task);
+    err = knd_get_cls_by_name(ctx->repo, name, name_size, &spec->class, ctx->task);
     if (err) {
         KND_TASK_LOG("no such {cls %.*s}", name_size, name);
         return make_gsl_err(gsl_NO_MATCH);
@@ -200,7 +208,7 @@ static gsl_err_t set_synode_role(void *obj, const char *name, size_t name_size)
     synode->name = name;
     synode->name_size = name_size;
 
-    err = knd_get_cls_by_name(name, name_size, &synode->role, ctx->task);
+    err = knd_get_cls_by_name(ctx->repo, name, name_size, &synode->role, ctx->task);
     if (err) {
         KND_TASK_LOG("no such {cls %.*s}", name_size, name);
         return make_gsl_err(gsl_NO_MATCH);
@@ -534,7 +542,7 @@ static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_si
 
     /* switch to statement's local scope */
     task->type = KND_TASK_INNER;
-    parser_err = knd_class_select(task->repo, rec, total_size, task);
+    parser_err = knd_class_select(rec, total_size, ctx->repo, task);
     task->type = orig_task_type;
 
     return parser_err;
@@ -543,13 +551,14 @@ static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_si
 static gsl_err_t parse_proc_select(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
+    struct kndRepo *repo = ctx->repo;
     struct kndTask *task = ctx->task;
     knd_task_type orig_task_type = task->type;
     gsl_err_t parser_err;
 
     /* switch to statement's local scope */
     task->type = KND_TASK_INNER;
-    parser_err = knd_proc_select(task->repo, rec, total_size, task);
+    parser_err = knd_proc_select(rec, total_size, repo, task);
     task->type = orig_task_type;
     return parser_err;
 }
@@ -808,7 +817,8 @@ static gsl_err_t parse_translation_array(void *obj, const char *rec, size_t *tot
     return gsl_parse_array(&item_spec, rec, total_size);
 }
 
-gsl_err_t knd_statement_import(struct kndStatement *stm, const char *rec, size_t *total_size, struct kndTask *task)
+gsl_err_t knd_statement_import(struct kndStatement *stm, const char *rec, size_t *total_size,
+                               struct kndTask *task)
 {
     if (DEBUG_TEXT_IMPORT_LEVEL_2)
         knd_log(".. import statement: \"%.*s\"", 64, rec);
@@ -848,7 +858,8 @@ gsl_err_t knd_statement_import(struct kndStatement *stm, const char *rec, size_t
     return make_gsl_err(gsl_OK);
 }
 
-gsl_err_t knd_text_import(struct kndText *self, const char *rec, size_t *total_size, struct kndTask *task)
+gsl_err_t knd_text_import(struct kndText *self, const char *rec, size_t *total_size,
+                          struct kndRepo *repo, struct kndTask *task)
 {
     if (DEBUG_TEXT_IMPORT_LEVEL_2)
         knd_log(".. import text: \"%.*s\"", 128, rec);

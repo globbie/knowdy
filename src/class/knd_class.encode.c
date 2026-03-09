@@ -116,8 +116,10 @@ static int export_glosses(struct kndClass *self, struct kndOutput *out)
     return knd_OK;
 }
 
-static int export_base_preds(struct kndClass *self, struct kndTask *task, struct kndOutput *out)
+static int export_base_preds(struct kndClass *self,
+                             struct kndRepo *repo, struct kndTask *task)
 {
+    struct kndOutput *out = task->out;
     struct kndClassBasePred *bp;
     int err;
 
@@ -133,7 +135,7 @@ static int export_base_preds(struct kndClass *self, struct kndTask *task, struct
 
         OUT(bp->entry->id, bp->entry->id_size);
         if (bp->attr_stms) {
-            err = knd_attr_stms_export_GSP(bp->attr_stms, out, task, 0);
+            err = knd_attr_stms_export_GSP(bp->attr_stms, repo, task, 0);
             if (err) return err;
         }
         OUTC('}');
@@ -213,6 +215,7 @@ static int export_descendants(struct kndClass *self, struct kndTask *task)
 
 static int export_class_body_commits(struct kndClass *self,
                                      struct kndClassCommit *unused_var(class_commit),
+                                     struct kndRepo *repo,
                                      struct kndTask *task)
 {
     struct kndOutput *out = task->out;
@@ -238,12 +241,13 @@ static int export_class_body_commits(struct kndClass *self,
     }
 
     if (self->base_preds) {
-        err = export_base_preds(self, task, out);                                   RET_ERR();
+        err = export_base_preds(self, repo, task);
+        RET_ERR();
     }
 
     if (self->attrs) {
         FOREACH (attr, self->attrs) {
-            err = knd_attr_export(attr, KND_FORMAT_GSP, task);
+            err = knd_attr_export(attr, KND_FORMAT_GSP, repo, task);
             if (err) return err;
         }
     }
@@ -278,7 +282,8 @@ static int export_class_inst_commits(struct kndClass *unused_var(self), struct k
 }
 #endif
 
-int knd_class_export_commits_GSP(struct kndClass *self, struct kndClassCommit *class_commit, struct kndTask *task)
+int knd_class_export_commits_GSP(struct kndClass *self, struct kndClassCommit *class_commit,
+                                 struct kndRepo *repo, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndCommit *commit = class_commit->commit;
@@ -300,7 +305,7 @@ int knd_class_export_commits_GSP(struct kndClass *self, struct kndClassCommit *c
         //err = out->write(out, state->id, state->id_size);                         RET_ERR();
 
         /* any commits of the class body? */
-        err = export_class_body_commits(self, class_commit, task);                 RET_ERR();
+        err = export_class_body_commits(self, class_commit, repo, task);                 RET_ERR();
     }
     /*    if (self->inst_states) {
         state = self->inst_states;
@@ -314,7 +319,7 @@ int knd_class_export_commits_GSP(struct kndClass *self, struct kndClassCommit *c
     return knd_OK;
 }
 
-int knd_class_export_GSP(struct kndClass *self, struct kndTask *task)
+int knd_class_export_GSP(struct kndClass *self, struct kndRepo *repo, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     char idbuf[KND_ID_SIZE];
@@ -341,13 +346,13 @@ int knd_class_export_GSP(struct kndClass *self, struct kndTask *task)
     }
 
     if (self->base_preds) {
-        err = export_base_preds(self, task, out);
+        err = export_base_preds(self, repo, task);
         KND_TASK_ERR("failed to export baseclass vars");
     }
 
     if (self->attrs) {
         FOREACH (attr, self->attrs) {
-            err = knd_attr_export(attr, KND_FORMAT_GSP, task);
+            err = knd_attr_export(attr, KND_FORMAT_GSP, repo, task);
             KND_TASK_ERR("failed to export attr");
         }
     }
@@ -413,17 +418,18 @@ int knd_class_name_marshall(void *elem, void *unused_var(ctx),
 }
 
 int knd_class_marshall(void *elem, void *unused_var(ctx),
-                       struct kndStorageLeaf *leaf, size_t *output_size, struct kndTask *task)
+                       struct kndStorageLeaf *leaf, size_t *output_size,
+                       struct kndRepo *repo, struct kndTask *task)
 {
     struct kndClassEntry *entry = elem;
     struct kndClass *c;
     struct kndOutput *out = task->out;
     int err;
 
-    err = knd_class_acquire(entry, &c, task);
+    err = knd_class_acquire(entry, &c, repo, task);
     KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);
 
-    err = knd_class_export_GSP(c, task);
+    err = knd_class_export_GSP(c, repo, task);
     KND_TASK_ERR("failed to export GSP of {cls %.*s}", c->name_size, c->name);
 
     if (out->buf_size > leaf->max_size - leaf->curr_size) {
@@ -447,7 +453,8 @@ int knd_class_marshall(void *elem, void *unused_var(ctx),
     return knd_OK;
 }
 
-int knd_cls_facet_key_encode(void *key, void *unused_var(ctx), struct kndTask *task)
+int knd_cls_facet_key_encode(void *key, void *unused_var(ctx),
+                             struct kndRepo *unused_var(repo), struct kndTask *task)
 {
     struct kndClassEntry *entry = key;
     struct kndOutput *out = task->out;

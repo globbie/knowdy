@@ -99,7 +99,8 @@ static int get_immediate_attr(struct kndClass *owner, const char *id, size_t id_
 }
 
 int knd_attr_find(struct kndClass *cls, const char *name, size_t name_size,
-                  struct kndAttr **result, struct kndTask *task)
+                  struct kndAttr **result,
+                  struct kndRepo *repo, struct kndTask *task)
 {
     struct kndDict *attr_name_idx = task->idxs.attr_name_idx;
     struct kndAttrRef *refs, *ref = NULL;
@@ -137,7 +138,7 @@ int knd_attr_find(struct kndClass *cls, const char *name, size_t name_size,
             break;
         }
 
-        err = knd_class_acquire(entry, &c, task);
+        err = knd_class_acquire(entry, &c, repo, task);
         KND_TASK_ERR("failed to acquire {cls-entry %.*s}", entry->name_size, entry->name);
 
         err = knd_class_is_base(c, cls);
@@ -233,13 +234,13 @@ int knd_attr_register(struct kndAttr *attr, struct kndClass *cls, struct kndTask
     return knd_OK;
 }
 
-int knd_attr_export(struct kndAttr *self, knd_format format, struct kndTask *task)
+int knd_attr_export(struct kndAttr *self, knd_format format, struct kndRepo *repo, struct kndTask *task)
 {
     switch (format) {
     case KND_FORMAT_JSON:
-        return knd_attr_export_JSON(self, task, 0);
+        return knd_attr_export_JSON(self, repo, task, 0);
     case KND_FORMAT_GSP:
-        return knd_attr_export_GSP(self, task);
+        return knd_attr_export_GSP(self, repo, task);
     default:
         break;
     }
@@ -280,6 +281,7 @@ int knd_cls_inner_attr_new(struct kndClassInnerAttr **result,
                                   knd_facet_cls_key_str,
                                   knd_facet_cls_hash, mempool);
     if (err) return err;
+
     append_inner_hash_spec(inner, spec);
 
     *result = inner;
@@ -287,7 +289,8 @@ int knd_cls_inner_attr_new(struct kndClassInnerAttr **result,
 }
 
 int knd_cls_ref_attr_new(struct kndClassRefAttr **result,
-                         const char *name, size_t name_size, struct kndMemPool *mempool)
+                         const char *name, size_t name_size,
+                         struct kndMemPool *mempool)
 {
     struct kndClassRefAttr *refattr;
     struct kndFacetHashSpec *spec;

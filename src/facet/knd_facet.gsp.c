@@ -25,7 +25,8 @@
 #define DEBUG_FACET_GSP_LEVEL_TMP 1
 
 static int write_subfacets_footer(size_t *subfacet_block_sizes, size_t cell_size,
-                                  struct kndStorageLeaf *leaf, struct kndTask *task)
+                                  struct kndStorageLeaf *leaf,
+                                  struct kndRepo *unused_var(repo), struct kndTask *task)
 {
     unsigned char buf[KND_NAME_SIZE];
     struct kndOutput *out = task->out;
@@ -133,7 +134,8 @@ static int marshall_elems(struct kndFacet *facet, knd_set_elem_marshall_cb_t cb,
 static int write_facet_footer(struct kndFacet *facet,
                               size_t elems_block_size, size_t subfacets_block_size,
                               size_t *result_size,
-                              struct kndStorageLeaf *leaf, struct kndTask *task)
+                              struct kndStorageLeaf *leaf,
+                              struct kndRepo *repo, struct kndTask *task)
 {
     unsigned char buf[KND_NAME_SIZE];
     struct kndFacetHashSpec *spec = facet->hash_specs;
@@ -142,7 +144,7 @@ static int write_facet_footer(struct kndFacet *facet,
     int err;
 
     out->reset(out);
-    err = spec->key_encode_cb(facet->key, 0, task);
+    err = spec->key_encode_cb(facet->key, 0, repo, task);
     KND_TASK_ERR("failed to encode facet key GSP");
 
     if (subfacets_block_size > elems_block_size) {
@@ -174,7 +176,7 @@ static int write_facet_footer(struct kndFacet *facet,
 static int facet_marshall(struct kndFacet *facet, struct kndStorageLeaf *leaf,
                           struct kndSetRange *range,
                           knd_set_elem_marshall_cb_t cb, void *cb_ctx, size_t *result_size,
-                          struct kndTask *task)
+                          struct kndRepo *repo, struct kndTask *task)
 {
     //struct kndFacetHashSpec *spec = facet->hash_specs;
     struct kndFacet *f;
@@ -193,7 +195,7 @@ static int facet_marshall(struct kndFacet *facet, struct kndStorageLeaf *leaf,
             if (!facet->children[i]) continue;
             f = facet->children[i];
 
-            err = facet_marshall(f, leaf, range, cb, cb_ctx, &subfacet_block_sizes[i], task);
+            err = facet_marshall(f, leaf, range, cb, cb_ctx, &subfacet_block_sizes[i], repo, task);
             KND_TASK_ERR("failed to marshall a subfacet");
 
             if (subfacet_block_sizes[i] > cell_max_val) cell_max_val = subfacet_block_sizes[i];
@@ -202,10 +204,11 @@ static int facet_marshall(struct kndFacet *facet, struct kndStorageLeaf *leaf,
         }
     }
 
-    err = write_subfacets_footer(subfacet_block_sizes, subfacets_total_size, leaf, task);
+    err = write_subfacets_footer(subfacet_block_sizes, subfacets_total_size, leaf, repo, task);
     KND_TASK_ERR("failed to write subfacets footer");
 
-    err = write_facet_footer(facet, elem_block_size, subfacets_total_size, &facet_footer_size, leaf, task);
+    err = write_facet_footer(facet, elem_block_size, subfacets_total_size, &facet_footer_size,
+                             leaf, repo, task);
     KND_TASK_ERR("failed to write a facet footer");
 
     *result_size = elem_block_size + subfacets_total_size + facet_footer_size;
@@ -214,13 +217,15 @@ static int facet_marshall(struct kndFacet *facet, struct kndStorageLeaf *leaf,
 
 int knd_facet_leaf_marshall(struct kndFacet *facet, knd_attr_type attr_type,
                             struct kndStorageLeaf *leaf, struct kndSetRange *range,
-                            size_t *output_size, struct kndTask *task)
+                            size_t *output_size,
+                            struct kndRepo *repo, struct kndTask *task)
 {
     int err;
 
     switch (attr_type) {
     case KND_ATTR_CLS_REF:
-        err = facet_marshall(facet, leaf, range, knd_attr_stm_subj_GSP, NULL, output_size, task);
+        err = facet_marshall(facet, leaf, range, knd_attr_stm_subj_GSP, NULL, output_size,
+                             repo, task);
         KND_TASK_ERR("failed to traverse attr facet to build GSP");
     default:
         break;

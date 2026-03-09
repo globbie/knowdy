@@ -39,7 +39,7 @@
 #define DEBUG_ATTR_GSL_LEVEL_5 0
 #define DEBUG_ATTR_GSL_LEVEL_TMP 1
 
-int knd_attr_export_GSL(struct kndAttr *self, struct kndTask *task, size_t depth)
+int knd_attr_export_GSL(struct kndAttr *self, struct kndRepo *repo, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     const char *type_name = knd_attr_names[self->type];
@@ -53,7 +53,7 @@ int knd_attr_export_GSL(struct kndAttr *self, struct kndTask *task, size_t depth
     OUT(self->name, self->name_size);
 
     if (self->tr) {
-        err = knd_text_gloss_export_GSL(self->tr, true, task, depth + 1);
+        err = knd_text_gloss_export_GSL(self->tr, true, repo, task, depth + 1);
         KND_TASK_ERR("failed to export attr gloss GSL");
     }
 

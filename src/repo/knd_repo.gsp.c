@@ -180,10 +180,11 @@ static int marshall_content(const char *path, size_t path_size,
     if (path[path_size - 1] != '/') {
         OUT("/", 1);
     }
+
     /* agent specific folder */
     OUTF("agent_%d", task->id);
     OUT("/", 1);
-    OUT("cls/", strlen("cls/"));
+    OUT("cls-content/", strlen("cls-content/"));
     if (out->buf_size >= KND_PATH_SIZE) return knd_LIMIT;
 
     memcpy(buf, out->buf, out->buf_size);
@@ -233,6 +234,12 @@ static int marshall_cache(const char *path, size_t path_size,
 
         err = knd_set_add(idx, idbuf, idbuf_size, (void*)entry, task);
         KND_TASK_ERR("failed to add a cached cls entry to a set idx");
+
+        if (DEBUG_REPO_GSP_LEVEL_TMP) {
+            knd_log(">> {cache-item %zu {num-hits %zu} {cls %.*s {id %.*s}}}",
+                    count, item->num_hits, entry->name_size, entry->name,
+                    entry->id_size, entry->id);
+        }        
     }
 
     out->reset(out);

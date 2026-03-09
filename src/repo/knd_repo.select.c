@@ -24,10 +24,17 @@
 #define DEBUG_REPO_SELECT_LEVEL_5 0
 #define DEBUG_REPO_SELECT_LEVEL_TMP 1
 
+struct LocalContext {
+    struct kndTask *task;
+    struct kndRepo *repo;
+};
+
 static int find_repo(struct kndRepo **result, const char *name, size_t name_size, struct kndTask *task)
 {
     struct kndRepo *repo;
     int err;
+
+    assert (task->idxs.repo_name_idx != NULL);
 
     err = knd_dict_get(task->idxs.repo_name_idx, name, name_size, (void**)&repo, task);
     if (err) return knd_NO_MATCH;
@@ -38,19 +45,20 @@ static int find_repo(struct kndRepo **result, const char *name, size_t name_size
 
 static gsl_err_t get_repo(void *obj, const char *name, size_t name_size)
 {
-    struct kndTask *task = obj;
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    struct kndRepo *repo = ctx->repo;
     struct kndQuery *query = task->ctx->query;
     int err;
 
     /* default system repo */
-    struct kndRepo *repo = NULL;
     if (!name_size) return make_gsl_err(gsl_FAIL);
 
     /* special names */
     if (name_size == 1) {
         switch (*name) {
         case '/':
-            repo = task->system_repo;
+            knd_log("== {sys-repo %p}", repo);
             break;
         case '~':
             repo = task->user_ctx->repo;
@@ -64,23 +72,12 @@ static gsl_err_t get_repo(void *obj, const char *name, size_t name_size)
         }
     }
 
-    if (!repo) {
-        err = find_repo(&repo, name, name_size, task);
-        if (err) {
-            return make_gsl_err(gsl_NO_MATCH);
-        }
-    }
-
-    task->repo = repo;
-    task->user_ctx->repo = repo;
+    assert (repo != NULL);
+    assert (repo->snapshot != NULL);
 
     query->type = KND_QUERY_GET;
     query->obj_type = KND_QUERY_OBJ_REPO;
     query->repo = repo;
-
-    assert (repo->snapshot != NULL);
-
-    task->snapshot = repo->snapshot;
 
     return make_gsl_err(gsl_OK);
 }
@@ -104,15 +101,16 @@ static gsl_err_t confirm_selection(void *obj,
 
 static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndTask *task = obj;
-    struct kndUserContext *ctx = task->user_ctx;
-    struct kndRepo *repo = ctx->repo ? ctx->repo : task->repo;
-    return knd_class_select(repo, rec, total_size, task);
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    return knd_class_select(rec, total_size, ctx->repo, task);
 }
 
 static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndTask *task = obj;
+    struct LocalContext *ctx = obj;
+    struct kndRepo *repo = ctx->repo;
+    struct kndTask *task = ctx->task;
     struct kndClassEntry *entry;
     int err;
 
@@ -122,12 +120,12 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
             err = knd_commit_new(&task->ctx->commit, task->mempool);
             if (err) return make_gsl_err_external(err);
 
-            task->ctx->commit->orig_state_id =\
-                atomic_load_explicit(&task->snapshot->num_commits, memory_order_relaxed);
+            //task->ctx->commit->orig_state_id =                        \
+            //    atomic_load_explicit(&task->snapshot->num_commits, memory_order_relaxed);
         }
     }
 
-    err = knd_class_import(rec, total_size, &entry, task);
+    err = knd_class_import(rec, total_size, &entry, repo, task);
     if (err) return make_gsl_err_external(err);
 
     /* assign a unique class entry id */
@@ -139,28 +137,27 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
 
 gsl_err_t knd_parse_repo_select(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndTask *task = obj;
     gsl_err_t parser_err;
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = get_repo,
-          .obj = task
+          .obj = obj
         },
         { .type = GSL_SET_STATE,
           .name = "cls",
           .name_size = strlen("cls"),
           .parse = parse_class_import,
-          .obj = task
+          .obj = obj
         },
         { .name = "cls",
           .name_size = strlen("cls"),
           .parse = parse_class_select,
-          .obj = task
+          .obj = obj
         },
         { .is_default = true,
           .run = confirm_selection,
-          .obj = task
+          .obj = obj
         }
     };
 

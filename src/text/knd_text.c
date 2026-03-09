@@ -240,16 +240,17 @@ void knd_text_str(struct kndText *self, size_t depth)
             val->val_size, val->val, self->locale_size, self->locale);
 }
 
-int knd_text_export(struct kndText *self, knd_format format, struct kndTask *task, size_t depth)
+int knd_text_export(struct kndText *self, knd_format format,
+                    struct kndRepo *repo, struct kndTask *task, size_t depth)
 {
     int err;
     switch (format) {
     case KND_FORMAT_JSON:
-        err = knd_text_export_JSON(self, task, depth);
+        err = knd_text_export_JSON(self, repo, task, depth);
         KND_TASK_ERR("failed to export text JSON");
         break;
     default:
-        err = knd_text_export_GSL(self, task, depth);
+        err = knd_text_export_GSL(self, repo, task, depth);
         KND_TASK_ERR("failed to export text GSL");
         break;
     }

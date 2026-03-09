@@ -24,6 +24,11 @@
 #define DEBUG_TASK_LEVEL_3 0
 #define DEBUG_TASK_LEVEL_TMP 1
 
+struct LocalContext {
+    struct kndRepo *repo;
+    struct kndTask *task;
+};
+
 void knd_task_del(struct kndTask *self)
 {
     if (self->ctx) {
@@ -53,7 +58,6 @@ void knd_task_reset(struct kndTask *self)
         memset(self->ctx, 0, sizeof(*self->ctx));
     }
     self->user_ctx = self->default_user_ctx;
-    self->repo = self->system_repo;
 
     self->out->reset(self->out);
     self->log->reset(self->log);
@@ -156,8 +160,8 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
           .parse = knd_query_run,
           .obj = task
         },
-        { .name = "commit",
-          .name_size = strlen("commit"),
+        { .name = "cmd",
+          .name_size = strlen("cmd"),
           .parse = knd_commit_run,
           .obj = task
         }
@@ -270,36 +274,6 @@ static int create_local_write_idxs(struct kndTask *task)
     return knd_OK;
 }
 
-int knd_task_fetch_memblock(struct kndTask *task,
-                            size_t space_required, struct kndMemBlock **result)
-{
-    struct kndMemBlock *block, *curr_block;
-    int err;
-
-    if (space_required >= KND_MEMBLOCK_BUF_SIZE) return knd_LIMIT;
-
-    if (!task->blocks) {
-        err = knd_memblock_new(&block, 0, KND_MEMBLOCK_BUF_SIZE);
-        KND_TASK_ERR("failed to alloc a memblock");
-        *result = block;
-        return knd_OK;
-    }
-
-    curr_block = task->blocks;
-    if ((curr_block->capacity - curr_block->buf_size) >= space_required) {
-        *result = curr_block;
-        return knd_OK;
-    }
-
-    err = knd_memblock_new(&block, 0, KND_MEMBLOCK_BUF_SIZE);
-    KND_TASK_ERR("failed to alloc a memblock");
-    block->next = curr_block;
-    task->blocks = block;
-    task->num_blocks++;
-    *result = block;
-    return knd_OK;
-}
-
 void knd_task_cleanup(struct kndTask *task)
 {
     knd_mempool_reset(task->mempool);
@@ -361,7 +335,7 @@ static int task_init(struct kndTask *task,
 
 int knd_task_new(struct kndTask **result, knd_agent_role_type role, size_t task_id,
                  struct kndMemConfig *main_memconf, struct kndMemConfig *cache_memconf,
-                 struct kndStorageConfig *storage_conf)
+                 struct kndStorageConfig *storage_conf, struct kndSteward *steward)
 {
     struct kndTask *task;
     int err;
@@ -395,6 +369,7 @@ int knd_task_new(struct kndTask **result, knd_agent_role_type role, size_t task_
     if (err) goto error;
 
     task->storage_conf = storage_conf;
+    task->steward = steward;
 
     *result = task;
     return knd_OK;

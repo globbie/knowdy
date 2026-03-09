@@ -123,7 +123,7 @@ int knd_proc_export_SVG(struct kndProc *self,
             err = out->write(out,   buf, buf_size);                               RET_ERR();
             err = out->write(out, ">", 1);                                        RET_ERR();
 
-            err = knd_proc_arg_export(arg, KND_FORMAT_SVG, task, out);            RET_ERR();
+            //err = knd_proc_arg_export(arg, KND_FORMAT_SVG, repo, task, out);            RET_ERR();
             err = out->write(out, "</g>", strlen("</g>"));                        RET_ERR();
         }
         err = out->write(out, "</g>", strlen("</g>"));                            RET_ERR();

@@ -40,19 +40,22 @@
 #define DEBUG_ATTR_STM_GSL_LEVEL_5 0
 #define DEBUG_ATTR_STM_GSL_LEVEL_TMP 1
 
-static int attr_stm_list_export_GSL(struct kndAttrStm *parent_item, struct kndTask *task, size_t depth);
+static int attr_stm_list_export_GSL(struct kndAttrStm *parent_item,
+                                    struct kndRepo *repo, struct kndTask *task, size_t depth);
 
-static int inner_stm_export_GSL(struct kndAttrStm *stm, struct kndTask *task, size_t depth)
+static int inner_stm_export_GSL(struct kndAttrStm *stm,
+                                struct kndRepo *repo, struct kndTask *task, size_t depth)
 {
     int err;
 
-    err = knd_attr_stms_export_GSL(stm->children, task, depth + 1);
+    err = knd_attr_stms_export_GSL(stm->children, repo, task, depth + 1);
     KND_TASK_ERR("failed to export attr stms GSL");
 
     return knd_OK;
 }
 
-static int attr_stm_list_export_GSL(struct kndAttrStm *stm, struct kndTask *task, size_t depth)
+static int attr_stm_list_export_GSL(struct kndAttrStm *stm, struct kndRepo *repo,
+                                    struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     struct kndAttrStm *item;
@@ -72,7 +75,7 @@ static int attr_stm_list_export_GSL(struct kndAttrStm *stm, struct kndTask *task
     OUT(stm->name, stm->name_size);
 
     FOREACH (item, stm->list) {
-        err = knd_attr_stm_export_GSL(item, task, depth + 1);
+        err = knd_attr_stm_export_GSL(item, repo, task, depth + 1);
         KND_TASK_ERR("attr stm GSL export failed");
     }
     OUT("]", 1);
@@ -80,7 +83,8 @@ static int attr_stm_list_export_GSL(struct kndAttrStm *stm, struct kndTask *task
     return knd_OK;
 }
 
-int knd_attr_stms_export_GSL(struct kndAttrStm *stms, struct kndTask *task, size_t depth)
+int knd_attr_stms_export_GSL(struct kndAttrStm *stms, struct kndRepo *repo,
+                             struct kndTask *task, size_t depth)
 {
     struct kndAttrStm *stm;
     struct kndAttr *attr;
@@ -91,17 +95,18 @@ int knd_attr_stms_export_GSL(struct kndAttrStm *stms, struct kndTask *task, size
         assert (attr != NULL);
 
         if (attr->is_a_set) {
-            err = attr_stm_list_export_GSL(stm, task, depth);
+            err = attr_stm_list_export_GSL(stm, repo, task, depth);
             KND_TASK_ERR("attr stm list GSL export failed");
             continue;
         }
-        err = knd_attr_stm_export_GSL(stm, task, depth);
+        err = knd_attr_stm_export_GSL(stm, repo, task, depth);
         KND_TASK_ERR("attr stm GSL export failed");
     }
     return knd_OK;
 }
 
-int knd_attr_stm_export_GSL(struct kndAttrStm *stm, struct kndTask *task, size_t depth)
+int knd_attr_stm_export_GSL(struct kndAttrStm *stm, struct kndRepo *repo,
+                            struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     struct kndAttr *attr = stm->attr;
@@ -153,21 +158,21 @@ int knd_attr_stm_export_GSL(struct kndAttrStm *stm, struct kndTask *task, size_t
 
         OUT(entry->name, entry->name_size);
 
-        err = knd_class_acquire(entry, &c, task);
-        KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
+        err = knd_class_acquire(entry, &c, repo, task);
+        KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);
         if (c->tr) {
-            err = knd_text_gloss_export_GSL(c->tr, true, task, depth + 1);
+            err = knd_text_gloss_export_GSL(c->tr, true, repo, task, depth + 1);
             KND_TASK_ERR("failed to export gloss GSL");
         }
         break;
     case KND_ATTR_CLS_INNER:
-        err = inner_stm_export_GSL(stm, task, depth);
+        err = inner_stm_export_GSL(stm, repo, task, depth);
         KND_TASK_ERR("GSL inner stm output failed");
         break;
     case KND_ATTR_TEXT:
         assert(stm->subtype != NULL);
 
-        err = knd_text_export(stm->subtype, KND_FORMAT_GSL, task, depth + 1);
+        err = knd_text_export(stm->subtype, KND_FORMAT_GSL, repo, task, depth + 1);
         KND_TASK_ERR("GSL text export failed");
         break;
     case KND_ATTR_BOOL:

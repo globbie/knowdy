@@ -22,7 +22,7 @@
 #define DEBUG_REL_RESOLVE_LEVEL_2 0
 #define DEBUG_REL_RESOLVE_LEVEL_TMP 1
 
-int knd_rel_resolve(struct kndRel *rel, struct kndTask *task)
+int knd_rel_resolve(struct kndRel *rel, struct kndRepo *unused_var(repo), struct kndTask *task)
 {
     struct kndDict *proc_name_idx = task->idxs.proc_name_idx;
     const char *proc_name = rel->ref_proc_name;

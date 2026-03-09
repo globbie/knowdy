@@ -45,9 +45,9 @@
 #define DEBUG_ATTR_STM_RESOLVE_LEVEL_5 0
 #define DEBUG_ATTR_STM_RESOLVE_LEVEL_TMP 1
 
-static int resolve_cls_ref(struct kndAttrStm *stm, struct kndTask *task);
+static int resolve_cls_ref(struct kndAttrStm *stm, struct kndRepo *repo, struct kndTask *task);
 
-static int resolve_inner_cls(struct kndAttrStm *stm, struct kndTask *task)
+static int resolve_inner_cls(struct kndAttrStm *stm, struct kndRepo *repo, struct kndTask *task)
 {
     struct kndClassEntry *entry;
     struct kndClass *template_c;
@@ -69,11 +69,11 @@ static int resolve_inner_cls(struct kndAttrStm *stm, struct kndTask *task)
     cls_inner_attr = stm->attr->subtype;
     entry = cls_inner_attr->template_cls;
 
-    err = knd_class_acquire(entry, &template_c, task);
+    err = knd_class_acquire(entry, &template_c, repo, task);
     KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);
 
     if (template_c->phase < KND_CLASS_RESOLVED) {
-        err = knd_class_resolve(template_c, task);
+        err = knd_class_resolve(template_c, repo, task);
         KND_TASK_ERR("failed to resolve {cls %.*s}", entry->name_size, entry->name);
     }
 
@@ -84,13 +84,13 @@ static int resolve_inner_cls(struct kndAttrStm *stm, struct kndTask *task)
                 c->name_size, c->name, stm->val_size, stm->val);
     }
 
-    /* explicit subclass is set */
+    /* explicit subclass is present */
     if (stm->val_size) {
-        err = knd_get_cls_by_name(stm->val, stm->val_size, &c, task);
+        err = knd_get_cls_by_name(repo, stm->val, stm->val_size, &c, task);
         KND_TASK_ERR("no such {cls %.*s}", stm->val_size, stm->val);
 
         if (c->phase < KND_CLASS_RESOLVED) {
-            err = knd_class_resolve(c, task);
+            err = knd_class_resolve(c, repo, task);
             KND_TASK_ERR("{cls %.*s} failed to resolve", c->name_size, c->name);
         }
 
@@ -103,7 +103,7 @@ static int resolve_inner_cls(struct kndAttrStm *stm, struct kndTask *task)
 
     FOREACH (item, stm->children) {
         if (item->phase < KND_ATTR_STM_RESOLVED) {
-            err = knd_resolve_attr_stm(c, item, task);
+            err = knd_resolve_attr_stm(c, item, repo, task);
             KND_TASK_ERR("failed to resolve attr stm {cls %.*s {%.*s}}",
                          c->name_size, c->name, item->name_size, item->name);
         }
@@ -111,7 +111,7 @@ static int resolve_inner_cls(struct kndAttrStm *stm, struct kndTask *task)
     return knd_OK;
 }
 
-static int resolve_cls_ref(struct kndAttrStm *stm, struct kndTask *task)
+static int resolve_cls_ref(struct kndAttrStm *stm, struct kndRepo *repo, struct kndTask *task)
 {
     struct kndClass *c, *ref_c;
     struct kndClassEntry *entry;
@@ -129,15 +129,15 @@ static int resolve_cls_ref(struct kndAttrStm *stm, struct kndTask *task)
     cls_ref_attr = stm->attr->subtype;
     entry = cls_ref_attr->template_cls;
 
-    err = knd_class_acquire(entry, &c, task);
-    KND_TASK_ERR("failed to acquire {class %.*s}", entry->name_size, entry->name);
+    err = knd_class_acquire(entry, &c, repo, task);
+    KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);
 
     if (c->phase < KND_CLASS_RESOLVED) {
-        err = knd_class_resolve(c, task);
-        KND_TASK_ERR("failed to resolve {class %.*s}", c->name_size, c->name);
+        err = knd_class_resolve(c, repo, task);
+        KND_TASK_ERR("failed to resolve {cls %.*s}", c->name_size, c->name);
     }
 
-    err = knd_resolve_cls_ref(stm->val, stm->val_size, c, &ref_c, task);
+    err = knd_resolve_cls_ref(stm->val, stm->val_size, c, &ref_c, repo, task);
     KND_TASK_ERR("failed to resolve {cls-ref %.*s}", stm->val_size,  stm->val);
 
     cls_ref_stm->cls_entry = ref_c->entry;
@@ -145,7 +145,8 @@ static int resolve_cls_ref(struct kndAttrStm *stm, struct kndTask *task)
     return knd_OK;
 }
 
-int knd_resolve_attr_stm(struct kndClass *cls, struct kndAttrStm *stm, struct kndTask *task)
+int knd_resolve_attr_stm(struct kndClass *cls, struct kndAttrStm *stm,
+                         struct kndRepo *repo, struct kndTask *task)
 {
     struct kndAttrStm *item;
     struct kndQuantAttrStm *quant_attr_stm;
@@ -193,7 +194,7 @@ int knd_resolve_attr_stm(struct kndClass *cls, struct kndAttrStm *stm, struct kn
         if (attr->is_a_set) {
             FOREACH (item, stm->list) {
                 item->attr = attr;
-                err = knd_resolve_attr_stm(cls, item, task);
+                err = knd_resolve_attr_stm(cls, item, repo, task);
                 KND_TASK_ERR("failed to resolve attr stm {cls %.*s {%.*s}}",
                              cls->name_size, cls->name, stm->name_size, stm->name);
             }
@@ -203,11 +204,11 @@ int knd_resolve_attr_stm(struct kndClass *cls, struct kndAttrStm *stm, struct kn
 
     switch (attr->type) {
     case KND_ATTR_CLS_INNER:
-        err = resolve_inner_cls(stm, task);
+        err = resolve_inner_cls(stm, repo, task);
         KND_TASK_ERR("failed to resolve an inner {cls %.*s}", stm->val_size, stm->val);
         break;
     case KND_ATTR_CLS_REF:
-        err = resolve_cls_ref(stm, task);
+        err = resolve_cls_ref(stm, repo, task);
         KND_TASK_ERR("failed to resolve {cls-ref %.*s}", stm->val_size, stm->val);
         break;
     case KND_ATTR_PROC_REF:
@@ -216,7 +217,7 @@ int knd_resolve_attr_stm(struct kndClass *cls, struct kndAttrStm *stm, struct kn
         //KND_TASK_ERR("failed to resolve a proc ref");
         break;
     case KND_ATTR_TEXT:
-        err = knd_text_resolve(stm, task);
+        err = knd_text_resolve(stm, repo, task);
         KND_TASK_ERR("failed to resolve a text attr");
         break;
     case KND_ATTR_UINT:

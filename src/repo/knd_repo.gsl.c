@@ -29,17 +29,16 @@
 #define DEBUG_REPO_GSL_LEVEL_3 0
 #define DEBUG_REPO_GSL_LEVEL_TMP 1
 
-static inline void append_memblock(struct kndRepoSnapshot *self, struct kndMemBlock *block)
-{
-    block->next = self->blocks;
-    self->blocks = block;
-    self->num_blocks++;
-    self->total_block_size += block->buf_size;
-}
+struct LocalContext {
+    struct kndTask *task;
+    struct kndRepo *repo;
+};
 
 static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndTask *task = obj;
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    struct kndRepo *repo = ctx->repo;
     struct kndCommit *commit = task->ctx->commit;
     struct kndSet *class_idx = task->idxs.cls_idx;
     struct kndClassEntry *entry;
@@ -51,13 +50,13 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
             err = knd_commit_new(&commit, task->mempool);
             if (err) return make_gsl_err_external(err);
 
-            commit->orig_state_id = atomic_load_explicit(&task->snapshot->num_commits,
-                                                         memory_order_relaxed);
+            //commit->orig_state_id = atomic_load_explicit(&task->snapshot->num_commits,
+            //                                             memory_order_relaxed);
             task->ctx->commit = commit;
         }
     }
 
-    err = knd_class_import(rec, total_size, &entry, task);
+    err = knd_class_import(rec, total_size, &entry, repo, task);
     if (err) {
         KND_TASK_LOG("failed to import a class");
         return make_gsl_err_external(err);
@@ -78,38 +77,36 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
 
 static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndTask *task = obj;
-    struct kndUserContext *ctx = task->user_ctx;
-    struct kndRepo *repo = ctx->repo ? ctx->repo : task->repo;
-    // struct kndCommit *commit = task->ctx->commit;
+    struct LocalContext *ctx = obj;
 
-    return knd_class_select(repo, rec, total_size, task);
+    return knd_class_select(ctx->repo, rec, total_size, ctx->task);
 }
 
 static gsl_err_t parse_proc_import(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndTask *task = obj;
-    struct kndUserContext *ctx = task->user_ctx;
-    struct kndRepo *repo = ctx->repo ? ctx->repo : task->repo;
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    //struct kndUserContext *ctx = task->user_ctx;
     int err;
 
     if (task->type != KND_TASK_BULK_LOAD) {
         task->type = KND_TASK_COMMIT;
 
         if (!task->ctx->commit) {
-            err = knd_commit_new(&task->ctx->commit, task->mempool);
-            if (err) return make_gsl_err_external(err);
+            //err = knd_commit_new(&task->ctx->commit, task->mempool);
+            ///if (err) return make_gsl_err_external(err);
 
-            task->ctx->commit->orig_state_id = atomic_load_explicit(&task->snapshot->num_commits,
-                                                                    memory_order_relaxed);
+            //task->ctx->commit->orig_state_id = atomic_load_explicit(&task->snapshot->num_commits,
+            //                                                        memory_order_relaxed);
         }
     }
-    return knd_proc_import(repo, rec, total_size, task);
+    return knd_proc_import(rec, total_size, ctx->repo, task);
 }
 
 static gsl_err_t run_get_schema(void *obj, const char *name, size_t name_size)
 {
-    struct kndTask *self = obj;
+    struct LocalContext *ctx = obj;
+    struct kndRepo *repo = ctx->repo;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
@@ -117,14 +114,16 @@ static gsl_err_t run_get_schema(void *obj, const char *name, size_t name_size)
     if (DEBUG_REPO_GSL_LEVEL_2) {
         knd_log(".. select repo {schema %.*s}", name_size, name);
     }
-    self->repo->schema_name = name;
-    self->repo->schema_name_size = name_size;
+
+    // TODO
+    repo->schema_name = name;
+    repo->schema_name_size = name_size;
     return make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t parse_schema(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndTask *task = obj;
+    struct LocalContext *ctx = obj;
 
     if (DEBUG_REPO_GSL_LEVEL_2) {
         knd_log(".. parse schema REC: \"%.*s\"..", 64, rec);
@@ -133,19 +132,19 @@ static gsl_err_t parse_schema(void *obj, const char *rec, size_t *total_size)
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
           .run = run_get_schema,
-          .obj = task
+          .obj = ctx
         },
         { .type = GSL_SET_STATE,
           .name = "cls",
           .name_size = strlen("cls"),
           .parse = parse_class_import,
-          .obj = task
+          .obj = ctx
         },
         { .type = GSL_SET_STATE,
           .name = "proc",
           .name_size = strlen("proc"),
           .parse = parse_proc_import,
-          .obj = task
+          .obj = ctx
         }
     };
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
@@ -255,23 +254,29 @@ static gsl_err_t parse_include(void *obj, const char *rec, size_t *total_size)
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static int parse_GSL(struct kndTask *task, const char *rec, size_t *total_size)
+static int parse_GSL(const char *rec, size_t *total_size,
+                     struct kndRepo *repo, struct kndTask *task)
 {
+    struct LocalContext ctx = {
+        .task = task,
+        .repo = repo
+    };
+
     struct gslTaskSpec specs[] = {
         { .name = "schema",
           .name_size = strlen("schema"),
           .parse = parse_schema,
-          .obj = task
+          .obj = &ctx
         },
         { .name = "init",
           .name_size = strlen("init"),
           .parse = parse_init_data,
-          .obj = task
+          .obj = &ctx
         },
         { .name = "include",
           .name_size = strlen("include"),
           .parse = parse_include,
-          .obj = task
+          .obj = &ctx
         }
     };
     gsl_err_t parser_err;
@@ -299,7 +304,7 @@ static int read_GSL_file(struct kndRepo *repo, struct kndConcFolder *parent_fold
 {
     struct kndOutput *out = task->out;
     struct kndOutput *file_out = task->file_out;
-    struct kndRepoSnapshot *snapshot = task->snapshot;
+    struct kndRepoSnapshot *snapshot = repo->snapshot;
     struct kndMemBlock *block;
     struct kndConcFolder *folder, *folders;
     const char *c;
@@ -341,24 +346,15 @@ static int read_GSL_file(struct kndRepo *repo, struct kndConcFolder *parent_fold
         knd_log("failed to read GSL {file %.*s}", out->buf_size, out->buf);
         return err;
     }
-    err = knd_memblock_new(&block, snapshot->num_blocks, file_out->buf_size + 1);
-    KND_TASK_ERR("failed to alloc a memblock");
 
-    block->buf_size = file_out->buf_size;
-    memcpy(block->buf, file_out->buf, file_out->buf_size);
-    block->buf[block->buf_size] = '\0';
-
-    append_memblock(snapshot, block);
-
-    if (DEBUG_REPO_GSL_LEVEL_2) {
-        knd_log("== total GSL source files: %zu", snapshot->num_blocks);
-    }
-
+    err = knd_memblock_fetch(&block, file_out->buf_size + 1, task);
+    KND_TASK_ERR("failed to fetch a memblock of {size %zu}", file_out->buf_size + 1);
+        
     task->input = block->buf;
     task->input_size = block->buf_size;
 
     /* actual parsing */
-    err = parse_GSL(task, (const char*)block->buf, &chunk_size);
+    err = parse_GSL((const char*)block->buf, &chunk_size, repo, task);
     if (err) {
         knd_log("-- parsing of GSL source {file %.*s} failed, err: %d",
                 out->buf_size, out->buf, err);
@@ -415,99 +411,41 @@ static int read_GSL_file(struct kndRepo *repo, struct kndConcFolder *parent_fold
     return knd_OK;
 }
 
-static int resolve_class(void *elem, void *unused_var(ctx), struct kndTask *task)
+static int resolve_cls(void *elem, void *ctx, struct kndTask *task)
 {
     struct kndClassEntry *entry = elem;
+    struct kndRepo *repo = ctx;
     struct kndClass *c;
     int err;
 
-    err = knd_class_acquire(entry, &c, task);
+    err = knd_class_acquire(entry, &c, repo, task);
     KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);
 
     if (c->phase >= KND_CLASS_RESOLVED) return knd_OK;
 
-    err = knd_class_resolve(c, task);
+    err = knd_class_resolve(c, repo, task);
     KND_TASK_ERR("failed to resolve {cls %.*s}", entry->name_size, entry->name);
 
     return knd_OK;
 }
 
-static int index_class(void *elem, void *unused_var(ctx), struct kndTask *task)
+static int index_class(void *elem, void *ctx, struct kndTask *task)
 {
     struct kndClassEntry *entry = elem;
+    struct kndRepo *repo = ctx;
     struct kndClass *c;
     int err;
 
-    err = knd_class_acquire(entry, &c, task);
+    err = knd_class_acquire(entry, &c, repo, task);
     KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);
 
     if (c->phase >= KND_CLASS_INDEXED) return knd_OK;
 
-    err = knd_class_index(c, task);
+    err = knd_class_index(c, repo, task);
     KND_TASK_ERR("failed to index {cls %.*s}", entry->name_size, entry->name);
 
     return knd_OK;
 }
-
-#if 0
-static int index_class_insts(struct kndClass *c, struct kndTask *task)
-{
-    struct kndClassInstEntry *entry;
-    struct kndSharedDictItem *item, *items;
-    struct kndSharedDict *name_idx = c->inst_name_idx;
-    int err;
-
-    if (DEBUG_REPO_GSL_LEVEL_2) {
-        knd_log(".. resolving insts of {cls %.*s}..", c->name_size, c->name);
-    }
-    // TODO: iterate func in kndSharedDict
-    for (size_t i = 0; i < name_idx->size; i++) {
-        items = atomic_load_explicit(&name_idx->hash_array[i], memory_order_relaxed);
-        FOREACH (item, items) {
-            entry = item->data;
-
-            err = knd_class_inst_index(entry->inst, task);
-            KND_TASK_ERR("failed to resolve {cls %.*s {inst %.*s}}",
-                         c->name_size, c->name, entry->name_size, entry->name);
-        }
-    }
-    return knd_OK;
-}
-
-static int index_repo_class_insts(struct kndRepo *self, struct kndTask *task)
-{
-    struct kndClass *c;
-    struct kndClassEntry *entry;
-    struct kndSharedDictItem *item, *items;
-    struct kndSharedDict *name_idx = task->idxs->cls_name_idx;
-    int err;
-
-    if (DEBUG_REPO_GSL_LEVEL_2)
-        knd_log(".. indexing class instances in {repo %.*s}..", self->name_size, self->name);
-
-    // TODO: iterate func in kndSharedDict
-    for (size_t i = 0; i < name_idx->size; i++) {
-        items = atomic_load_explicit(&name_idx->hash_array[i], memory_order_relaxed);
-        FOREACH (item, items) {
-            entry = item->data;
-
-            if (!entry->cached_version) {
-                knd_log("-- unresolved {cls-entry %.*s}", entry->name_size, entry->name);
-                return knd_FAIL;
-            }
-            
-            err = knd_class_acquire(entry, &c, task);
-            KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);
-
-            if (!c->inst_name_idx) continue;
-
-            err = index_class_insts(c, task);
-            KND_TASK_ERR("failed to index insts of {cls %.*s}", entry->name_size, entry->name);
-        }
-    }
-    return knd_OK;
-}
-#endif
 
 static int write_meta_file(struct kndRepo *repo, const char *rec, size_t rec_size,
                            struct kndTask *task)
@@ -536,7 +474,7 @@ static int write_meta_file(struct kndRepo *repo, const char *rec, size_t rec_siz
     err = knd_write_file((const char*)name_buf, rec, rec_size);
     KND_TASK_ERR("failed writing to {file %.*s}", name_buf_size, name_buf);
 
-    // TODO: digital signature?
+    // TODO: use digital signature?
 
     out->reset(out);
     OUT(repo->path, repo->path_size);
@@ -548,6 +486,7 @@ static int write_meta_file(struct kndRepo *repo, const char *rec, size_t rec_siz
 
     return knd_OK;
 }
+
 static int present_idx_meta(struct kndSet *idx, const char *name, size_t name_size,
                             struct kndTask *task)
 {
@@ -639,8 +578,6 @@ int knd_repo_save_meta(struct kndRepoSnapshot *s, struct kndTask *task)
     //err = present_idx_meta(s->cache.cls_idx, "classes", strlen("classes"), task);
     //KND_TASK_ERR("failed to present classes idx meta");
 
-    knd_log(".. present meta of {task %p {cls-idx-cache %p}}", task, task->cache.cls_idx);
-
     err = present_idx_meta(task->cache.cls_idx, "cls-cache", strlen("cls-cache"), task);
     KND_TASK_ERR("failed to present cls cache meta");
 
@@ -673,7 +610,6 @@ int knd_repo_read_sources(struct kndRepo *repo, struct kndTask *task)
 
     /* read a system-wide schema */
     task->type = KND_TASK_BULK_LOAD;
-    task->repo = repo;
 
     err = read_GSL_file(repo, NULL, KND_PACKAGE_INDEX_NAME,
                         strlen(KND_PACKAGE_INDEX_NAME), KND_GSL_SCHEMA, task);
@@ -684,14 +620,14 @@ int knd_repo_read_sources(struct kndRepo *repo, struct kndTask *task)
     }
 
     /* resolve class references */
-    err = knd_set_map(task->idxs.cls_idx, NULL, NULL, NULL, resolve_class, NULL, task);
+    err = knd_set_map(task->idxs.cls_idx, NULL, NULL, NULL, resolve_cls, repo, task);
     KND_TASK_ERR("failed to resolve all entries in class idx");
 
     //err = resolve_procs(repo, task);
     //KND_TASK_ERR("proc resolving failed");
 
     /* build reverse indices */
-    err = knd_set_map(task->idxs.cls_idx, NULL, NULL, NULL, index_class, NULL, task);
+    err = knd_set_map(task->idxs.cls_idx, NULL, NULL, NULL, index_class, repo, task);
     KND_TASK_ERR("failed to index all entries in class idx");
 
     /* any instances to load? */

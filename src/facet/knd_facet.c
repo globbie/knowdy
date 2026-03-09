@@ -47,8 +47,7 @@ void knd_facet_str(struct kndFacet *facet,
     }
 
     if (facet->idx) {
-        err = knd_set_map(facet->idx, NULL, NULL, NULL,
-                          cb, &depth, task);
+        err = knd_set_map(facet->idx, NULL, NULL, NULL, cb, &depth, task);
         if (err) return;
     }
 
@@ -63,7 +62,8 @@ void knd_facet_str(struct kndFacet *facet,
     knd_log("%*s}", depth * KND_OFFSET_SIZE, "");
 }
 
-int knd_facet_acquire(struct kndAttr *attr, struct kndFacet **result, struct kndTask *task)
+int knd_facet_acquire(struct kndAttr *attr, struct kndFacet **result,
+                      struct kndRepo *unused_var(repo), struct kndTask *task)
 {
     struct kndQuantAttr *quant_attr;
     struct kndClassInnerAttr *cls_inner_attr;

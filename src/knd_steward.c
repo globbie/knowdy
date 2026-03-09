@@ -708,12 +708,14 @@ static int steward_init(struct kndSteward *steward)
     steward->mem_task_cache_config.memtype = KND_ALLOC_LIST;
 
     err = knd_task_new(&task, KND_AGENT_SYSTEM, 0,
-                       &steward->mem_main_config, &steward->mem_cache_config, &steward->storage_config);
+                       &steward->mem_main_config, &steward->mem_cache_config, &steward->storage_config,
+                       steward);
     KND_STEWARD_ERR("failed to init steward main task");
     steward->task = task;
 
     err = knd_task_new(&steward->shift_task, KND_AGENT_SYSTEM, 0,
-                       &steward->mem_main_config, &steward->mem_cache_config, &steward->storage_config);
+                       &steward->mem_main_config, &steward->mem_cache_config, &steward->storage_config,
+                       steward);
     KND_STEWARD_ERR("failed to init steward sync task");
 
     err = knd_set_new(&steward->repo_idx, KND_SET_UNIQUE_VALUES, task->mempool);
@@ -811,8 +813,6 @@ int knd_steward_snapshot_create(struct kndSteward *steward)
     }
     KND_STEWARD_ERR("failed to build a sys repo temp snapshot");
 
-    shift_task->snapshot = repo->snapshot_temp;
-
     err = knd_repo_update_cache(repo->snapshot_temp, shift_task);
     if (err) {
         log->write(log, shift_task->log->buf, shift_task->log->buf_size);
@@ -842,6 +842,6 @@ int knd_steward_snapshot_activate(struct kndSteward *steward, struct kndRepoSnap
 
     err = knd_repo_snapshot_activate(repo, result, task);
     KND_STEWARD_ERR("failed to activate a snapshot repo");
-    
+
     return knd_OK;
 }

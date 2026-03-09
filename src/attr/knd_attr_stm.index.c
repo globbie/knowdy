@@ -61,7 +61,7 @@ int knd_attr_stm_get_elem_key(void *obj, const char **key, size_t *key_size)
 }
 
 int knd_attr_stm_inner_idx(struct kndClassEntry *topic, struct kndAttr *attr,
-                           struct kndAttrStm *parent, struct kndTask *task)
+                           struct kndAttrStm *parent, struct kndRepo *repo, struct kndTask *task)
 {
     struct kndAttrStm *item;
     int err;
@@ -76,11 +76,11 @@ int knd_attr_stm_inner_idx(struct kndClassEntry *topic, struct kndAttr *attr,
     /* check nested children */
     FOREACH (item, parent->children) {
         if (item->attr->is_a_set) {
-            err = knd_index_attr_stm_list(topic, item->attr, item, task);
+            err = knd_index_attr_stm_list(topic, item->attr, item, repo, task);
             KND_TASK_ERR("failed to index attr stm list %.*s",
                          item->attr->name_size, item->attr->name);
         } else {
-            err = knd_index_attr_stm(topic, item->attr, item, task);
+            err = knd_index_attr_stm(topic, item->attr, item, repo, task);
             KND_TASK_ERR("failed to index attr stm %.*s",
                          item->attr->name_size, item->attr->name);
         }
@@ -89,7 +89,7 @@ int knd_attr_stm_inner_idx(struct kndClassEntry *topic, struct kndAttr *attr,
 }
 
 int knd_index_attr_stm(struct kndClassEntry *entry, struct kndAttr *attr,
-                       struct kndAttrStm *stm, struct kndTask *task)
+                       struct kndAttrStm *stm, struct kndRepo *repo, struct kndTask *task)
 {
     struct kndQuantAttr *quant_attr;
     struct kndClassInnerAttr *cls_inner_attr;
@@ -112,7 +112,7 @@ int knd_index_attr_stm(struct kndClassEntry *entry, struct kndAttr *attr,
                                 knd_attr_stm_get_elem_key, task->mempool);
             KND_TASK_ERR("failed to alloc a facet");
         }
-        err = knd_facet_add(attr->facet, stm, task);
+        err = knd_facet_add(attr->facet, stm, repo, task);
         KND_TASK_ERR("failed to add {uint} elem to facet");
         break;
     case KND_ATTR_URATIO:
@@ -134,7 +134,7 @@ int knd_index_attr_stm(struct kndClassEntry *entry, struct kndAttr *attr,
                                 knd_attr_stm_get_elem_key, task->mempool);
             KND_TASK_ERR("failed to alloc a facet");
         }
-        err = knd_facet_add(attr->facet, stm, task);
+        err = knd_facet_add(attr->facet, stm, repo, task);
         KND_TASK_ERR("failed to add inner {stm %.*s} elem to facet",
                      stm->name_size, stm->name);
         break;
@@ -146,7 +146,7 @@ int knd_index_attr_stm(struct kndClassEntry *entry, struct kndAttr *attr,
                                 knd_attr_stm_get_elem_key, task->mempool);
             KND_TASK_ERR("failed to alloc a facet");
         }
-        err = knd_facet_add(attr->facet, stm, task);
+        err = knd_facet_add(attr->facet, stm, repo, task);
         KND_TASK_ERR("failed to add {stm %.*s} elem to facet",
                      stm->name_size, stm->name);
         break;
@@ -182,7 +182,7 @@ int knd_index_inst_attr_stm(struct kndClassInstEntry *topic_inst, struct kndAttr
 }
 
 int knd_index_attr_stm_list(struct kndClassEntry *topic, struct kndAttr *attr,
-                            struct kndAttrStm *parent, struct kndTask *task)
+                            struct kndAttrStm *parent, struct kndRepo *repo, struct kndTask *task)
 {
     struct kndAttrStm *stm;
     int err;
@@ -194,7 +194,7 @@ int knd_index_attr_stm_list(struct kndClassEntry *topic, struct kndAttr *attr,
     }
 
     FOREACH (stm, parent->list) {
-        err = knd_index_attr_stm(topic, attr, stm, task);
+        err = knd_index_attr_stm(topic, attr, stm, repo, task);
         KND_TASK_ERR("failed to index list {attr-stm %.*s}", attr->name_size, attr->name);
     }
     return knd_OK;

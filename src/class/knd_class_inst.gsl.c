@@ -156,7 +156,8 @@ static int export_inverse_rels(struct kndClassInst *self, struct kndTask *task, 
 #endif
 
 int knd_class_inst_export_GSL(struct kndClassInst *self, bool is_list_item,
-                              knd_state_phase phase, struct kndTask *task, size_t depth)
+                              knd_state_phase phase,
+                              struct kndRepo *repo, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     size_t indent_size = task->ctx->format_indent;
@@ -164,10 +165,10 @@ int knd_class_inst_export_GSL(struct kndClassInst *self, bool is_list_item,
     bool use_locale = true;
     int err;
 
-    if (DEBUG_CLASS_INST_GSL_LEVEL_1)
+    if (DEBUG_CLASS_INST_GSL_LEVEL_1) {
         knd_log(".. GSL export: %.*s {phase %d}",
                 self->name_size, self->name, phase);
-
+    }
     if (indent_size) {
         OUT("\n", 1);
         err = knd_print_offset(out, (depth) * indent_size);
@@ -203,7 +204,7 @@ int knd_class_inst_export_GSL(struct kndClassInst *self, bool is_list_item,
         default:
             break;
         }
-        err = knd_text_gloss_export_GSL(self->tr, use_locale, task, depth + 1);
+        err = knd_text_gloss_export_GSL(self->tr, use_locale, repo, task, depth + 1);
         KND_TASK_ERR("failed to export gloss GSL");
     }
     
@@ -220,7 +221,7 @@ int knd_class_inst_export_GSL(struct kndClassInst *self, bool is_list_item,
 
     if (self->num_attr_stms) {
         curr_depth = task->ctx->depth;
-        err = knd_attr_stms_export_GSL(self->attr_stms,
+        err = knd_attr_stms_export_GSL(self->attr_stms, repo,
                                        task, depth + 1);  RET_ERR();
         task->ctx->depth = curr_depth;   
     }

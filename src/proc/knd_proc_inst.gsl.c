@@ -25,7 +25,8 @@
 #include "knd_output.h"
 
 int knd_proc_inst_export_GSL(struct kndProcInst *self, bool is_list_item,
-                             knd_state_phase phase, struct kndTask *task, size_t depth)
+                             knd_state_phase phase,
+                             struct kndRepo *repo, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     struct kndProcArgVar *var;
@@ -55,7 +56,7 @@ int knd_proc_inst_export_GSL(struct kndProcInst *self, bool is_list_item,
 
     if (self->procvar) {
         FOREACH (var, self->procvar->args) {
-            knd_proc_arg_var_export_GSL(var, task, depth + 1);
+            knd_proc_arg_var_export_GSL(var, repo, task, depth + 1);
         }
     }
 

@@ -55,7 +55,8 @@ static int update_attr_stm_indices(struct kndClassInstEntry *entry, struct kndRe
 #endif
 
 int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *is_a,
-                                  struct kndStateRef *state_refs, struct kndTask *task)
+                                  struct kndStateRef *state_refs,
+                                  struct kndTask *task)
 {
     struct kndClassEntry *class_entry = is_a;
     struct kndClass *c;
@@ -64,7 +65,7 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *is
 
     assert(commit != NULL);
 
-    err = knd_class_acquire(is_a, &c, task);
+    err = knd_class_acquire(is_a, &c, repo, task);
     KND_TASK_ERR("failed to acquire class %.*s", is_a->name_size, is_a->name);
    
     if (DEBUG_INST_IDX_LEVEL_2) {
@@ -147,7 +148,7 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *is
     return knd_OK;
 }
 
-int knd_class_inst_index(struct kndClassInst *self, struct kndTask *task)
+int knd_class_inst_index(struct kndClassInst *self, struct kndRepo *repo, struct kndTask *task)
 {
     struct kndClass *c;
     struct kndAttrStm *stm;
@@ -156,12 +157,12 @@ int knd_class_inst_index(struct kndClassInst *self, struct kndTask *task)
 
     assert(self->entry->is_a != NULL);
 
-    err = knd_class_acquire(self->entry->is_a, &c, task);
-    KND_TASK_ERR("failed to acquire class \"%.*s\"",
+    err = knd_class_acquire(self->entry->is_a, &c, repo, task);
+    KND_TASK_ERR("failed to acquire {cls %.*s}",
                  self->entry->is_a->name_size, self->entry->is_a->name);
 
     if (DEBUG_INST_IDX_LEVEL_2) {
-        knd_log(".. indexing {class %.*s {inst %.*s}}",
+        knd_log(".. indexing {cls %.*s {inst %.*s}}",
                 c->entry->name_size, c->entry->name,
                 self->name_size, self->name);
     }
@@ -170,7 +171,7 @@ int knd_class_inst_index(struct kndClassInst *self, struct kndTask *task)
 
     FOREACH (stm, self->attr_stms) {
         if (DEBUG_INST_IDX_LEVEL_3) {
-            knd_log(".. idx inst attr stm {class %.*s {inst %.*s {%.*s %.*s}}",
+            knd_log(".. idx inst attr stm {cls %.*s {inst %.*s {%.*s %.*s}}",
                     c->name_size, c->name, self->name_size, self->name,
                     stm->name_size, stm->name, stm->val_size, stm->val);
         }

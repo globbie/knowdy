@@ -51,9 +51,10 @@ struct LocalContext {
     struct kndTask     *task;
 };
 
-static int attr_stm_list_export_GSP(struct kndAttrStm *parent_item, struct kndTask *task, struct kndOutput *out);
+static int attr_stm_list_export_GSP(struct kndAttrStm *parent_item,
+                                    struct kndRepo *repo, struct kndTask *task);
 
-static int inner_attr_export_GSP(struct kndAttrStm *stm, struct kndTask *task)
+static int inner_attr_export_GSP(struct kndAttrStm *stm, struct kndRepo *repo, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndAttrStm *item;
@@ -73,7 +74,7 @@ static int inner_attr_export_GSP(struct kndAttrStm *stm, struct kndTask *task)
     FOREACH (item, stm->children) {
         attr = item->attr;
         if (attr->is_a_set) {
-            err = attr_stm_list_export_GSP(item, task, out);
+            err = attr_stm_list_export_GSP(item, repo, task);
             KND_TASK_ERR("failed to export inner attr stm list");
             continue;
         }
@@ -90,12 +91,12 @@ static int inner_attr_export_GSP(struct kndAttrStm *stm, struct kndTask *task)
             break;
         case KND_ATTR_TEXT:
             OUT("{_t ", strlen("{_t "));
-            err = knd_text_export_GSP(item->subtype, task);
+            err = knd_text_export_GSP(item->subtype, repo, task);
             KND_TASK_ERR("failed to export text GSP");
             OUT("}", 1);
             break;
         case KND_ATTR_CLS_INNER:
-            err = inner_attr_export_GSP(item, task);
+            err = inner_attr_export_GSP(item, repo, task);
             KND_TASK_ERR("failed to export inner stm GSP");
             break;
         case KND_ATTR_BOOL:
@@ -114,9 +115,10 @@ static int inner_attr_export_GSP(struct kndAttrStm *stm, struct kndTask *task)
     return knd_OK;
 }
 
-static int attr_stm_list_export_GSP(struct kndAttrStm *stm, struct kndTask *task,
-                                    struct kndOutput *out)
+static int attr_stm_list_export_GSP(struct kndAttrStm *stm,
+                                    struct kndRepo *repo, struct kndTask *task)
 {
+    struct kndOutput *out = task->out;
     struct kndCharSeq *seq;
     struct kndAttrStm *item;
     struct kndClassEntry *entry;
@@ -145,12 +147,12 @@ static int attr_stm_list_export_GSP(struct kndAttrStm *stm, struct kndTask *task
             break;
         case KND_ATTR_TEXT:
             OUT("{_t ", strlen("{_t "));
-            err = knd_text_export_GSP(item->subtype, task);
+            err = knd_text_export_GSP(item->subtype, repo, task);
             KND_TASK_ERR("failed to export text GSP");
             OUT("}", 1);
             break;
         case KND_ATTR_CLS_INNER:
-            err = inner_attr_export_GSP(item, task);
+            err = inner_attr_export_GSP(item, repo, task);
             KND_TASK_ERR("failed to export inner attr stm");
             break;
         case KND_ATTR_STR:
@@ -163,7 +165,7 @@ static int attr_stm_list_export_GSP(struct kndAttrStm *stm, struct kndTask *task
         default:
             if (item->val_size) {
                 OUT(item->val, item->val_size);
-                err = knd_attr_stm_export_GSP(item, task, out, 0);
+                err = knd_attr_stm_export_GSP(item, repo, task, 0);
                 KND_TASK_ERR("failed to export attr stm");
             }
             break;
@@ -174,9 +176,10 @@ static int attr_stm_list_export_GSP(struct kndAttrStm *stm, struct kndTask *task
     return knd_OK;
 }
 
-int knd_attr_stms_export_GSP(struct kndAttrStm *items, struct kndOutput *out,
-                             struct kndTask *task, size_t unused_var(depth))
+int knd_attr_stms_export_GSP(struct kndAttrStm *items,
+                             struct kndRepo *repo, struct kndTask *task, size_t unused_var(depth))
 {
+    struct kndOutput *out = task->out;
     struct kndAttrStm *item;
     struct kndAttr *attr;
     int err;
@@ -186,23 +189,25 @@ int knd_attr_stms_export_GSP(struct kndAttrStm *items, struct kndOutput *out,
         attr = item->attr;
 
         if (attr->is_a_set) {
-            err = attr_stm_list_export_GSP(item, task, out);
+            err = attr_stm_list_export_GSP(item, repo, task);
             KND_TASK_ERR("failed to export attr var list");
             continue;
         }
         OUT("{", 1);
         OUT(attr->id, attr->id_size);
         OUT(" ", 1);
-        err = knd_attr_stm_export_GSP(item, task, out, 0);
+        err = knd_attr_stm_export_GSP(item, repo, task, 0);
         KND_TASK_ERR("failed to export attr var");
         OUT("}", 1);
     }
     return knd_OK;
 }
 
-int knd_attr_stm_export_GSP(struct kndAttrStm *stm, struct kndTask *task,
-                            struct kndOutput *out, size_t unused_var(depth))
+int knd_attr_stm_export_GSP(struct kndAttrStm *stm, 
+                            struct kndRepo *repo, struct kndTask *task,
+                            size_t unused_var(depth))
 {
+    struct kndOutput *out = task->out;
     struct kndCharSeq *seq;
     struct kndClassEntry *entry;
     struct kndClassRefAttrStm *cref;
@@ -218,12 +223,12 @@ int knd_attr_stm_export_GSP(struct kndAttrStm *stm, struct kndTask *task,
         OUT(entry->id, entry->id_size);
         break;
     case KND_ATTR_CLS_INNER:
-        err = inner_attr_export_GSP(stm, task);
+        err = inner_attr_export_GSP(stm, repo, task);
         KND_TASK_ERR("failed to export inner stm GSP");
         break;
     case KND_ATTR_TEXT:
         OUT("{_t ", strlen("{_t "));
-        err = knd_text_export_GSP(stm->subtype, task);
+        err = knd_text_export_GSP(stm->subtype, repo, task);
         KND_TASK_ERR("GSP text export failed");
         OUT("}", 1);
         break;

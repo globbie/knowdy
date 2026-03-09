@@ -205,13 +205,14 @@ static int export_SVG(struct kndProcArg *self,
     */
     if (self->proc_entry) {
         proc = self->proc_entry->proc;
-        err = knd_proc_export(proc, KND_FORMAT_SVG, task, out);                                                 RET_ERR();
+        // TODO
+        err = knd_proc_export(proc, KND_FORMAT_SVG, NULL, task, out);                                                 RET_ERR();
     }
     return knd_OK;
 }
 
 int knd_proc_arg_export(struct kndProcArg *self, knd_format format,
-                        struct kndTask *task, struct kndOutput *out)
+                        struct kndRepo *repo, struct kndTask *task, struct kndOutput *out)
 {
     int err;
 
@@ -459,17 +460,19 @@ gsl_err_t knd_proc_arg_parse(struct kndProcArg *self,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-int knd_proc_arg_resolve(struct kndProcArg *self, struct kndTask *task)
+int knd_proc_arg_resolve(struct kndProcArg *self, struct kndRepo *repo, struct kndTask *task)
 {
     struct kndClassEntry *entry;
     struct kndProcEntry *proc_entry;
     int err;
-    if (DEBUG_PROC_ARG_LEVEL_2)
-        knd_log(".. resolving arg \"%.*s\"", self->name_size, self->name);
 
+    if (DEBUG_PROC_ARG_LEVEL_2) {
+        knd_log(".. resolving arg \"%.*s\"", self->name_size, self->name);
+    }
     if (self->classname_size) {
-        if (DEBUG_PROC_ARG_LEVEL_2)
+        if (DEBUG_PROC_ARG_LEVEL_2) {
             knd_log(".. resolving arg class template: %.*s..", self->classname_size, self->classname);
+        }
         err = knd_dict_get(task->idxs.cls_name_idx, self->classname, self->classname_size, (void**)&entry, task);
         KND_TASK_ERR("no such {cls %.*s}", self->classname_size, self->classname);
 
@@ -489,7 +492,8 @@ int knd_proc_arg_resolve(struct kndProcArg *self, struct kndTask *task)
     return knd_OK;
 }
 
-int knd_resolve_proc_arg_var(struct kndProc *proc, struct kndProcArgVar *var, struct kndTask *task)
+int knd_resolve_proc_arg_var(struct kndProc *proc, struct kndProcArgVar *var,
+                             struct kndRepo *repo, struct kndTask *task)
 {
     struct kndProcArgRef *ref;
     struct kndClassEntry *entry;
@@ -507,7 +511,7 @@ int knd_resolve_proc_arg_var(struct kndProc *proc, struct kndProcArgVar *var, st
 
     if (ref->var && ref->var->template) {
         entry = ref->var->template;
-        err = knd_class_acquire(entry, &template_c, task);
+        err = knd_class_acquire(entry, &template_c, repo, task);
         KND_TASK_ERR("failed to acquire class %.*s", entry->name_size, entry->name);
     }
 
@@ -520,7 +524,7 @@ int knd_resolve_proc_arg_var(struct kndProc *proc, struct kndProcArgVar *var, st
         var->template = entry;
 
         if (template_c) {
-            err = knd_class_acquire(entry, &c, task);
+            err = knd_class_acquire(entry, &c, repo, task);
             KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);
 
             if (template_c == c) {

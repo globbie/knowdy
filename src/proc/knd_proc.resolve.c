@@ -60,12 +60,13 @@ static int inherit_arg(void *elem, void *ctx_obj, struct kndTask *task)
     return knd_OK;
 }
 
-static int inherit_args(struct kndProc *self, struct kndProc *base, struct kndRepo *unused_var(repo), struct kndTask *task)
+static int inherit_args(struct kndProc *self, struct kndProc *base,
+                        struct kndRepo *repo, struct kndTask *task)
 {
     int err;
 
     if (!base->is_resolved) {
-        err = knd_proc_resolve(base, task);
+        err = knd_proc_resolve(base, repo, task);
         KND_TASK_ERR("failed to resolve base proc");
     }
 
@@ -194,7 +195,7 @@ static int link_base(struct kndProc *self, struct kndProc *base, struct kndTask 
     return knd_OK;
 }
 
-static int resolve_bases(struct kndProc *self, struct kndTask *task)
+static int resolve_bases(struct kndProc *self, struct kndRepo *repo, struct kndTask *task)
 {
     struct kndProcEntry *entry = self->entry;
     struct kndProcVar *base;
@@ -207,13 +208,13 @@ static int resolve_bases(struct kndProc *self, struct kndTask *task)
     }
     self->base_resolving_in_progress = true;
 
-    for (base = self->bases; base; base = base->next) {
+    FOREACH (base, self->bases) {
         if (!base->proc) {
             err = knd_get_proc(entry->repo, base->name, base->name_size, &base->proc, task);
             KND_TASK_ERR("failed to resolve base proc");
         }
         if (!base->proc->is_resolved) {
-            err = knd_proc_resolve(base->proc, task);
+            err = knd_proc_resolve(base->proc, repo, task);
             KND_TASK_ERR("failed to resolve proc \"%.*s\"", base->proc->name_size, base->proc->name);
         }
         err = link_base(self, base->proc, task);
@@ -223,9 +224,8 @@ static int resolve_bases(struct kndProc *self, struct kndTask *task)
     return knd_OK;
 }
 
-int knd_proc_resolve(struct kndProc *self, struct kndTask *task)
+int knd_proc_resolve(struct kndProc *self, struct kndRepo *repo, struct kndTask *task)
 {
-    struct kndRepo *repo = self->entry->repo;
     struct kndProcArg *arg = NULL;
     struct kndProcArgVar *var = NULL;
     struct kndProcArgRef *arg_ref;
@@ -247,7 +247,7 @@ int knd_proc_resolve(struct kndProc *self, struct kndTask *task)
     }
 
     FOREACH (arg, self->args) {
-        err = knd_proc_arg_resolve(arg, task);
+        err = knd_proc_arg_resolve(arg, repo, task);
         KND_TASK_ERR("failed to resolve a proc arg");
 
         err = knd_repo_index_proc_arg(repo, self, arg, task);
@@ -263,7 +263,7 @@ int knd_proc_resolve(struct kndProc *self, struct kndTask *task)
     }
 
     if (!self->base_is_resolved) {
-        err = resolve_bases(self, task);
+        err = resolve_bases(self, repo, task);
         KND_TASK_ERR("failed to resolve base procs");
     }
 
@@ -273,13 +273,14 @@ int knd_proc_resolve(struct kndProc *self, struct kndTask *task)
         KND_TASK_ERR("failed to inherit args");
 
         for (var = base->args; var; var = var->next) {
-            err = knd_resolve_proc_arg_var(self, var, task);
+            err = knd_resolve_proc_arg_var(self, var, repo, task);
             KND_TASK_ERR("failed to resolve proc arg var \"%.*s\"", var->name_size, var->name);
         }
     }
     if (self->result_classname_size) {
-        err = knd_get_cls_entry_by_name(self->result_classname, self->result_classname_size, &self->result, task);
-        KND_TASK_ERR("no such class: %.*s", self->result_classname_size, self->result_classname);
+        err = knd_get_cls_entry_by_name(repo, self->result_classname, self->result_classname_size,
+                                        &self->result, task);
+        KND_TASK_ERR("no such {cls %.*s}", self->result_classname_size, self->result_classname);
         //knd_log("EFFECT: %.*s", self->result_classname_size, self->result_classname);
     }
     //   if (self->proc_call) {

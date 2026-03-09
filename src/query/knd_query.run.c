@@ -128,6 +128,7 @@ static gsl_err_t parse_locale(void *obj, const char *rec, size_t *total_size)
  */
 static int query_plan(struct kndQuery *query, struct kndTask *task)
 {
+    struct kndRepo *repo = query->repo;
     struct kndAttrStm *stm;
     size_t min_ops = 0;
     int err;
@@ -135,7 +136,7 @@ static int query_plan(struct kndQuery *query, struct kndTask *task)
     // TODO query cache lookup
 
     FOREACH (stm, query->attr_stms) {
-        err = knd_attr_stm_plan(stm, task);
+        err = knd_attr_stm_plan(stm, repo, task);
         switch (err) {
         case knd_OK:
             query->num_matches += stm->num_matches;

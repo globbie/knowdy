@@ -85,11 +85,11 @@ int  knd_steward_new(struct kndSteward **steward, const char *config, size_t con
 int  knd_steward_cleanup(struct kndSteward *steward);
 void knd_steward_del(struct kndSteward *steward);
 
-int knd_steward_run_task(struct kndSteward *self, const char *input, size_t input_size,
+int knd_steward_run_task(struct kndSteward *steward, const char *input, size_t input_size,
                          char *output, size_t *output_size);
-int knd_steward_report_task(struct kndSteward *self,
+int knd_steward_report_task(struct kndSteward *steward,
                           const char *task_id, size_t task_id_size);
-int knd_steward_cancel_task(struct kndSteward *self,
+int knd_steward_cancel_task(struct kndSteward *steward,
                           const char *task_id, size_t task_id_size);
 
 int knd_steward_snapshot_create(struct kndSteward *steward);

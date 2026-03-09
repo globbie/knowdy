@@ -28,16 +28,12 @@
 #define DEBUG_ATTR_LEVEL_TMP 1
 
 struct LocalContext {
-    struct kndClassBasePred *class_var;
-    struct kndAttrStm  *list_owner;
-    struct kndAttr     *attr;
     struct kndRepo     *repo;
     struct kndTask     *task;
+    struct kndAttr     *attr;
 };
 
-static gsl_err_t confirm_attr(void *obj,
-                              const char *unused_var(name),
-                              size_t unused_var(name_size))
+static gsl_err_t confirm_attr(void *obj, const char *unused_var(name), size_t unused_var(name_size))
 {
     struct kndAttr *attr = obj;
 
@@ -245,22 +241,24 @@ static gsl_err_t parse_subtypes(void *obj, const char *name, size_t name_size,
     KND_TASK_LOG("unknown {tag %.*s} in {attr %.*s}",
                  name_size, name, attr->name_size, attr->name);
     return make_gsl_err(gsl_FORMAT);
- }
+}
 
-gsl_err_t knd_attr_import(struct kndAttr *self, struct kndTask *task,
-                          const char *rec, size_t *total_size)
+gsl_err_t knd_attr_import(struct kndAttr *attr,
+                          const char *rec, size_t *total_size,
+                          struct kndRepo *repo, struct kndTask *task)
 {
     gsl_err_t err;
 
     if (DEBUG_ATTR_LEVEL_2) {
         knd_log(".. {cls %.*s} to import {attr-type %.*s}",
-                self->owner->name_size, self->owner->name,
-                strlen(knd_attr_names[self->type]), knd_attr_names[self->type]);
+                attr->owner->name_size, attr->owner->name,
+                strlen(knd_attr_names[attr->type]), knd_attr_names[attr->type]);
     }
 
     struct LocalContext ctx = {
-        .attr = self,
-        .task = task
+        .repo = repo,
+        .task = task,
+        .attr = attr
     };
 
     struct gslTaskSpec specs[] = {
@@ -272,42 +270,42 @@ gsl_err_t knd_attr_import(struct kndAttr *self, struct kndTask *task,
           .name = "gloss",
           .name_size = strlen("gloss"),
           .parse = knd_parse_gloss_array,
-          .obj = task
+          .obj = &ctx
         },
         { .name = "format",
           .name_size = strlen("format"),
           .run = set_format,
-          .obj = self
+          .obj = attr
         },
         { .name = "cls",
           .name_size = strlen("cls"),
           .run = set_class,
-          .obj = self
+          .obj = attr
         },
         { .name = "proc",
           .name_size = strlen("proc"),
           .parse = parse_proc_ref,
-          .obj = self
+          .obj = attr
         },
         { .name = "t",
           .name_size = strlen("t"),
           .parse = knd_parse_quant_type,
-          .obj = self
+          .obj = attr
         },
         { .name = "mult",
           .name_size = strlen("mult"),
           .run = attr_is_mult,
-          .obj = self
+          .obj = attr
         },
         { .name = "req",
           .name_size = strlen("req"),
           .run = attr_is_required,
-          .obj = self
+          .obj = attr
         },
         { .name = "uniq",
           .name_size = strlen("uniq"),
           .run = attr_is_unique,
-          .obj = self
+          .obj = attr
         },
         { .validate = parse_subtypes,
           .obj = &ctx
@@ -320,8 +318,8 @@ gsl_err_t knd_attr_import(struct kndAttr *self, struct kndTask *task,
         case gsl_NO_MATCH:
             KND_TASK_LOG("unknown {tag %.*s} in {cls %.*s {attr %.*s}}",
                          err.val_size, err.val,
-                         self->owner->name_size, self->owner->name,
-                         self->name_size, self->name);
+                         attr->owner->name_size, attr->owner->name,
+                         attr->name_size, attr->name);
             break;
         default:
             break;
@@ -331,14 +329,14 @@ gsl_err_t knd_attr_import(struct kndAttr *self, struct kndTask *task,
 
     /* reassign glosses */
     if (task->ctx->tr) {
-        self->tr = task->ctx->tr;
+        attr->tr = task->ctx->tr;
         task->ctx->tr = NULL;
     }
 
-    switch (self->type) {
+    switch (attr->type) {
     case KND_ATTR_CLS_INNER:
-        if (!self->cls_name_size) {
-            KND_TASK_LOG("class not specified in {inner %.*s}", self->name_size, self->name);
+        if (!attr->cls_name_size) {
+            KND_TASK_LOG("class not specified in {inner %.*s}", attr->name_size, attr->name);
             return make_gsl_err_external(knd_FORMAT);
         }
         break;

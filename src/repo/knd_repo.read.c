@@ -39,14 +39,6 @@ struct LocalContext {
     size_t num_leaves;
 };
 
-static inline void append_memblock(struct kndRepoSnapshot *self, struct kndMemBlock *block)
-{
-    block->next = self->blocks;
-    self->blocks = block;
-    self->num_blocks++;
-    self->total_block_size += block->buf_size;
-}
-
 static inline void append_leaf(struct LocalContext *ctx, struct kndStorageLeaf *leaf)
 {
     if (!ctx->leaves) {
@@ -140,9 +132,10 @@ static gsl_err_t set_commit_numid(void *obj, const char *val, size_t val_size)
 static gsl_err_t parse_commit(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
+    struct kndRepo *repo = ctx->repo;
     struct kndTask *task = ctx->task;
     struct kndUserContext *user_ctx = task->user_ctx;
-    struct kndSet *idx = task->snapshot->commit_idx;
+    struct kndSet *idx = repo->snapshot->commit_idx;
     struct kndMemPool *mempool = task->mempool;
     size_t ts = 0;
     int err;
@@ -294,7 +287,7 @@ static int restore_journals(struct kndRepo *self, struct kndRepoSnapshot *snapsh
         err = restore_commits(self, memblock, task);
         KND_TASK_ERR("failed to restore commits from %s", out->buf);
 
-        append_memblock(snapshot, memblock);
+        //append_memblock(snapshot, memblock);
         snapshot->num_journals[agent_id] = i;
     }
     return knd_OK;
@@ -362,7 +355,7 @@ int knd_repo_restore(struct kndRepo *self, struct kndRepoSnapshot *snapshot, str
        let's apply them in timely order */
 
     // TODO use set_reduce to aggregate
-    task->repo = self;
+
     err = knd_set_map(snapshot->commit_idx, NULL, NULL, NULL, knd_apply_commit, NULL, task);
     KND_TASK_ERR("failed to apply commits");
 
@@ -446,8 +439,10 @@ static gsl_err_t check_repo_name(void *obj, const char *val, size_t val_size)
 
 static gsl_err_t set_snapshot_numid(void *obj, const char *val, size_t val_size)
 {
-    struct kndTask *task = obj;
-    struct kndRepoSnapshot *snapshot = task->snapshot;
+    struct LocalContext *ctx = obj;
+    struct kndRepo *repo = ctx->repo;
+    struct kndTask *task = ctx->task;
+    struct kndRepoSnapshot *snapshot = repo->snapshot;
     int err;
 
     knd_calc_num_id(val, val_size, &snapshot->numid);
@@ -582,8 +577,10 @@ static gsl_err_t parse_idx_leaf_array(void *obj, const char *rec, size_t *total_
 
 static gsl_err_t parse_attr_name_idx(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndTask *task = obj;
-    struct kndRepoSnapshot *snapshot = task->snapshot;
+    struct LocalContext *ctx = obj;
+    struct kndRepo *repo = ctx->repo;
+    struct kndTask *task = ctx->task;
+    struct kndRepoSnapshot *snapshot = repo->snapshot;
     struct kndDict *attr_name_idx = snapshot->cache.attr_name_idx;
     const char *pref = "attr-name-idx";
     size_t pref_size = strlen(pref);
@@ -607,18 +604,15 @@ static gsl_err_t parse_attr_name_idx(void *obj, const char *rec, size_t *total_s
 
     attr_name_idx->idx = idx;
 
-    struct LocalContext ctx = {
-        .task = task,
-        .path = path,
-        .path_size = path_size
-    };
+    ctx->path = path;
+    ctx->path_size = path_size;
 
     struct gslTaskSpec specs[] = {
         {   .name = "leaf",
             .name_size = strlen("leaf"),
             .type = GSL_GET_ARRAY_STATE,
             .parse = parse_idx_leaf_array,
-            .obj = &ctx
+            .obj = ctx
         }
     };
 
@@ -628,17 +622,19 @@ static gsl_err_t parse_attr_name_idx(void *obj, const char *rec, size_t *total_s
         return parser_err;
     }
 
-    idx->leaves = ctx.leaves;
-    idx->leaf_tail = ctx.leaf_tail;
-    idx->num_leaves = ctx.num_leaves;
+    idx->leaves = ctx->leaves;
+    idx->leaf_tail = ctx->leaf_tail;
+    idx->num_leaves = ctx->num_leaves;
 
     return make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t parse_class_idx(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndTask *task = obj;
-    struct kndRepoSnapshot *snapshot = task->snapshot;
+    struct LocalContext *ctx = obj;
+    struct kndRepo *repo = ctx->repo;
+    struct kndTask *task = ctx->task;
+    struct kndRepoSnapshot *snapshot = repo->snapshot;
     struct kndSet *idx = snapshot->cache.cls_idx;
     const char *pref = "classes";
     size_t pref_size = strlen(pref);
@@ -653,18 +649,15 @@ static gsl_err_t parse_class_idx(void *obj, const char *rec, size_t *total_size)
         return *total_size = 0, make_gsl_err_external(err);
     }
 
-    struct LocalContext ctx = {
-        .task = task,
-        .path = path,
-        .path_size = path_size
-    };
+    ctx->path = path;
+    ctx->path_size = path_size;
 
     struct gslTaskSpec specs[] = {
         {   .name = "leaf",
             .name_size = strlen("leaf"),
             .type = GSL_GET_ARRAY_STATE,
             .parse = parse_idx_leaf_array,
-            .obj = &ctx
+            .obj = ctx
         }
     };
 
@@ -674,17 +667,19 @@ static gsl_err_t parse_class_idx(void *obj, const char *rec, size_t *total_size)
         return parser_err;
     }
 
-    idx->leaves = ctx.leaves;
-    idx->leaf_tail = ctx.leaf_tail;
-    idx->num_leaves = ctx.num_leaves;
+    idx->leaves = ctx->leaves;
+    idx->leaf_tail = ctx->leaf_tail;
+    idx->num_leaves = ctx->num_leaves;
 
     return make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t parse_string_idx(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndTask *task = obj;
-    struct kndRepoSnapshot *snapshot = task->snapshot;
+    struct LocalContext *ctx = obj;
+    struct kndRepo *repo = ctx->repo;
+    struct kndTask *task = ctx->task;
+    struct kndRepoSnapshot *snapshot = repo->snapshot;
     struct kndSet *idx = snapshot->cache.str_idx;
     const char *pref = "strings";
     size_t pref_size = strlen(pref);
@@ -699,18 +694,15 @@ static gsl_err_t parse_string_idx(void *obj, const char *rec, size_t *total_size
         return *total_size = 0, make_gsl_err_external(err);
     }
 
-    struct LocalContext ctx = {
-        .task = task,
-        .path = path,
-        .path_size = path_size
-    };
+    ctx->path = path;
+    ctx->path_size = path_size;
 
     struct gslTaskSpec specs[] = {
         {   .name = "leaf",
             .name_size = strlen("leaf"),
             .type = GSL_GET_ARRAY_STATE,
             .parse = parse_idx_leaf_array,
-            .obj = &ctx
+            .obj = ctx
         }
     };
 
@@ -720,9 +712,9 @@ static gsl_err_t parse_string_idx(void *obj, const char *rec, size_t *total_size
         return parser_err;
     }
 
-    idx->leaves = ctx.leaves;
-    idx->leaf_tail = ctx.leaf_tail;
-    idx->num_leaves = ctx.num_leaves;
+    idx->leaves = ctx->leaves;
+    idx->leaf_tail = ctx->leaf_tail;
+    idx->num_leaves = ctx->num_leaves;
 
     return make_gsl_err(gsl_OK);
 }
@@ -760,17 +752,15 @@ static gsl_err_t parse_snapshot(void *obj, const char *rec, size_t *total_size)
 
 static gsl_err_t parse_config(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndTask *task = obj;
-
     struct gslTaskSpec specs[] = {
         {   .is_implied = true,
             .run = check_repo_name,
-            .obj = task->snapshot
+            .obj = obj
         },
         {   .name = "snapshot",
             .name_size = strlen("snapshot"),
             .parse = parse_snapshot,
-            .obj = task
+            .obj = obj
         }
     };
     gsl_err_t parser_err;
@@ -793,12 +783,17 @@ static int read_repo_state(struct kndRepo *repo, struct kndTask *task)
     gsl_err_t parser_err;
     int err;
 
+    struct LocalContext ctx = {
+        .repo = repo,
+        .task = task
+    };
+
     struct gslTaskSpec specs[] = {
         {
             .name = "repo",
             .name_size = strlen("repo"),
             .parse = parse_config,
-            .obj = task
+            .obj = &ctx
         }
     };
 
@@ -855,7 +850,6 @@ int knd_repo_read(struct kndRepo *repo, struct kndTask *task)
     err = knd_repo_snapshot_new(&snapshot, 0, 0, repo, task->role, task);
     KND_TASK_ERR("failed to alloc a repo snapshot");
     repo->snapshot = snapshot;
-    task->snapshot = snapshot;
 
     err = read_repo_state(repo, task);
     KND_TASK_ERR("failed to read repo state");
