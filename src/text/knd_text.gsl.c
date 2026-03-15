@@ -290,7 +290,8 @@ int knd_text_export_query_report(struct kndTask *task)
 }
 
 int knd_text_gloss_export_GSL(struct kndText *trs, bool use_locale,
-                              struct kndRepo *repo, struct kndTask *task, size_t depth)
+                              struct kndRepo *unused_var(repo),
+                              struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     const char *locale = task->ctx->locale;

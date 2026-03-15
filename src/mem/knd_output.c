@@ -158,9 +158,6 @@ kndOutput_write_file_content(struct kndOutput *self,
     long file_size;
     size_t read_size;
 
-    if (DEBUG_OUTPUT_LEVEL_2)
-        knd_log(".. IO [%p] reading the \"%s\" file..", self, file_name);
-
     if (self->buf_size != 0) return knd_FAIL;
 
     if (DEBUG_OUTPUT_LEVEL_3)

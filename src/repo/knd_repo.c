@@ -97,10 +97,11 @@ int knd_conc_folder_new(struct kndConcFolder **result, struct kndMemPool *mempoo
 {
     void *page;
     int err;
-    assert(mempool->small_page_size >= sizeof(struct kndConcFolder));
-    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
+    assert(mempool->large_page_size >= sizeof(struct kndConcFolder));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_LARGE, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndConcFolder));
+
     *result = page;
     return knd_OK;
 }

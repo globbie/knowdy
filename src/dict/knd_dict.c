@@ -93,7 +93,7 @@ int knd_dict_get(struct kndDict *dict, const char *key, size_t key_size, void **
 }
 
 static int add_item(struct kndDict *dict, struct kndDictEntry *entry,
-                    const char *key, size_t key_size, void *data, struct kndTask *task)
+                    const char *key, size_t key_size, void *data, struct kndTask *unused_var(task))
 {
     struct kndDictItem *item;
 

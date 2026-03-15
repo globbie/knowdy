@@ -17,15 +17,14 @@ int knd_memblock_new(struct kndMemBlock **result, size_t numid, size_t capacity)
 {
     struct kndMemBlock *block = malloc(sizeof(struct kndMemBlock));
     if (!block) return knd_NOMEM;
-    block->init = malloc(capacity + 1);
-    if (!block->init) {
+    block->buf = malloc(capacity + 1);
+    if (!block->buf) {
         free(block);
         return knd_NOMEM;
     }
-    block->capacity = capacity;
     block->numid = numid;
-
-    block->buf = block->init;
+    block->capacity = capacity;
+    block->free_space = capacity;
     block->buf_size = 0;
 
     *result = block;
@@ -47,7 +46,7 @@ int knd_memblock_copy(struct kndMemBlock *block, const char *input, size_t input
 }
 
 int knd_memblock_write(struct kndMemBlock *self, const char *buf, size_t buf_size,
-                       const char **result)
+                       bool separ_needed, const char **result)
 {
     char *curr = self->buf + self->buf_size;
 
@@ -56,7 +55,11 @@ int knd_memblock_write(struct kndMemBlock *self, const char *buf, size_t buf_siz
 
     memcpy(curr, buf, buf_size);
     self->buf_size += buf_size;
-    self->buf[self->buf_size] = '\0';
+
+    if (separ_needed) {
+        self->buf[self->buf_size] = '\0';
+        self->buf_size++;
+    }
 
     *result = curr;
     return knd_OK;
@@ -73,12 +76,14 @@ int knd_memblock_fetch( struct kndMemBlock **result, size_t space_required, stru
         err = knd_memblock_new(&block, 0, KND_MEMBLOCK_BUF_SIZE);
         KND_TASK_ERR("failed to alloc a memblock");
         task->blocks = block;
+        task->num_blocks = 1;
         *result = block;
         return knd_OK;
     }
 
     curr_block = task->blocks;
     if ((curr_block->capacity - curr_block->buf_size) >= space_required) {
+        //knd_log("  {capacity %zu}", curr_block->capacity - curr_block->buf_size);
         *result = curr_block;
         return knd_OK;
     }
@@ -88,22 +93,38 @@ int knd_memblock_fetch( struct kndMemBlock **result, size_t space_required, stru
     block->next = curr_block;
     task->blocks = block;
     task->num_blocks++;
+
     *result = block;
     return knd_OK;
 }
 
-int knd_memblock_read_file(struct kndMemBlock *block, const char *filename, size_t file_size)
+int knd_memblock_read_file(struct kndMemBlock *block, const char *filename, size_t file_size,
+                           bool separ_needed, const char **result)
 {
     FILE *file_stream;
     size_t read_size;
+    char *curr_pos;
 
-    if (file_size >= block->capacity) return knd_LIMIT;
+    if (file_size >= block->free_space) return knd_LIMIT;
 
     file_stream = fopen(filename, "r");
     if (!file_stream) return knd_IO_FAIL;
-    read_size = fread(block->buf, 1, file_size, file_stream);
+    curr_pos = block->buf + block->buf_size;
+
+    read_size = fread(curr_pos, 1, file_size, file_stream);
     if (!read_size) return knd_IO_FAIL;
     if (read_size != file_size) return knd_IO_FAIL;
 
+    block->buf_size += file_size;
+    block->free_space -= file_size;
+
+    fclose(file_stream);
+
+    if (separ_needed) {
+        block->buf[block->buf_size] = '\0';
+        block->buf_size++;
+    }
+
+    *result = curr_pos;
     return knd_OK;
 }

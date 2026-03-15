@@ -30,8 +30,8 @@
 #define DEBUG_USER_LEVEL_TMP 1
 
 struct LocalContext {
-    struct kndTask *task;
     struct kndRepo *repo;
+    struct kndTask *task;
 };
 
 void knd_user_del(struct kndUser *self)
@@ -43,9 +43,9 @@ void knd_user_del(struct kndUser *self)
 
 static gsl_err_t parse_proc_import(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndTask *task = obj;
-    // TODO
-    struct kndRepo *repo;
+    struct LocalContext *ctx = obj;
+    struct kndRepo *repo = ctx->repo;
+    struct kndTask *task = ctx->task;
     struct kndUserContext *user_ctx = task->user_ctx;
     struct kndRepoAccess *acl = user_ctx->acls;
     int err;
@@ -53,8 +53,9 @@ static gsl_err_t parse_proc_import(void *obj, const char *rec, size_t *total_siz
     assert(user_ctx->repo != NULL);
     assert(acl != NULL);
 
-    if (DEBUG_USER_LEVEL_3)
+    if (DEBUG_USER_LEVEL_3) {
         knd_log(".. parsing user proc import: \"%.*s\"..", 64, rec);
+    }
 
     if (!acl->allow_write) {
         KND_TASK_LOG("writing not allowed");
@@ -108,7 +109,7 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
     struct kndRepo *repo = ctx->repo;
     struct kndUserContext *user_ctx = task->user_ctx;
     struct kndRepoAccess *acl = user_ctx->acls;
-    struct kndClassEntry *entry;
+    struct kndClass *cls;
     int err;
 
     assert(acl != NULL);
@@ -131,12 +132,12 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
         //                                                        memory_order_relaxed);
     }
 
-    err = knd_class_import(rec, total_size, &entry, repo, task);
+    err = knd_class_import(rec, total_size, &cls, repo, task);
     if (err) return make_gsl_err_external(err);
 
     /* assign a unique class entry id */
-    entry->numid = ++task->idxs.cls_id_count;
-    knd_uid_create(entry->numid, entry->id, &entry->id_size);
+    //entry->numid = ++task->idxs.cls_id_count;
+    //knd_uid_create(entry->numid, entry->id, &entry->id_size);
 
     return make_gsl_err(gsl_OK);
 }

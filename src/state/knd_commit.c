@@ -129,7 +129,8 @@ static int resolve_class_inst_commit(struct kndStateRef *state_refs, struct kndC
         case KND_CREATED:
             if (!entry->inst->is_resolved) {
                 err = knd_class_inst_resolve(entry->inst, repo, task);
-                KND_TASK_ERR("failed to resolve class inst %.*s", entry->name_size, entry->name);
+                KND_TASK_ERR("failed to resolve {cls-inst %.*s}",
+                             entry->name_size, entry->name);
             }
             break;
         default:
@@ -141,7 +142,8 @@ static int resolve_class_inst_commit(struct kndStateRef *state_refs, struct kndC
     return knd_OK;
 }
 
-int knd_commit_dedup(struct kndCommit *commit, struct kndRepo *repo, struct kndTask *unused_var(task))
+int knd_commit_dedup(struct kndCommit *commit, struct kndRepo *unused_var(repo),
+                     struct kndTask *unused_var(task))
 {
     // struct kndState *state;
     struct kndClassEntry *entry;

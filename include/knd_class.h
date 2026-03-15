@@ -266,7 +266,7 @@ int knd_class_entry_unmarshall(const char *elem_id, size_t elem_id_size,
                                void **result, struct kndTask *task);
 
 int knd_class_marshall(void *elem, void *ctx, struct kndStorageLeaf *leaf,
-                       size_t *output_size, struct kndRepo *repo, struct kndTask *task);
+                       size_t *output_size, struct kndTask *task);
 
 int knd_class_unmarshall(const char *elem_id, size_t elem_id_size,
                          const char *rec, size_t rec_size,
@@ -283,7 +283,7 @@ int knd_class_decode(struct kndClass *c, struct kndRepo *repo, struct kndTask *t
 
 // knd_class.import.c
 int knd_class_import(const char *rec, size_t *total_size,
-                     struct kndClassEntry **result, struct kndRepo *repo, struct kndTask *task);
+                     struct kndClass **result, struct kndRepo *repo, struct kndTask *task);
 
 int knd_inherit_attrs(struct kndClass *self, struct kndClass *base, struct kndTask *task);
 

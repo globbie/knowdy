@@ -420,9 +420,9 @@ static gsl_err_t parse_uniq_attr_constraint(void *obj, const char *rec, size_t *
 }
 
 int knd_class_import(const char *rec, size_t *total_size,
-                     struct kndClassEntry **result, struct kndRepo *repo, struct kndTask *task)
+                     struct kndClass **result, struct kndRepo *repo, struct kndTask *task)
 {
-    struct kndClass *c;
+    struct kndClass *cls;
     gsl_err_t parser_err;
     int err;
 
@@ -430,13 +430,13 @@ int knd_class_import(const char *rec, size_t *total_size,
         knd_log(">> import {cls %.*s}", 128, rec);
     }
 
-    err = knd_class_new(&c, task->mempool);
+    err = knd_class_new(&cls, task->mempool);
     KND_TASK_ERR("failed to alloc a class");
 
     struct LocalContext ctx = {
         .repo = repo,
         .task = task,
-        .class = c
+        .class = cls
     };
 
     struct gslTaskSpec specs[] = {
@@ -476,42 +476,44 @@ int knd_class_import(const char *rec, size_t *total_size,
         switch (err) {
         case knd_NO_MATCH:
             KND_TASK_ERR("unrecognized {tag %.*s} in {cls %.*s}",
-                         parser_err.val_size, parser_err.val, c->name_size, c->name);
+                         parser_err.val_size, parser_err.val, cls->name_size, cls->name);
             break;
         default:
-            KND_TASK_ERR("{cls %.*s} parsing failed {err %d}", c->name_size, c->name, err);
+            KND_TASK_ERR("{cls %.*s} parsing failed {err %d}", cls->name_size, cls->name, err);
             break;
         }
     }
 
-    if (!c->name_size) {
+    if (!cls->name_size) {
         err = knd_FORMAT;
         KND_TASK_ERR("no class name specified");
     }
 
     /* reassign glosses */
     if (task->ctx->tr) {
-        c->tr = task->ctx->tr;
+        cls->tr = task->ctx->tr;
         task->ctx->tr = NULL;
     }
 
-    c->phase = KND_CLASS_IMPORTED;
+    cls->phase = KND_CLASS_IMPORTED;
 
     if (DEBUG_CLASS_IMPORT_LEVEL_3) {
-        knd_log("++  {cls %.*s} import completed!", c->name_size, c->name);
+        knd_log("++  {cls %.*s} import completed!", cls->name_size, cls->name);
     }
 
+#if 0
     switch (task->type) {
     case KND_TASK_RESTORE:
         // fall through
     case KND_TASK_COMMIT:
-        err = knd_class_commit_state(c->entry, KND_CREATED, task);
+        err = knd_class_commit_state(cl->entry, KND_CREATED, task);
         KND_TASK_ERR("failed to commit a task state");
         break;
     default:
         break;
     }
+#endif
 
-    *result = c->entry;
+    *result = cls;
     return knd_OK;
 }

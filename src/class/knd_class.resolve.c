@@ -258,8 +258,10 @@ static int resolve_baseclasses(struct kndClass *cls, struct kndRepo *repo, struc
             err = knd_FAIL;
             KND_TASK_ERR("no base class name specified in {cls %.*s}", cls->name_size, cls->name);
         }
+
         err = knd_get_cls_by_name(repo, bp->name, bp->name_size, &c, task);
         KND_TASK_ERR("no {cls %.*s} found", bp->name_size, bp->name);
+        bp->entry = c->entry;
 
         if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
             knd_log("++ {cls %.*s} established as a base for {cls %.*s}",
@@ -285,18 +287,16 @@ static int resolve_baseclasses(struct kndClass *cls, struct kndRepo *repo, struc
         err = knd_class_link_base(cls, c, repo, task);
         KND_TASK_ERR("failed to link {cls %.*s} to its base {cls %.*s}",
                      cls->name_size, cls->name, c->name_size, c->name);
-
-        bp->entry = c->entry;
     }
 
     cls->phase = KND_CLASS_BASE_RESOLVED;
     return knd_OK;
 }
 
-int knd_class_resolve(struct kndClass *self, struct kndRepo *repo, struct kndTask *task)
+int knd_class_resolve(struct kndClass *cls, struct kndRepo *repo, struct kndTask *task)
 {
     struct kndClassBasePred *bp;
-    struct kndClassEntry *entry = self->entry;
+    struct kndClassEntry *entry = cls->entry;
     struct kndClass *c;
     struct kndAttrRef *attr_ref, *ref;
     struct kndAttrStm *stm;
@@ -305,48 +305,50 @@ int knd_class_resolve(struct kndClass *self, struct kndRepo *repo, struct kndTas
     if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
         knd_log(".. resolving {cls %.*s {id %.*s}} {num-attrs %zu} {phase %d}",
                 entry->name_size, entry->name, entry->id_size, entry->id,
-                self->num_attrs, self->phase);
+                cls->num_attrs, cls->phase);
     }
 
-    if (self->phase >= KND_CLASS_RESOLVED) {
-        knd_log("-- vicious circle detected in resolving {cls %.*s}", self->name_size, self->name);
+    if (cls->phase >= KND_CLASS_RESOLVED) {
+        knd_log("-- vicious circle detected in resolving {cls %.*s}",
+                cls->name_size, cls->name);
         return knd_FAIL;
     }
 
-    /* primary attrs */
-    if (self->num_attrs) {
-        err = knd_resolve_primary_attrs(self, repo, task);
-        KND_TASK_ERR("failed to resolve primary attrs of {cls %.*s}", entry->name_size, entry->name);
+    if (cls->num_attrs) {
+        err = knd_resolve_primary_attrs(cls, repo, task);
+        KND_TASK_ERR("failed to resolve primary attrs of {cls %.*s}",
+                     entry->name_size, entry->name);
     }
 
-    if (self->phase < KND_CLASS_BASE_RESOLVED) {
-        err = resolve_baseclasses(self, repo, task);
-        KND_TASK_ERR("failed to resolve base classes of {cls %.*s}", self->name_size, self->name);
+    if (cls->phase < KND_CLASS_BASE_RESOLVED) {
+        err = resolve_baseclasses(cls, repo, task);
+        KND_TASK_ERR("failed to resolve base classes of {cls %.*s}",
+                     cls->name_size, cls->name);
     }
 
-    FOREACH (bp, self->base_preds) {
+    FOREACH (bp, cls->base_preds) {
         err = knd_class_acquire(bp->entry, &c, repo, task);
         KND_TASK_ERR("failed to acquire {cls %.*s}", bp->entry->name_size, bp->entry->name);
 
-        err = inherit_attrs(self, c, repo, task);
+        err = inherit_attrs(cls, c, repo, task);
         KND_TASK_ERR("failed to inherit attrs from {cls %.*s}", c->name_size, c->name);
 
         FOREACH (stm, bp->attr_stms) {
-            err = knd_resolve_attr_stm(self, stm, repo, task);
+            err = knd_resolve_attr_stm(cls, stm, repo, task);
             KND_TASK_ERR("failed to resolve attr stm {cls %.*s {%.*s}}",
                          c->name_size, c->name, stm->name_size, stm->name);
         }
     }
 
     /* uniq attr constraints */
-    FOREACH (ref, self->uniq) {
-        err = knd_class_get_attr(self, ref->name, ref->name_size, &attr_ref, task);
+    FOREACH (ref, cls->uniq) {
+        err = knd_class_get_attr(cls, ref->name, ref->name_size, &attr_ref, task);
         KND_TASK_ERR("no uniq {attr %.*s} in {cls %.*s}",
-                     ref->name_size, ref->name, self->name_size, self->name);
+                     ref->name_size, ref->name, cls->name_size, cls->name);
         ref->attr = attr_ref->attr;
     }
 
-    self->phase = KND_CLASS_RESOLVED;
+    cls->phase = KND_CLASS_RESOLVED;
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_3) {
         knd_log("++ {cls %.*s {id %.*s}} resolved!",
@@ -356,18 +358,18 @@ int knd_class_resolve(struct kndClass *self, struct kndRepo *repo, struct kndTas
     return knd_OK;
 }
 
-static int resolve_base(struct kndClass *self, struct kndRepo *repo, struct kndTask *task)
+static int resolve_base(struct kndClass *cls, struct kndRepo *repo, struct kndTask *task)
 {
-    struct kndClassEntry *entry = self->entry;
+    struct kndClassEntry *entry = cls->entry;
     int err;
 
-    if (self->phase >= KND_CLASS_BASE_RESOLVED) {
+    if (cls->phase >= KND_CLASS_BASE_RESOLVED) {
         err = knd_FAIL;
         KND_TASK_ERR("vicious circle detected while resolving the bases of {class %.*s}",
                      entry->name_size, entry->name);
     }
 
-    err = resolve_baseclasses(self, repo, task);
+    err = resolve_baseclasses(cls, repo, task);
     KND_TASK_ERR("failed to resolve baseclasses of {cls %.*s}", entry->name_size, entry->name);
 
     return knd_OK;

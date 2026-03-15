@@ -91,7 +91,7 @@ static gsl_err_t parse_gloss_item(void *obj, const char *rec, size_t *total_size
     struct kndText *t;
     int err;
 
-    assert (task->ctx != NULL);
+    assert (task != NULL);
 
     err = knd_text_new(&t, task->mempool);
     if (err) {
@@ -859,11 +859,11 @@ gsl_err_t knd_statement_import(struct kndStatement *stm, const char *rec, size_t
 }
 
 gsl_err_t knd_text_import(struct kndText *self, const char *rec, size_t *total_size,
-                          struct kndRepo *repo, struct kndTask *task)
+                          struct kndRepo *unused_var(repo), struct kndTask *task)
 {
-    if (DEBUG_TEXT_IMPORT_LEVEL_2)
+    if (DEBUG_TEXT_IMPORT_LEVEL_2) {
         knd_log(".. import text: \"%.*s\"", 128, rec);
-
+    }
     struct LocalContext ctx = {
         .task = task,
         .text = self
@@ -895,5 +895,6 @@ gsl_err_t knd_text_import(struct kndText *self, const char *rec, size_t *total_s
     };
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return parser_err;
+
     return make_gsl_err(gsl_OK);
 }

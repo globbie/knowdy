@@ -214,7 +214,7 @@ static gsl_err_t set_cls_entry_name(void *obj, const char *name, size_t name_siz
         return make_gsl_err_external(err);
     }
 
-    err = knd_memblock_write(memblock, name, name_size, &b);
+    err = knd_memblock_write(memblock, name, name_size, false, &b);
     if (err) {
         KND_TASK_LOG("failed to save {cls-entry-name %.*s}", name_size, name);
         return make_gsl_err_external(err);
@@ -242,10 +242,7 @@ static gsl_err_t parse_ancestor_array_item(void *obj, const char *rec, size_t *t
 {
     struct LocalContext *ctx = obj;
     struct kndClass *self = ctx->cls;
-    struct kndMemPool *mempool = ctx->task->mempool;
     struct kndClassRef *ref;
-    int err;
-
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -653,9 +650,9 @@ int knd_class_unmarshall(const char *unused_var(elem_id), size_t unused_var(elem
     return knd_OK;
 }
 
-int knd_class_entry_unmarshall(const char *elem_id, size_t elem_id_size,
+int knd_class_entry_unmarshall(const char *unused_var(elem_id), size_t unused_var(elem_id_size),
                                const char *rec, size_t rec_size,
-                               void *ctx, size_t *total_size,
+                               void *unused_var(ctx), size_t *total_size,
                                void **result, struct kndTask *task)
 {
     struct kndSet *cls_idx = task->idxs.cls_idx;

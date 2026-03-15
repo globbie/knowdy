@@ -92,7 +92,7 @@ static int check_file_rec(struct kndTask *task, const char *rec, size_t rec_size
     err = knd_memblock_new(&memblock, 0, (size_t)st.st_size);
     KND_TASK_ERR("failed to alloc a memblock");
     
-    err = knd_memblock_read_file(memblock, buf, (size_t)st.st_size);
+    err = knd_memblock_read_file(memblock, buf, (size_t)st.st_size, true, &task->input);
     KND_TASK_ERR("failed to read memblock from {file %.*s}", buf_size, buf);
 
     *result = memblock;
@@ -149,7 +149,7 @@ static int knd_interact(struct kndSteward *steward)
             err = knd_text_build_JSON(block, block_size, reader_task);
             if (err) goto next_line;
             knd_log("== JSON: %.*s", reader_task->output_size, reader_task->output);
-            }*/
+        }*/
 
         err = check_file_rec(reader_task, buf, buf_size, &memblock);
         if (err) goto next_line;

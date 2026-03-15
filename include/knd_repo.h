@@ -35,7 +35,7 @@ typedef enum knd_snapshot_state {
 
 struct kndConcFolder
 {
-    const char *name;
+    char name[KND_PATH_SIZE];
     size_t name_size;
 
     struct kndConcFolder *parent;

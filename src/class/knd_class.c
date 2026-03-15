@@ -540,11 +540,11 @@ static int init_load_get_cls_entry_by_name(struct kndRepo *unused_var(repo),
 static int query_get_cls_entry_by_name(struct kndRepo *repo, const char *name, size_t name_size,
                                        struct kndClassEntry **result, struct kndTask *task)
 {
-     struct kndSharedDict *shared_name_idx = repo->snapshot->idxs.cls_name_idx;
-     // struct kndClassEntry *entry;
+    struct kndDict *name_idx;
+    struct kndClassEntry *entry;
+    int err;
 
-#if 0
-     /* lookup task local write idx */
+    /* lookup task local write idx */
     name_idx = task->idxs.cls_name_idx;
     err = knd_dict_get(name_idx, name, name_size, (void**)&entry, task);
     if (entry) {
@@ -553,20 +553,22 @@ static int query_get_cls_entry_by_name(struct kndRepo *repo, const char *name, s
     }
 
     /* lookup global write idx */
-    entry = knd_shared_dict_get(shared_name_idx, name, name_size);
-    if (entry) {
-        *result = entry;
-        return knd_OK;
-    }
+    //entry = knd_shared_dict_get(shared_name_idx, name, name_size);
+    //if (entry) {
+    //    *result = entry;
+    //    return knd_OK;
+    //}
 
     /* lookup global read-only cache */
-    entry = knd_dict_get(name_idx, name, name_size);
-    if (entry) {
+    name_idx = repo->snapshot->cache.cls_name_idx;
+    err = knd_dict_get(name_idx, name, name_size, (void**)&entry, task);
+    if (!err) {
         *result = entry;
         return knd_OK;
     }
 
     /* lookup task local cache */
+#if 0
     name_idx = task->cache.cls_name_idx;
     entry = knd_dict_get(name_idx, name, name_size);
     if (entry) {

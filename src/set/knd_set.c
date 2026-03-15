@@ -70,7 +70,7 @@ int knd_set_intersect(struct kndSet **sets, size_t num_sets,
     return knd_OK;
 }
 
-static int save_list_elem(struct kndSet *s, struct kndSetDir *parent_dir,
+static int save_list_elem(struct kndSet *unused_var(s), struct kndSetDir *parent_dir,
                           int dir_pos, void *obj, struct kndTask *task)
 {
     struct kndSetElem *elem, *prev;
@@ -129,7 +129,7 @@ static int save_elem(struct kndSet *s, struct kndSetDir *parent_dir,
         s->num_elems++;
         return knd_OK;
     case KND_SET_MULTIPLE_VALUES:
-        err = save_list_elem(s, parent_dir, dir_pos, elem, task);
+        err = save_list_elem(s, parent_dir, dir_pos, obj, task);
         if (err) return err;
         s->num_elems++;
         return knd_OK;
@@ -195,8 +195,8 @@ int knd_set_get(struct kndSet *s, const char *key, size_t key_size, void **elem,
     return knd_OK;
 }
 
-static int apply_map_cb(struct kndSet *s, struct kndSetElem *elems, map_cb_t cb, void *ctx,
-                        struct kndTask *task)
+static int apply_map_cb(struct kndSet *s, struct kndSetElem *elems,
+                        map_cb_t cb, void *ctx, struct kndTask *task)
 {
     struct kndSetElem *elem;
     int err;
@@ -270,7 +270,6 @@ static int traverse_dir(struct kndSet *s, struct kndSetDir *parent_dir,
 {
     struct kndSetElem *elem;
     struct kndSetDir *dir;
-    void *obj;
     int err;
 
     for (size_t i = 0; i < KND_RADIX_BASE; i++) {
@@ -285,7 +284,7 @@ static int traverse_dir(struct kndSet *s, struct kndSetDir *parent_dir,
             continue;
         }
 
-        err = apply_filter_cb(s, obj, filter_cb, filter_ctx, map_cb, map_ctx, task);
+        err = apply_filter_cb(s, elem, filter_cb, filter_ctx, map_cb, map_ctx, task);
         if (err) return err;
     }
 

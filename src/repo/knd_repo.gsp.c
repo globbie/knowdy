@@ -166,7 +166,8 @@ static int marshall_name_mappings(const char *path, size_t path_size,
 }
 
 static int marshall_content(const char *path, size_t path_size,
-                            struct kndTask *main_task, struct kndTask *task)
+                            struct kndTask *main_task,
+                            struct kndRepo *repo, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     char buf[KND_PATH_SIZE + 1];
@@ -192,7 +193,8 @@ static int marshall_content(const char *path, size_t path_size,
 
     switch (main_task->type) {
     case KND_TASK_BULK_LOAD:
-        err = knd_set_marshall(main_task->idxs.cls_idx, NULL, buf, buf_size, knd_class_marshall, NULL, task);
+        err = knd_set_marshall(main_task->idxs.cls_idx, NULL, buf, buf_size,
+                               knd_class_marshall, repo, task);
         KND_TASK_ERR("failed to marshall a class idx");
         break;
     default:
@@ -206,7 +208,8 @@ static int marshall_content(const char *path, size_t path_size,
 }
 
 static int marshall_cache(const char *path, size_t path_size,
-                          struct kndTask *main_task, struct kndTask *task)
+                          struct kndTask *main_task,
+                          struct kndRepo *repo, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndSet *idx;
@@ -258,7 +261,7 @@ static int marshall_cache(const char *path, size_t path_size,
 
     switch (main_task->type) {
     case KND_TASK_BULK_LOAD:
-        err = knd_set_marshall(idx, NULL, buf, buf_size, knd_class_name_marshall, NULL, task);
+        err = knd_set_marshall(idx, NULL, buf, buf_size, knd_class_name_marshall, repo, task);
         KND_TASK_ERR("failed to marshall a cls cache idx");
         break;
     default:
@@ -338,10 +341,10 @@ int knd_repo_build_snapshot(struct kndRepo *repo, struct kndTask *main_task, str
     err = marshall_name_mappings(s->path, s->path_size, main_task, task);
     KND_TASK_ERR("failed to marshall name mappings in {path %.*s}", s->path_size, s->path);
 
-    err = marshall_content(s->path, s->path_size, main_task, task);
+    err = marshall_content(s->path, s->path_size, main_task, repo, task);
     KND_TASK_ERR("failed to marshall main content in {path %.*s}", s->path_size, s->path);
 
-    err = marshall_cache(s->path, s->path_size, main_task, task);
+    err = marshall_cache(s->path, s->path_size, main_task, repo, task);
     KND_TASK_ERR("failed to marshall cache in {path %.*s}", s->path_size, s->path);
 
     //err = marshall_attr_idx(s, task);

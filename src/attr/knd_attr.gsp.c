@@ -47,7 +47,7 @@ struct LocalContext {
 };
 
 
-static int export_glosses(struct kndAttr *self, struct kndRepo *repo, struct kndOutput *out)
+static int export_glosses(struct kndAttr *self, struct kndOutput *out)
 {
     char idbuf[KND_ID_SIZE];
     size_t id_size = 0;
@@ -116,7 +116,7 @@ int knd_attr_name_marshall(void *elem, void *unused_var(ctx),
     return knd_OK;
 }
 
-int knd_attr_export_GSP(struct kndAttr *attr, struct kndRepo *repo, struct kndTask *task)
+int knd_attr_export_GSP(struct kndAttr *attr, struct kndRepo *unused_var(repo), struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     const char *type_name = knd_attr_names[attr->type];
@@ -171,7 +171,7 @@ int knd_attr_export_GSP(struct kndAttr *attr, struct kndRepo *repo, struct kndTa
 
     /* choose gloss */
     if (attr->tr) {
-        err = export_glosses(attr, repo, out);
+        err = export_glosses(attr, out);
         KND_TASK_ERR("failed to export glosses GSP");
     }
 

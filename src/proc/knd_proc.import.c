@@ -25,8 +25,8 @@
 #define DEBUG_PROC_IMPORT_LEVEL_TMP 1
 
 struct LocalContext {
-    struct kndTask *task;
     struct kndRepo *repo;
+    struct kndTask *task;
     struct kndProc *proc;
     struct kndProcVar *proc_var;
 };
@@ -268,8 +268,8 @@ int knd_inner_proc_import(struct kndProc *proc, const char *rec, size_t *total_s
         knd_log(".. import an anonymous inner proc: %.*s..", 64, rec);
 
     struct LocalContext ctx = {
-        .task = task,
         .repo = repo,
+        .task = task,
         .proc = proc
     };
 
@@ -277,7 +277,7 @@ int knd_inner_proc_import(struct kndProc *proc, const char *rec, size_t *total_s
         .is_list_item = true,
         .parse = parse_proc_arg_item,
         .obj = &ctx
-    }; 
+    };
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -288,13 +288,13 @@ int knd_inner_proc_import(struct kndProc *proc, const char *rec, size_t *total_s
           .name = "gloss",
           .name_size = strlen("gloss"),
           .parse = knd_parse_gloss_array,
-          .obj = task
+          .obj = &ctx
         },
         { .type = GSL_GET_ARRAY_STATE,
           .name = "_gloss",
           .name_size = strlen("_gloss"),
           .parse = knd_parse_gloss_array,
-          .obj = task
+          .obj = &ctx
         },
         { .name = "is",
           .name_size = strlen("is"),
@@ -359,8 +359,8 @@ gsl_err_t knd_proc_import(const char *rec, size_t *total_size, struct kndRepo *r
     proc->entry = entry;
 
     struct LocalContext ctx = {
-        .task = task,
         .repo = repo,
+        .task = task,
         .proc = proc
     };
 
@@ -391,7 +391,7 @@ gsl_err_t knd_proc_import(const char *rec, size_t *total_size, struct kndRepo *r
           .name = "gloss",
           .name_size = strlen("gloss"),
           .parse = knd_parse_gloss_array,
-          .obj = task
+          .obj = &ctx
         },
         { .type = GSL_GET_ARRAY_STATE,
           .name = "_gloss",

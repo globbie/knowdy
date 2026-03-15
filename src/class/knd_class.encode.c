@@ -329,6 +329,7 @@ int knd_class_export_GSP(struct kndClass *self, struct kndRepo *repo, struct knd
     int err;
 
     assert(entry->seq != NULL);
+    assert(out != NULL);
 
     out->reset(out);
     knd_uid_create(entry->seq->numid, idbuf, &idbuf_size);
@@ -381,11 +382,12 @@ int knd_class_export_GSP(struct kndClass *self, struct kndRepo *repo, struct knd
     return knd_OK;
 }
 
-int knd_class_name_marshall(void *elem, void *unused_var(ctx),
+int knd_class_name_marshall(void *elem, void *ctx,
                             struct kndStorageLeaf *leaf,
                             size_t *output_size, struct kndTask *task)
 {
     struct kndClassEntry *entry = elem;
+    struct kndRepo *repo = ctx;
     struct kndOutput *out = task->out;
     int err;
 
@@ -396,7 +398,8 @@ int knd_class_name_marshall(void *elem, void *unused_var(ctx),
     OUT("}", strlen("}"));
 
     if (DEBUG_CLASS_ENCODE_LEVEL_2) {
-        knd_log("== {cls %.*s {id %.*s}} {GSP {size %zu}}", 
+        knd_log("== {repo %.*s {cls %.*s {id %.*s}} {GSP {size %zu}}}", 
+                repo->name_size, repo->name,
                 entry->name_size,  entry->name, 
                 entry->id_size, entry->id, out->buf_size);
     }
@@ -417,14 +420,17 @@ int knd_class_name_marshall(void *elem, void *unused_var(ctx),
     return knd_OK;
 }
 
-int knd_class_marshall(void *elem, void *unused_var(ctx),
+int knd_class_marshall(void *elem, void *ctx,
                        struct kndStorageLeaf *leaf, size_t *output_size,
-                       struct kndRepo *repo, struct kndTask *task)
+                       struct kndTask *task)
 {
     struct kndClassEntry *entry = elem;
     struct kndClass *c;
     struct kndOutput *out = task->out;
+    struct kndRepo *repo = ctx;
     int err;
+
+    assert (out != NULL);
 
     err = knd_class_acquire(entry, &c, repo, task);
     KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);

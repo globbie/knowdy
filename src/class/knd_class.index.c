@@ -260,11 +260,12 @@ int knd_class_index(struct kndClass *cls, struct kndRepo *repo, struct kndTask *
 
     if (DEBUG_CLASS_INDEX_LEVEL_2) {
         knd_log(".. indexing {cls %.*s {id %.*s}}",
-                cls->entry->name_size, cls->entry->name,
-                cls->entry->id_size, cls->entry->id);
+                cls->name_size, cls->name, cls->entry->id_size, cls->entry->id);
     }
 
     FOREACH (bp, cls->base_preds) {
+        assert (bp->entry != NULL);
+
         err = knd_class_acquire(bp->entry, &c, repo, task);
         KND_TASK_ERR("failed to acquire {cls %.*s}",
                      bp->entry->name_size, bp->entry->name);

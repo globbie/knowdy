@@ -111,7 +111,7 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
     struct LocalContext *ctx = obj;
     struct kndRepo *repo = ctx->repo;
     struct kndTask *task = ctx->task;
-    struct kndClassEntry *entry;
+    struct kndClass *cls;
     int err;
 
     if (task->type != KND_TASK_BULK_LOAD) {
@@ -125,12 +125,12 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
         }
     }
 
-    err = knd_class_import(rec, total_size, &entry, repo, task);
+    err = knd_class_import(rec, total_size, &cls, repo, task);
     if (err) return make_gsl_err_external(err);
 
     /* assign a unique class entry id */
-    entry->numid = task->idxs.cls_id_count++;
-    knd_uid_create(entry->numid, entry->id, &entry->id_size);
+    cls->entry->numid = task->idxs.cls_id_count++;
+    knd_uid_create(cls->entry->numid, cls->entry->id, &cls->entry->id_size);
 
     return make_gsl_err(gsl_OK);
 }

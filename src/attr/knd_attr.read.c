@@ -380,7 +380,7 @@ static gsl_err_t set_attr_name(void *obj, const char *name, size_t name_size)
         return make_gsl_err_external(err);
     }
 
-    err = knd_memblock_write(memblock, name, name_size, &b);
+    err = knd_memblock_write(memblock, name, name_size, false, &b);
     if (err) {
         KND_TASK_LOG("failed to to save {attr-name %.*s}", name_size, name);
         return make_gsl_err_external(err);

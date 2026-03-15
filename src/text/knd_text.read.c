@@ -916,7 +916,6 @@ int knd_string_unmarshall(const char *elem_id, size_t elem_id_size,
     struct kndMemPool *mempool = task->mempool;
     struct kndMemBlock *memblock;
     struct kndCharSeq *seq;
-    const char *b;
     int err;
 
     if (elem_id_size > KND_ID_SIZE) return knd_LIMIT;
@@ -930,10 +929,8 @@ int knd_string_unmarshall(const char *elem_id, size_t elem_id_size,
     err = knd_memblock_fetch(&memblock, rec_size, task);
     KND_TASK_ERR("failed to fetch a memblock");
 
-    err = knd_memblock_write(memblock, rec, rec_size, &b);
+    err = knd_memblock_write(memblock, rec, rec_size, false, &seq->val);
     KND_TASK_ERR("failed to to save {seq %.*s}", rec_size, rec);
-
-    seq->val = b;
     seq->val_size = rec_size;
 
     if (DEBUG_TEXT_READ_LEVEL_3) {

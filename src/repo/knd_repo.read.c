@@ -277,12 +277,15 @@ static int restore_journals(struct kndRepo *self, struct kndRepoSnapshot *snapsh
             knd_log(".. restoring the journal file: %.*s", buf_size, buf);
         }
 
+        // TODO fetch memblock
+
         block_size = (size_t)st.st_size + footer_size;
         err = knd_memblock_new(&memblock, i, block_size);
         KND_TASK_ERR("failed to alloc a memblock");
 
-        err = knd_memblock_read_file(memblock, buf, (size_t)st.st_size);
+        err = knd_memblock_read_file(memblock, buf, (size_t)st.st_size, true, &task->input);
         KND_TASK_ERR("failed to read memblock from %s {size %zu}", out->buf, st.st_size);
+        task->input_size = (size_t)st.st_size;
 
         err = restore_commits(self, memblock, task);
         KND_TASK_ERR("failed to restore commits from %s", out->buf);
@@ -428,8 +431,8 @@ static int read_str_idx(struct kndSet *idx, struct kndTask *task)
 
 static gsl_err_t check_repo_name(void *obj, const char *val, size_t val_size)
 {
-    struct kndRepoSnapshot *snapshot = obj;
-    struct kndRepo *repo = snapshot->repo;
+    struct LocalContext *ctx = obj;
+    struct kndRepo *repo = ctx->repo;
 
     if (val_size != repo->name_size)  return make_gsl_err(gsl_FAIL);
     if (memcmp(repo->name, val, val_size)) return make_gsl_err(gsl_FAIL);

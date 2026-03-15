@@ -457,7 +457,8 @@ int knd_text_export_query_report_JSON(struct kndTask *task)
     return knd_OK;
 }
 
-int knd_text_gloss_export_JSON(struct kndText *text, struct kndRepo *repo, struct kndTask *task, size_t depth)
+int knd_text_gloss_export_JSON(struct kndText *text, struct kndRepo *unused_var(repo),
+                               struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     struct kndText *tr;
