@@ -30,8 +30,9 @@
 #define DEBUG_USER_LEVEL_TMP 1
 
 struct LocalContext {
-    struct kndRepo *repo;
     struct kndTask *task;
+    struct kndQuery *query;
+    struct kndRepo *repo;
 };
 
 void knd_user_del(struct kndUser *self)
@@ -84,7 +85,7 @@ int knd_create_user_repo(struct kndTask *task)
     int err;
     assert(ctx->repo == NULL);
 
-    err = knd_repo_new(&repo, "~", 1, ctx->path, ctx->path_size, NULL, 0);
+    err = knd_repo_new(&repo, "~", 1, "", 0);
     KND_TASK_ERR("failed to alloc new repo");
     repo->base = ctx->base_repo;
     ctx->repo = repo;
@@ -142,6 +143,7 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
     return make_gsl_err(gsl_OK);
 }
 
+#if 0
 static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
@@ -167,6 +169,7 @@ static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_si
     /* shared read-only repo */
     return knd_class_select(rec, total_size, repo, task);
 }
+#endif
 
 static gsl_err_t parse_text_search(void *obj, const char *rec, size_t *total_size)
 {
@@ -371,12 +374,12 @@ gsl_err_t knd_parse_select_user(void *obj, const char *rec, size_t *total_size)
           .name_size = strlen("class"),
           .parse = parse_class_import,
           .obj = obj
-        },
+        }/*,
         { .name = "class",
           .name_size = strlen("class"),
           .parse = parse_class_select,
           .obj = obj
-        },
+          }*/,
         { .type = GSL_SET_STATE,
           .name = "proc",
           .name_size = strlen("proc"),
@@ -401,7 +404,7 @@ gsl_err_t knd_parse_select_user(void *obj, const char *rec, size_t *total_size)
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     switch (parser_err.code) {
     case gsl_NO_MATCH:
-        KND_TASK_LOG("user area got an unrecognized tag \"%.*s\"",
+        KND_TASK_LOG("user area got an unrecognized {tag %.*s}",
                      parser_err.val_size, parser_err.val);
         break;
     default:
@@ -534,7 +537,7 @@ int knd_user_new(struct kndUser **result,
     user->repo_name = repo_name;
     user->repo_name_size = repo_name_size;
     err = knd_repo_new(&user->repo, repo_name, repo_name_size,
-                       path, path_size, schema_path, schema_path_size);
+                       schema_path, schema_path_size);
     if (err) goto error;
 
     err = knd_dict_set(steward->repo_name_idx, repo_name, repo_name_size, (void*)user->repo, task);

@@ -29,7 +29,8 @@ static int proc_call_arg_export_GSL(struct kndProcCallArg *call_arg,
 #endif
 
 int knd_proc_arg_var_export_GSL(struct kndProcArgVar *self,
-                                struct kndRepo *repo, struct kndTask *task, size_t unused_var(depth))
+                                struct kndRepo *unused_var(repo),
+                                struct kndTask *task, size_t unused_var(depth))
 {
     struct kndOutput *out = task->out;
     OUT("{", 1);

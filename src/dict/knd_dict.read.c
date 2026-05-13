@@ -24,6 +24,7 @@ struct LocalContext {
     struct kndDictEntry *entry;
     knd_dict_item_unmarshall_cb_t cb;
     void *cb_ctx;
+    void *result;
     struct kndTask *task;
 };
 
@@ -82,10 +83,10 @@ static gsl_err_t read_dict_items(void *obj, const char *rec, size_t *total_size)
     return gsl_parse_array(&read_attr_stm_spec, rec, total_size);
 }
 
-static int unmarshall_dict_entry(const char *elem_id, size_t elem_id_size,
-                                 const char *rec, size_t unused_var(rec_size),
-                                 void *ctx_obj, size_t *result_size, void **unused_var(result),
-                                 struct kndTask *task)
+int knd_dict_unmarshall_entry(const char *elem_id, size_t elem_id_size,
+                              const char *rec, size_t unused_var(rec_size),
+                              void *ctx_obj, size_t *result_size, void **unused_var(result),
+                              struct kndTask *task)
 {
     struct LocalContext *ctx = ctx_obj;
     struct kndDict *dict = ctx->dict;
@@ -127,13 +128,128 @@ static int unmarshall_dict_entry(const char *elem_id, size_t elem_id_size,
     return knd_OK;
 }
 
-int knd_dict_read_entry(struct kndDict *dict, const char *name, size_t name_size,
-                        void **result, struct kndTask *task)
+static int fetch_dict_item(struct LocalContext *ctx,
+                           const char *rec, size_t *total_size,
+                           struct kndTask *task)
 {
+    //struct kndDictEntry *entry = ctx->entry;
+    knd_dict_item_unmarshall_cb_t cb = ctx->cb;
+    const char *seq;
+    size_t seq_size;
     int err;
 
-    //*result = 
+    err = cb(rec, 0, ctx->cb_ctx, total_size, &seq, &seq_size, &ctx->result, task);
+    KND_TASK_ERR("failed to apply dict item cb func");
+
+    if (DEBUG_DICT_READ_LEVEL_TMP) {
+        knd_log(">> dict entry {key %.*s}", seq_size, seq);
+    }
+
     return knd_OK;
+}
+
+static gsl_err_t fetch_dict_item_cb(void *obj, const char *rec, size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    int err;
+
+    err = fetch_dict_item(ctx, rec, total_size, task);
+    if (err) {
+        KND_TASK_LOG("failed to read a dict item");
+        return *total_size = 0, make_gsl_err_external(err);
+    }
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t fetch_dict_items(void *obj, const char *rec, size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+
+    struct gslTaskSpec read_attr_stm_spec = {
+        .is_list_item = true,
+        .parse = fetch_dict_item_cb,
+        .obj = ctx
+    };
+
+    return gsl_parse_array(&read_attr_stm_spec, rec, total_size);
+}
+
+int knd_dict_fetch_entry(const char *elem_id, size_t elem_id_size,
+                         const char *rec, size_t unused_var(rec_size),
+                         void *ctx_obj, size_t *result_size, void **result,
+                         struct kndTask *task)
+{
+    struct LocalContext *ctx = ctx_obj;
+    struct kndDict *dict = ctx->dict;
+    size_t item_pos;
+    struct kndDictEntry *entry;
+    gsl_err_t parser_err;
+    int err;
+
+    if (DEBUG_DICT_READ_LEVEL_TMP) {
+        knd_log(">> dict entry {id %.*s}", elem_id_size, elem_id);
+    }
+
+    knd_calc_num_id(elem_id, elem_id_size, &item_pos);
+
+    if (item_pos >= dict->size) return knd_LIMIT;
+
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = knd_ignore_value,
+          .obj = ctx
+        },
+        { .type = GSL_GET_ARRAY_STATE,
+          .name = "i",
+          .name_size = strlen("i"),
+          .parse = fetch_dict_items,
+          .obj = ctx
+        }
+    };
+
+    parser_err = gsl_parse_task(rec, result_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
+
+    *result = ctx->result;
+
+    return knd_OK;
+}
+
+int knd_dict_fetch_item(struct kndDict *dict, size_t hash_val,
+                        const char *name, size_t name_size,
+                        void **result, struct kndTask *task)
+{
+    struct kndSet *idx = dict->idx;
+    struct kndStorageLeaf *leaf = idx->leaves;
+    char idbuf[KND_ID_SIZE];
+    size_t idbuf_size;
+    int err;
+
+    struct LocalContext ctx = {
+         .dict = dict,
+         .cb = dict->item_unmarshall_cb,
+         .task = task
+    };
+
+    knd_uid_create(hash_val, idbuf, &idbuf_size);
+
+    if (DEBUG_DICT_READ_LEVEL_TMP) {
+        knd_log(".. fetching dict {item %.*s {id %.*s}} from GSP snapshot",
+                name_size, name, idbuf_size, idbuf);
+    }
+
+    err = knd_set_fetch_elem(idx, leaf, idbuf, idbuf_size, knd_dict_fetch_entry, &ctx,
+                             result, task);
+    switch (err) {
+    case knd_OK:
+        break;
+    case knd_NO_MATCH:
+        break;
+    default:
+        KND_TASK_ERR("failed to fetch an item from dict");
+    }
+    return err;
 }
 
 static int dict_read_leaf(struct kndDict *dict, struct kndStorageLeaf *leaf,
@@ -149,13 +265,14 @@ static int dict_read_leaf(struct kndDict *dict, struct kndStorageLeaf *leaf,
          .task = task
     };
 
-    err = knd_set_read_leaf(idx, leaf, NULL, unmarshall_dict_entry, &ctx, task);
+    err = knd_set_read_leaf(idx, leaf, NULL, knd_dict_unmarshall_entry, &ctx, task);
     KND_TASK_ERR("failed to read a dict set leaf");
 
     return knd_OK;
 }
 
-int knd_dict_read(struct kndDict *dict, knd_dict_item_unmarshall_cb_t cb, void *cb_ctx, struct kndTask *task)
+int knd_dict_read(struct kndDict *dict, knd_dict_item_unmarshall_cb_t cb, void *cb_ctx,
+                  struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
     assert (mempool != NULL);

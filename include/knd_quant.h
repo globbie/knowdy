@@ -180,11 +180,11 @@ int knd_quant_uint_parse_stm(struct kndQuantAttrStm *stm,
 int knd_quant_uint_query_plan(struct kndQuantAttrStm *stm, struct kndFacet *facet, struct kndTask *task);
 
 int knd_quant_seq_len_hash(void *parent_key, void *curr_key, void *obj,
-                           void **result_key, size_t *numval, struct kndTask *task);
-int knd_quant_seq_len_key_get(void *elem, void **result, struct kndTask *task);
+                           void *ctx, void **result_key, size_t *numval, struct kndTask *task);
+int knd_quant_seq_len_key_get(void *elem, void *ctx, void **result, struct kndTask *task);
 void knd_quant_seq_len_key_str(void *val, size_t depth);
 
-int knd_quant_hash(void *parent_key, void *curr_key, void *obj,
+int knd_quant_hash(void *parent_key, void *curr_key, void *obj, void *ctx,
                    void **result_key, size_t *numval, struct kndTask *task);
 void knd_quant_str(void *val, size_t depth);
 

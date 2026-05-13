@@ -18,6 +18,7 @@
 #include "knd_proc.h"
 #include "knd_mempool.h"
 #include "knd_state.h"
+#include "knd_storage.h"
 #include "knd_commit.h"
 #include "knd_output.h"
 
@@ -90,12 +91,14 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
     return make_gsl_err(gsl_OK);
 }
 
+#if 0
 static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
 
-    return knd_class_select(rec, total_size, ctx->repo, ctx->task);
+    return knd_class_select(rec, total_size, ctx->repo, ctx->query, ctx->task);
 }
+#endif
 
 static gsl_err_t parse_proc_import(void *obj, const char *rec, size_t *total_size)
 {
@@ -127,7 +130,7 @@ static gsl_err_t run_get_schema(void *obj, const char *name, size_t name_size)
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    if (DEBUG_REPO_GSL_LEVEL_TMP) {
+    if (DEBUG_REPO_GSL_LEVEL_2) {
         knd_log(">> select {repo %.*s {schema %.*s}}",
                 repo->name_size, repo->name, name_size, name);
     }
@@ -204,11 +207,11 @@ static gsl_err_t parse_init_data(void *obj, const char *rec, size_t *total_size)
         knd_log(".. parse init data REC: \"%.*s\"..", 64, rec);
     }
     struct gslTaskSpec specs[] = {
-        { .name = "class",
+                                  /*{ .name = "class",
           .name_size = strlen("class"),
           .parse = parse_class_select,
           .obj = task
-        },
+          },*/
         { .type = GSL_SET_STATE,
           .name = "stm",
           .name_size = strlen("stm"),
@@ -238,7 +241,7 @@ static gsl_err_t run_read_include(void *obj, const char *name, size_t name_size)
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
 
-    if (DEBUG_REPO_GSL_LEVEL_TMP) {
+    if (DEBUG_REPO_GSL_LEVEL_2) {
         knd_log(".. include {file %.*s}", name_size, name);
     }
 
@@ -358,7 +361,7 @@ static int read_GSL_file(struct kndRepo *repo, struct kndConcFolder *parent_fold
     OUT(filename, filename_size);
     OUT(file_ext, file_ext_size);
 
-    if (DEBUG_REPO_GSL_LEVEL_TMP) {
+    if (DEBUG_REPO_GSL_LEVEL_3) {
         knd_log(".. reading GSL {file %.*s} {content-type %d}",
                 out->buf_size, out->buf, content_type);
     }
@@ -477,60 +480,97 @@ static int index_cls(void *elem, void *ctx, struct kndTask *task)
     return knd_OK;
 }
 
-static int write_meta_file(struct kndRepo *repo, const char *rec, size_t rec_size,
+static int build_repo_path(struct kndRepoSnapshot *s,
+                           const char *filename, size_t filename_size,
+                           char *result, size_t *result_size,
                            struct kndTask *task)
 {
+    struct kndSteward *steward = task->steward;
+    struct kndRepo *repo = s->repo;
     struct kndOutput *out = task->out;
-    char name_buf[KND_PATH_SIZE + 1];
-    size_t name_buf_size;
     int err;
 
     out->reset(out);
-    OUT(repo->path, repo->path_size);
-    OUT("repo.tmp", strlen("repo.tmp"));
+    OUT(steward->path, steward->path_size);
+    OUT(s->storage->name, s->storage->name_size);
+    OUT("/", 1);
+
+    if (repo->name_size == 1) {
+        switch (*repo->name) {
+        case '/':
+            OUT(KND_BASE_REPO_DIR_NAME, strlen(KND_BASE_REPO_DIR_NAME));
+            OUT("/", 1);    
+            break;
+        default:
+            break;
+        }
+    } else {
+        OUT(repo->name, repo->name_size);
+        OUT("/", 1);
+    }
+
+    OUT(filename, filename_size);
 
     if (out->buf_size >= KND_PATH_SIZE) {
         err = knd_LIMIT;
         KND_TASK_ERR("file path too long");
     }
-    memcpy(name_buf, out->buf, out->buf_size);
-    name_buf_size = out->buf_size;
-    name_buf[name_buf_size] = '\0';
 
-    if (DEBUG_REPO_GSL_LEVEL_TMP) {
-        knd_log(">> write {file %.*s}", name_buf_size, name_buf);
-    }
+    memcpy(result, out->buf, out->buf_size);
+    *result_size = out->buf_size;
+    result[out->buf_size] = '\0';
 
-    err = knd_write_file((const char*)name_buf, rec, rec_size);
-    KND_TASK_ERR("failed writing to {file %.*s}", name_buf_size, name_buf);
+    return knd_OK;
+}
+
+static int write_meta_file(struct kndRepoSnapshot *s, const char *rec, size_t rec_size,
+                           struct kndTask *task)
+{
+    char tmp_name[KND_PATH_SIZE + 1];
+    size_t tmp_name_size;
+    char target_name[KND_PATH_SIZE + 1];
+    size_t target_name_size;
+    int err;
+
+    err = build_repo_path(s, "state.tmp", strlen("state.tmp"),
+                          tmp_name, &tmp_name_size, task);
+    KND_TASK_ERR("failed building a file path");
+
+
+    err = knd_write_file((const char*)tmp_name, rec, rec_size);
+    KND_TASK_ERR("failed writing to {file %.*s}", tmp_name_size, tmp_name);
+
+    err = build_repo_path(s, "state.gsl", strlen("state.gsl"),
+                          target_name, &target_name_size, task);
+    KND_TASK_ERR("failed building a file path");
 
     // TODO: use digital signature?
 
-    out->reset(out);
-    OUT(repo->path, repo->path_size);
-    OUT("state.gsl", strlen("state.gsl"));
-
-    err = rename((const char*)name_buf, (const char*)out->buf);
+    err = rename((const char*)tmp_name, (const char*)target_name);
     KND_TASK_ERR("failed renaming {file %.*s} to {file %.*s}",
-                 name_buf_size, name_buf, out->buf_size, out->buf);
+                 tmp_name_size, tmp_name, target_name, target_name_size);
+
+    if (DEBUG_REPO_GSL_LEVEL_3) {
+        knd_log("++ new repo state {file %.*s}", target_name_size, target_name);
+    }
 
     return knd_OK;
 }
 
 static int present_idx_meta(struct kndSet *idx, const char *name, size_t name_size,
-                            struct kndTask *task)
+                            size_t indent_size, size_t depth, struct kndTask *task)
 {
     struct kndStorageLeaf *leaf;
     struct kndOutput *out = task->file_out;
-    size_t indent_size = KND_INDENT_SIZE;
-    size_t depth = 1;
     int err;
 
     assert (idx->num_leaves > 0);
 
-    OUT("\n", 1);
-    err = knd_print_offset(out, (depth + 1) * indent_size);
-    RET_ERR();
+    if (indent_size) {
+        OUT("\n", 1);
+        err = knd_print_offset(out, (depth + 1) * indent_size);
+        RET_ERR();
+    }
 
     OUT("{", 1);
     OUT(name, name_size);
@@ -542,36 +582,20 @@ static int present_idx_meta(struct kndSet *idx, const char *name, size_t name_si
     OUT("[leaf", strlen("[leaf"));
 
     FOREACH (leaf, idx->leaves) {
-        OUT("\n", 1);
-        err = knd_print_offset(out, (depth + 3) * indent_size);
-        RET_ERR();
-
-        OUT("{ ", strlen("{ "));
-        OUT(leaf->name, leaf->name_size);
-        OUT(" ", 1);
-
-        if (leaf->range_from_addr_size) {
-            OUT("{from-addr ", strlen("{from-addr "));
-            OUT(leaf->range_from_addr, leaf->range_from_addr_size);
-            OUT("}", 1);
+        if (indent_size) {
+            OUT("\n", 1);
+            err = knd_print_offset(out, (depth + 3) * indent_size);
+            RET_ERR();
         }
-
-        if (leaf->range_to_addr_size) {
-            OUT("{to-addr ", strlen("{to-addr "));
-            OUT(leaf->range_to_addr, leaf->range_to_addr_size);
-            OUT("}", 1);
-        }
-
-        OUTF("{num-elems %zu}", leaf->num_elems);
-        OUTF("{file-size %zu}", leaf->curr_size);
-        OUT("}", 1);
+        err = knd_storage_leaf_export_GSL(leaf, out, indent_size, depth + 3, task);
+        KND_TASK_ERR("failed to export storage leaf GSL");
     }
     OUT("]", 1);
     OUT("}", 1);
     return knd_OK;
 }
 
-int knd_repo_save_meta(struct kndRepoSnapshot *s, struct kndTask *task)
+int knd_repo_save_meta(struct kndRepoSnapshot *s, struct kndTask *main_task, struct kndTask *task)
 {
     struct kndOutput *out = task->file_out;
     struct kndRepo *repo = s->repo;    
@@ -583,39 +607,37 @@ int knd_repo_save_meta(struct kndRepoSnapshot *s, struct kndTask *task)
     OUT("{repo ", strlen("{repo "));
     OUT(repo->name, repo->name_size);
 
-    OUT("\n", 1);
-    err = knd_print_offset(out, (depth) * indent_size);
-    RET_ERR();
+    if (indent_size) {
+        OUT("\n", 1);
+        err = knd_print_offset(out, (depth) * indent_size);
+        RET_ERR();
+    }
 
     OUT("{snapshot ", strlen("{snapshot "));
     OUTF("%zu", s->numid);
 
-    /*    err = present_idx_meta(s->idxs.class_name_idx->idx,
-                           "class-name-idx", strlen("class-name-idx"), task);
-    KND_TASK_ERR("failed to present class name idx meta");
+    err = present_idx_meta(main_task->idxs.cls_name_idx->idx, "cls-names", strlen("cls-names"),
+                           indent_size, depth + 1, task);
+    KND_TASK_ERR("failed to present cls name idx meta");
 
-    err = present_idx_meta(s->idxs.attr_name_idx->idx,
+    /*err = present_idx_meta(s->idxs.attr_name_idx->idx,
                            "attr-name-idx", strlen("attr-name-idx"), task);
     KND_TASK_ERR("failed to present attr name idx meta");
     */
 
-    if (s->cache.cls_name_idx->idx) {
-        err = present_idx_meta(s->cache.cls_name_idx->idx,
-                               "cls-name-idx", strlen("cls-name-idx"), task);
-        KND_TASK_ERR("failed to present cls name idx meta");
-    }
+    err = present_idx_meta(main_task->idxs.cls_idx, "cls-content", strlen("cls-content"),
+                           indent_size, depth + 1, task);
+    KND_TASK_ERR("failed to present cls content");
 
-    //err = present_idx_meta(s->cache.cls_idx, "classes", strlen("classes"), task);
-    //KND_TASK_ERR("failed to present classes idx meta");
-
-    err = present_idx_meta(task->cache.cls_idx, "cls-cache", strlen("cls-cache"), task);
+    err = present_idx_meta(task->cache.cls_idx, "cls-cache", strlen("cls-cache"),
+                           indent_size, depth + 1, task);
     KND_TASK_ERR("failed to present cls cache meta");
 
-    /*    err = present_idx_meta(s->idxs.str_idx,
-                           "strings", strlen("strings"), task);
+    /*err = present_idx_meta(main_task->idxs.str_idx,
+                           "str-content", strlen("str-content"),
+                           indent_size, depth + 1, task);
     KND_TASK_ERR("failed to present strings idx meta");
     */
-
     if (DEBUG_REPO_GSL_LEVEL_3) {
         knd_log(">> update repo meta %.*s", out->buf_size, out->buf);
     }
@@ -623,7 +645,7 @@ int knd_repo_save_meta(struct kndRepoSnapshot *s, struct kndTask *task)
     OUT("}", 1); // snapshot
     OUT("}", 1); // repo
 
-    err = write_meta_file(repo, out->buf, out->buf_size, task);
+    err = write_meta_file(s, out->buf, out->buf_size, task);
     KND_TASK_ERR("failed saving meta file of {repo %.*s}", repo->name_size, repo->name);
 
     return knd_OK;

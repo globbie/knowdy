@@ -22,6 +22,33 @@
 
 #include "knd_config.h"
 
+struct kndOutput;
+struct kndTask;
+
+typedef enum knd_storage_type {
+    KND_STORAGE_DEFAULT,
+    KND_STORAGE_LOCAL_FILESYS,
+    KND_STORAGE_NFS,
+    KND_STORAGE_S3
+} knd_storage_type;
+
+static const char* const knd_storage_type_names[] = {
+    [KND_STORAGE_DEFAULT] = "local-fs",
+    [KND_STORAGE_LOCAL_FILESYS] = "local-fs",
+    [KND_STORAGE_NFS] = "NFS",
+    [KND_STORAGE_S3] = "S3"
+};
+
+typedef enum knd_storage_mode {
+    KND_STORAGE_MODE_READ_ONLY,
+    KND_STORAGE_MODE_READ_WRITE
+} knd_storage_mode;
+
+static const char* const knd_storage_mode_names[] = {
+    [KND_STORAGE_MODE_READ_ONLY] = "read-only",
+    [KND_STORAGE_MODE_READ_WRITE] = "read-write"
+};
+
 typedef enum knd_storage_unit_type {
     KND_STORAGE_UNIT_DEFAULT,
     KND_STORAGE_UNIT_KB,
@@ -38,8 +65,16 @@ static const char* const knd_storage_unit_names[] = {
     [KND_STORAGE_UNIT_TB] = "T"
 };
 
+struct kndStorage {
+    knd_storage_type type;
+    knd_storage_mode mode;
 
-struct kndStorageConfig {
+    char name[KND_SHORT_NAME_SIZE];
+    size_t name_size;
+
+    char path[KND_PATH_SIZE + 1];
+    size_t path_size;
+
     knd_storage_unit_type quota_unit;
     size_t quota_total;
 
@@ -53,11 +88,14 @@ struct kndStorageConfig {
 
     size_t leaf_min_units_size;
     size_t leaf_min_size;
+
+    struct kndStorage *next;
 };
 
 struct kndStorageLeaf
 {
-    size_t numid;
+    knd_storage_mode mode;
+     size_t numid;
 
     size_t min_size;
     size_t max_size;
@@ -84,6 +122,13 @@ struct kndStorageLeaf
     struct kndStorageLeaf *tail;
 };
 
+int knd_storage_new(struct kndStorage **result);
 int knd_storage_leaf_new(struct kndStorageLeaf **result, size_t numid, const char *path, size_t path_size,
-                         size_t min_size, size_t max_size);
+                         size_t min_size, size_t max_size, knd_storage_mode mode);
 void knd_storage_leaf_del(struct kndStorageLeaf *leaf);
+
+int knd_storage_leaf_export_GSL(struct kndStorageLeaf *leaf, struct kndOutput *out,
+                                size_t indent_size, size_t depth,
+                                struct kndTask *task);
+
+gsl_err_t knd_storage_parse_conf(void *obj, const char *rec, size_t *total_size);

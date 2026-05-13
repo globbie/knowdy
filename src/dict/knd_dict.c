@@ -66,7 +66,8 @@ static size_t knd_dict_hash(const char *key, size_t key_size)
     return h;
 }
 
-int knd_dict_get(struct kndDict *dict, const char *key, size_t key_size, void **result, struct kndTask *task)
+int knd_dict_get(struct kndDict *dict, const char *key, size_t key_size, void **result,
+                 struct kndTask *task)
 {
     size_t h = knd_dict_hash(key, key_size) % dict->size;
     struct kndDictEntry *entry = dict->hash_array[h];
@@ -75,7 +76,7 @@ int knd_dict_get(struct kndDict *dict, const char *key, size_t key_size, void **
     if (!entry) {
         switch (dict->storage_type) {
         case KND_DICT_PERSIST:
-            return knd_dict_read_entry(dict, key, key_size, result, task);
+            return knd_dict_fetch_item(dict, h, key, key_size, result, task);
         default:
             break;
         }

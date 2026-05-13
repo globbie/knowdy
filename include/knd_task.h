@@ -44,6 +44,7 @@ struct kndDict;
 struct kndRepoCache;
 struct kndCacheItem;
 struct kndMemBlock;
+struct kndStorage;
 
 typedef int (*task_cb_t)(void *obj, const char *msg, size_t msg_size, void *ctx);
 
@@ -213,7 +214,6 @@ struct kndTask
     knd_task_mode_t mode;
 
     struct kndSteward *steward;
-    struct kndStorageConfig *storage_conf;
 
     /* ctx can be persisted and continued by another task */
     struct kndTaskContext *ctx;
@@ -264,14 +264,13 @@ struct kndTask
 
 int knd_task_new(struct kndTask **result, knd_agent_role_type role, size_t task_id,
                  struct kndMemConfig *main_memconf, struct kndMemConfig *cache_memconf,
-                 struct kndStorageConfig *storage_conf, struct kndSteward *steward);
+                 struct kndSteward *steward);
 
 void knd_task_del(struct kndTask *task);
 
 void knd_task_reset(struct kndTask *task);
 void knd_task_cleanup(struct kndTask *task);
-void knd_task_monitor(struct kndTask *task, struct kndStorageConfig *storage_conf,
-                      struct kndResourceReport *report);
+void knd_task_monitor(struct kndTask *task, struct kndStorage *store, struct kndResourceReport *report);
 
 int knd_task_err_export(struct kndTask *task);
 

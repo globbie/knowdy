@@ -46,6 +46,7 @@ static int leaf_write_buf(const char *buf, size_t buf_size,
     default:
         err = knd_append_file((const char*)leaf->filepath, buf, buf_size);
         KND_TASK_ERR("buf to leaf write failure");
+        leaf->curr_size += buf_size;
         break;
     }
     return knd_OK;
@@ -68,6 +69,7 @@ static int marshall_dict_entry(void *elem, void *ctx, struct kndStorageLeaf *lea
     OUTF("{n %zu}", entry->num_items);
     err = leaf_write_buf(out->buf, out->buf_size, leaf, task);
     KND_TASK_ERR("leaf write failure");
+    total_output_size += out->buf_size;
 
     err = leaf_write_buf("[i", strlen("[i"), leaf, task);
     KND_TASK_ERR("leaf write failure");
@@ -97,7 +99,8 @@ static int marshall_dict_entry(void *elem, void *ctx, struct kndStorageLeaf *lea
 
 int knd_dict_marshall(struct kndDict *dict, struct kndDictRange *unused_var(range),
                       const char *path, size_t path_size,
-                      knd_dict_item_marshall_cb_t cb, void *cb_ctx, struct kndTask *task)
+                      knd_dict_item_marshall_cb_t cb, void *cb_ctx,
+                      struct kndStorage *store, struct kndTask *task)
 {
     struct kndSet *idx = dict->idx;
     char idbuf[KND_ID_SIZE];
@@ -127,11 +130,8 @@ int knd_dict_marshall(struct kndDict *dict, struct kndDictRange *unused_var(rang
         KND_TASK_ERR("failed to add a dict entry to a set idx");
     }
 
-    err = knd_set_marshall(idx, NULL, path, path_size, marshall_dict_entry, &ctx, task);
+    err = knd_set_marshall(idx, NULL, path, path_size, marshall_dict_entry, &ctx, store, task);
     KND_TASK_ERR("failed to marshall a set of dict entries");
-
-    //err = export_dict_meta(dict, path, path_size, task);
-    //KND_TASK_ERR("failed to export dict meta data");
 
     return knd_OK;
 }

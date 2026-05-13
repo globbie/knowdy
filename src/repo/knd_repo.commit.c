@@ -271,7 +271,7 @@ static int build_journal_filename(struct kndRepoSnapshot *snapshot,
     int err;
 
     out->reset(out);
-    OUT(snapshot->repo->path, snapshot->repo->path_size);
+    // TODO   OUT(snapshot->repo->path, snapshot->repo->path_size);
     OUTF("snapshot_%zu", snapshot->numid);
     OUTF("agent_%d/", task->id);
     path = out->buf;

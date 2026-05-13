@@ -12,6 +12,7 @@ struct kndQuery;
 struct kndTask;
 struct kndSharedDict;
 struct kndTaskContext;
+struct kndStorage;
 
 #include <time.h>
 #include <stdatomic.h>
@@ -70,6 +71,10 @@ struct kndRepoCache
     char cls_idx_path[KND_PATH_SIZE + 1];
     size_t cls_idx_path_size;
 
+    struct kndSet *cls_cache_idx;
+    char cls_cache_idx_path[KND_PATH_SIZE + 1];
+    size_t cls_cache_idx_path_size;
+
     struct kndDict *attr_name_idx;
     char attr_name_idx_path[KND_PATH_SIZE + 1];
     size_t attr_name_idx_path_size;
@@ -121,6 +126,8 @@ struct kndRepoSnapshot
     time_t timestamp;
 
     struct kndRepo *repo;
+    struct kndStorage *storage;
+
     char path[KND_PATH_SIZE + 1];
     size_t path_size;
 
@@ -152,9 +159,6 @@ struct kndRepo
 
     char name[KND_NAME_SIZE];
     size_t name_size;
-
-    char path[KND_PATH_SIZE];
-    size_t path_size;
 
     const char *schema_name;
     size_t schema_name_size;
@@ -192,27 +196,26 @@ int knd_apply_commit(void *elem, void *ctx, struct kndTask *task);
 
 /* snapshots */
 int knd_repo_snapshot_new(struct kndRepoSnapshot **result, size_t numid, size_t latest_commit_id,
-                          struct kndRepo *repo, knd_agent_role_type role, struct kndTask *task);
+                          struct kndRepo *repo, knd_agent_role_type role,
+                          struct kndStorage *store, struct kndTask *task);
 int knd_snapshot_build_path(struct kndRepoSnapshot *s, struct kndTask *task);
 
 int knd_repo_build_snapshot(struct kndRepo *self, struct kndTask *main_task, struct kndTask *task);
-int knd_repo_snapshot_activate(struct kndRepo *repo, struct kndRepoSnapshot **result, struct kndTask *task);
+int knd_repo_snapshot_activate(struct kndRepo *repo, struct kndRepoSnapshot **result,
+                               struct kndTask *main_task, struct kndTask *task);
 int knd_repo_read(struct kndRepo *self, struct kndTask *task);
 int knd_repo_restore(struct kndRepo *self, struct kndRepoSnapshot *snapshot, struct kndTask *task);
-int knd_repo_update_cache(struct kndRepoSnapshot *snapshot, struct kndTask *task);
+int knd_repo_read_cache(struct kndRepoSnapshot *snapshot, struct kndTask *task);
 
 void knd_repo_snapshot_del(struct kndRepoSnapshot *snapshot);
 
-int knd_repo_save_meta(struct kndRepoSnapshot *s, struct kndTask *task);
+int knd_repo_save_meta(struct kndRepoSnapshot *s, struct kndTask *main_task, struct kndTask *task);
 
 void knd_repo_del(struct kndRepo *self);
-
-
 
 int knd_conc_folder_new(struct kndConcFolder **result, struct kndMemPool *mempool);
 
 int knd_repo_transfer_commits(struct kndRepo *repo, struct kndTask *task);
 
 int knd_repo_new(struct kndRepo **self, const char *name, size_t name_size,
-                 const char *path, size_t path_size,
                  const char *schema_path, size_t schema_path_size);

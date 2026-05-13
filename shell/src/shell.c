@@ -117,13 +117,11 @@ static int knd_interact(struct kndSteward *steward)
     int err;
 
     err = knd_task_new(&writer_task, KND_AGENT_WRITER, 1,
-                       &steward->mem_task_ctx_config, &steward->mem_task_cache_config,
-                       &steward->storage_config, steward);
+                       &steward->mem_task_ctx_config, &steward->mem_task_cache_config, steward);
     KND_STEWARD_ERR("failed to create a writer task");
 
     err = knd_task_new(&reader_task, KND_AGENT_READER, 2,
-                       &steward->mem_task_ctx_config, &steward->mem_task_cache_config,
-                       &steward->storage_config, steward);
+                       &steward->mem_task_ctx_config, &steward->mem_task_cache_config, steward);
     KND_STEWARD_ERR("failed to create a reader task");
 
     /* start serving requests */
@@ -199,7 +197,7 @@ static int knd_interact(struct kndSteward *steward)
                     writer_task->output_size, writer_task->output);
 
             /* check system resource utilization */
-            knd_task_monitor(writer_task, &steward->storage_config, &report);
+            knd_task_monitor(writer_task, steward->active_storage, &report);
             if (report.mem_threshold_alert) {
 
                 knd_log("!! mem utilization threshold reached");
@@ -233,11 +231,12 @@ static int knd_interact(struct kndSteward *steward)
             break;
         }
 
+
+    next_line:
+
         knd_task_reset(reader_task);
 
         /* readline allocates a new buffer every time */
-    next_line:
-
         free(buf);
         memblock = NULL;
         write_memblock = NULL;
@@ -280,7 +279,7 @@ static int knd_start(const char *config, size_t config_size)
     task = steward->task;
     present_mempools(task);
 
-    knd_task_monitor(task, &steward->storage_config, &report);
+    knd_task_monitor(task, steward->active_storage, &report);
     if (report.mem_threshold_alert) {
         knd_log("!! init stage: mem utilization threshold reached");
 

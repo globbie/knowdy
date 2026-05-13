@@ -123,11 +123,12 @@ set(SOURCES src/attr/knd_attr.c src/attr/knd_attr.import.c src/attr/knd_attr.res
         src/rel/knd_rel_pred.resolve.c
         src/repo/knd_repo.c src/repo/knd_repo.gsl.c src/repo/knd_repo.gsp.c src/repo/knd_repo.select.c
         src/repo/knd_repo.commit.c src/repo/knd_repo.read.c src/repo/knd_repo.cache.c
-        src/set/knd_set.c src/set/knd_set.gsp.c src/set/knd_set.read.c
+        src/set/knd_set.c src/set/knd_set.gsp.c src/set/knd_set.read.c src/set/knd_set.fetch.c
         src/set/knd_shared_set.c
         src/set/knd_shared_set.read.c src/set/knd_set_idx.c
         src/knd_steward.c
-        src/state/knd_state.c src/storage/knd_storage.c src/state/knd_commit.c
+        src/state/knd_state.c src/storage/knd_storage.c src/storage/knd_storage.gsl.c
+        src/state/knd_commit.c
         src/task/knd_task.c src/task/knd_task.cache.c src/task/knd_task.select.c
         src/text/knd_text.c src/text/knd_text.import.c src/text/knd_text.resolve.c
         src/text/knd_text.read.c src/text/knd_text.decode.c

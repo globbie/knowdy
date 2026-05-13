@@ -120,6 +120,10 @@ static gsl_err_t set_base_pred(void *obj, const char *name, size_t name_size)
 
     bp->name = name;
     bp->name_size = name_size;
+
+    /* root cls */
+    if (name_size == 1 && *name == '/') bp->is_root = true;
+
     return make_gsl_err(gsl_OK);
 }
 

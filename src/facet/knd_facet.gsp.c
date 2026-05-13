@@ -144,7 +144,7 @@ static int write_facet_footer(struct kndFacet *facet,
     int err;
 
     out->reset(out);
-    err = spec->key_encode_cb(facet->key, 0, repo, task);
+    err = spec->key_encode_cb(facet->key, repo, task);
     KND_TASK_ERR("failed to encode facet key GSP");
 
     if (subfacets_block_size > elems_block_size) {

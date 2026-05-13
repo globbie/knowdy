@@ -101,7 +101,7 @@ static int register_desc(struct kndClass *base, struct kndClass *sub,
         KND_TASK_ERR("failed to acquire {class %.*s}",
                      ref->entry->name_size, ref->entry->name);
 
-        if (c->state_top) continue;
+        //if (c->state_top) continue;
 
         err = index_ancestor(sub, c, task);
         KND_TASK_ERR("failed to index ancestor {cls %.*s} of {cls %.*s}",
@@ -212,13 +212,14 @@ static int find_direct_child(struct kndClassEntry *base,
 }
 
 int knd_facet_cls_hash(void *parent_key, void *curr_key, void *term_key,
-                       void **result, size_t *numval,
-                       struct kndRepo *repo, struct kndTask *task)
+                       void *ctx, void **result, size_t *numval,
+                       struct kndTask *task)
 {
     struct kndClassEntry *parent_entry = parent_key;
     struct kndClassEntry *curr_entry = curr_key;
     struct kndClassEntry *term_entry = term_key;
     struct kndClassEntry *entry;
+    struct kndRepo *repo = ctx;
     int err;
 
     assert (parent_entry != NULL);
@@ -264,7 +265,7 @@ int knd_class_index(struct kndClass *cls, struct kndRepo *repo, struct kndTask *
     }
 
     FOREACH (bp, cls->base_preds) {
-        assert (bp->entry != NULL);
+        if (bp->is_root) break;
 
         err = knd_class_acquire(bp->entry, &c, repo, task);
         KND_TASK_ERR("failed to acquire {cls %.*s}",

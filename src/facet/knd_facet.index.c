@@ -64,11 +64,11 @@ static int facetize_elem(struct kndFacet *facet, void *elem,
     assert (spec->key_get_cb != NULL);
     assert (spec->hash_cb != NULL);
 
-    err = spec->key_get_cb(elem, &term_key, repo, task);
+    err = spec->key_get_cb(elem, (void*)repo, &term_key, task);
     KND_TASK_ERR("failed to obtain a facet key from elem");
 
     do {
-        err = spec->hash_cb(facet->key, curr_key, term_key, &result_key, &numval, repo, task);
+        err = spec->hash_cb(facet->key, curr_key, term_key, (void*)repo, &result_key, &numval, task);
         if (err) {
             if (err == knd_NO_MATCH) break;
             KND_TASK_ERR("failed to apply a facet hash func {err %d}", err);

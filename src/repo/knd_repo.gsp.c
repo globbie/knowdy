@@ -30,6 +30,19 @@
 #define DEBUG_REPO_GSP_LEVEL_3 0
 #define DEBUG_REPO_GSP_LEVEL_TMP 1
 
+static inline void append_leaf(struct kndSet *idx, struct kndStorageLeaf *leaf)
+{
+    if (!idx->leaves) {
+        idx->leaves = leaf;
+        idx->leaf_tail = leaf;
+        idx->num_leaves++;
+        return;
+    }
+    idx->leaf_tail->next = leaf;
+    idx->leaf_tail = leaf;
+    idx->num_leaves++;
+}
+
 #if 0
 static int attr_facet_marshall(void *elem, void *ctx, struct kndStorageLeaf *leaf,
                               size_t *output_size, struct kndTask *task)
@@ -40,7 +53,7 @@ static int attr_facet_marshall(void *elem, void *ctx, struct kndStorageLeaf *lea
     struct kndSetRange *range = ctx;
     int err;
 
-    if (DEBUG_REPO_GSP_LEVEL_TMP) {
+    if (DEBUG_REPO_GSP_LEVEL_2) {
         knd_log(">> building GSP for {cls %.*s {attr %.*s}} {leaf %zu}",
                 attr->owner->name_size, attr->owner->name,
                 attr->name_size, attr->name, leaf->numid);
@@ -58,6 +71,7 @@ static int attr_facet_marshall(void *elem, void *ctx, struct kndStorageLeaf *lea
 }
 #endif
 
+#if 0
 static int marshall_attr_idx(struct kndRepoSnapshot *s, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
@@ -79,9 +93,10 @@ static int marshall_attr_idx(struct kndRepoSnapshot *s, struct kndTask *task)
 
     return knd_OK;
 }
+#endif
 
 static int marshall_cls_names(struct kndDict *name_idx, const char *path, size_t path_size,
-                              struct kndTask *task)
+                              struct kndStorage *store, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     char buf[KND_PATH_SIZE + 1];
@@ -102,20 +117,22 @@ static int marshall_cls_names(struct kndDict *name_idx, const char *path, size_t
     }
 
     /* agent specific folder */
-    OUTF("agent_%d", task->id);
-    OUT("/", 1);
+    //OUTF("agent_%d", task->id);
+    //OUT("/", 1);
+
     OUT("cls-names/", strlen("cls-names/"));
     if (out->buf_size >= KND_PATH_SIZE) return knd_LIMIT;
 
     memcpy(buf, out->buf, out->buf_size);
     buf_size = out->buf_size;
 
-    err = knd_dict_marshall(name_idx, NULL, buf, buf_size, knd_class_name_marshall, NULL, task);
+    err = knd_dict_marshall(name_idx, NULL, buf, buf_size, knd_class_name_marshall, NULL, store, task);
     KND_TASK_ERR("failed to marhall cls names dict");
 
     return knd_OK;
 }
 
+#if 0
 static int marshall_attr_names(const char *path, size_t path_size, struct kndTask *task)
 {
     //struct kndStorageLeaf *leaf;
@@ -144,15 +161,17 @@ static int marshall_attr_names(const char *path, size_t path_size, struct kndTas
     //KND_TASK_ERR("failed to marshall an attr name idx");
     return knd_OK;
 }
+#endif
 
 static int marshall_name_mappings(const char *path, size_t path_size,
-                                  struct kndTask *main_task, struct kndTask *task)
+                                  struct kndTask *main_task,
+                                  struct kndStorage *store, struct kndTask *task)
 {
     int err;
 
     switch (main_task->type) {
     case KND_TASK_BULK_LOAD:
-        err = marshall_cls_names(main_task->idxs.cls_name_idx, path, path_size, task);
+        err = marshall_cls_names(main_task->idxs.cls_name_idx, path, path_size, store, task);
         KND_TASK_ERR("failed to marshall cls names");
 
         //err = marshall_attr_names(path, path_size, task);
@@ -166,8 +185,8 @@ static int marshall_name_mappings(const char *path, size_t path_size,
 }
 
 static int marshall_content(const char *path, size_t path_size,
-                            struct kndTask *main_task,
-                            struct kndRepo *repo, struct kndTask *task)
+                            struct kndTask *main_task, struct kndRepo *repo,
+                            struct kndStorage *store, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     char buf[KND_PATH_SIZE + 1];
@@ -182,9 +201,6 @@ static int marshall_content(const char *path, size_t path_size,
         OUT("/", 1);
     }
 
-    /* agent specific folder */
-    OUTF("agent_%d", task->id);
-    OUT("/", 1);
     OUT("cls-content/", strlen("cls-content/"));
     if (out->buf_size >= KND_PATH_SIZE) return knd_LIMIT;
 
@@ -194,7 +210,7 @@ static int marshall_content(const char *path, size_t path_size,
     switch (main_task->type) {
     case KND_TASK_BULK_LOAD:
         err = knd_set_marshall(main_task->idxs.cls_idx, NULL, buf, buf_size,
-                               knd_class_marshall, repo, task);
+                               knd_class_marshall, repo, store, task);
         KND_TASK_ERR("failed to marshall a class idx");
         break;
     default:
@@ -207,28 +223,26 @@ static int marshall_content(const char *path, size_t path_size,
     return knd_OK;
 }
 
-static int marshall_cache(const char *path, size_t path_size,
-                          struct kndTask *main_task,
-                          struct kndRepo *repo, struct kndTask *task)
+static int marshall_cache(struct kndRepoSnapshot *s,
+                          struct kndTask *main_task, struct kndRepo *repo,
+                          struct kndStorage *store, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
-    struct kndSet *idx;
+    struct kndSet *idx = task->cache.cls_idx;
+    struct kndSet *target_idx = s->cache.cls_cache_idx;
     struct kndTaskCache *cache = &main_task->cache;
     //struct kndRepoCache *cache = &main_task->repo->snapshot->cache;
+    struct kndStorageLeaf *leaf, *lf;
     struct kndCacheItem *item;
     struct kndClassEntry *entry;
     char idbuf[KND_ID_SIZE];
     size_t idbuf_size;
-    char buf[KND_PATH_SIZE + 1];
-    size_t buf_size;
+    char path[KND_PATH_SIZE + 1];
+    size_t path_size;
     size_t count = 0;
     int err;
 
-    assert (path_size > 0);
-
     if (!cache->num_cls_entries) return knd_OK;
-
-    idx = task->cache.cls_idx;
 
     FOREACH (item, cache->cls_entries) {
         count++;
@@ -238,35 +252,44 @@ static int marshall_cache(const char *path, size_t path_size,
         err = knd_set_add(idx, idbuf, idbuf_size, (void*)entry, task);
         KND_TASK_ERR("failed to add a cached cls entry to a set idx");
 
-        if (DEBUG_REPO_GSP_LEVEL_TMP) {
+        if (DEBUG_REPO_GSP_LEVEL_3) {
             knd_log(">> {cache-item %zu {num-hits %zu} {cls %.*s {id %.*s}}}",
                     count, item->num_hits, entry->name_size, entry->name,
                     entry->id_size, entry->id);
-        }        
+        }
     }
 
     out->reset(out);
-    OUT(path, path_size);
-    if (path[path_size - 1] != '/') {
+    OUT(s->path, s->path_size);
+    if (s->path[s->path_size - 1] != '/') {
         OUT("/", 1);
     }
 
-    OUTF("agent_%d", task->id);
-    OUT("/", 1);
     OUT("cls-cache/", strlen("cls-cache/"));
     if (out->buf_size >= KND_PATH_SIZE) return knd_LIMIT;
 
-    memcpy(buf, out->buf, out->buf_size);
-    buf_size = out->buf_size;
+    memcpy(path, out->buf, out->buf_size);
+    path_size = out->buf_size;
 
     switch (main_task->type) {
     case KND_TASK_BULK_LOAD:
-        err = knd_set_marshall(idx, NULL, buf, buf_size, knd_class_name_marshall, repo, task);
+        err = knd_set_marshall(idx, NULL, path, path_size, knd_class_name_marshall, repo, store, task);
         KND_TASK_ERR("failed to marshall a cls cache idx");
+
+        /* transfer leaves to snapshot cache idx */
+        FOREACH (lf, idx->leaves) {
+            err = knd_storage_leaf_new(&leaf, lf->numid, path, path_size,
+                                       0, 0, KND_STORAGE_MODE_READ_ONLY);
+            KND_TASK_ERR("failed to alloc a storage leaf {err %d}", err);
+
+            append_leaf(target_idx, leaf);            
+        }
+
         break;
     default:
         break;
     }
+
     return knd_OK;
 }
 
@@ -299,7 +322,7 @@ static int marshall_strings(struct kndRepoSnapshot *s, struct kndTask *task)
     }
 
     err = knd_set_marshall(task->idxs->str_idx, NULL, path, path_size,
-                           knd_charseq_marshall, NULL, task);
+                           knd_charseq_marshall, NULL, store, task);
     KND_TASK_ERR("failed to marshall a string idx");
 
     memcpy(task->idxs->str_idx_path, path, path_size);
@@ -312,6 +335,7 @@ static int marshall_strings(struct kndRepoSnapshot *s, struct kndTask *task)
 int knd_repo_build_snapshot(struct kndRepo *repo, struct kndTask *main_task, struct kndTask *task)
 {
     struct kndRepoSnapshot *curr_snapshot, *s;
+    struct kndStorage *store = task->steward->active_storage;
     size_t numid;
     size_t last_commit_id;    
     int err;
@@ -327,24 +351,21 @@ int knd_repo_build_snapshot(struct kndRepo *repo, struct kndTask *main_task, str
         numid = curr_snapshot->numid + 1;
     }
 
-    if (DEBUG_REPO_GSP_LEVEL_TMP) {
-        knd_log(".. building a GSP {snapshot #%zu} of {repo %.*s}",
-                numid, repo->name_size, repo->name);
-    }
-
-    err = knd_repo_snapshot_new(&s, numid, last_commit_id, repo, task->role, task);
+    err = knd_repo_snapshot_new(&s, numid, last_commit_id, repo, task->role, store, task);
     KND_TASK_ERR("failed to create a repo snapshot");
 
-    err = knd_mkpath((const char*)s->path, s->path_size, 0755, false);
-    KND_TASK_ERR("failed to make {path %.*s}", s->path_size, s->path);
+    if (DEBUG_REPO_GSP_LEVEL_TMP) {
+        knd_log(".. building a GSP {repo %.*s {snapshot #%zu {path %.*s}}}",
+                repo->name_size, repo->name, numid, s->path_size, s->path);
+    }
 
-    err = marshall_name_mappings(s->path, s->path_size, main_task, task);
+    err = marshall_name_mappings(s->path, s->path_size, main_task, store, task);
     KND_TASK_ERR("failed to marshall name mappings in {path %.*s}", s->path_size, s->path);
 
-    err = marshall_content(s->path, s->path_size, main_task, repo, task);
+    err = marshall_content(s->path, s->path_size, main_task, repo, store, task);
     KND_TASK_ERR("failed to marshall main content in {path %.*s}", s->path_size, s->path);
 
-    err = marshall_cache(s->path, s->path_size, main_task, repo, task);
+    err = marshall_cache(s, main_task, repo, store, task);
     KND_TASK_ERR("failed to marshall cache in {path %.*s}", s->path_size, s->path);
 
     //err = marshall_attr_idx(s, task);
@@ -354,5 +375,6 @@ int knd_repo_build_snapshot(struct kndRepo *repo, struct kndTask *main_task, str
     //KND_TASK_ERR("failed to marshall strings in {path %.*s}", s->path_size, s->path);
 
     repo->snapshot_temp = s;
+
     return knd_OK;
 }

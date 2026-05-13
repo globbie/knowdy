@@ -212,7 +212,7 @@ static int export_SVG(struct kndProcArg *self,
 }
 
 int knd_proc_arg_export(struct kndProcArg *self, knd_format format,
-                        struct kndRepo *repo, struct kndTask *task, struct kndOutput *out)
+                        struct kndRepo *unused_var(repo), struct kndTask *task, struct kndOutput *out)
 {
     int err;
 
@@ -460,20 +460,23 @@ gsl_err_t knd_proc_arg_parse(struct kndProcArg *self,
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-int knd_proc_arg_resolve(struct kndProcArg *self, struct kndRepo *repo, struct kndTask *task)
+int knd_proc_arg_resolve(struct kndProcArg *self, struct kndRepo *unused_var(repo), struct kndTask *task)
 {
     struct kndClassEntry *entry;
     struct kndProcEntry *proc_entry;
     int err;
 
     if (DEBUG_PROC_ARG_LEVEL_2) {
-        knd_log(".. resolving arg \"%.*s\"", self->name_size, self->name);
+        knd_log(".. resolving {proc-arg %.*s}", self->name_size, self->name);
     }
+
     if (self->classname_size) {
         if (DEBUG_PROC_ARG_LEVEL_2) {
-            knd_log(".. resolving arg class template: %.*s..", self->classname_size, self->classname);
+            knd_log(".. resolving arg template {cls %.*s}",
+                    self->classname_size, self->classname);
         }
-        err = knd_dict_get(task->idxs.cls_name_idx, self->classname, self->classname_size, (void**)&entry, task);
+        err = knd_dict_get(task->idxs.cls_name_idx, self->classname, self->classname_size,
+                           (void**)&entry, task);
         KND_TASK_ERR("no such {cls %.*s}", self->classname_size, self->classname);
 
         self->template = entry;
@@ -481,9 +484,10 @@ int knd_proc_arg_resolve(struct kndProcArg *self, struct kndRepo *repo, struct k
 
     if (self->proc_call) {
         err = knd_dict_get(task->idxs.proc_name_idx,
-                           self->proc_call->name, self->proc_call->name_size, (void**)&proc_entry, task);
+                           self->proc_call->name, self->proc_call->name_size,
+                           (void**)&proc_entry, task);
         if (err) {
-            knd_log("-- no such proc: %.*s",
+            knd_log("-- no such {proc %.*s}",
                     self->proc_call->name_size, self->proc_call->name);
             return knd_FAIL;
         }

@@ -164,7 +164,8 @@ int knd_set_sort(struct kndSet *set, struct kndSetRange *range, compare_cb_t cb,
 /* GSP marshalling */
 int knd_set_marshall(struct kndSet *s, struct kndSetRange *range,
                      const char *path, size_t path_size,
-                     knd_set_elem_marshall_cb_t cb, void *cb_ctx, struct kndTask *task);
+                     knd_set_elem_marshall_cb_t cb, void *cb_ctx,
+                     struct kndStorage *store, struct kndTask *task);
 int knd_set_leaf_marshall(struct kndSet *s, struct kndSetRange *range, struct kndStorageLeaf *leaf,
                           knd_set_elem_marshall_cb_t cb, void *cb_ctx, struct kndTask *task);
 
@@ -172,3 +173,6 @@ int knd_set_build_path(struct kndSet *idx, const char *path, size_t path_size,
                        const char *pref, size_t pref_size, struct kndTask *task);
 int knd_set_read_leaf(struct kndSet *idx, struct kndStorageLeaf *leaf, struct kndSetRange *range,
                       knd_set_elem_unmarshall_cb_t cb, void *cb_ctx, struct kndTask *task);
+
+int knd_set_fetch_elem(struct kndSet *s, struct kndStorageLeaf *leaf, const char *key, size_t key_size,
+                       knd_set_elem_unmarshall_cb_t cb, void *cb_ctx, void **result, struct kndTask *task);

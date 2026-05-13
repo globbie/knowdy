@@ -307,8 +307,9 @@ int knd_set_map(struct kndSet *s, struct kndSetRange *range,
     int err;
 
     if (!s->dir) {
-        if (DEBUG_SET_LEVEL_3)
+        if (DEBUG_SET_LEVEL_3) {
             knd_log("NB: -- set has no root dir");
+        }
         return knd_OK;
     }
 

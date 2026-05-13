@@ -544,12 +544,26 @@ static int query_get_cls_entry_by_name(struct kndRepo *repo, const char *name, s
     struct kndClassEntry *entry;
     int err;
 
+    if (DEBUG_CLASS_LEVEL_2) {
+        knd_log(".. query to get a {cls %.*s}", name_size, name);
+    }
+
     /* lookup task local write idx */
-    name_idx = task->idxs.cls_name_idx;
-    err = knd_dict_get(name_idx, name, name_size, (void**)&entry, task);
-    if (entry) {
-        *result = entry;
-        return knd_OK;
+    switch (task->role) {
+    case KND_AGENT_SYSTEM:
+        // fall through
+    case KND_AGENT_WRITER:
+        name_idx = task->idxs.cls_name_idx;
+        assert (name_idx != NULL);
+
+        err = knd_dict_get(name_idx, name, name_size, (void**)&entry, task);
+        if (entry) {
+            *result = entry;
+            return knd_OK;
+        }
+        break;
+    default:
+        break;
     }
 
     /* lookup global write idx */
@@ -561,21 +575,25 @@ static int query_get_cls_entry_by_name(struct kndRepo *repo, const char *name, s
 
     /* lookup global read-only cache */
     name_idx = repo->snapshot->cache.cls_name_idx;
+    assert (name_idx != NULL);
+
     err = knd_dict_get(name_idx, name, name_size, (void**)&entry, task);
     if (!err) {
+        assert (entry != NULL);
+
+        knd_log("++ got cls entry by {name %.*s}", entry->name_size, entry->name);
         *result = entry;
         return knd_OK;
     }
 
     /* lookup task local cache */
-#if 0
     name_idx = task->cache.cls_name_idx;
-    entry = knd_dict_get(name_idx, name, name_size);
-    if (entry) {
+    err = knd_dict_get(name_idx, name, name_size, (void**)&entry, task);
+    if (!err) {
+        assert (entry != NULL);
         *result = entry;
         return knd_OK;
     }
-#endif
     return knd_NO_MATCH;
 }
 
@@ -594,7 +612,6 @@ int knd_get_cls_entry_by_name(struct kndRepo *repo, const char *name, size_t nam
     default:
         break;
     }
-
     return knd_NO_MATCH;
 }
 
@@ -619,14 +636,13 @@ int knd_class_acquire(struct kndClassEntry *entry, struct kndClass **result,
                       struct kndTask *unused_var(task))
 {
     struct kndClass *c = entry->cls;
-    //struct kndStorageLeaf *leaf;
     //int err;
 
-    if (DEBUG_CLASS_LEVEL_2) {
+    if (DEBUG_CLASS_LEVEL_TMP) {
         knd_log(">> acquire {cls %.*s {id %.*s}}",
                 entry->name_size, entry->name, entry->id_size, entry->id);
     }
-    
+
     if (c) {
         // check curr status, maybe deleted?
         *result = c;

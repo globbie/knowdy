@@ -201,8 +201,9 @@ static const char *const knd_format_names[] = {
 
 #define KND_IDLE_TIMEOUT 10 /* in seconds */
 
-#define KND_TMP_DIR "/tmp"
-#define KND_USERSPACE_DIR_NAME "users/"
+#define KND_BASE_REPO_DIR_NAME "base"
+#define KND_SNAPSHOT_DIR_NAME  "snapshot"
+#define KND_USERSPACE_DIR_NAME "users"
 
 #define KND_GSP_FILE_HEADER_NAME "GSP"
 #define KND_GSP_FILE_EXT_NAME ".gsp"

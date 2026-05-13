@@ -543,6 +543,7 @@ static gsl_err_t parse_clause(void *obj, const char *rec, size_t *total_size)
     return make_gsl_err(gsl_OK);
 }
 
+#if 0
 static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
@@ -558,6 +559,7 @@ static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_si
 
     return parser_err;
 }
+#endif
 
 static gsl_err_t parse_proc_select(void *obj, const char *rec, size_t *total_size)
 {
@@ -845,12 +847,12 @@ gsl_err_t knd_statement_read(struct kndStatement *stm, const char *rec, size_t *
           .is_selector = true,
           .run = set_statement_schema,
           .obj = &ctx
-        },
+        }/*,
         { .name = "class",
           .name_size = strlen("class"),
           .parse = parse_class_select,
           .obj = &ctx
-        },
+          }*/,
         { .name = "proc",
           .name_size = strlen("proc"),
           .parse = parse_proc_select,

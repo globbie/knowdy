@@ -159,9 +159,9 @@ static int link_ancestor(struct kndClass *self, struct kndClass *baseclass,
     }
 
     if (DEBUG_CLASS_RESOLVE_LEVEL_2) {
-        knd_log(".. %.*s class to link an ancestor {cls %.*s} {top %d}",
+        knd_log(".. %.*s class to link an ancestor {cls %.*s}",
                 self->name_size, self->name,
-                baseclass->name_size, baseclass->name, baseclass->state_top);
+                baseclass->name_size, baseclass->name);
     }
 
     /* add an ancestor */
@@ -218,7 +218,7 @@ int knd_class_link_base(struct kndClass *cls, struct kndClass *base,
         err = knd_class_acquire(baseref->entry, &c, repo, task);
         KND_TASK_ERR("failed to acquire {cls %.*s}", baseref->entry->name_size, baseref->entry->name);
 
-        if (c->state_top) continue;
+        //if (c->state_top) continue;
 
         err = link_ancestor(cls, c, repo, task);
         KND_TASK_ERR("failed to link an ancestor");
@@ -258,6 +258,8 @@ static int resolve_baseclasses(struct kndClass *cls, struct kndRepo *repo, struc
             err = knd_FAIL;
             KND_TASK_ERR("no base class name specified in {cls %.*s}", cls->name_size, cls->name);
         }
+
+        if (bp->is_root) break;
 
         err = knd_get_cls_by_name(repo, bp->name, bp->name_size, &c, task);
         KND_TASK_ERR("no {cls %.*s} found", bp->name_size, bp->name);
@@ -327,6 +329,8 @@ int knd_class_resolve(struct kndClass *cls, struct kndRepo *repo, struct kndTask
     }
 
     FOREACH (bp, cls->base_preds) {
+        if (bp->is_root) break;
+
         err = knd_class_acquire(bp->entry, &c, repo, task);
         KND_TASK_ERR("failed to acquire {cls %.*s}", bp->entry->name_size, bp->entry->name);
 

@@ -10,7 +10,7 @@ typedef enum knd_dict_storage_t { KND_DICT_DEFAULT,
                                   KND_DICT_PERSIST } knd_dict_storage_t;
 
 typedef enum knd_dict_entry_phase { KND_DICT_ENTRY_DEFAULT,
-                                   KND_DICT_ENTRY_CACHED } knd_dict_entry_phase;
+                                    KND_DICT_ENTRY_CACHED } knd_dict_entry_phase;
 
 typedef int (*knd_dict_item_marshall_cb_t)(void *item, void *ctx, struct kndStorageLeaf *leaf,
                                            size_t *output_size, struct kndTask *task);
@@ -58,6 +58,7 @@ struct kndDict
 
     knd_dict_item_marshall_cb_t item_marshall_cb;
     knd_dict_item_unmarshall_cb_t item_unmarshall_cb;
+
 };
 
 int knd_dict_new(struct kndDict **self, size_t init_size, struct kndMemPool *mempool);
@@ -77,9 +78,19 @@ int knd_dict_map(struct kndDict *dict, map_cb_t cb, void *ctx, struct kndTask *t
 
 int knd_dict_marshall(struct kndDict *dict, struct kndDictRange *range,
                       const char *path, size_t path_size,
-                      knd_dict_item_marshall_cb_t cb, void *cb_ctx, struct kndTask *task);
+                      knd_dict_item_marshall_cb_t cb, void *cb_ctx,
+                      struct kndStorage *store, struct kndTask *task);
+
+int knd_dict_unmarshall_entry(const char *elem_id, size_t elem_id_size,
+                              const char *rec, size_t unused_var(rec_size),
+                              void *ctx_obj, size_t *result_size, void **unused_var(result),
+                              struct kndTask *task);
 
 int knd_dict_append_leaf(struct kndDict *dict, struct kndStorageLeaf *leaf, struct kndTask *task);
 
-int knd_dict_read_entry(struct kndDict *dict, const char *name, size_t name_size, void **result, struct kndTask *task);
+int knd_dict_fetch_entry(const char *elem_id, size_t elem_id_size,
+                         const char *rec, size_t unused_var(rec_size),
+                         void *ctx_obj, size_t *result_size, void **unused_var(result),
+                         struct kndTask *task);
+int knd_dict_fetch_item(struct kndDict *dict, size_t hash_val, const char *name, size_t name_size, void **result, struct kndTask *task);
 

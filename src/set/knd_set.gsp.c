@@ -330,7 +330,7 @@ static int marshall_subdirs(struct kndSetDir *dir, struct kndSetDirBlock *block,
     if (block->num_subdirs < KND_RADIX_BASE / 2) {
         block->use_dir_keys = true;
     }
-    
+
     for (i = block->from_dir; i < block->to_dir; i++) {
         subdir = dir->subdirs[i];
         if (!subdir) continue;
@@ -410,14 +410,15 @@ int knd_set_leaf_marshall(struct kndSet *s, struct kndSetRange *range,
 
 int knd_set_marshall(struct kndSet *s, struct kndSetRange *range,
                      const char *path, size_t path_size,
-                     knd_set_elem_marshall_cb_t cb, void *cb_ctx, struct kndTask *task)
+                     knd_set_elem_marshall_cb_t cb, void *cb_ctx,
+                     struct kndStorage *store, struct kndTask *task)
 {
     assert (s->num_elems > 0);
 
     struct kndStorageLeaf *leaf;
     size_t leaf_count = 0;
-    size_t min_leaf_size = task->storage_conf->leaf_min_size;
-    size_t max_leaf_size = task->storage_conf->leaf_max_size;
+    size_t min_leaf_size = store->leaf_min_size;
+    size_t max_leaf_size = store->leaf_max_size;
     int err;
 
     if (DEBUG_SET_GSP_LEVEL_2) {
@@ -433,7 +434,8 @@ int knd_set_marshall(struct kndSet *s, struct kndSetRange *range,
 
     /* split a set into a batch of leaves of max size */
     do {
-        err = knd_storage_leaf_new(&leaf, ++leaf_count, path, path_size, min_leaf_size, max_leaf_size);
+        err = knd_storage_leaf_new(&leaf, ++leaf_count, path, path_size,
+                                   min_leaf_size, max_leaf_size, KND_STORAGE_MODE_READ_WRITE);
         KND_TASK_ERR("failed to alloc a storage leaf");
 
         err = knd_set_leaf_marshall(s, range, leaf, cb, cb_ctx, task);

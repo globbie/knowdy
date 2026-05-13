@@ -655,7 +655,6 @@ int knd_class_entry_unmarshall(const char *unused_var(elem_id), size_t unused_va
                                void *unused_var(ctx), size_t *total_size,
                                void **result, struct kndTask *task)
 {
-    struct kndSet *cls_idx = task->idxs.cls_idx;
     struct kndClassEntry *entry;
     gsl_err_t parser_err;
     int err;
@@ -689,16 +688,28 @@ int knd_class_entry_unmarshall(const char *unused_var(elem_id), size_t unused_va
     if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
     knd_calc_num_id(entry->id, entry->id_size, &entry->numid);
 
-    err = knd_set_add(cls_idx, entry->id, entry->id_size, (void*)entry, task);
-    KND_TASK_ERR("failed to register {cls-entry %.*s} ", entry->name_size, entry->name);
-
-    // TODO cls name idx
-
-    if (DEBUG_CLASS_READ_LEVEL_TMP) {
+    if (DEBUG_CLASS_READ_LEVEL_3) {
         knd_log("++ {cls %.*s {id %.*s}} unmarshalled",
                 entry->name_size, entry->name, entry->id_size, entry->id);
     }
 
     *result = entry;
     return knd_OK;
+}
+
+int knd_cls_entry_fetch(const char *rec, size_t rec_size,
+                        void *ctx, size_t *result_size,
+                        const char **key, size_t *key_size, void **result, struct kndTask *task)
+{
+    struct kndClassEntry *entry;
+    gsl_err_t parser_err;
+    int err;
+
+    if (DEBUG_CLASS_READ_LEVEL_TMP) {
+        knd_log(">> fetching cls entry from {rec %.*s}", rec_size, rec);
+    }
+
+    
+    *result = NULL;
+    return knd_NO_MATCH;
 }

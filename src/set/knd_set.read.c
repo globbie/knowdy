@@ -56,9 +56,7 @@ static int create_dir_block(struct kndSetDir *dir, struct kndSetRange *unused_va
 static int read_elems_rec_size(struct kndSetDirBlock *block, const char *rec, size_t rec_size,
                                size_t *result_tail_size, struct kndTask *task)
 {
-    unsigned char buf[KND_NAME_SIZE];
     char size_spec = 0;
-    ssize_t num_bytes;
     size_t numval;
     size_t tail_size = 1;
     int err;
@@ -69,7 +67,7 @@ static int read_elems_rec_size(struct kndSetDirBlock *block, const char *rec, si
 
     size_spec = rec[rec_size - tail_size];
     if (size_spec == 0) {
-        if (DEBUG_SET_READ_LEVEL_TMP) {
+        if (DEBUG_SET_READ_LEVEL_3) {
             knd_log("-- no payload in this block");
         }
         *result_tail_size = tail_size;
@@ -93,7 +91,7 @@ static int read_elems_rec_size(struct kndSetDirBlock *block, const char *rec, si
     tail_size++;
     size_spec = rec[rec_size - tail_size];
     if (size_spec == 0) {
-        if (DEBUG_SET_READ_LEVEL_TMP) {
+        if (DEBUG_SET_READ_LEVEL_3) {
             knd_log("-- no payload in this block");
         }
         *result_tail_size = tail_size;
@@ -115,7 +113,7 @@ static int read_elems_rec_size(struct kndSetDirBlock *block, const char *rec, si
 
     *result_tail_size = tail_size;
 
-    if (DEBUG_SET_READ_LEVEL_TMP) {
+    if (DEBUG_SET_READ_LEVEL_3) {
         knd_log("== {elems {rec-size %zu} {footer-size %zu}}",
                 block->elems_rec_size, block->elems_footer_size);
     }
@@ -142,15 +140,11 @@ static int elems_linear_scan(struct kndSetDir *dir, struct kndSetDirBlock *block
                              knd_set_elem_unmarshall_cb_t cb, void *cb_ctx, struct kndTask *task)
 {
     char *dir_entry;
-    const char *key = rec;
-    size_t remainder_size = rec_size - 1;
-    size_t val_size;
     struct kndSetElem *elem;
     const char *elem_rec;
     size_t elem_rec_size;
     void *result;
     char separ;
-    size_t result_size;
     size_t parsed_rec_size;
     size_t rec_offset = 0;
     int err;
@@ -183,9 +177,12 @@ static int elems_linear_scan(struct kndSetDir *dir, struct kndSetDirBlock *block
                     i, *dir_entry, elem_rec_size, elem_rec, elem_rec_size);
         }
 
-        err = cb(elem->id, elem->id_size, elem_rec, elem_rec_size, cb_ctx, &parsed_rec_size, &result, task);
+        err = cb(elem->id, elem->id_size, elem_rec, elem_rec_size, cb_ctx,
+                 &parsed_rec_size, &result, task);
         KND_TASK_ERR("failed to unmarshall {elem %.*s}", elem->id_size, elem->id);
         elem->val = result;
+
+        // TODO assign elem
 
         rec[rec_offset + elem_rec_size] = separ;
         dir_entry += (cell_size + 1);
@@ -194,6 +191,7 @@ static int elems_linear_scan(struct kndSetDir *dir, struct kndSetDirBlock *block
     return knd_OK;
 }
 
+#if 0
 static int fetch_elem_linear_scan(const char *id, size_t id_size, const char *rec, size_t rec_size,
                                   knd_set_elem_unmarshall_cb_t cb, void *ctx, void **result,
                                   struct kndTask *task)
@@ -244,6 +242,7 @@ static int fetch_elem_linear_scan(const char *id, size_t id_size, const char *re
     }
     return knd_NO_MATCH;
 }
+#endif
 
 static int unmarshall_elems(struct kndSetDir *dir, struct kndSetDirBlock *block,
                             char *rec, size_t rec_size,
@@ -251,17 +250,12 @@ static int unmarshall_elems(struct kndSetDir *dir, struct kndSetDirBlock *block,
                             struct kndTask *task)
 {
     struct kndSetElem *elem;
-    size_t elems_block_size;
     unsigned char spec;
     bool use_keys = false;
-    //size_t footer_size = 0;
     size_t cell_size = 0;
-    size_t dir_size = 0;
-    size_t dir_field_size = 0;
     char *dir_entry;
     char *elem_rec;
     const char *key;
-    const unsigned char *c;
     char separ;
     size_t numval;
     size_t remainder;
@@ -274,7 +268,7 @@ static int unmarshall_elems(struct kndSetDir *dir, struct kndSetDirBlock *block,
 
     assert (cb != NULL);
 
-    if (DEBUG_SET_READ_LEVEL_TMP) {
+    if (DEBUG_SET_READ_LEVEL_2) {
         knd_log(".. unmarshall elems of {dir %.*s} {rec %.*s {size %zu}}",
                 dir->id_size, dir->id, rec_size, rec, rec_size);
     }
@@ -318,7 +312,7 @@ static int unmarshall_elems(struct kndSetDir *dir, struct kndSetDirBlock *block,
         KND_TASK_ERR("too many elems specified, incorrect elems footer");
     }
 
-    if (DEBUG_SET_READ_LEVEL_TMP) {
+    if (DEBUG_SET_READ_LEVEL_3) {
         knd_log("== {dir %.*s} {use-keys %d}  {cell-size %zu}"
                 " {num-elems %zu} {tail-size %zu}",
                 dir->id_size, dir->id, use_keys, cell_size, num_elems, tail_size);
@@ -366,6 +360,8 @@ static int unmarshall_elems(struct kndSetDir *dir, struct kndSetDirBlock *block,
         KND_TASK_ERR("failed to unmarshall {elem %.*s}", elem->id_size, elem->id);
         elem->val = result;
 
+        dir->elems[i] = elem;
+        
         // restore value
         elem_rec[numval] = separ;
         elem_rec += numval;
@@ -384,7 +380,7 @@ static int read_subdirs_rec_size(struct kndSetDirBlock *block, int fd, size_t *e
     size_t offset = block->offset + block->size;
     size_t tail_size;
 
-    if (DEBUG_SET_READ_LEVEL_TMP) {
+    if (DEBUG_SET_READ_LEVEL_2) {
         knd_log(".. reading subdirs rec size from {offset %zu}",
                 block->offset + block->size - 1);
     }
@@ -397,7 +393,7 @@ static int read_subdirs_rec_size(struct kndSetDirBlock *block, int fd, size_t *e
 
     /* no subdirs present, just elems */
     if (size_spec == 0) {
-        if (DEBUG_SET_READ_LEVEL_TMP) {
+        if (DEBUG_SET_READ_LEVEL_3) {
             knd_log("-- no subdirs found");
         }
         block->subdirs_rec_size = 0;
@@ -439,7 +435,7 @@ static int read_subdirs_rec_size(struct kndSetDirBlock *block, int fd, size_t *e
     *elems_block_size = block->size -\
         (block->subdirs_rec_size + block->subdirs_footer_size + tail_size);
 
-    if (DEBUG_SET_READ_LEVEL_TMP) {
+    if (DEBUG_SET_READ_LEVEL_3) {
         knd_log("== {subdirs-rec-size %zu} {subdirs-footer-size %zu}"
                 " {tail-size %zu} {elems-block-size %zu}\n",
                 block->subdirs_rec_size, block->subdirs_footer_size,
@@ -456,10 +452,7 @@ static int read_subdirs(struct kndSetDir *dir, struct kndSetDirBlock *block,
     struct kndSetDir *subdir;
     struct kndSetDirBlock *subdir_block;
     size_t num_subdirs;
-    size_t spec_size = 2;
     ssize_t num_bytes;
-    size_t subdir_area_size;
-    size_t subdir_footer_size;
     bool use_keys = false;
     size_t cell_size;
     const unsigned char *c;
@@ -469,7 +462,7 @@ static int read_subdirs(struct kndSetDir *dir, struct kndSetDirBlock *block,
     size_t offset = global_offset + block->subdirs_rec_size + block->subdirs_footer_size;
     int err;
 
-    if (DEBUG_SET_READ_LEVEL_TMP) {
+    if (DEBUG_SET_READ_LEVEL_2) {
         knd_log(".. reading subdirs of {dir %.*s {global-offset %zu {local-offset %zu}}"
                 "{subdirs-rec-size %zu} {subdirs-footer-size %zu}",
                 dir->id_size, dir->id, global_offset, offset,
@@ -491,7 +484,7 @@ static int read_subdirs(struct kndSetDir *dir, struct kndSetDirBlock *block,
     cell_size   = buf[1];
     num_subdirs = buf[0];
 
-    if (DEBUG_SET_READ_LEVEL_TMP) {
+    if (DEBUG_SET_READ_LEVEL_3) {
         knd_log("== {cell-size %d} {use-keys %d} {num-subdirs %d} {read-from %zu}",
                 cell_size, use_keys, num_subdirs,
                 offset - GSP_SUBDIRS_SPEC_SIZE);
@@ -513,7 +506,7 @@ static int read_subdirs(struct kndSetDir *dir, struct kndSetDirBlock *block,
     if (num_bytes != (ssize_t)block->subdirs_footer_size) return knd_IO_FAIL;
 
     if (use_keys) {
-        if (DEBUG_SET_READ_LEVEL_TMP) {
+        if (DEBUG_SET_READ_LEVEL_3) {
             knd_log(">> {dir %.*s {num-subdirs %zu}} "
                     "linear traversal needed {cell-size %zu} {footer-size %zu}",
                     dir->id_size, dir->id, num_subdirs, cell_size, block->subdirs_footer_size);
@@ -521,9 +514,11 @@ static int read_subdirs(struct kndSetDir *dir, struct kndSetDirBlock *block,
         c = (unsigned char*)buf;
 
         for (size_t i = 0; i < num_subdirs; i++) {
-            subdir_block_size = knd_unpack_int(c + 1, cell_size); // skip over subdir's id
+            subdir_block_size = knd_unpack_int(c + 1, cell_size);
 
-            knd_log(">> [%zu] {subdir %c {size %zu}}", i, *c, subdir_block_size);
+            if (DEBUG_SET_READ_LEVEL_3) {
+                knd_log(">> [%zu] {subdir %c {size %zu}}", i, *c, subdir_block_size);
+            }
 
             if (subdir_block_size == 0) return knd_LIMIT;
             if (subdir_block_size > block->subdirs_rec_size) return knd_LIMIT;
@@ -549,7 +544,7 @@ static int read_subdirs(struct kndSetDir *dir, struct kndSetDirBlock *block,
         return knd_OK;
     }
 
-    /* all subdirs are present in a footer */
+    /* iterate over a fixed size footer */
     for (size_t i = 0; i < KND_RADIX_BASE; i++) {
         c = (unsigned char*)buf + (i * cell_size);
         subdir_block_size = knd_unpack_int(c, cell_size);
@@ -584,7 +579,7 @@ static int unmarshall_block(struct kndSetDir *dir, struct kndSetRange *range, in
 
     assert (block != NULL);
 
-    if (DEBUG_SET_READ_LEVEL_TMP) {
+    if (DEBUG_SET_READ_LEVEL_2) {
         knd_log("\n.. {dir %.*s} to unmarshall its {block {offset %zu} {size %zu}}",
                 dir->id_size, dir->id, block->offset, block->size);
     }
@@ -592,7 +587,7 @@ static int unmarshall_block(struct kndSetDir *dir, struct kndSetRange *range, in
     err = read_subdirs_rec_size(block, fd, &elems_block_size);
     KND_TASK_ERR("failed to read subdirs rec size");
 
-    if (DEBUG_SET_READ_LEVEL_TMP) {
+    if (DEBUG_SET_READ_LEVEL_3) {
         knd_log("== {subdirs {rec-size %zu} {elems {block-size %zu {rec-size %zu}}",
                 block->subdirs_rec_size, elems_block_size, block->elems_rec_size);
     }
@@ -605,7 +600,7 @@ static int unmarshall_block(struct kndSetDir *dir, struct kndSetRange *range, in
             return knd_LIMIT;
         }
 
-        if (DEBUG_SET_READ_LEVEL_TMP) {
+        if (DEBUG_SET_READ_LEVEL_3) {
             knd_log(".. reading GSP {elems-block {size %zu}}", elems_block_size);
         }
 
@@ -647,7 +642,7 @@ int knd_set_read_leaf(struct kndSet *s, struct kndStorageLeaf *leaf, struct kndS
 
     assert (filename_size != 0);
 
-    if (DEBUG_SET_READ_LEVEL_TMP) {
+    if (DEBUG_SET_READ_LEVEL_2) {
         knd_log(".. open storage {leaf %.*s {filepath %.*s} {size %zu}}",
                 leaf->name_size, leaf->name, filename_size, filename, leaf->curr_size);
     }

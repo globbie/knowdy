@@ -437,8 +437,8 @@ int knd_attr_stm_plan(struct kndAttrStm *stm, struct kndRepo *repo, struct kndTa
     return knd_OK;
 }
 
-int knd_facet_cls_key_get(void *elem, void **result,
-                          struct kndRepo *unused_var(repo), struct kndTask *unused_var(task))
+int knd_facet_cls_key_get(void *elem, void *unused_var(ctx), void **result,
+                          struct kndTask *unused_var(task))
 {
     struct kndAttrStm *stm = elem;
     struct kndAttr *attr = stm->is_list_item ? stm->parent->attr : stm->attr;

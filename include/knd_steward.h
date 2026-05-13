@@ -59,7 +59,10 @@ struct kndSteward
     struct kndMemConfig mem_task_ctx_config;
     struct kndMemConfig mem_task_cache_config;
 
-    struct kndStorageConfig storage_config;
+    struct kndStorage *storages;
+    struct kndStorage *storage_tail;
+    size_t num_storages;
+    struct kndStorage *active_storage;
 
     /* system tasks that shift after each snapshot rebuild */
     struct kndTask *task;

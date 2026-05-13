@@ -20,6 +20,7 @@
 #include "knd_memblock.h"
 #include "knd_mempool.h"
 #include "knd_state.h"
+#include "knd_utils.h"
 #include "knd_commit.h"
 #include "knd_output.h"
 
@@ -109,25 +110,48 @@ int knd_conc_folder_new(struct kndConcFolder **result, struct kndMemPool *mempoo
 int knd_snapshot_build_path(struct kndRepoSnapshot *s, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
+    struct kndSteward *steward = task->steward;
     struct kndRepo *repo = s->repo;
     int err;
 
     out->reset(out);
-    OUT(repo->path, repo->path_size);
-    OUTF("snapshot_%zu/", s->numid);
+    OUT(steward->path, steward->path_size);
+    OUT(s->storage->name, s->storage->name_size);
+    OUT("/", 1);
+    if (repo->name_size > 1) {
+        OUT(repo->name, repo->name_size);
+        OUT("/", 1);    
+    } else {
+        switch (*repo->name) {
+        case '/':
+            OUT(KND_BASE_REPO_DIR_NAME, strlen(KND_BASE_REPO_DIR_NAME));
+            OUT("/", 1);    
+            break;
+        default:
+            break;
+        }
+    }
+    OUT(KND_SNAPSHOT_DIR_NAME, strlen(KND_SNAPSHOT_DIR_NAME));
+    OUTF("%zu", s->numid);
+    OUT("/", 1);    
     if (out->buf_size >= KND_PATH_SIZE) {
         err = knd_LIMIT;
         KND_TASK_ERR("GSP path too long");
     }
+
     memcpy(s->path, out->buf, out->buf_size);
     s->path_size = out->buf_size;
     s->path[out->buf_size] = '\0';
+
+    err = knd_mkpath((const char*)s->path, s->path_size, 0755, false);
+    KND_TASK_ERR("failed to make {path %.*s}", s->path_size, s->path);
 
     return knd_OK;
 }
 
 int knd_repo_snapshot_new(struct kndRepoSnapshot **result, size_t numid, size_t latest_commit_id,
-                          struct kndRepo *repo, knd_agent_role_type role, struct kndTask *task)
+                          struct kndRepo *repo, knd_agent_role_type role,
+                          struct kndStorage *store, struct kndTask *task)
 {
     struct kndRepoSnapshot *s;
     struct kndMemPool *mempool = task->mempool;
@@ -139,6 +163,7 @@ int knd_repo_snapshot_new(struct kndRepoSnapshot **result, size_t numid, size_t 
     s->repo = repo;
     s->start_from_commit_id = latest_commit_id;
     s->role = role;
+    s->storage = store;
 
     err = knd_snapshot_build_path(s, task);
     KND_TASK_ERR("failed to build a default snapshot path");
@@ -155,6 +180,8 @@ int knd_repo_snapshot_new(struct kndRepoSnapshot **result, size_t numid, size_t 
 
     err = knd_set_new(&s->cache.cls_idx, KND_SET_UNIQUE_VALUES, mempool);
     if (err) return err;
+    err = knd_set_new(&s->cache.cls_cache_idx, KND_SET_UNIQUE_VALUES, mempool);
+    if (err) return err;
     err = knd_dict_new(&s->cache.cls_name_idx, KND_HUGE_DICT_SIZE, mempool);
     if (err) return err;
 
@@ -164,24 +191,23 @@ int knd_repo_snapshot_new(struct kndRepoSnapshot **result, size_t numid, size_t 
     if (err) return err;
 
     /* shared idxs */
-    err = knd_shared_set_new(&s->idxs.cls_idx, mempool);
+    /*err = knd_shared_set_new(&s->idxs.cls_idx, mempool);
     if (err) return err;
     err = knd_shared_dict_new(&s->idxs.cls_name_idx, KND_MEDIUM_DICT_SIZE, mempool, false);
     if (err) return err;
-
 
     err = knd_shared_set_new(&s->idxs.proc_idx, mempool);
     if (err) return err;
     err = knd_shared_dict_new(&s->idxs.proc_name_idx, KND_MEDIUM_DICT_SIZE, mempool, false);
     if (err) return err;
+    */
 
-
-    
     *result = s;
     return knd_OK;
 }
 
-int knd_repo_snapshot_activate(struct kndRepo *repo, struct kndRepoSnapshot **result, struct kndTask *task)
+int knd_repo_snapshot_activate(struct kndRepo *repo, struct kndRepoSnapshot **result,
+                               struct kndTask *main_task, struct kndTask *task)
 {
     struct kndRepoSnapshot *snapshot;
     int err;
@@ -192,13 +218,14 @@ int knd_repo_snapshot_activate(struct kndRepo *repo, struct kndRepoSnapshot **re
     err = knd_repo_transfer_commits(repo, task);
     KND_TASK_ERR("failed to transfer sys repo commits");
 
-    err = knd_repo_save_meta(repo->snapshot_temp, task);
+    err = knd_repo_save_meta(repo->snapshot_temp, main_task, task);
     KND_TASK_ERR("failed to update persistent repo meta");
 
     /* switching the snapshots */
-    snapshot = repo->snapshot_temp;    
-    repo->snapshot_temp = repo->snapshot;
+    snapshot = repo->snapshot_temp;
+    knd_repo_snapshot_del(repo->snapshot);
     repo->snapshot = snapshot;
+    repo->snapshot_temp = NULL;
 
     *result = snapshot;
     return knd_OK;
@@ -206,53 +233,27 @@ int knd_repo_snapshot_activate(struct kndRepo *repo, struct kndRepoSnapshot **re
 
 void knd_repo_snapshot_del(struct kndRepoSnapshot *snapshot)
 {
+    // TODO cleanup indices - free alloc'd leaves
+
     free(snapshot);
 }
 
-int knd_repo_new(struct kndRepo **repo, const char *name, size_t name_size,
-                 const char *path, size_t path_size,
+int knd_repo_new(struct kndRepo **result, const char *name, size_t name_size,
                  const char *schema_path, size_t schema_path_size)
 {
-    struct kndRepo *self;
+    struct kndRepo *repo;
 
     if (name_size >= (KND_NAME_SIZE - 1)) return knd_LIMIT;
 
-    self = calloc(1, sizeof(struct kndRepo));
-    if (!self) return knd_NOMEM;
+    repo = calloc(1, sizeof(struct kndRepo));
+    if (!repo) return knd_NOMEM;
 
-    memcpy(self->name, name, name_size);
-    self->name_size = name_size;
+    memcpy(repo->name, name, name_size);
+    repo->name_size = name_size;
 
-    if (path_size) {
-        if (path_size >= (KND_PATH_SIZE - 1)) return knd_LIMIT;
+    repo->schema_path = schema_path;
+    repo->schema_path_size = schema_path_size;
 
-        memcpy(self->path, path, path_size);
-        self->path_size = path_size;
-        if (path[path_size - 1] != '/') {
-            self->path[path_size] = '/';
-            self->path_size++;
-        }
-    }
-
-    /* check special repo names */
-    switch (self->name[0]) {
-    case '/': // base repo
-    case '~': // user repo
-        break;
-    default:
-        if (self->path_size + name_size >= (KND_PATH_SIZE - 1)) return knd_LIMIT;
-
-        memcpy(self->path + self->path_size, name, name_size);
-        self->path_size += name_size;
-
-        if (self->path[self->path_size - 1] != '/') {
-            self->path[self->path_size] = '/';
-            self->path_size++;
-        }
-    }
-    self->schema_path = schema_path;
-    self->schema_path_size = schema_path_size;
- 
-    *repo = self;
+    *result = repo;
     return knd_OK;
 }

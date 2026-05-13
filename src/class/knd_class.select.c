@@ -452,11 +452,11 @@ static gsl_err_t remove_class(void *obj, const char *unused_var(name), size_t na
 #endif
 }
 
-gsl_err_t knd_class_select(const char *rec, size_t *total_size,
-                           struct kndRepo *repo, struct kndTask *task)
+int knd_class_select(const char *rec, size_t *total_size,
+                     struct kndRepo *repo, struct kndQuery *query, struct kndTask *task)
 {
-    struct kndQuery *query = task->ctx->query;
     gsl_err_t parser_err;
+    int err;
 
     if (DEBUG_CLASS_SELECT_LEVEL_2) {
         knd_log(".. parsing class select rec: \"%.*s\" {repo %.*s} {task-type %d}",
@@ -512,7 +512,18 @@ gsl_err_t knd_class_select(const char *rec, size_t *total_size,
     };
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return parser_err;
+    if (parser_err.code) {
+        err = gsl_err_to_knd_err_codes(parser_err);
+        switch (err) {
+        case knd_NO_MATCH:
+            KND_TASK_ERR("unrecognized {tag %.*s} in {cls}",
+                         parser_err.val_size, parser_err.val);
+            break;
+        default:
+            KND_TASK_ERR("{cls} parsing failed {err %d}", err);
+            break;
+        }
+    }
 
-    return make_gsl_err(gsl_OK);
+    return knd_OK;
 }

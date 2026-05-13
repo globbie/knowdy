@@ -280,7 +280,7 @@ void knd_task_cleanup(struct kndTask *task)
 
 }
 
-void knd_task_monitor(struct kndTask *task, struct kndStorageConfig *storage_conf,
+void knd_task_monitor(struct kndTask *task, struct kndStorage *store,
                       struct kndResourceReport *report)
 {
     struct kndMemPool *mempool = task->mempool;
@@ -290,7 +290,7 @@ void knd_task_monitor(struct kndTask *task, struct kndStorageConfig *storage_con
 
     report->mem_usage = memrep.total_mem_usage;
     if (memrep.total_mem_usage >\
-        (mempool->capacity * storage_conf->snapshot_threshold_ratio)) {
+        (mempool->capacity * store->snapshot_threshold_ratio)) {
         report->mem_threshold_alert = true;
     }
 }
@@ -335,7 +335,7 @@ static int task_init(struct kndTask *task,
 
 int knd_task_new(struct kndTask **result, knd_agent_role_type role, size_t task_id,
                  struct kndMemConfig *main_memconf, struct kndMemConfig *cache_memconf,
-                 struct kndStorageConfig *storage_conf, struct kndSteward *steward)
+                 struct kndSteward *steward)
 {
     struct kndTask *task;
     int err;
@@ -368,7 +368,6 @@ int knd_task_new(struct kndTask **result, knd_agent_role_type role, size_t task_
     err = task_init(task, main_memconf, cache_memconf);
     if (err) goto error;
 
-    task->storage_conf = storage_conf;
     task->steward = steward;
 
     *result = task;

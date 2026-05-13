@@ -3,6 +3,7 @@
 #include "knd_attr.h"
 #include "knd_attr_stm.h"
 #include "knd_task.h"
+#include "knd_steward.h"
 #include "knd_text.h"
 #include "knd_repo.h"
 #include "knd_user.h"
@@ -26,6 +27,7 @@
 
 struct LocalContext {
     struct kndTask *task;
+    struct kndQuery *query;
     struct kndRepo *repo;
 };
 
@@ -47,8 +49,9 @@ static gsl_err_t get_repo(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndRepo *repo = ctx->repo;
-    struct kndQuery *query = task->ctx->query;
+    struct kndQuery *query = ctx->query;
+    struct kndSteward *steward = task->steward;
+    struct kndRepo *repo = NULL;
     int err;
 
     /* default system repo */
@@ -58,17 +61,18 @@ static gsl_err_t get_repo(void *obj, const char *name, size_t name_size)
     if (name_size == 1) {
         switch (*name) {
         case '/':
-            knd_log("== {sys-repo %p}", repo);
+            repo = steward->repo; 
             break;
         case '~':
             repo = task->user_ctx->repo;
             break;
         default:
-            err = find_repo(&repo, name, name_size, task);
-            if (err) {
-                return make_gsl_err(gsl_NO_MATCH);
-            }
             break;
+        }
+    } else {
+        err = find_repo(&repo, name, name_size, task);
+        if (err) {
+            return make_gsl_err(gsl_NO_MATCH);
         }
     }
 
@@ -78,7 +82,11 @@ static gsl_err_t get_repo(void *obj, const char *name, size_t name_size)
     query->type = KND_QUERY_GET;
     query->obj_type = KND_QUERY_OBJ_REPO;
     query->repo = repo;
+    ctx->repo = repo;
 
+    if (DEBUG_REPO_SELECT_LEVEL_3) {
+        knd_log(".. selected {repo %.*s}", repo->name_size, repo->name);
+    }
     return make_gsl_err(gsl_OK);
 }
 
@@ -86,8 +94,9 @@ static gsl_err_t confirm_selection(void *obj,
                                    const char *unused_var(name),
                                    size_t unused_var(name_size))
 {
-    struct kndTask *task = obj;
-    struct kndQuery *query = task->ctx->query;
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    struct kndQuery *query = ctx->query;
 
     switch (task->type) {
     case KND_TASK_QUERY:
@@ -102,8 +111,12 @@ static gsl_err_t confirm_selection(void *obj,
 static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndTask *task = ctx->task;
-    return knd_class_select(rec, total_size, ctx->repo, task);
+    int err;
+
+    err = knd_class_select(rec, total_size, ctx->repo, ctx->query, ctx->task);
+    if (err) return make_gsl_err_external(err);
+
+    return make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_size)

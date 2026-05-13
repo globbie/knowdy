@@ -21,6 +21,12 @@
 #define DEBUG_QUERY_RUN_LEVEL_3 0
 #define DEBUG_QUERY_RUN_LEVEL_TMP 1
 
+struct LocalContext {
+    struct kndTask *task;
+    struct kndQuery *query;
+    struct kndRepo *repo;
+};
+
 static gsl_err_t set_format(void *obj, const char *name, size_t name_size)
 {
     struct kndTask *self = obj;
@@ -192,7 +198,11 @@ gsl_err_t knd_query_run(void *obj, const char *rec, size_t *total_size)
     if (err) return make_gsl_err_external(err);
 
     task->type = KND_TASK_QUERY;
-    task->ctx->query = query;
+
+    struct LocalContext ctx = {
+        .task = task,
+        .query = query
+    };
 
     struct gslTaskSpec specs[] = {
         { .name = "locale",
@@ -208,12 +218,12 @@ gsl_err_t knd_query_run(void *obj, const char *rec, size_t *total_size)
         { .name = "user",
           .name_size = strlen("user"),
           .parse = knd_parse_select_user,
-          .obj = task
+          .obj = &ctx
         },
         { .name = "repo",
           .name_size = strlen("repo"),
           .parse = knd_parse_repo_select,
-          .obj = task
+          .obj = &ctx
         }
     };
 

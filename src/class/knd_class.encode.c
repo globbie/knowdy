@@ -55,42 +55,6 @@ struct LocalContext {
     struct kndClassBasePred *class_var;
 };
 
-#if 0
-int knd_class_inst_idx_fetch(struct kndClass *self, struct kndSharedDict **result,
-                             struct kndTask *task)
-{
-    struct kndOutput *out = task->file_out;
-    struct kndSharedSet *idx, *new_idx;
-    struct kndSharedDict *name_idx, *new_name_idx;
-    struct stat st;
-    int err;
-
-    out->reset(out);
-    OUT(task->path, task->path_size);
-    OUT(task->repo->path, task->repo->path_size);
-    err = out->writef(out, "snapshot_%zu/", task->snapshot->numid);
-    KND_TASK_ERR("snapshot path construction failed");
-
-    OUTS("inst_");
-    OUT(self->entry->id, self->entry->id_size);
-    OUT(".gsp", strlen(".gsp"));
-
-    if (DEBUG_CLASS_ENCODE_LEVEL_2)
-        knd_log(">> open class inst storage in %.*s", out->buf_size, out->buf);
-
-    if (stat(out->buf, &st)) {
-        return knd_NO_MATCH;
-    }
-
-    if (DEBUG_CLASS_ENCODE_LEVEL_2) {
-        knd_log(".. reading cls inst storage: %.*s [%zu]",
-                out->buf_size, out->buf, (size_t)st.st_size);
-    }
-    // TODO
-    return knd_OK;
-}
-#endif
-
 static int export_glosses(struct kndClass *self, struct kndOutput *out)
 {
     char idbuf[KND_ID_SIZE];
@@ -120,15 +84,22 @@ static int export_base_preds(struct kndClass *self,
                              struct kndRepo *repo, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
-    struct kndClassBasePred *bp;
+    struct kndClassBasePred *bp = self->base_preds;
     int err;
+
+    assert (bp != NULL);
+
+    if (bp->is_root) {
+        OUT("{is /}", strlen("{is /}"));
+        return knd_OK;
+    }
 
     OUT("[is", strlen("[is"));
     FOREACH (bp, self->base_preds) {
         OUT("{", 1);
 
         if (bp->entry->id_size == 0) {
-            knd_log("unresolved base class ref %.*s in {class %.*s}?",
+            knd_log("unresolved base class ref %.*s in {cls %.*s}?",
                     bp->entry->name_size, bp->entry->name,
                     self->name_size, self->name);
         }
@@ -382,8 +353,7 @@ int knd_class_export_GSP(struct kndClass *self, struct kndRepo *repo, struct knd
     return knd_OK;
 }
 
-int knd_class_name_marshall(void *elem, void *ctx,
-                            struct kndStorageLeaf *leaf,
+int knd_class_name_marshall(void *elem, void *ctx, struct kndStorageLeaf *leaf,
                             size_t *output_size, struct kndTask *task)
 {
     struct kndClassEntry *entry = elem;
@@ -460,7 +430,7 @@ int knd_class_marshall(void *elem, void *ctx,
 }
 
 int knd_cls_facet_key_encode(void *key, void *unused_var(ctx),
-                             struct kndRepo *unused_var(repo), struct kndTask *task)
+                             struct kndTask *task)
 {
     struct kndClassEntry *entry = key;
     struct kndOutput *out = task->out;

@@ -118,6 +118,7 @@ struct kndClassBasePred
     size_t init_state;
     size_t num_states;
 
+    bool is_root;
     struct kndClassBasePred *next;
 };
 
@@ -204,8 +205,6 @@ struct kndClass
 
     bool reading_in_progress;
 
-    bool state_top;
-
     struct kndClass *prev;
     struct kndClass *next;
 };
@@ -260,10 +259,13 @@ int knd_class_acquire(struct kndClassEntry *self, struct kndClass **result,
 
 int knd_class_name_marshall(void *elem, void *ctx, struct kndStorageLeaf *leaf,
                             size_t *output_size, struct kndTask *task);
-int knd_class_entry_unmarshall(const char *elem_id, size_t elem_id_size,
+int knd_class_entry_unmarshall(const char *unused_var(elem_id), size_t unused_var(elem_id_size),
                                const char *rec, size_t rec_size,
                                void *unused_var(ctx), size_t *total_size,
                                void **result, struct kndTask *task);
+int knd_cls_entry_fetch(const char *rec, size_t rec_size,
+                        void *ctx, size_t *result_size,
+                        const char **key, size_t *key_size, void **result, struct kndTask *task);
 
 int knd_class_marshall(void *elem, void *ctx, struct kndStorageLeaf *leaf,
                        size_t *output_size, struct kndTask *task);
@@ -334,8 +336,8 @@ int knd_class_ref_new(struct kndClassRef **result, struct kndMemPool *mempool);
 int knd_class_commit_new(struct kndMemPool *mempool, struct kndClassCommit **result);
 
 // knd_class.select.c
-extern gsl_err_t knd_class_select(const char *rec, size_t *total_size,
-                                  struct kndRepo *repo, struct kndTask *task);
+int knd_class_select(const char *rec, size_t *total_size,
+                     struct kndRepo *repo, struct kndQuery *query, struct kndTask *task);
 int knd_class_match_query(struct kndClass *self, struct kndAttrStm *query);
 
 // knd_class.states.c
@@ -421,7 +423,7 @@ static inline void knd_base_pred_append_attr_stm(struct kndClassBasePred *bp, st
 int knd_class_link_base(struct kndClass *cls, struct kndClass *base,
                         struct kndRepo *repo, struct kndTask *task);
 int knd_facet_cls_hash(void *parent_key, void *curr_key, void *elem,
-                       void **result_key, size_t *numval,
-                       struct kndRepo *repo, struct kndTask *task);
+                       void *ctx, void **result_key, size_t *numval,
+                       struct kndTask *task);
 void knd_facet_cls_key_str(void *val, size_t depth);
-int knd_cls_facet_key_encode(void *key, void *ctx, struct kndRepo *repo, struct kndTask *task);
+int knd_cls_facet_key_encode(void *key, void *ctx, struct kndTask *task);

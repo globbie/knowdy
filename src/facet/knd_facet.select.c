@@ -42,11 +42,11 @@ static int match_elem(void *elem, void *ctx_obj)
     int err;
 
     if (key) {
-        err = spec->key_get_cb(elem, &elem_key, repo, task);
+        err = spec->key_get_cb(elem, (void*)repo, &elem_key, task);
         KND_TASK_ERR("failed to obtain a facet key from elem");
 
         if (elem_key != key) {
-            err = spec->hash_cb(key, NULL, elem_key, &next_key, &numval, repo, task);
+            err = spec->hash_cb(key, NULL, elem_key, (void*)repo, &next_key, &numval, task);
             switch (err) {
             case knd_OK:
                 break;
@@ -178,7 +178,7 @@ int knd_facet_map(struct kndFacet *facet, void *key, struct kndSetRange *range,
         return knd_OK;
     }
 
-    err = spec->hash_cb(facet->key, NULL, key, &next_key, &numval, repo, task);
+    err = spec->hash_cb(facet->key, NULL, key, (void*)repo, &next_key, &numval, task);
     KND_TASK_ERR("failed to apply a facet hash func {err %d}", err);
 
     if (numval >= KND_MAX_FACETS) {
