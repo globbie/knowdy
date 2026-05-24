@@ -23,22 +23,8 @@
 #define DEBUG_SET_GSP_LEVEL_TMP 1
 
 static int marshall_dir(struct kndSetDir *dir, struct kndSetRange *range,
-                        knd_set_elem_marshall_cb_t cb, void *cb_ctx, knd_set_type set_type,
+                        knd_set_elem_marshall_cb_t cb, void *cb_ctx, knd_set_cardinal_t catrdinal_type,
                         struct kndStorageLeaf *leaf, struct kndTask *task);
-
-static void append_leaf(struct kndSet *s, struct kndStorageLeaf *leaf)
-{
-    if (!s->leaves) {
-        s->leaves = leaf;
-        s->leaf_tail = leaf;
-        s->num_leaves++;        
-        return;
-    }
-
-    s->leaf_tail->next = leaf;
-    s->leaf_tail = leaf;
-    s->num_leaves++;        
-}
 
 static bool has_more_elems(struct kndSet *unused_var(s), struct kndSetRange *range,
                            struct kndStorageLeaf *leaf)
@@ -58,7 +44,7 @@ static bool has_more_elems(struct kndSet *unused_var(s), struct kndSetRange *ran
 }
 
 static int apply_cb(struct kndSetElem *elems, knd_set_elem_marshall_cb_t cb, void *cb_ctx,
-                    knd_set_type set_type,
+                    knd_set_cardinal_t cardinal_t,
                     size_t *result, struct kndStorageLeaf *leaf, struct kndTask *task)
 {
     struct kndSetElem *elem;
@@ -66,7 +52,7 @@ static int apply_cb(struct kndSetElem *elems, knd_set_elem_marshall_cb_t cb, voi
 
     assert (elems->val != NULL);
 
-    switch (set_type) {
+    switch (cardinal_t) {
     case KND_SET_UNIQUE_VALUES:
         err = cb(elems->val, cb_ctx, leaf, result, task);
         if (err) return err;
@@ -148,11 +134,12 @@ static int build_elems_footer(struct kndSetDir *dir, struct kndSetDirBlock *bloc
 
     }
 
-    /* idx of variable length = num_elems * idx_val_size */
+    /* idx meta */
     OUTC((int)block->num_elems);
     OUTC((int)idx_val_size);
     OUTC((char)block->use_elem_keys);
 
+    /* payload size */
     byte_size = knd_min_bytes(block->elems_rec_size);
     knd_pack_int(buf, block->elems_rec_size, byte_size);
     OUT((const char*)buf, byte_size);
@@ -163,7 +150,7 @@ static int build_elems_footer(struct kndSetDir *dir, struct kndSetDirBlock *bloc
     knd_pack_int(buf, out->buf_size, byte_size);
     OUT((const char*)buf, byte_size);
     OUTC((char)byte_size);
-    
+
 final:
 
     switch (task->mode) {
@@ -190,7 +177,7 @@ final:
 
 static int marshall_elems(struct kndSetDir *dir, struct kndSetDirBlock *block,
                           struct kndSetRange *unused_var(range),
-                          knd_set_elem_marshall_cb_t cb, void *cb_ctx, knd_set_type set_type,
+                          knd_set_elem_marshall_cb_t cb, void *cb_ctx, knd_set_cardinal_t cardinal_t,
                           struct kndStorageLeaf *leaf, struct kndTask *task)
 {
     struct kndSetElem *elem;
@@ -211,7 +198,7 @@ static int marshall_elems(struct kndSetDir *dir, struct kndSetDirBlock *block,
         }
         curr_size = 0;
 
-        err = apply_cb(elem, cb, cb_ctx, set_type, &curr_size, leaf, task);
+        err = apply_cb(elem, cb, cb_ctx, cardinal_t, &curr_size, leaf, task);
         KND_TASK_ERR("failed calling a cb on {elem %zu}", i);
 
         elem->size = curr_size;
@@ -319,7 +306,7 @@ static int build_subdirs_footer(struct kndSetDir *dir, struct kndSetDirBlock *bl
 
 static int marshall_subdirs(struct kndSetDir *dir, struct kndSetDirBlock *block,
                             struct kndSetRange *range,
-                            knd_set_elem_marshall_cb_t cb, void *cb_ctx, knd_set_type set_type,
+                            knd_set_elem_marshall_cb_t cb, void *cb_ctx, knd_set_cardinal_t cardinal_t,
                             struct kndStorageLeaf *leaf, struct kndTask *task)
 {
     struct kndSetDir *subdir;
@@ -335,7 +322,7 @@ static int marshall_subdirs(struct kndSetDir *dir, struct kndSetDirBlock *block,
         subdir = dir->subdirs[i];
         if (!subdir) continue;
 
-        err = marshall_dir(subdir, range, cb, cb_ctx, set_type, leaf, task);
+        err = marshall_dir(subdir, range, cb, cb_ctx, cardinal_t, leaf, task);
         KND_TASK_ERR("failed to marshall {subdir %.*s}", subdir->id_size, subdir->id);
 
         if (subdir->blocks->size > max_subdir_size) max_subdir_size = subdir->blocks->size;
@@ -354,7 +341,7 @@ static int marshall_subdirs(struct kndSetDir *dir, struct kndSetDirBlock *block,
 }
 
 static int marshall_dir(struct kndSetDir *dir, struct kndSetRange *range,
-                        knd_set_elem_marshall_cb_t cb, void *cb_ctx, knd_set_type set_type,
+                        knd_set_elem_marshall_cb_t cb, void *cb_ctx, knd_set_cardinal_t cardinal_t,
                         struct kndStorageLeaf *leaf, struct kndTask *task)
 {
     struct kndSetDirBlock *block;
@@ -363,10 +350,10 @@ static int marshall_dir(struct kndSetDir *dir, struct kndSetRange *range,
     err = create_dir_block(dir, range, &block, task);
     KND_TASK_ERR("failed to create a dir block");
 
-    err = marshall_elems(dir, block, range, cb, cb_ctx, set_type, leaf, task);
+    err = marshall_elems(dir, block, range, cb, cb_ctx, cardinal_t, leaf, task);
     KND_TASK_ERR("failed to marshall set elems");
 
-    err = marshall_subdirs(dir, block, range, cb, cb_ctx, set_type, leaf, task);
+    err = marshall_subdirs(dir, block, range, cb, cb_ctx, cardinal_t, leaf, task);
     KND_TASK_ERR("failed to marshall set subdirs");
 
     return knd_OK;
@@ -394,7 +381,7 @@ int knd_set_leaf_marshall(struct kndSet *s, struct kndSetRange *range,
         break;
     }
 
-    err = marshall_dir(s->dir, range, cb, cb_ctx, s->type, leaf, task);
+    err = marshall_dir(s->dir, range, cb, cb_ctx, s->cardinal_t, leaf, task);
     KND_TASK_ERR("failed to marshall a set");
 
     if (!leaf->num_elems) {
@@ -411,7 +398,8 @@ int knd_set_leaf_marshall(struct kndSet *s, struct kndSetRange *range,
 int knd_set_marshall(struct kndSet *s, struct kndSetRange *range,
                      const char *path, size_t path_size,
                      knd_set_elem_marshall_cb_t cb, void *cb_ctx,
-                     struct kndStorage *store, struct kndTask *task)
+                     struct kndStorage *store,
+                     struct kndStorageLeaf **leaves, size_t *num_leaves, struct kndTask *task)
 {
     assert (s->num_elems > 0);
 
@@ -434,8 +422,14 @@ int knd_set_marshall(struct kndSet *s, struct kndSetRange *range,
 
     /* split a set into a batch of leaves of max size */
     do {
-        err = knd_storage_leaf_new(&leaf, ++leaf_count, path, path_size,
-                                   min_leaf_size, max_leaf_size, KND_STORAGE_MODE_READ_WRITE);
+        if (leaf_count >= KND_MAX_STORAGE_LEAVES) {
+            err = knd_LIMIT;
+            KND_TASK_ERR("max limit reached {max-storage-leaves %zu}", leaf_count);
+        }
+
+        err = knd_storage_leaf_new(&leaf, leaf_count, path, path_size,
+                                   min_leaf_size, max_leaf_size, store,
+                                   KND_STORAGE_MODE_READ_WRITE);
         KND_TASK_ERR("failed to alloc a storage leaf");
 
         err = knd_set_leaf_marshall(s, range, leaf, cb, cb_ctx, task);
@@ -448,24 +442,14 @@ int knd_set_marshall(struct kndSet *s, struct kndSetRange *range,
                     leaf_count, leaf->curr_size, s->num_elems);
         }
 
-        /* empty leaf?
-        if (!leaf->curr_size) {
-            knd_log("-- empty leaf?");
-            knd_storage_leaf_del(leaf);
-            break;
-            }*/
-
-        append_leaf(s, leaf);
-
-        if (leaf_count >= KND_MAX_STORAGE_LEAVES) {
-            err = knd_LIMIT;
-            KND_TASK_ERR("max limit reached {max-storage-leaves %zu}", leaf_count);
-        }
-
+        leaves[leaf_count] = leaf;
+        leaf_count++;
     } while (has_more_elems(s, range, leaf));
 
     if (DEBUG_SET_GSP_LEVEL_3) {
-        knd_log("++ set GSP complete {path %.*s} {num-leaves %zu}", path_size, path, s->num_leaves);
+        knd_log("++ set GSP complete {path %.*s} {num-leaves %zu}", path_size, path, s->store->num_leaves);
     }
+
+    *num_leaves = leaf_count;
     return knd_OK;
 }

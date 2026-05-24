@@ -559,7 +559,7 @@ int knd_user_new(struct kndUser **result,
     //err = knd_repo_read(user->repo, task);
     //if (err) goto error;
 
-    err = knd_set_new(&user->user_idx, KND_SET_UNIQUE_VALUES, mempool);
+    err = knd_set_new(&user->user_idx, KND_SET_STORE_MEMONLY, mempool);
     if (err) goto error;
 
     *result = user;

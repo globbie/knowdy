@@ -38,7 +38,7 @@ typedef enum knd_state_phase { KND_DEFAULT,
                                KND_FROZEN,
                                KND_RESTORED } knd_state_phase;
 
-typedef enum knd_state_type { KND_STATE_CLASS,
+typedef enum knd_state_t { KND_STATE_CLASS,
                               KND_STATE_CLASS_VAR,
                               KND_STATE_ATTR,
                               KND_STATE_ATTR_STM,
@@ -48,7 +48,7 @@ typedef enum knd_state_type { KND_STATE_CLASS,
                               KND_STATE_CLASS_INST_ELEM,
                               KND_STATE_PROC,
                               KND_STATE_PROC_INST
-} knd_state_type;
+} knd_state_t;
 
 
 struct kndStateVal
@@ -77,7 +77,7 @@ struct kndState
 
 struct kndStateRef
 {
-    knd_state_type type;
+    knd_state_t type;
     void *obj;
     struct kndState *state;
     struct kndStateRef *next;

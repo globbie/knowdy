@@ -247,7 +247,7 @@ int knd_attr_name_unmarshall(const char *elem_id, size_t elem_id_size,
                              const char *rec, size_t rec_size,
                              void *ctx, void **result, struct kndTask *task);
 
-int knd_attr_decode(struct kndAttr *attr, struct kndTask *task);
+int knd_attr_decode(struct kndAttr *attr, struct kndRepo *repo, struct kndTask *task);
 
 int knd_cls_inner_attr_new(struct kndClassInnerAttr **result,
                            const char *name, size_t name_size,

@@ -242,7 +242,7 @@ int knd_proc_resolve(struct kndProc *self, struct kndRepo *repo, struct kndTask 
     self->resolving_in_progress = true;
 
     if (!self->arg_idx) {
-        err = knd_set_new(&self->arg_idx, KND_SET_UNIQUE_VALUES, task->mempool);
+        err = knd_set_new(&self->arg_idx, KND_SET_STORE_MEMONLY, task->mempool);
         RET_ERR();
     }
 

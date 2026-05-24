@@ -102,12 +102,12 @@ static int inner_attr_export_GSP(struct kndAttrStm *stm, struct kndRepo *repo, s
         case KND_ATTR_BOOL:
             OUT("t", 1);
             break;
+        case KND_ATTR_STR:
+            assert(item->seq != NULL);
+            OUT(item->seq->id, item->seq->id_size);
+            break;
         default:
-            assert(item->val != NULL);
-            assert(item->val_size != 0);
-            err = knd_charseq_fetch(item->val, item->val_size, &seq, task);
-            KND_TASK_ERR("failed to encode a charseq");
-            OUT(seq->id, seq->id_size);
+            OUT(item->val, item->val_size);
             break;
         }
         OUT("}", 1);
@@ -119,7 +119,6 @@ static int attr_stm_list_export_GSP(struct kndAttrStm *stm,
                                     struct kndRepo *repo, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
-    struct kndCharSeq *seq;
     struct kndAttrStm *item;
     struct kndClassEntry *entry;
     struct kndClassRefAttrStm *cref;
@@ -156,11 +155,8 @@ static int attr_stm_list_export_GSP(struct kndAttrStm *stm,
             KND_TASK_ERR("failed to export inner attr stm");
             break;
         case KND_ATTR_STR:
-            assert (item->val != NULL);
-            assert (item->val_size != 0);
-            err = knd_charseq_fetch(item->val, item->val_size, &seq, task);
-            KND_TASK_ERR("failed to encode a charseq");
-            OUT(seq->id, seq->id_size);
+            assert (item->seq != NULL);
+            OUT(item->seq->id, item->seq->id_size);
             break;
         default:
             if (item->val_size) {
@@ -232,12 +228,12 @@ int knd_attr_stm_export_GSP(struct kndAttrStm *stm,
         KND_TASK_ERR("GSP text export failed");
         OUT("}", 1);
         break;
+    case KND_ATTR_STR:
+        assert (stm->seq != NULL);
+        OUT(stm->seq->id, stm->seq->id_size);
+        break;
     default:
-        if (stm->val_size) {
-            err = knd_charseq_fetch(stm->val, stm->val_size, &seq, task);
-            KND_TASK_ERR("failed to encode a charseq");
-            OUT(seq->id, seq->id_size);
-        }
+        OUT(stm->val, stm->val_size);
         break;
     }
     return knd_OK;

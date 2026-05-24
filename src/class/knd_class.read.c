@@ -51,8 +51,8 @@ struct LocalContext {
     struct kndRepo *repo;
     struct kndTask *task;
     struct kndRepoSnapshot *snapshot;
-    struct kndAttrStm *attr_stm;
     struct kndClassEntry *entry;
+    struct kndAttrStm *attr_stm;
     struct kndClass *cls;
     struct kndClass *baseclass;
     struct kndClassRef *cls_ref;
@@ -369,7 +369,7 @@ static gsl_err_t parse_descendant_array(void *obj, const char *rec, size_t *tota
     int err;
 
     if (!c->descendants) {
-        err = knd_set_new(&c->descendants, KND_SET_UNIQUE_VALUES, mempool);
+        err = knd_set_new(&c->descendants, KND_SET_STORE_MEMONLY, mempool);
         if (err) return *total_size = 0, make_gsl_err_external(err);
     }
 
@@ -521,6 +521,8 @@ int knd_class_read(struct kndClass *self, const char *rec, size_t *total_size,
                 self->name_size, self->name, 128, rec);
     }
 
+    assert (repo != NULL);
+
     if (self->phase >= KND_CLASS_READ) {
         knd_log("vicious circle detected while reading {cls %.*s}",
                 self->name_size, self->name);
@@ -586,7 +588,7 @@ int knd_class_read(struct kndClass *self, const char *rec, size_t *total_size,
           .name_size = strlen("insts"),
           .parse = gsl_parse_size_t,
           .obj = &self->num_snapshot_insts
-        },
+        }
         /*,
         { .type = GSL_GET_ARRAY_STATE,
           .name = "inst",
@@ -604,42 +606,31 @@ int knd_class_read(struct kndClass *self, const char *rec, size_t *total_size,
     return knd_OK;
 }
 
-int knd_class_unmarshall(const char *unused_var(elem_id), size_t unused_var(elem_id_size),
-                         const char *rec, size_t rec_size,
-                         void *ctx_obj, void **result, struct kndTask *task)
+int knd_class_unmarshall(const char *elem_id, size_t elem_id_size,
+                         const char *rec, size_t unused_var(rec_size),
+                         void *ctx_obj, size_t *parsed_size, void **result, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
-    struct LocalContext *ctx = ctx_obj;
-    struct kndClassEntry *entry = ctx->entry;
-    struct kndRepo *repo = ctx->repo;
+    struct kndRepo *repo = ctx_obj;
+    assert (repo != NULL);
     struct kndClass *c;
-    size_t total_size = rec_size;
     int err;
 
     if (DEBUG_CLASS_READ_LEVEL_2) {
-        knd_log(".. unmarshall {cls %.*s} {task {type %d}}",
-                entry->name_size, entry->name, task->type);
-    }
-
-    if (entry->cls) {
-        *result = entry->cls;
-        return knd_OK;
+        knd_log(".. unmarshall {cls %.*s}", elem_id_size, elem_id);
     }
 
     err = knd_class_new(&c, mempool);
     KND_TASK_ERR("failed to alloc a cls to unmarshall");
-    c->entry = entry;
-    c->name = entry->name;
-    c->name_size = entry->name_size;
 
-    err = knd_class_read(c, rec, &total_size, repo, task);
+    err = knd_class_read(c, rec, parsed_size, repo, task);
     KND_TASK_ERR("failed to read GSP of {cls %.*s}", c->name_size, c->name);
 
     switch (task->type) {
     case KND_TASK_UPDATE_CACHE:
         // fall through
     case KND_TASK_BUILD_SNAPSHOT:
-        entry->cls = c;
+        //entry->cls = c;
         break;
     default:
         // TODO update task local cache?
@@ -659,7 +650,7 @@ int knd_class_entry_unmarshall(const char *unused_var(elem_id), size_t unused_va
     gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_CLASS_READ_LEVEL_3) {
+    if (DEBUG_CLASS_READ_LEVEL_2) {
         knd_log(">> unmarshall cls entry {rec %.*s}", rec_size, rec);
     }
 
@@ -689,7 +680,7 @@ int knd_class_entry_unmarshall(const char *unused_var(elem_id), size_t unused_va
     knd_calc_num_id(entry->id, entry->id_size, &entry->numid);
 
     if (DEBUG_CLASS_READ_LEVEL_3) {
-        knd_log("++ {cls %.*s {id %.*s}} unmarshalled",
+        knd_log("++ {cls-entry %.*s {id %.*s}} unmarshalled",
                 entry->name_size, entry->name, entry->id_size, entry->id);
     }
 
@@ -697,19 +688,84 @@ int knd_class_entry_unmarshall(const char *unused_var(elem_id), size_t unused_va
     return knd_OK;
 }
 
-int knd_cls_entry_fetch(const char *rec, size_t rec_size,
-                        void *ctx, size_t *result_size,
-                        const char **key, size_t *key_size, void **result, struct kndTask *task)
+static int build_cls_entry(const char *name, size_t name_size, const char *id, size_t id_size,
+                           struct kndClassEntry **result, struct kndRepo *repo, struct kndTask *task)
 {
+    struct kndClassEntry *entry;
+    struct kndMemBlock *memblock;
+    struct kndCharSeq *seq;
+    const char *b;
+    int err;
+
+    err = knd_class_entry_new(&entry, task->mempool);
+    KND_TASK_ERR("failed to alloc a cls entry");
+    memcpy(entry->id, id, id_size);
+    entry->id_size = id_size;
+
+#if 0
+    err = knd_memblock_fetch(&memblock, name_size, task);
+    KND_TASK_ERR("failed to fetch a memblock to save {cls-entry-name %.*s}", name_size, name);
+
+    err = knd_memblock_write(memblock, name, name_size, false, &b);
+    KND_TASK_ERR("failed to save {cls-entry-name %.*s}", name_size, name);
+#endif
+
+    err = knd_charseq_register(repo, name, name_size, &seq, task);
+    KND_TASK_ERR("failed to encode a cls name {seq %.*s}", name_size, name);
+
+    entry->seq = seq;
+    entry->name = seq->val;
+    entry->name_size = seq->val_size;
+
+    *result = entry;
+
+    return knd_OK;
+}
+
+int knd_cls_entry_fetch(const char *rec, size_t unused_var(rec_size), const char *key, size_t key_size,
+                        void *ctx, size_t *result_size, void **result, struct kndTask *task)
+{
+    struct kndRepo *repo = ctx;
+    char namebuf[KND_NAME_SIZE];
+    size_t namebuf_size = 0;
+    char idbuf[KND_ID_SIZE];
+    size_t idbuf_size = 0;
     struct kndClassEntry *entry;
     gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_CLASS_READ_LEVEL_TMP) {
-        knd_log(">> fetching cls entry from {rec %.*s}", rec_size, rec);
+    if (DEBUG_CLASS_READ_LEVEL_2) {
+        knd_log(">> parsing cls entry from {rec %s}", rec);
     }
 
-    
-    *result = NULL;
-    return knd_NO_MATCH;
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .buf = namebuf,
+          .buf_size = &namebuf_size,
+          .max_buf_size = KND_NAME_SIZE
+        },
+        { .name = "id",
+          .name_size = strlen("id"),
+          .buf = idbuf,
+          .buf_size = &idbuf_size,
+          .max_buf_size = KND_ID_SIZE
+        }
+    };
+
+    parser_err = gsl_parse_task(rec, result_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
+
+    if (key_size != namebuf_size) return knd_NO_MATCH;
+    if (memcmp(key, namebuf, namebuf_size)) return knd_NO_MATCH;
+
+    if (DEBUG_CLASS_READ_LEVEL_TMP) {
+        knd_log("++ {cls %.*s {id %.*s}} matched, building cls entry..",
+                namebuf_size, namebuf, idbuf_size, idbuf);
+    }
+
+    err = build_cls_entry(namebuf, namebuf_size, idbuf, idbuf_size, &entry, repo, task);
+    KND_TASK_ERR("failed to build a cls entry");
+
+    *result = entry;
+    return knd_OK;
 }

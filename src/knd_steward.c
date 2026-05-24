@@ -523,7 +523,7 @@ static int steward_init(struct kndSteward *steward)
                        steward);
     KND_STEWARD_ERR("failed to init steward sync task");
 
-    err = knd_set_new(&steward->repo_idx, KND_SET_UNIQUE_VALUES, task->mempool);
+    err = knd_set_new(&steward->repo_idx, KND_SET_STORE_MEMONLY, task->mempool);
     KND_STEWARD_ERR("failed to create a set idx");
 
     err = knd_dict_new(&steward->repo_name_idx, KND_SMALL_DICT_SIZE, task->mempool);

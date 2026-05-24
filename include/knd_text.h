@@ -33,20 +33,26 @@ struct kndStatement;
 struct kndRepo;
 struct kndAttrStm;
 
-typedef enum knd_charseq_enc_type {
+typedef enum knd_charseq_enc_t {
     KND_CHARSEQ_UTF8,
     KND_ASCII
-} knd_charseq_enc_type;
+} knd_charseq_enc_t;
 
-typedef enum knd_proposition_type {
+typedef enum knd_charseq_chunk_t {
+    KND_CHARSEQ_FULL,
+    KND_CHARSEQ_MULTIPART
+} knd_charseq_chunk_t;
+
+typedef enum knd_proposition_t {
     KND_ATTR_STATE_PROPOSITION,
     KND_RELATION_PROPOSITION,
     KND_PROCESS_PROPOSITION
-} knd_proposition_type;
+} knd_proposition_t;
 
 struct kndCharSeq
 {
-    knd_charseq_enc_type enc;
+    knd_charseq_enc_t enc;
+    knd_charseq_chunk_t chunk_t;
 
     /* repo wide str idx id */
     char id[KND_ID_SIZE];
@@ -68,7 +74,7 @@ struct kndDiscourseContext
 
 struct kndTextLoc
 {
-    knd_state_type type;
+    knd_state_t type;
 
     struct kndClassInst *src;
     struct kndAttr *attr;
@@ -117,7 +123,7 @@ struct kndPropositionSpec
 
 struct kndProposition
 {
-    knd_proposition_type type;
+    knd_proposition_t type;
     char id[KND_ID_SIZE];
     size_t id_size;
     size_t numid;
@@ -315,13 +321,18 @@ int knd_par_export_GSL(struct kndPar *par, struct kndRepo *repo, struct kndTask 
 int knd_charseq_new(struct kndCharSeq **result, struct kndMemPool *mempool);
 void knd_charseq_free(struct kndCharSeq *seq, struct kndMemPool *mempool);
 
-int knd_charseq_fetch(const char *val, size_t val_size, struct kndCharSeq **result, struct kndTask *task);
+int knd_charseq_register(struct kndRepo *repo, const char *val, size_t val_size, struct kndCharSeq **result, struct kndTask *task);
 
 int knd_charseq_marshall(void *elem, void *ctx, struct kndStorageLeaf *leaf,
                          size_t *output_size, struct kndTask *task);
+int knd_charseq_mapping_marshall(void *elem, void *unused_var(ctx), struct kndStorageLeaf *leaf,
+                                 size_t *output_size, struct kndTask *task);
+
+int knd_charseq_fetch(const char *rec, size_t unused_var(rec_size), const char *str, size_t str_size,
+                      void *ctx, size_t *result_size, void **result, struct kndTask *task);
 int knd_charseq_unmarshall(const char *elem_id, size_t elem_id_size, const char *val, size_t val_size,
                            void **result, struct kndTask *task);
-int knd_charseq_decode(const char *id, size_t id_size,
+int knd_charseq_decode(struct kndRepo *repo, const char *id, size_t id_size,
                        struct kndCharSeq **result, struct kndTask *task);
 
 int knd_text_new(struct kndText **result, struct kndMemPool *mempool);

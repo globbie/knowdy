@@ -171,7 +171,6 @@ static int decode_baseclasses(struct kndClass *c, struct kndRepo *repo, struct k
             }
             continue;
         }
-
         err = knd_class_link_base(c, base, repo, task);
         KND_TASK_ERR("failed to link {cls %.*s} to base {cls %.*s}",
                      c->name_size, c->name, base->name_size, base->name);
@@ -230,7 +229,7 @@ int knd_class_decode(struct kndClass *c, struct kndRepo *repo, struct kndTask *t
     /* immediate attrs */
     if (c->num_attrs) {
         FOREACH (attr, c->attrs) {
-            err = knd_attr_decode(attr, task);
+            err = knd_attr_decode(attr, repo, task);
             KND_TASK_ERR("failed to decode {cls %.*s {attr %.*s}}",
                          c->name_size, c->name, attr->id_size, attr->id);
 
@@ -247,7 +246,7 @@ int knd_class_decode(struct kndClass *c, struct kndRepo *repo, struct kndTask *t
 
     if (c->tr) {
         FOREACH (t, c->tr) {
-            err = knd_charseq_decode(t->id, t->id_size, &t->seq, task);
+            err = knd_charseq_decode(repo, t->id, t->id_size, &t->seq, task);
             KND_TASK_ERR("failed to decode {cls %.*s {gloss %.*s}}",
                          c->name_size, c->name, t->id_size, t->id);
         }

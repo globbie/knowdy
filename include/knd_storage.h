@@ -95,7 +95,9 @@ struct kndStorage {
 struct kndStorageLeaf
 {
     knd_storage_mode mode;
-     size_t numid;
+    size_t numid;
+
+    struct kndStorage *store;
 
     size_t min_size;
     size_t max_size;
@@ -105,9 +107,11 @@ struct kndStorageLeaf
 
     char range_from_addr[KND_PATH_SIZE + 1];
     size_t range_from_addr_size;
+    size_t range_from;
 
     char range_to_addr[KND_PATH_SIZE + 1];
     size_t range_to_addr_size;
+    size_t range_to;
 
     char name[KND_SHORT_NAME_SIZE + 1];
     size_t name_size;
@@ -117,14 +121,11 @@ struct kndStorageLeaf
 
     char file_hash[KND_HASH_SIZE];
     size_t file_hash_size;
-
-    struct kndStorageLeaf *next;
-    struct kndStorageLeaf *tail;
 };
 
 int knd_storage_new(struct kndStorage **result);
 int knd_storage_leaf_new(struct kndStorageLeaf **result, size_t numid, const char *path, size_t path_size,
-                         size_t min_size, size_t max_size, knd_storage_mode mode);
+                         size_t min_size, size_t max_size, struct kndStorage *store, knd_storage_mode mode);
 void knd_storage_leaf_del(struct kndStorageLeaf *leaf);
 
 int knd_storage_leaf_export_GSL(struct kndStorageLeaf *leaf, struct kndOutput *out,

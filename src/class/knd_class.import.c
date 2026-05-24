@@ -80,8 +80,7 @@ static int register_cls_entry(struct kndClass *c, struct kndRepo *repo, struct k
     err = knd_dict_set(task->idxs.cls_name_idx, c->name, c->name_size, (void*)entry, task);
     KND_TASK_ERR("failed to register a cls name");
 
-    /* class name as a charseq */
-    err = knd_charseq_fetch(c->name, c->name_size, &seq, task);
+    err = knd_charseq_register(repo, c->name, c->name_size, &seq, task);
     KND_TASK_ERR("failed to encode a cls name {seq %.*s}", c->name_size, c->name);
     entry->seq = seq;
 

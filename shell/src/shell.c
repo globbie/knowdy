@@ -277,6 +277,7 @@ static int knd_start(const char *config, size_t config_size)
     }
 
     task = steward->task;
+    knd_log("--");
     present_mempools(task);
 
     knd_task_monitor(task, steward->active_storage, &report);

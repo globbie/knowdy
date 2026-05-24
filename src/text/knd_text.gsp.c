@@ -49,6 +49,39 @@ int knd_charseq_marshall(void *elem, void *unused_var(ctx), struct kndStorageLea
     return knd_OK;
 }
 
+int knd_charseq_mapping_marshall(void *elem, void *unused_var(ctx), struct kndStorageLeaf *leaf,
+                                 size_t *output_size, struct kndTask *task)
+{
+    struct kndCharSeq *seq = elem;
+    struct kndOutput *out = task->out;
+    int err;
+
+    out->reset(out);
+    OUT(seq->val, seq->val_size);
+    OUT("{id ", strlen("{id "));
+    OUT(seq->id, seq->id_size);
+    OUT("}", strlen("}"));
+
+    if (DEBUG_TEXT_GSP_LEVEL_2) {
+        knd_log("{seq %.*s {size %zu}} => {seq-id %.*s {numid %zu}}",
+                seq->val_size, seq->val, seq->val_size, seq->id_size, seq->id, seq->numid);
+    }
+
+    switch (task->mode) {
+    case KND_TASK_TRACE_MODE:
+        //knd_log(".. write charseq to {filepath %.*s}",
+        //        leaf->filepath_size, leaf->filepath);
+        break;
+    default:
+        err = knd_append_file((const char*)leaf->filepath, out->buf, out->buf_size);
+        KND_TASK_ERR("charseq write failure");
+    }
+
+    leaf->curr_size += out->buf_size;
+    *output_size = seq->val_size;
+    return knd_OK;
+}
+
 int knd_charseq_unmarshall(const char *elem_id, size_t elem_id_size,
                            const char *val, size_t val_size, void **result, struct kndTask *task)
 {

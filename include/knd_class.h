@@ -263,16 +263,15 @@ int knd_class_entry_unmarshall(const char *unused_var(elem_id), size_t unused_va
                                const char *rec, size_t rec_size,
                                void *unused_var(ctx), size_t *total_size,
                                void **result, struct kndTask *task);
-int knd_cls_entry_fetch(const char *rec, size_t rec_size,
-                        void *ctx, size_t *result_size,
-                        const char **key, size_t *key_size, void **result, struct kndTask *task);
+int knd_cls_entry_fetch(const char *rec, size_t rec_size, const char *key, size_t key_size,
+                        void *ctx, size_t *result_size, void **result, struct kndTask *task);
 
 int knd_class_marshall(void *elem, void *ctx, struct kndStorageLeaf *leaf,
                        size_t *output_size, struct kndTask *task);
 
 int knd_class_unmarshall(const char *elem_id, size_t elem_id_size,
                          const char *rec, size_t rec_size,
-                         void *ctx, void **result, struct kndTask *task);
+                         void *ctx, size_t *parsed_size, void **result, struct kndTask *task);
 
 int knd_class_read(struct kndClass *self, const char *rec, size_t *total_size,
                    struct kndRepo *repo, struct kndTask *task);

@@ -21,7 +21,6 @@ static int update_index(struct kndFacet *facet, void *elem, struct kndTask *task
 {
     const char *key;
     size_t key_size;
-    void *result;
     int err;
 
     assert (facet->elem_id_cb != NULL);
@@ -31,15 +30,13 @@ static int update_index(struct kndFacet *facet, void *elem, struct kndTask *task
     KND_TASK_ERR("failed to get facet elem key");
 
     if (!facet->idx) {
-        err = knd_set_new(&facet->idx, KND_SET_MULTIPLE_VALUES, task->mempool);
+        err = knd_set_new(&facet->idx, KND_SET_STORE_MEMONLY, task->mempool);
         KND_TASK_ERR("failed to alloc a facet idx");
+        facet->idx->cardinal_t = KND_SET_MULTIPLE_VALUES;
     }
 
     err = knd_set_add(facet->idx, key, key_size, elem, task);
     KND_TASK_ERR("failed to add an elem to facet idx {err %d}", err);
-
-    err = knd_set_get(facet->idx, key, key_size, &result, task);
-    KND_TASK_ERR("failed to get an elem from facet idx {err %d}", err);
 
     return knd_OK;
 }

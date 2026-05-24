@@ -564,7 +564,7 @@ static int present_idx_meta(struct kndSet *idx, const char *name, size_t name_si
     struct kndOutput *out = task->file_out;
     int err;
 
-    assert (idx->num_leaves > 0);
+    assert (idx->store != NULL);
 
     if (indent_size) {
         OUT("\n", 1);
@@ -581,7 +581,8 @@ static int present_idx_meta(struct kndSet *idx, const char *name, size_t name_si
     
     OUT("[leaf", strlen("[leaf"));
 
-    FOREACH (leaf, idx->leaves) {
+     for (size_t i = 0; i < idx->store->num_leaves; i++) {
+        leaf = idx->store->leaves[i];
         if (indent_size) {
             OUT("\n", 1);
             err = knd_print_offset(out, (depth + 3) * indent_size);
@@ -598,7 +599,8 @@ static int present_idx_meta(struct kndSet *idx, const char *name, size_t name_si
 int knd_repo_save_meta(struct kndRepoSnapshot *s, struct kndTask *main_task, struct kndTask *task)
 {
     struct kndOutput *out = task->file_out;
-    struct kndRepo *repo = s->repo;    
+    struct kndRepo *repo = s->repo;
+    struct kndSet *target_idx;
     size_t indent_size = KND_INDENT_SIZE;
     size_t depth = 1;
     int err;
@@ -625,19 +627,27 @@ int knd_repo_save_meta(struct kndRepoSnapshot *s, struct kndTask *main_task, str
     KND_TASK_ERR("failed to present attr name idx meta");
     */
 
-    err = present_idx_meta(main_task->idxs.cls_idx, "cls-content", strlen("cls-content"),
+    target_idx = s->cache.cls_idx;
+    err = present_idx_meta(target_idx, "cls-content", strlen("cls-content"),
                            indent_size, depth + 1, task);
     KND_TASK_ERR("failed to present cls content");
 
-    err = present_idx_meta(task->cache.cls_idx, "cls-cache", strlen("cls-cache"),
+    target_idx = s->cache.cls_cache_idx;
+    err = present_idx_meta(target_idx, "cls-cache", strlen("cls-cache"),
                            indent_size, depth + 1, task);
     KND_TASK_ERR("failed to present cls cache meta");
 
-    /*err = present_idx_meta(main_task->idxs.str_idx,
-                           "str-content", strlen("str-content"),
+    knd_log(".. present charseqs..");
+    target_idx = s->cache.str_idx;
+    err = present_idx_meta(target_idx, "charseqs", strlen("charseqs"),
                            indent_size, depth + 1, task);
-    KND_TASK_ERR("failed to present strings idx meta");
-    */
+    KND_TASK_ERR("failed to present charseq idx meta");
+
+    knd_log(".. present charseq dict..");
+    err = present_idx_meta(main_task->idxs.str_dict->idx, "charseq-dict", strlen("charseq-dict"),
+                           indent_size, depth + 1, task);
+    KND_TASK_ERR("failed to present charseq dict meta");
+
     if (DEBUG_REPO_GSL_LEVEL_3) {
         knd_log(">> update repo meta %.*s", out->buf_size, out->buf);
     }

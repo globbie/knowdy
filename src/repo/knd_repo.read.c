@@ -34,25 +34,9 @@ struct LocalContext {
     const char *path;
     size_t path_size;
     struct kndSet *idx;
-
-    struct kndStorageLeaf *leaves;
-    struct kndStorageLeaf *leaf_tail;
-    size_t num_leaves;
+    struct kndStorage *store;
+    struct kndStorageLeaf *leaf;
 };
-
-static inline void append_leaf(struct kndSet *idx, struct kndStorageLeaf *leaf)
-{
-    if (!idx->leaves) {
-        idx->leaves = leaf;
-        idx->leaf_tail = leaf;
-        idx->num_leaves++;
-        return;
-    }
-
-    idx->leaf_tail->next = leaf;
-    idx->leaf_tail = leaf;
-    idx->num_leaves++;
-}
 
 static int build_path(char *path, size_t *path_size,
                       const char *snapshot_path, size_t snapshot_path_size,
@@ -375,63 +359,6 @@ int knd_repo_restore(struct kndRepo *self, struct kndRepoSnapshot *snapshot, str
     return knd_OK;
 }
 
-#if 0
-static int read_class_entries(struct kndSet *idx, struct kndTask *task)
-{
-    struct kndStorageLeaf *leaf;
-    int err;
-
-    assert (idx != NULL);
-
-    if (DEBUG_REPO_LEVEL_TMP) {
-        knd_log(".. unmarshalling class entries");
-    }
-
-    FOREACH (leaf, idx->leaves) {
-        err = knd_set_leaf_open(idx, leaf, knd_class_entry_unmarshall, NULL, task);
-        KND_TASK_ERR("failed to read a class entry idx {leaf %.*s}", leaf->name_size, leaf->name);
-    }
-    return knd_OK;
-}
-
-static int read_attr_name_idx(struct kndDict *attr_name_idx, struct kndTask *task)
-{
-    struct kndSet *idx = attr_name_idx->idx;
-    struct kndStorageLeaf *leaf;
-    int err;
-
-    assert (idx != NULL);
-
-    if (DEBUG_REPO_LEVEL_TMP) {
-        knd_log(".. reading {attr-name-idx}");
-    }
-
-    FOREACH (leaf, idx->leaves) {
-        err = knd_set_leaf_open(idx, leaf, knd_attr_name_unmarshall, NULL, task);
-        KND_TASK_ERR("failed to read attr name idx");
-    }
-    return knd_OK;
-}
-
-static int read_str_idx(struct kndSet *idx, struct kndTask *task)
-{
-    struct kndStorageLeaf *leaf;
-    int err;
-
-    assert (idx != NULL);
-
-    if (DEBUG_REPO_LEVEL_TMP) {
-        knd_log(".. reading {str-idx}");
-    }
-
-    FOREACH (leaf, idx->leaves) {
-        //err = knd_set_leaf_open(idx, leaf, NULL, task);
-        //KND_TASK_ERR("failed to read str idx");
-    }
-    return knd_OK;
-}
-#endif
-
 static gsl_err_t check_repo_name(void *obj, const char *val, size_t val_size)
 {
     struct LocalContext *ctx = obj;
@@ -461,46 +388,28 @@ static gsl_err_t set_snapshot_numid(void *obj, const char *val, size_t val_size)
 
     snapshot->state = KND_SNAPSHOT_FULL;
 
-    if (DEBUG_REPO_LEVEL_TMP) {
+    if (DEBUG_REPO_LEVEL_3) {
         knd_log("{snapshot %zu {path %.*s}}", snapshot->numid,
                 snapshot->path_size, snapshot->path);
     }
     return make_gsl_err(gsl_OK);
 }
 
-static int build_leaf_filepath(struct kndStorageLeaf *leaf, const char *path, size_t path_size,
-                               struct kndTask *task)
-{
-    struct kndOutput *out = task->out;
-    int err;
-
-    out->reset(out);
-    OUT(path, path_size);
-    OUT(leaf->name, leaf->name_size);
-    OUT(KND_GSP_FILE_EXT_NAME, strlen(KND_GSP_FILE_EXT_NAME));
-
-    if (out->buf_size >= KND_PATH_SIZE) {
-        err = knd_LIMIT;
-        KND_TASK_ERR("GSP path too long");
-    }
-
-    memcpy(leaf->filepath, out->buf, out->buf_size);
-    leaf->filepath[out->buf_size] = '\0';
-    leaf->filepath_size = out->buf_size;
-
-    return knd_OK;
-}
-
 static gsl_err_t add_leaf(void *obj, const char *val, size_t val_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
+    struct kndStorage *store = ctx->store;
+    struct kndSetStore *idx_store;
     struct kndStorageLeaf *leaf;
     char buf[KND_SHORT_NAME_SIZE];
     long numval;
     int err;
 
     assert (ctx->idx != NULL);
+    assert (ctx->idx->store != NULL);
+
+    idx_store = ctx->idx->store;
 
     if (val_size >= KND_SHORT_NAME_SIZE) {
         err = knd_LIMIT;
@@ -517,15 +426,18 @@ static gsl_err_t add_leaf(void *obj, const char *val, size_t val_size)
     }
 
     err = knd_storage_leaf_new(&leaf, numval, ctx->path, ctx->path_size,
-                               0, 0, KND_STORAGE_MODE_READ_ONLY);
+                               0, 0, store, KND_STORAGE_MODE_READ_ONLY);
     if (err) {
         KND_TASK_LOG("failed to alloc a storage leaf");
         return make_gsl_err_external(err);
     }
 
-    append_leaf(ctx->idx, leaf);
-    
-    if (DEBUG_REPO_LEVEL_TMP) {
+    idx_store->leaves[idx_store->num_leaves] = leaf;
+    idx_store->num_leaves++;
+
+    ctx->leaf = leaf;
+
+    if (DEBUG_REPO_LEVEL_3) {
         knd_log("{leaf %.*s {filepath %.*s}}",
                 leaf->name_size, leaf->name, leaf->filepath_size, leaf->filepath);
     }
@@ -580,9 +492,7 @@ static gsl_err_t parse_idx_leaf(void *obj, const char *rec, size_t *total_size)
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return parser_err;
 
-    leaf = ctx->idx->leaf_tail;
-    assert (leaf != NULL);
-
+    leaf = ctx->leaf;
     leaf->num_elems = num_elems;
 
     if (leaf->curr_size != idx_file_size) {
@@ -590,10 +500,6 @@ static gsl_err_t parse_idx_leaf(void *obj, const char *rec, size_t *total_size)
         KND_TASK_LOG("leaf size mismatch");
         return make_gsl_err_external(err);
     }
-
-    knd_log("{leaf %.*s {num-elems %zu} {file-size %zu}}",
-            leaf->name_size, leaf->name, leaf->num_elems, leaf->curr_size);
-
     return make_gsl_err(gsl_OK);
 }
 
@@ -607,6 +513,7 @@ static gsl_err_t parse_idx_leaf_array(void *obj, const char *rec, size_t *total_
     return gsl_parse_array(&spec, rec, total_size);
 }
 
+#if 0
 static gsl_err_t parse_attr_name_idx(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
@@ -622,11 +529,12 @@ static gsl_err_t parse_attr_name_idx(void *obj, const char *rec, size_t *total_s
     gsl_err_t parser_err;
     int err;
 
-    err = knd_set_new(&idx, KND_SET_MULTIPLE_VALUES, task->mempool);
+    err = knd_set_new(&idx, KND_SET_STORE_MEMONLY, task->mempool);
     if (err) {
         KND_TASK_LOG("failed to alloc a set");
         return *total_size = 0, make_gsl_err_external(err);
     }
+    idx->cardinal_t = KND_SET_MULTIPLE_VALUES;
 
     err = build_path(path, &path_size, snapshot->path, snapshot->path_size,
                      pref, pref_size, task);
@@ -659,6 +567,7 @@ static gsl_err_t parse_attr_name_idx(void *obj, const char *rec, size_t *total_s
     }
     return make_gsl_err(gsl_OK);
 }
+#endif
 
 static gsl_err_t parse_cls_cache(void *obj, const char *rec, size_t *total_size)
 {
@@ -717,6 +626,9 @@ static gsl_err_t parse_cls_content(void *obj, const char *rec, size_t *total_siz
     gsl_err_t parser_err;
     int err;
 
+    idx->elem_unmarshall_cb = knd_class_unmarshall;
+    idx->elem_unmarshall_ctx = repo;
+
     err = build_path(path, &path_size, snapshot->path, snapshot->path_size,
                      pref, pref_size, task);
     if (err) {
@@ -765,10 +677,10 @@ static gsl_err_t parse_cls_names(void *obj, const char *rec, size_t *total_size)
         knd_log(".. parsing cls names idx config");
     }
 
-    dict->storage_type = KND_DICT_PERSIST;
-    dict->item_unmarshall_cb = knd_cls_entry_fetch;
+    dict->item_fetch_cb = knd_cls_entry_fetch;
+    dict->item_fetch_cb_ctx = repo;
 
-    err = knd_set_new(&idx, KND_SET_UNIQUE_VALUES, task->mempool);
+    err = knd_set_new(&idx, KND_SET_STORE_PERSIST, task->mempool);
     if (err) {
         KND_TASK_LOG("failed to alloc a set");
         return *total_size = 0, make_gsl_err_external(err);
@@ -809,14 +721,15 @@ static gsl_err_t parse_cls_names(void *obj, const char *rec, size_t *total_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_string_idx(void *obj, const char *rec, size_t *total_size)
+static gsl_err_t parse_charseq_idx(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndRepo *repo = ctx->repo;
     struct kndTask *task = ctx->task;
     struct kndRepoSnapshot *snapshot = repo->snapshot;
     struct kndSet *idx = snapshot->cache.str_idx;
-    const char *pref = "strings";
+    struct kndDict *dict = snapshot->cache.str_dict;
+    const char *pref = "charseqs";
     size_t pref_size = strlen(pref);
     char path[KND_PATH_SIZE + 1];
     size_t path_size;
@@ -829,6 +742,9 @@ static gsl_err_t parse_string_idx(void *obj, const char *rec, size_t *total_size
         KND_TASK_LOG("failed to build a path for {idx %.*s}", pref_size, pref);
         return *total_size = 0, make_gsl_err_external(err);
     }
+
+    dict->item_fetch_cb = knd_charseq_fetch;
+    dict->item_fetch_cb_ctx = repo;
 
     ctx->path = path;
     ctx->path_size = path_size;
@@ -877,21 +793,18 @@ static gsl_err_t parse_snapshot(void *obj, const char *rec, size_t *total_size)
             .name_size = strlen("cls-cache"),
             .parse = parse_cls_cache,
             .obj = obj
-        }/*,
-        {   .name = "str-content",
-            .name_size = strlen("str-content"),
-            .parse = parse_string_idx,
+        },
+        {   .name = "charseqs",
+            .name_size = strlen("charseqs"),
+            .parse = parse_charseq_idx,
             .obj = obj
-            }*/
+        }
     };
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
 static gsl_err_t parse_repo_state(void *obj, const char *rec, size_t *total_size)
 {
-    struct LocalContext *ctx = obj;
-    struct kndRepo *repo = ctx->repo;
-
     struct gslTaskSpec specs[] = {
         {   .is_implied = true,
             .run = check_repo_name,
@@ -910,8 +823,6 @@ static gsl_err_t parse_repo_state(void *obj, const char *rec, size_t *total_size
         knd_log("-- config parse error: %d", parser_err.code);
         return parser_err;
     }
-
-
     return make_gsl_err(gsl_OK);
 }
 
@@ -958,7 +869,7 @@ static int build_repo_path(struct kndRepoSnapshot *s,
     return knd_OK;
 }
 
-static int read_repo_state(struct kndRepo *repo, struct kndTask *task)
+static int read_repo_state(struct kndRepo *repo, struct kndStorage *store, struct kndTask *task)
 {
     struct kndOutput *file_out = task->file_out;
     char filename[KND_PATH_SIZE + 1];
@@ -970,7 +881,8 @@ static int read_repo_state(struct kndRepo *repo, struct kndTask *task)
 
     struct LocalContext ctx = {
         .task = task,
-        .repo = repo
+        .repo = repo,
+        .store = store
     };
 
     struct gslTaskSpec specs[] = {
@@ -1000,14 +912,13 @@ static int read_repo_state(struct kndRepo *repo, struct kndTask *task)
     }
     total_parsed = file_out->buf_size;
 
-    parser_err = gsl_parse_task(file_out->buf, &total_parsed,
-                                specs, sizeof specs / sizeof specs[0]);
+    parser_err = gsl_parse_task(file_out->buf, &total_parsed, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code != gsl_OK) {
-        KND_TASK_LOG("failed to read configuration file");
+        KND_TASK_LOG("failed to read repo state config");
         return gsl_err_to_knd_err_codes(parser_err);
     }
 
-    if (DEBUG_REPO_LEVEL_TMP) {
+    if (DEBUG_REPO_LEVEL_3) {
         knd_log("== {repo %.*s {snapshot %zu}}", repo->name_size, repo->name,
                 repo->snapshot->numid);
     }
@@ -1022,7 +933,7 @@ int knd_repo_read(struct kndRepo *repo, struct kndTask *task)
 
     assert(task->user_ctx != NULL);
 
-    if (DEBUG_REPO_LEVEL_TMP) {
+    if (DEBUG_REPO_LEVEL_2) {
         const char *owner_name = "/";
         size_t owner_name_size = 1;
         switch (task->user_ctx->type) {
@@ -1043,7 +954,7 @@ int knd_repo_read(struct kndRepo *repo, struct kndTask *task)
     KND_TASK_ERR("failed to alloc a repo snapshot");
     repo->snapshot = snapshot;
 
-    err = read_repo_state(repo, task);
+    err = read_repo_state(repo, store, task);
     KND_TASK_ERR("failed to read repo state");
 
     switch (snapshot->state) {

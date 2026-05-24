@@ -228,10 +228,10 @@ static int init_cache(struct kndTaskCache *c, struct kndMemConfig *memconf)
     err = knd_mempool_create(&c->mempool, memconf, 2);
     if (err) goto error;
 
-    err = knd_set_new(&c->cls_idx, KND_SET_UNIQUE_VALUES, c->mempool);
+    err = knd_set_new(&c->cls_idx, KND_SET_STORE_MEMONLY, c->mempool);
     if (err) goto error;
 
-    err = knd_dict_new(&c->cls_name_idx, KND_SMALL_DICT_SIZE, c->mempool);
+    err = knd_dict_new(&c->cls_name_idx, KND_MEDIUM_DICT_SIZE, c->mempool);
     if (err) goto error;
 
     c->max_cls_entries = KND_CACHE_MAX_ITEMS;
@@ -247,28 +247,28 @@ static int create_local_write_idxs(struct kndTask *task)
 {
     int err;
 
-    err = knd_dict_new(&task->idxs.cls_name_idx, KND_SMALL_DICT_SIZE, task->mempool);
+    err = knd_dict_new(&task->idxs.cls_name_idx, KND_MEDIUM_DICT_SIZE, task->mempool);
     KND_TASK_ERR("failed to create a cls name idx");
 
-    err = knd_set_new(&task->idxs.cls_idx, KND_SET_UNIQUE_VALUES, task->mempool);
+    err = knd_set_new(&task->idxs.cls_idx, KND_SET_STORE_MEMONLY, task->mempool);
     KND_TASK_ERR("failed to create a cls idx");
 
     err = knd_dict_new(&task->idxs.attr_name_idx, KND_SMALL_DICT_SIZE, task->mempool);
     KND_TASK_ERR("failed to create an attr name idx");
 
-    err = knd_set_new(&task->idxs.attr_idx, KND_SET_UNIQUE_VALUES, task->mempool);
+    err = knd_set_new(&task->idxs.attr_idx, KND_SET_STORE_MEMONLY, task->mempool);
     KND_TASK_ERR("failed to create an attr idx");
     
     err = knd_dict_new(&task->idxs.str_dict, KND_SMALL_DICT_SIZE, task->mempool);
     KND_TASK_ERR("failed to create a str dict");
 
-    err = knd_set_new(&task->idxs.str_idx, KND_SET_UNIQUE_VALUES, task->mempool);
+    err = knd_set_new(&task->idxs.str_idx, KND_SET_STORE_MEMONLY, task->mempool);
     KND_TASK_ERR("failed to create a str idx");
 
     err = knd_dict_new(&task->idxs.proc_name_idx, KND_SMALL_DICT_SIZE, task->mempool);
     KND_TASK_ERR("failed to create a proc name idx");
 
-    err = knd_set_new(&task->idxs.proc_idx, KND_SET_UNIQUE_VALUES, task->mempool);
+    err = knd_set_new(&task->idxs.proc_idx, KND_SET_STORE_MEMONLY, task->mempool);
     KND_TASK_ERR("failed to create a proc idx");
 
     return knd_OK;

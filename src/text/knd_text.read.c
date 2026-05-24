@@ -84,7 +84,7 @@ static gsl_err_t set_gloss_abbr(void *obj, const char *val, size_t val_size)
 
     assert(val_size != 0);
 
-    err = knd_charseq_decode(val, val_size, &ctx->text->abbr, task);
+    err = knd_charseq_decode(ctx->repo, val, val_size, &ctx->text->abbr, task);
     if (err) {
         KND_TASK_LOG("failed to decode a gloss abbr charseq %.*s", val_size, val);
         return make_gsl_err_external(err);
@@ -175,7 +175,7 @@ static gsl_err_t set_text_seq(void *obj, const char *val, size_t val_size)
     if (DEBUG_TEXT_READ_LEVEL_2)
         knd_log(">> text encoded seq: %.*s (size:%zu)", val_size, val, val_size);
 
-    err = knd_charseq_decode(val, val_size, &ctx->text->seq, task);
+    err = knd_charseq_decode(ctx->repo, val, val_size, &ctx->text->seq, task);
     if (err) {
         KND_TASK_LOG("failed to decode a text charseq %.*s", val_size, val);
         return make_gsl_err_external(err);
@@ -243,7 +243,7 @@ static gsl_err_t set_sent_seq(void *obj, const char *val, size_t val_size)
     int err;
     if (!val_size) return make_gsl_err(gsl_FORMAT);
 
-    err = knd_charseq_decode(val, val_size, &sent->seq, task);
+    err = knd_charseq_decode(ctx->repo, val, val_size, &sent->seq, task);
     if (err) {
         KND_TASK_LOG("failed to decode a sent charseq %.*s", val_size, val);
         return make_gsl_err_external(err);
@@ -940,5 +940,53 @@ int knd_string_unmarshall(const char *elem_id, size_t elem_id_size,
     }
 
     *result = seq;
+    return knd_OK;
+}
+
+int knd_charseq_fetch(const char *rec, size_t unused_var(rec_size), const char *key, size_t key_size,
+                      void *ctx, size_t *result_size, void **result, struct kndTask *task)
+{
+    struct kndRepo *repo = ctx;
+    char namebuf[KND_NAME_SIZE];
+    size_t namebuf_size = 0;
+    char idbuf[KND_ID_SIZE];
+    size_t idbuf_size = 0;
+    struct kndClassEntry *entry;
+    gsl_err_t parser_err;
+    int err;
+
+    if (DEBUG_TEXT_READ_LEVEL_2) {
+        knd_log(">> parsing charseq from {rec %s}", rec);
+    }
+
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .buf = namebuf,
+          .buf_size = &namebuf_size,
+          .max_buf_size = KND_NAME_SIZE
+        },
+        { .name = "id",
+          .name_size = strlen("id"),
+          .buf = idbuf,
+          .buf_size = &idbuf_size,
+          .max_buf_size = KND_ID_SIZE
+        }
+    };
+
+    parser_err = gsl_parse_task(rec, result_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
+
+    if (key_size != namebuf_size) return knd_NO_MATCH;
+    if (memcmp(key, namebuf, namebuf_size)) return knd_NO_MATCH;
+
+    if (DEBUG_TEXT_READ_LEVEL_TMP) {
+        knd_log("++ {seq %.*s {id %.*s}} matched, building charseq..",
+                namebuf_size, namebuf, idbuf_size, idbuf);
+    }
+
+    //err = build_charseq(namebuf, namebuf_size, idbuf, idbuf_size, &entry, repo, task);
+    //KND_TASK_ERR("failed to build a charseq");
+
+    *result = entry;
     return knd_OK;
 }

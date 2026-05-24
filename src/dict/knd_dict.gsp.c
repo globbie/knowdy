@@ -66,32 +66,18 @@ static int marshall_dict_entry(void *elem, void *ctx, struct kndStorageLeaf *lea
     assert (local_ctx->cb != NULL);
 
     out->reset(out);
-    OUTF("{n %zu}", entry->num_items);
-    err = leaf_write_buf(out->buf, out->buf_size, leaf, task);
-    KND_TASK_ERR("leaf write failure");
-    total_output_size += out->buf_size;
-
-    err = leaf_write_buf("[i", strlen("[i"), leaf, task);
-    KND_TASK_ERR("leaf write failure");
-    total_output_size += strlen("[i");
 
     FOREACH (item, entry->items) {
         item_output_size = 0;
-        err = leaf_write_buf("{", 1, leaf, task);
-        KND_TASK_ERR("leaf write failure");
-        total_output_size++;
 
         err = local_ctx->cb(item->data, local_ctx->cb_ctx, leaf, &item_output_size, task);
         KND_TASK_ERR("failed to marshall a dict item");
         total_output_size += item_output_size;
 
-        err = leaf_write_buf("}", 1, leaf, task);
+        err = leaf_write_buf("\0", 1, leaf, task);
         KND_TASK_ERR("leaf write failure");
         total_output_size++;
     }
-    err = leaf_write_buf("]", 1, leaf, task);
-    KND_TASK_ERR("leaf write failure");
-    total_output_size++;
 
     *output_size = total_output_size;
     return knd_OK;
@@ -106,6 +92,7 @@ int knd_dict_marshall(struct kndDict *dict, struct kndDictRange *unused_var(rang
     char idbuf[KND_ID_SIZE];
     size_t idbuf_size;
     struct kndDictEntry *entry = NULL;
+    struct kndDictItem *item;
     //size_t output_size = 0;
     int err;
 
@@ -115,7 +102,7 @@ int knd_dict_marshall(struct kndDict *dict, struct kndDictRange *unused_var(rang
     };
 
     if (!idx) {
-        err = knd_set_new(&idx, KND_SET_UNIQUE_VALUES, task->mempool);
+        err = knd_set_new(&idx, KND_SET_STORE_PERSIST, task->mempool);
         KND_TASK_ERR("failed to alloc a set");
         dict->idx = idx;
     }
@@ -126,11 +113,20 @@ int knd_dict_marshall(struct kndDict *dict, struct kndDictRange *unused_var(rang
 
         knd_uid_create(i, idbuf, &idbuf_size);
 
+        if (DEBUG_DICT_GSP_LEVEL_3) {
+            knd_log(">> {dict {size %zu}} GSP {hash-num %.*s}",
+                    dict->size, idbuf_size, idbuf);
+            FOREACH (item, entry->items) {
+                knd_log("    {key %.*s}", item->key_size, item->key);
+            }
+        }
+
         err = knd_set_add(idx, idbuf, idbuf_size, (void*)entry, task);
         KND_TASK_ERR("failed to add a dict entry to a set idx");
     }
 
-    err = knd_set_marshall(idx, NULL, path, path_size, marshall_dict_entry, &ctx, store, task);
+    err = knd_set_marshall(idx, NULL, path, path_size, marshall_dict_entry, &ctx,
+                           store, idx->store->leaves, &idx->store->num_leaves, task);
     KND_TASK_ERR("failed to marshall a set of dict entries");
 
     return knd_OK;

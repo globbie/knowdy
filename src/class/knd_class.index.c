@@ -43,32 +43,31 @@
 #define DEBUG_CLASS_INDEX_LEVEL_5 0
 #define DEBUG_CLASS_INDEX_LEVEL_TMP 1
 
-static int index_ancestor(struct kndClass *self, struct kndClass *baseclass, struct kndTask *task)
+static int index_ancestor(struct kndClass *cls, struct kndClass *baseclass, struct kndTask *task)
 {
-    struct kndClassEntry *entry = self->entry;
+    struct kndClassEntry *entry = cls->entry;
     struct kndMemPool *mempool = task->mempool;
     struct kndSet *desc_idx;
     void *result;
     int err;
 
-    if (DEBUG_CLASS_INDEX_LEVEL_2) {
-        knd_log(".. %.*s class to update desc_idx of an ancestor {cls %.*s}",
-                self->name_size, self->name,
-                baseclass->name_size, baseclass->name);
-    }
-
     desc_idx = baseclass->descendants;
-    if (!desc_idx) {
-        err = knd_set_new(&desc_idx, KND_SET_UNIQUE_VALUES, mempool);
+    if (!desc_idx) {        
+        err = knd_set_new(&desc_idx, KND_SET_STORE_MEMONLY, mempool);
         KND_TASK_ERR("failed to alloc a set");
 
         baseclass->descendants = desc_idx;
     }
+    if (DEBUG_CLASS_INDEX_LEVEL_2) {
+        knd_log(".. {cls %.*s {id %.*s}} to update desc_idx of an ancestor {cls %.*s}",
+                cls->name_size, cls->name, entry->id_size, entry->id,
+                baseclass->name_size, baseclass->name);
+    }
 
     err = knd_set_get(desc_idx, entry->id, entry->id_size, &result, task);
     if (!err) {
-        if (DEBUG_CLASS_INDEX_LEVEL_2) {
-            knd_log("== index already present between {cls %.*s {id %.*s}}"
+        if (DEBUG_CLASS_INDEX_LEVEL_3) {
+            knd_log("== idx already present between {cls %.*s {id %.*s}}"
                     " and its ancestor {cls %.*s}",
                     entry->name_size, entry->name, entry->id_size, entry->id,
                     baseclass->name_size, baseclass->name);
@@ -98,7 +97,7 @@ static int register_desc(struct kndClass *base, struct kndClass *sub,
     /* update ancestors' indices */
     FOREACH (ref, base->ancestors) {
         err = knd_class_acquire(ref->entry, &c, repo, task);
-        KND_TASK_ERR("failed to acquire {class %.*s}",
+        KND_TASK_ERR("failed to acquire {cls %.*s}",
                      ref->entry->name_size, ref->entry->name);
 
         //if (c->state_top) continue;
@@ -116,7 +115,7 @@ static int register_desc(struct kndClass *base, struct kndClass *sub,
     /* register a descendant */
     desc_idx = base->descendants;
     if (!desc_idx) {
-        err = knd_set_new(&desc_idx, KND_SET_UNIQUE_VALUES, mempool);
+        err = knd_set_new(&desc_idx, KND_SET_STORE_MEMONLY, mempool);
         KND_TASK_ERR("failed to alloc a desc idx set");
         base->descendants = desc_idx;
     } else {
@@ -268,8 +267,7 @@ int knd_class_index(struct kndClass *cls, struct kndRepo *repo, struct kndTask *
         if (bp->is_root) break;
 
         err = knd_class_acquire(bp->entry, &c, repo, task);
-        KND_TASK_ERR("failed to acquire {cls %.*s}",
-                     bp->entry->name_size, bp->entry->name);
+        KND_TASK_ERR("failed to acquire {cls %.*s}", bp->entry->name_size, bp->entry->name);
 
         err = register_desc(c, cls, repo, task);
         KND_TASK_ERR("failed to register a subclass {cls %.*s} in base {cls %.*s}",

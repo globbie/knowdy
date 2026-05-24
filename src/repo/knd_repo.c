@@ -168,39 +168,28 @@ int knd_repo_snapshot_new(struct kndRepoSnapshot **result, size_t numid, size_t 
     err = knd_snapshot_build_path(s, task);
     KND_TASK_ERR("failed to build a default snapshot path");
 
-    err = knd_set_new(&s->commit_idx, KND_SET_UNIQUE_VALUES, mempool);
+    err = knd_set_new(&s->commit_idx, KND_SET_STORE_MEMONLY, mempool);
     if (err) return err;
     s->max_journals = KND_MAX_JOURNALS;
     s->max_journal_size = KND_MAX_JOURNAL_SIZE;
 
-    err = knd_set_new(&s->cache.str_idx, KND_SET_UNIQUE_VALUES, mempool);
+    err = knd_set_new(&s->cache.str_idx, KND_SET_STORE_PERSIST, mempool);
     if (err) return err;
+
     err = knd_dict_new(&s->cache.str_dict, KND_MEDIUM_DICT_SIZE, mempool);
     if (err) return err;
 
-    err = knd_set_new(&s->cache.cls_idx, KND_SET_UNIQUE_VALUES, mempool);
+    err = knd_set_new(&s->cache.cls_idx, KND_SET_STORE_PERSIST, mempool);
     if (err) return err;
-    err = knd_set_new(&s->cache.cls_cache_idx, KND_SET_UNIQUE_VALUES, mempool);
+    err = knd_set_new(&s->cache.cls_cache_idx, KND_SET_STORE_PERSIST, mempool);
     if (err) return err;
-    err = knd_dict_new(&s->cache.cls_name_idx, KND_HUGE_DICT_SIZE, mempool);
+    err = knd_dict_new(&s->cache.cls_name_idx, KND_MEDIUM_DICT_SIZE, mempool);
     if (err) return err;
 
-    err = knd_set_new(&s->cache.attr_idx, KND_SET_UNIQUE_VALUES, mempool);
+    err = knd_set_new(&s->cache.attr_idx, KND_SET_STORE_PERSIST, mempool);
     if (err) return err;
     err = knd_dict_new(&s->cache.attr_name_idx, KND_MEDIUM_DICT_SIZE, mempool);
     if (err) return err;
-
-    /* shared idxs */
-    /*err = knd_shared_set_new(&s->idxs.cls_idx, mempool);
-    if (err) return err;
-    err = knd_shared_dict_new(&s->idxs.cls_name_idx, KND_MEDIUM_DICT_SIZE, mempool, false);
-    if (err) return err;
-
-    err = knd_shared_set_new(&s->idxs.proc_idx, mempool);
-    if (err) return err;
-    err = knd_shared_dict_new(&s->idxs.proc_name_idx, KND_MEDIUM_DICT_SIZE, mempool, false);
-    if (err) return err;
-    */
 
     *result = s;
     return knd_OK;

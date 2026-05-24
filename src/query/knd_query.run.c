@@ -176,7 +176,7 @@ int knd_query_exec(struct kndQuery *query, struct kndTask *task)
         
     //}
 
-    err = knd_set_new(&set, KND_SET_UNIQUE_VALUES, task->mempool);
+    err = knd_set_new(&set, KND_SET_STORE_MEMONLY, task->mempool);
     KND_TASK_ERR("failed to alloc a set");
 
     //err = knd_set_intersect(set, sets, num_sets);

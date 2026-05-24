@@ -53,18 +53,16 @@ static gsl_err_t set_gloss_value(void *obj, const char *val, size_t val_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    //struct kndRepo *repo = ctx->repo;
     int err;
 
     assert(val_size != 0);
     assert (ctx->text != NULL);
 
-    err = knd_charseq_fetch(val, val_size, &ctx->text->seq, task);
+    err = knd_charseq_register(ctx->repo, val, val_size, &ctx->text->seq, task);
     if (err) {
-        KND_TASK_LOG("failed to fetch a gloss {seq %.*s}", val_size, val);
+        KND_TASK_LOG("failed to register gloss {seq %.*s}", val_size, val);
         return make_gsl_err_external(err);
     }
-
     return make_gsl_err(gsl_OK);
 }
 
@@ -75,7 +73,7 @@ static gsl_err_t set_gloss_abbr(void *obj, const char *val, size_t val_size)
     int err;
     assert(val_size != 0);
 
-    err = knd_charseq_fetch(val, val_size, &ctx->text->abbr, task);
+    err = knd_charseq_register(ctx->repo, val, val_size, &ctx->text->abbr, task);
     if (err) {
         KND_TASK_LOG("failed to fetch a gloss abbr charseq %.*s", val_size, val);
         return make_gsl_err_external(err);
@@ -172,7 +170,7 @@ static gsl_err_t set_text_seq(void *obj, const char *val, size_t val_size)
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
     int err;
-    err = knd_charseq_fetch(val, val_size, &ctx->text->seq, task);
+    err = knd_charseq_register(ctx->repo, val, val_size, &ctx->text->seq, task);
     if (err) {
         KND_TASK_LOG("failed to fetch a text charseq %.*s", val_size, val);
         return make_gsl_err_external(err);
@@ -233,9 +231,9 @@ static gsl_err_t set_sent_seq(void *obj, const char *val, size_t val_size)
     int err;
     if (!val_size) return make_gsl_err(gsl_FORMAT);
 
-    err = knd_charseq_fetch(val, val_size, &self->seq, task);
+    err = knd_charseq_register(ctx->repo, val, val_size, &self->seq, task);
     if (err) {
-        KND_TASK_LOG("failed to fetch a sentence charseq %.*s", val_size, val);
+        KND_TASK_LOG("failed to fetch a sentence {charseq %.*s}", val_size, val);
         return make_gsl_err_external(err);
     }
     return make_gsl_err(gsl_OK);

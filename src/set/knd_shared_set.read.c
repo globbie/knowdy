@@ -27,64 +27,6 @@ static int unmarshall_block(struct kndSharedSet *self, struct kndSharedSetDir *d
                             char *idbuf, size_t idbuf_size, knd_set_elem_unmarshall_cb_t cb,
                             struct kndTask *task);
 
-int knd_shared_set_find_leaf(struct kndSharedSet *idx, const char *id, size_t id_size,
-                             struct kndStorageLeaf **result, struct kndTask *unused_var(task))
-{
-    struct kndStorageLeaf *leaf;
-    size_t numid;
-
-    // TODO
-    knd_calc_num_id(id, 1, &numid);
-
-    FOREACH (leaf, idx->leaves) {
-        //knd_log(">> {leaf %zu {from %.*s} {to %.*s}} {elem-id %.*s}",
-        //        leaf->numid,
-        //        leaf->range_from_addr_size, leaf->range_from_addr,
-        //        leaf->range_to_addr_size, leaf->range_to_addr,
-        //        id_size, id);
-
-        if (*leaf->range_to_addr == '/') {
-            if (id_size == 1) {
-                *result = leaf;
-                return knd_OK;
-            }
-        }
-
-        if (*leaf->range_from_addr == '/') {
-            /*if (numid < leaf->range_to) {
-                *result = leaf;
-                return knd_OK;
-                }*/
-        }
-
-        if (!leaf->range_from_addr_size) {
-            if (id_size == 1) {
-                *result = leaf;
-                return knd_OK;
-            }
-
-            if (leaf->range_to_addr_size == 1
-                && leaf->range_to_addr[0] == '0'
-                && numid == 0) {
-                *result = leaf;
-                return knd_OK;
-            }
-        }
-
-        //if (leaf->range_from >= numid) continue;
-
-        if (!leaf->range_to_addr_size) {
-            *result = leaf;
-            return knd_OK;
-        }
-        //if (leaf->range_to < numid) continue;
-
-        *result = leaf;
-        return knd_OK;
-    }
-    return knd_NO_MATCH;
-}
-
 static int payload_linear_scan(struct kndSharedSetDir *dir,
                                const char *block, size_t block_size,
                                char *idbuf, size_t idbuf_size,

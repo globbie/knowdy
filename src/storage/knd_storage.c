@@ -23,7 +23,7 @@ int knd_storage_new(struct kndStorage **result)
 
 int knd_storage_leaf_new(struct kndStorageLeaf **result, size_t numid,
                          const char *path, size_t path_size,
-                         size_t min_size, size_t max_size, knd_storage_mode mode)
+                         size_t min_size, size_t max_size, struct kndStorage *store, knd_storage_mode mode)
 {
     struct kndStorageLeaf *leaf;
     char *b;
@@ -36,6 +36,7 @@ int knd_storage_leaf_new(struct kndStorageLeaf **result, size_t numid,
     leaf = calloc(1, sizeof(struct kndStorageLeaf));
     if (!leaf) return knd_NOMEM;
     leaf->mode = mode;
+    leaf->store = store;
 
     if (numid > KND_MAX_STORAGE_LEAVES) {
         err = knd_LIMIT;

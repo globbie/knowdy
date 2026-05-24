@@ -24,16 +24,34 @@
 #include "knd_storage.h"
 #include "knd_task.h"
 
-typedef enum knd_set_type { KND_SET_UNIQUE_VALUES,
-			    KND_SET_MULTIPLE_VALUES } knd_set_type;
+typedef enum knd_set_store_t { KND_SET_STORE_DEFAULT,
+                               KND_SET_STORE_MEMONLY,
+                               KND_SET_STORE_PERSIST } knd_set_store_t;
 
-typedef enum knd_set_dir_type { KND_SET_DIR_FIXED,
-                                KND_SET_DIR_VAR } knd_set_dir_type;
+typedef enum knd_set_cardinal_t { KND_SET_UNIQUE_VALUES,
+                                  KND_SET_MULTIPLE_VALUES } knd_set_cardinal_t;
 
+typedef enum knd_set_elem_format_t { KND_SET_ELEM_STR,
+                                     KND_SET_ELEM_BIN } knd_set_elem_format_t;
+
+typedef enum knd_set_dir_t { KND_SET_DIR_FIXED,
+                             KND_SET_DIR_VAR } knd_set_dir_t;
+
+typedef int (*filter_cb_t)(void *elem, void *ctx);
+typedef int (*map_cb_t)(void *elem, void *ctx, struct kndTask *task);
+typedef int (*reduce_cb_t)(void *elem, void *ctx);
+typedef int (*compare_cb_t)(void *elem, void *ctx);
+
+typedef int (*knd_set_elem_marshall_cb_t)(void *elem, void *ctx, struct kndStorageLeaf *leaf,
+                                          size_t *output_size, struct kndTask *task);
+typedef int (*knd_set_elem_unmarshall_cb_t)(const char *elem_id, size_t elem_id_size,
+                                            const char *rec, size_t rec_size,
+                                            void *ctx, size_t *result_size,
+                                            void **result, struct kndTask *task);
 
 struct kndSetDirEntry
 {
-    knd_set_dir_type type;
+    knd_set_dir_t type;
 
     struct kndSetDir *subdir;
     size_t offset;
@@ -108,9 +126,20 @@ struct kndSetRange
     size_t to_id_size;
 };
 
+struct kndSetStore
+{
+    struct kndStorageLeaf *leaves[KND_MAX_STORAGE_LEAVES];
+    size_t num_leaves;
+};
+
 struct kndSet
 {
-    knd_set_type type;
+    knd_set_store_t store_t;
+    knd_set_cardinal_t cardinal_t;
+    knd_set_elem_format_t format_t;
+
+    knd_set_elem_unmarshall_cb_t elem_unmarshall_cb;
+    void *elem_unmarshall_ctx;
 
     struct kndSetDir *dir;
     size_t num_elems;
@@ -118,26 +147,13 @@ struct kndSet
     const char *path;
     size_t path_size;
 
-    struct kndStorageLeaf *leaves;
-    struct kndStorageLeaf *leaf_tail;
-    size_t num_leaves;
-    
+    struct kndSetStore *store;
     struct kndMemPool *mempool;
 };
 
-typedef int (*filter_cb_t)(void *elem, void *ctx);
-typedef int (*map_cb_t)(void *elem, void *ctx, struct kndTask *task);
-typedef int (*reduce_cb_t)(void *elem, void *ctx);
-typedef int (*compare_cb_t)(void *elem, void *ctx);
+int knd_set_new(struct kndSet **result, knd_set_store_t store_t, struct kndMemPool *mempool);
 
-typedef int (*knd_set_elem_marshall_cb_t)(void *elem, void *ctx, struct kndStorageLeaf *leaf,
-                                          size_t *output_size, struct kndTask *task);
-typedef int (*knd_set_elem_unmarshall_cb_t)(const char *elem_id, size_t elem_id_size,
-                                            const char *rec, size_t rec_size,
-                                            void *ctx, size_t *result_size,
-                                            void **result, struct kndTask *task);
-
-int knd_set_new(struct kndSet **result, knd_set_type type, struct kndMemPool *mempool);
+int knd_set_store_new(struct kndSetStore **result, struct kndMemPool *mempool);
 int knd_set_elem_new(struct kndSetElem **result, struct kndMemPool *mempool);
 int knd_set_range_new(struct kndSetRange **result, struct kndMemPool *mempool);
 int knd_set_dir_new(struct kndSetDir **result, const char *parent_id, size_t parent_id_size,
@@ -162,10 +178,10 @@ int knd_set_sort(struct kndSet *set, struct kndSetRange *range, compare_cb_t cb,
                  struct kndSet **result, struct kndTask *task);
 
 /* GSP marshalling */
-int knd_set_marshall(struct kndSet *s, struct kndSetRange *range,
-                     const char *path, size_t path_size,
-                     knd_set_elem_marshall_cb_t cb, void *cb_ctx,
-                     struct kndStorage *store, struct kndTask *task);
+int knd_set_marshall(struct kndSet *s, struct kndSetRange *range, const char *path, size_t path_size,
+                     knd_set_elem_marshall_cb_t cb, void *cb_ctx, struct kndStorage *store,
+                     struct kndStorageLeaf **leaves, size_t *num_leaves, struct kndTask *task);
+
 int knd_set_leaf_marshall(struct kndSet *s, struct kndSetRange *range, struct kndStorageLeaf *leaf,
                           knd_set_elem_marshall_cb_t cb, void *cb_ctx, struct kndTask *task);
 
@@ -174,5 +190,5 @@ int knd_set_build_path(struct kndSet *idx, const char *path, size_t path_size,
 int knd_set_read_leaf(struct kndSet *idx, struct kndStorageLeaf *leaf, struct kndSetRange *range,
                       knd_set_elem_unmarshall_cb_t cb, void *cb_ctx, struct kndTask *task);
 
-int knd_set_fetch_elem(struct kndSet *s, struct kndStorageLeaf *leaf, const char *key, size_t key_size,
+int knd_set_fetch_elem(struct kndSet *s, const char *key, size_t key_size,
                        knd_set_elem_unmarshall_cb_t cb, void *cb_ctx, void **result, struct kndTask *task);

@@ -117,7 +117,7 @@ static int save_elem(struct kndSet *s, struct kndSetDir *parent_dir,
     }
 
     /* assign elem */
-    switch (s->type) {
+    switch (s->cardinal_t) {
     case KND_SET_UNIQUE_VALUES:
         if (parent_dir->elems[dir_pos] != NULL) return knd_CONFLICT;
 
@@ -180,19 +180,31 @@ int knd_set_add(struct kndSet *s, const char *key, size_t key_size, void *elem, 
     assert(elem != NULL);
 
     err = save_elem(s, s->dir, elem, key, key_size, task);
-    KND_TASK_ERR("failed to add an elem to a set");
+    KND_TASK_ERR("failed to add an elem to a set {key %.*s {err %d}}", key_size, key, err);
 
     return knd_OK;
 }
 
-int knd_set_get(struct kndSet *s, const char *key, size_t key_size, void **elem,
-                struct kndTask *unused_var(task))
+int knd_set_get(struct kndSet *s, const char *key, size_t key_size,
+                void **result, struct kndTask *task)
 {
     int err;
-    if (!s->dir) return knd_FAIL;
-    err = get_elem(s, s->dir, elem, key, key_size);
-    if (err) return err;
-    return knd_OK;
+
+    switch (s->store_t) {
+    case KND_SET_STORE_DEFAULT:
+        // fall through
+    case KND_SET_STORE_MEMONLY:
+        if (!s->dir) return knd_FAIL;
+        err = get_elem(s, s->dir, result, key, key_size);
+        if (err) return err;
+        return knd_OK;
+    case KND_SET_STORE_PERSIST:
+        return knd_set_fetch_elem(s, key, key_size,
+                                  s->elem_unmarshall_cb, s->elem_unmarshall_ctx, result, task);
+    default:
+        break;
+    }
+    return knd_NO_MATCH;
 }
 
 static int apply_map_cb(struct kndSet *s, struct kndSetElem *elems,
@@ -201,7 +213,7 @@ static int apply_map_cb(struct kndSet *s, struct kndSetElem *elems,
     struct kndSetElem *elem;
     int err;
 
-    switch (s->type) {
+    switch (s->cardinal_t) {
     case KND_SET_UNIQUE_VALUES:
         err = cb(elems->val, ctx, task);
         if (err) return err;
@@ -228,7 +240,7 @@ static int apply_filter_cb(struct kndSet *s, struct kndSetElem *elems,
     assert (filter_cb != NULL);
     assert (map_cb != NULL);
 
-    switch (s->type) {
+    switch (s->cardinal_t) {
     case KND_SET_UNIQUE_VALUES:
         err = filter_cb(elems->val, filter_ctx);
         switch (err) {
@@ -319,7 +331,7 @@ int knd_set_map(struct kndSet *s, struct kndSetRange *range,
     return knd_OK;
 }
 
-int knd_set_new(struct kndSet **result, knd_set_type type, struct kndMemPool *mempool)
+int knd_set_new(struct kndSet **result, knd_set_store_t store_t, struct kndMemPool *mempool)
 {
     void *page;
     struct kndSet *s;
@@ -332,11 +344,19 @@ int knd_set_new(struct kndSet **result, knd_set_type type, struct kndMemPool *me
     memset(page, 0, sizeof(struct kndSet));
 
     s = page;
-    s->type = type;
     s->mempool = mempool;
 
     err = knd_set_dir_new(&s->dir, "", 0, "", mempool);
     if (err) return err;
+
+    switch (store_t) {
+    case KND_SET_STORE_PERSIST:
+        err = knd_set_store_new(&s->store, mempool);
+        if (err) return err;
+        break;
+    default:
+        break;
+    }
 
     *result = s;
     return knd_OK;
@@ -377,6 +397,18 @@ int knd_set_elem_new(struct kndSetElem **result, struct kndMemPool *mempool)
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndSetElem));
+    *result = page;
+    return knd_OK;
+}
+
+int knd_set_store_new(struct kndSetStore **result, struct kndMemPool *mempool)
+{
+    void *page;
+    int err;
+    assert(mempool->base_page_size >= sizeof(struct kndSetStore));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_BASE, &page);
+    if (err) return err;
+    memset(page, 0, sizeof(struct kndSetStore));
     *result = page;
     return knd_OK;
 }

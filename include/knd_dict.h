@@ -16,7 +16,12 @@ typedef int (*knd_dict_item_marshall_cb_t)(void *item, void *ctx, struct kndStor
                                            size_t *output_size, struct kndTask *task);
 typedef int (*knd_dict_item_unmarshall_cb_t)(const char *rec, size_t rec_size,
                                              void *ctx, size_t *result_size,
-                                             const char **key, size_t *key_size, void **result, struct kndTask *task);
+                                             const char **key, size_t *key_size,
+                                             void **result, struct kndTask *task);
+typedef int (*knd_dict_item_fetch_cb_t)(const char *rec, size_t rec_size,
+                                        const char *key, size_t key_size,
+                                        void *ctx, size_t *result_size,
+                                        void **result, struct kndTask *task);
 
 struct kndDictRange
 {
@@ -58,7 +63,8 @@ struct kndDict
 
     knd_dict_item_marshall_cb_t item_marshall_cb;
     knd_dict_item_unmarshall_cb_t item_unmarshall_cb;
-
+    knd_dict_item_fetch_cb_t item_fetch_cb;
+    void *item_fetch_cb_ctx;
 };
 
 int knd_dict_new(struct kndDict **self, size_t init_size, struct kndMemPool *mempool);

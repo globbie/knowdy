@@ -238,7 +238,11 @@ int knd_resolve_attr_stm(struct kndClass *cls, struct kndAttrStm *stm,
         KND_TASK_ERR("failed to parse an ureal value");
         break;
     case KND_ATTR_STR:
-        /* TODO: string seq value, call a validation callback function? */
+        /* TODO: call a validation callback function? */
+        assert (stm->val != NULL);
+        assert (stm->val_size != 0);
+        err = knd_charseq_register(repo, stm->val, stm->val_size, &stm->seq, task);
+        KND_TASK_ERR("failed to encode a charseq for attr stm val");
         break;
     default:
         break;

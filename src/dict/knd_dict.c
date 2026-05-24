@@ -85,10 +85,9 @@ int knd_dict_get(struct kndDict *dict, const char *key, size_t key_size, void **
 
     FOREACH(item, entry->items) {
         if (item->key_size != key_size) continue;
-        if (!memcmp(item->key, key, key_size)) {
-            *result = item->data;
-            return knd_OK;
-        }
+        if (memcmp(item->key, key, key_size)) continue;
+        *result = item->data;
+        return knd_OK;
     }
     return knd_NO_MATCH;
 }

@@ -34,19 +34,19 @@
 #define DEBUG_ATTR_DECODE_LEVEL_5 0
 #define DEBUG_ATTR_DECODE_LEVEL_TMP 1
 
-static int decode_glosses(struct kndText *trs, struct kndTask *task)
+static int decode_glosses(struct kndText *trs, struct kndRepo *repo, struct kndTask *task)
 {
     struct kndText *t;
     int err;
 
     FOREACH (t, trs) {
-        err = knd_charseq_decode(t->id, t->id_size, &t->seq, task);
+        err = knd_charseq_decode(repo, t->id, t->id_size, &t->seq, task);
         KND_TASK_ERR("failed to decode a charseq");
     }
     return knd_OK;
 }
 
-int knd_attr_decode(struct kndAttr *attr, struct kndTask *task)
+int knd_attr_decode(struct kndAttr *attr, struct kndRepo *repo, struct kndTask *task)
 {
     int err;
 
@@ -57,7 +57,7 @@ int knd_attr_decode(struct kndAttr *attr, struct kndTask *task)
     }
 
     if (attr->tr) {
-        err = decode_glosses(attr->tr, task);
+        err = decode_glosses(attr->tr, repo, task);
         KND_TASK_ERR("failed to decode glosses of {attr %.*s}", attr->name_size, attr->name);
     }
     

@@ -74,7 +74,7 @@ static gsl_err_t parse_text(void *obj, const char *rec, size_t *total_size)
 }
 #endif
 
-int knd_text_resolve(struct kndAttrStm *attr_stm, struct kndRepo *unused_var(repo), struct kndTask *task)
+int knd_text_resolve(struct kndAttrStm *attr_stm, struct kndRepo *repo, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
     struct kndText *text;
@@ -89,7 +89,7 @@ int knd_text_resolve(struct kndAttrStm *attr_stm, struct kndRepo *unused_var(rep
     err = knd_text_new(&text, mempool);
     KND_TASK_ERR("failed to alloc a text field %.*s", attr_stm->name_size, attr_stm->name);
 
-    err = knd_charseq_fetch(attr_stm->val, attr_stm->val_size, &text->seq, task);
+    err = knd_charseq_register(repo, attr_stm->val, attr_stm->val_size, &text->seq, task);
     KND_TASK_ERR("failed to fetch a charseq of %.*s", attr_stm->name_size, attr_stm->name);
     
     attr_stm->subtype = text;
