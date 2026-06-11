@@ -175,20 +175,19 @@ int knd_repo_snapshot_new(struct kndRepoSnapshot **result, size_t numid, size_t 
 
     err = knd_set_new(&s->cache.str_idx, KND_SET_STORE_PERSIST, mempool);
     if (err) return err;
-
-    err = knd_dict_new(&s->cache.str_dict, KND_MEDIUM_DICT_SIZE, mempool);
+    err = knd_dict_new(&s->cache.str_dict, KND_MEDIUM_DICT_SIZE, KND_DICT_PERSIST, mempool);
     if (err) return err;
 
     err = knd_set_new(&s->cache.cls_idx, KND_SET_STORE_PERSIST, mempool);
     if (err) return err;
     err = knd_set_new(&s->cache.cls_cache_idx, KND_SET_STORE_PERSIST, mempool);
     if (err) return err;
-    err = knd_dict_new(&s->cache.cls_name_idx, KND_MEDIUM_DICT_SIZE, mempool);
+    err = knd_dict_new(&s->cache.cls_name_idx, KND_MEDIUM_DICT_SIZE, KND_DICT_PERSIST, mempool);
     if (err) return err;
 
     err = knd_set_new(&s->cache.attr_idx, KND_SET_STORE_PERSIST, mempool);
     if (err) return err;
-    err = knd_dict_new(&s->cache.attr_name_idx, KND_MEDIUM_DICT_SIZE, mempool);
+    err = knd_dict_new(&s->cache.attr_name_idx, KND_MEDIUM_DICT_SIZE, KND_DICT_PERSIST, mempool);
     if (err) return err;
 
     *result = s;

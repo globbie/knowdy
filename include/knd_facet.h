@@ -126,21 +126,21 @@ int knd_facet_hash_spec_new(struct kndFacetHashSpec **result, knd_facet_type fac
                             knd_facet_hash_cb hash_cb,
                             struct kndMemPool *mempool);
 
-int knd_facet_add(struct kndFacet *facet, void *elem, struct kndRepo *repo, struct kndTask *task);
+int knd_facet_add(struct kndFacet *facet, void *elem, struct kndRepoSnapshot *snapshot, struct kndTask *task);
 int knd_facet_get(struct kndFacet *facet, void *key,
-                  struct kndFacet **result,
-                  struct kndRepo *repo, struct kndTask *task);
+                  struct kndFacet **result, struct kndRepoSnapshot *snapshot,
+                  struct kndTask *task);
 
 int knd_facet_map(struct kndFacet *facet, void *key,
                   struct kndSetRange *range,
                   filter_cb_t filter_cb, void *filter_ctx,
                   map_cb_t map_cb, void *map_ctx,
-                  struct kndRepo *repo, struct kndTask *task);
+                  struct kndRepoSnapshot *snapshot, struct kndTask *task);
 
 void knd_facet_str(struct kndFacet *facet, map_cb_t map_cb, struct kndTask *task, size_t depth);
 
 int knd_facet_acquire(struct kndAttr *attr, struct kndFacet **result,
-                      struct kndRepo *repo, struct kndTask *task);
+                      struct kndRepoSnapshot *snapshot, struct kndTask *task);
 
 int knd_facet_leaf_marshall(struct kndFacet *facet, knd_attr_type attr_type,
                             struct kndStorageLeaf *leaf, struct kndSetRange *range,

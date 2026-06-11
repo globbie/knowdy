@@ -136,7 +136,8 @@ static int apply_cb(struct kndFacet *facet, void *key,
  */
 int knd_facet_map(struct kndFacet *facet, void *key, struct kndSetRange *range,
                   filter_cb_t filter_cb, void *filter_ctx,
-                  map_cb_t map_cb, void *map_ctx, struct kndRepo *repo, struct kndTask *task)
+                  map_cb_t map_cb, void *map_ctx,
+                  struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct kndFacetHashSpec *spec = facet->hash_specs;
     struct kndFacet *f;
@@ -161,24 +162,24 @@ int knd_facet_map(struct kndFacet *facet, void *key, struct kndSetRange *range,
     }
 
     if (!key) {
-        err = apply_cb(facet, NULL, range, filter_cb, filter_ctx, map_cb, map_ctx, repo, task);
+        err = apply_cb(facet, NULL, range, filter_cb, filter_ctx, map_cb, map_ctx, snapshot, task);
         KND_TASK_ERR("failed to apply a cb to a facet, given no query key");
         return knd_OK;
     }
 
     if (key == facet->key) {
-        err = apply_cb(facet, NULL, range, filter_cb, filter_ctx, map_cb, map_ctx, repo, task);
+        err = apply_cb(facet, NULL, range, filter_cb, filter_ctx, map_cb, map_ctx, snapshot, task);
         KND_TASK_ERR("failed to apply a cb to a facet, given no query key");
         return knd_OK;
     }
 
     if (!facet->num_children) {
-        err = apply_cb(facet, key, range, filter_cb, filter_ctx, map_cb, map_ctx, repo, task);
+        err = apply_cb(facet, key, range, filter_cb, filter_ctx, map_cb, map_ctx, snapshot, task);
         KND_TASK_ERR("failed to apply a cb to a terminal facet");
         return knd_OK;
     }
 
-    err = spec->hash_cb(facet->key, NULL, key, (void*)repo, &next_key, &numval, task);
+    err = spec->hash_cb(facet->key, NULL, key, (void*)snapshot, &next_key, &numval, task);
     KND_TASK_ERR("failed to apply a facet hash func {err %d}", err);
 
     if (numval >= KND_MAX_FACETS) {
@@ -191,7 +192,7 @@ int knd_facet_map(struct kndFacet *facet, void *key, struct kndSetRange *range,
         return knd_NO_MATCH;
     }
 
-    err = knd_facet_map(f, key, range, filter_cb, filter_ctx, map_cb, map_ctx, repo, task);
+    err = knd_facet_map(f, key, range, filter_cb, filter_ctx, map_cb, map_ctx, snapshot, task);
     KND_TASK_ERR("failed to apply a cb to a subfacet");
 
     return knd_OK;

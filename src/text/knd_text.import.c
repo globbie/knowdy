@@ -22,12 +22,12 @@
 #define DEBUG_TEXT_IMPORT_LEVEL_TMP 1
 
 struct ExternalContext {
-    struct kndRepo       *repo;
+    struct kndRepoSnapshot  *snapshot;
     struct kndTask       *task;
 };
 
 struct LocalContext {
-    struct kndRepo       *repo;
+    struct kndRepoSnapshot  *snapshot;
     struct kndTask       *task;
     struct kndText       *text;
     struct kndPar        *par;
@@ -58,7 +58,7 @@ static gsl_err_t set_gloss_value(void *obj, const char *val, size_t val_size)
     assert(val_size != 0);
     assert (ctx->text != NULL);
 
-    err = knd_charseq_register(ctx->repo, val, val_size, &ctx->text->seq, task);
+    err = knd_charseq_register(ctx->snapshot, val, val_size, &ctx->text->seq, task);
     if (err) {
         KND_TASK_LOG("failed to register gloss {seq %.*s}", val_size, val);
         return make_gsl_err_external(err);
@@ -73,7 +73,7 @@ static gsl_err_t set_gloss_abbr(void *obj, const char *val, size_t val_size)
     int err;
     assert(val_size != 0);
 
-    err = knd_charseq_register(ctx->repo, val, val_size, &ctx->text->abbr, task);
+    err = knd_charseq_register(ctx->snapshot, val, val_size, &ctx->text->abbr, task);
     if (err) {
         KND_TASK_LOG("failed to fetch a gloss abbr charseq %.*s", val_size, val);
         return make_gsl_err_external(err);
@@ -85,7 +85,7 @@ static gsl_err_t parse_gloss_item(void *obj, const char *rec, size_t *total_size
 {
     struct ExternalContext *ext_ctx = obj;
     struct kndTask *task = ext_ctx->task;
-    struct kndRepo *repo = ext_ctx->repo;
+    struct kndRepoSnapshot *snapshot = ext_ctx->snapshot;
     struct kndText *t;
     int err;
 
@@ -99,7 +99,7 @@ static gsl_err_t parse_gloss_item(void *obj, const char *rec, size_t *total_size
 
     struct LocalContext ctx = {
         .task = task,
-        .repo = repo,
+        .snapshot = snapshot,
         .text = t
     };
 
@@ -128,7 +128,7 @@ static gsl_err_t parse_gloss_item(void *obj, const char *rec, size_t *total_size
     }
 
     if (t->locale_size == 0 || t->seq == NULL) {
-        knd_log("-- locale failure size %zu seq %p", t->locale_size, t->seq);
+        knd_log("-- locale failure size %zu", t->locale_size);
         return make_gsl_err(gsl_FORMAT);  // error: both attrs required
     }
 
@@ -170,7 +170,7 @@ static gsl_err_t set_text_seq(void *obj, const char *val, size_t val_size)
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
     int err;
-    err = knd_charseq_register(ctx->repo, val, val_size, &ctx->text->seq, task);
+    err = knd_charseq_register(ctx->snapshot, val, val_size, &ctx->text->seq, task);
     if (err) {
         KND_TASK_LOG("failed to fetch a text charseq %.*s", val_size, val);
         return make_gsl_err_external(err);
@@ -188,7 +188,7 @@ static gsl_err_t set_synode_spec_class(void *obj, const char *name, size_t name_
     spec->name = name;
     spec->name_size = name_size;
 
-    err = knd_get_cls_by_name(ctx->repo, name, name_size, &spec->class, ctx->task);
+    err = knd_get_cls_by_name(ctx->snapshot, name, name_size, &spec->class, ctx->task);
     if (err) {
         KND_TASK_LOG("no such {cls %.*s}", name_size, name);
         return make_gsl_err(gsl_NO_MATCH);
@@ -206,7 +206,7 @@ static gsl_err_t set_synode_role(void *obj, const char *name, size_t name_size)
     synode->name = name;
     synode->name_size = name_size;
 
-    err = knd_get_cls_by_name(ctx->repo, name, name_size, &synode->role, ctx->task);
+    err = knd_get_cls_by_name(ctx->snapshot, name, name_size, &synode->role, ctx->task);
     if (err) {
         KND_TASK_LOG("no such {cls %.*s}", name_size, name);
         return make_gsl_err(gsl_NO_MATCH);
@@ -231,7 +231,7 @@ static gsl_err_t set_sent_seq(void *obj, const char *val, size_t val_size)
     int err;
     if (!val_size) return make_gsl_err(gsl_FORMAT);
 
-    err = knd_charseq_register(ctx->repo, val, val_size, &self->seq, task);
+    err = knd_charseq_register(ctx->snapshot, val, val_size, &self->seq, task);
     if (err) {
         KND_TASK_LOG("failed to fetch a sentence {charseq %.*s}", val_size, val);
         return make_gsl_err_external(err);
@@ -541,7 +541,7 @@ static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_si
 
     /* switch to statement's local scope */
     task->type = KND_TASK_INNER;
-    parser_err = knd_class_select(rec, total_size, ctx->repo, task);
+    parser_err = knd_class_select(rec, total_size, ctx->snapshot, task);
     task->type = orig_task_type;
 
     return parser_err;
@@ -551,14 +551,14 @@ static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_si
 static gsl_err_t parse_proc_select(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndRepo *repo = ctx->repo;
+    struct kndRepoSnapshot *snapshot = ctx->snapshot;
     struct kndTask *task = ctx->task;
     knd_task_type orig_task_type = task->type;
     gsl_err_t parser_err;
 
     /* switch to statement's local scope */
     task->type = KND_TASK_INNER;
-    parser_err = knd_proc_select(rec, total_size, repo, task);
+    parser_err = knd_proc_select(rec, total_size, snapshot, task);
     task->type = orig_task_type;
     return parser_err;
 }
@@ -859,7 +859,7 @@ gsl_err_t knd_statement_import(struct kndStatement *stm, const char *rec, size_t
 }
 
 gsl_err_t knd_text_import(struct kndText *self, const char *rec, size_t *total_size,
-                          struct kndRepo *unused_var(repo), struct kndTask *task)
+                          struct kndRepoSnapshot *unused_var(snapshot), struct kndTask *task)
 {
     if (DEBUG_TEXT_IMPORT_LEVEL_2) {
         knd_log(".. import text: \"%.*s\"", 128, rec);

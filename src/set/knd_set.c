@@ -186,25 +186,12 @@ int knd_set_add(struct kndSet *s, const char *key, size_t key_size, void *elem, 
 }
 
 int knd_set_get(struct kndSet *s, const char *key, size_t key_size,
-                void **result, struct kndTask *task)
+                void **result, struct kndTask *unused_var(task))
 {
     int err;
-
-    switch (s->store_t) {
-    case KND_SET_STORE_DEFAULT:
-        // fall through
-    case KND_SET_STORE_MEMONLY:
-        if (!s->dir) return knd_FAIL;
-        err = get_elem(s, s->dir, result, key, key_size);
-        if (err) return err;
-        return knd_OK;
-    case KND_SET_STORE_PERSIST:
-        return knd_set_fetch_elem(s, key, key_size,
-                                  s->elem_unmarshall_cb, s->elem_unmarshall_ctx, result, task);
-    default:
-        break;
-    }
-    return knd_NO_MATCH;
+    err = get_elem(s, s->dir, result, key, key_size);
+    if (err) return err;
+    return knd_OK;
 }
 
 static int apply_map_cb(struct kndSet *s, struct kndSetElem *elems,
@@ -345,6 +332,7 @@ int knd_set_new(struct kndSet **result, knd_set_store_t store_t, struct kndMemPo
 
     s = page;
     s->mempool = mempool;
+    s->store_t = store_t;
 
     err = knd_set_dir_new(&s->dir, "", 0, "", mempool);
     if (err) return err;

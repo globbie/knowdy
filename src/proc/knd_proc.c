@@ -33,7 +33,7 @@
 #define DEBUG_PROC_LEVEL_TMP 1
 
 struct LocalContext {
-    struct kndRepo *repo;
+    struct kndRepoSnapshot *snapshot;
     struct kndTask *task;
     struct kndProc *proc;
 };
@@ -92,13 +92,13 @@ void knd_proc_str(struct kndProc *self, size_t depth)
 }
 
 int knd_proc_export(struct kndProc *self, knd_format format,
-                    struct kndRepo *repo, struct kndTask *task, struct kndOutput *out)
+                    struct kndTask *task, struct kndOutput *out)
 {
     int err;
 
     switch (format) {
     case KND_FORMAT_JSON:
-        err = knd_proc_export_JSON(self, repo, task, out, 0);
+        err = knd_proc_export_JSON(self, task, out, 0);
         if (err) return err;
         break;
         /*case KND_FORMAT_GSP:
@@ -110,7 +110,7 @@ int knd_proc_export(struct kndProc *self, knd_format format,
         if (err) return err;
         break;
     default:
-        err = knd_proc_export_GSL(self, repo, task, false, 0);
+        err = knd_proc_export_GSL(self, task, false, 0);
         if (err) return err;
         break;
     }
@@ -128,12 +128,6 @@ int knd_proc_get_arg(struct kndProc *self, const char *name, size_t name_size,
     struct kndDict *arg_name_idx = task->idxs.proc_arg_name_idx;
     struct kndSet *arg_idx = self->arg_idx;
     int err;
-
-    if (DEBUG_PROC_LEVEL_2) {
-        knd_log(".. \"%.*s\" proc (repo: %.*s) to select arg \"%.*s\" ",
-                self->name_size, self->name,
-                self->entry->repo->name_size, self->entry->repo->name, name_size, name);
-    }
 
     err = knd_dict_get(arg_name_idx, name, name_size, (void**)&ref, task);
     // TODO
@@ -173,26 +167,8 @@ int knd_proc_is_base(struct kndProc *self, struct kndProc *child)
     struct kndProcRef *ref;
     struct kndProc *proc;
 
-    if (DEBUG_PROC_LEVEL_2) {
-        knd_log(".. check inheritance: %.*s (repo:%.*s) [resolved: %d] => "
-                " %.*s (repo:%.*s) num ancestors:%zu [base resolved:%d  resolved:%d]",
-                child->name_size, child->name,
-                child->entry->repo->name_size, child->entry->repo->name,
-                child->is_resolved,
-                self->entry->name_size, self->entry->name,
-                self->entry->repo->name_size, self->entry->repo->name,
-                self->entry->num_ancestors,
-                self->base_is_resolved, self->is_resolved);
-    }
-
-    for (ref = entry->ancestors; ref; ref = ref->next) {
+    FOREACH (ref, entry->ancestors) {
          proc = ref->proc;
-         if (DEBUG_PROC_LEVEL_2) {
-             knd_log("  => is: %.*s (repo:%.*s)  base resolved:%d",
-                     proc->name_size, proc->name,
-                     proc->entry->repo->name_size, proc->entry->repo->name,
-                     proc->base_is_resolved);
-         }
          if (proc == self) {
              return knd_OK;
          }
@@ -209,25 +185,21 @@ int knd_proc_is_base(struct kndProc *self, struct kndProc *child)
     return knd_FAIL;
 }
 
-int knd_get_proc(struct kndRepo *repo, const char *name, size_t name_size,
+int knd_get_proc(struct kndRepoSnapshot *snapshot, const char *name, size_t name_size,
                  struct kndProc **result, struct kndTask *task)
 {
     struct kndProcEntry *entry;
     struct kndProc *proc;
     int err;
 
-    if (DEBUG_PROC_LEVEL_2)
-        knd_log(".. \"%.*s\" repo to get proc: \"%.*s\"..",
-                repo->name_size, repo->name, name_size, name);
-
     err = knd_dict_get(task->idxs.proc_name_idx, name, name_size, (void**)&entry, task);
     // TODO
     if (err) {
-        if (repo->base) {
-            err = knd_get_proc(repo->base, name, name_size, result, task);
+        /*if (snapshot->base) {
+            err = knd_get_proc(snapshot->base, name, name_size, result, task);
             KND_TASK_ERR("no such proc: \"%.*s\"", name_size, name);
             return knd_OK;
-        }
+            }*/
         err = knd_NO_MATCH;
         KND_TASK_ERR("no such proc: \"%.*s\"", name_size, name);
     }
@@ -248,16 +220,12 @@ int knd_get_proc(struct kndRepo *repo, const char *name, size_t name_size,
     return knd_FAIL;
 }
 
-int knd_get_proc_entry(struct kndRepo *repo, const char *name, size_t name_size,
+int knd_get_proc_entry(struct kndRepoSnapshot *snapshot, const char *name, size_t name_size,
                        struct kndProcEntry **result, struct kndTask *task)
 {
     struct kndProcEntry *entry;
     struct kndDict *proc_name_idx = task->idxs.proc_name_idx;
     int err;
-
-    if (DEBUG_PROC_LEVEL_2)
-        knd_log(".. {repo %.*s} to get {proc-entry %.*s}",
-                repo->name_size, repo->name, name_size, name);
 
     err = knd_dict_get(proc_name_idx, name, name_size, (void**)&entry, task);
     if (err) {
@@ -265,11 +233,11 @@ int knd_get_proc_entry(struct kndRepo *repo, const char *name, size_t name_size,
             knd_log("no local {proc %.*s} found", name_size, name);
 
         /* check base repo */
-        if (repo->base) {
+        /*if (repo->base) {
             err = knd_get_proc_entry(repo->base, name, name_size, result, task);
             if (err) return err;
             return knd_OK;
-        }
+        }*/
         return knd_NO_MATCH;
     }
 
@@ -302,38 +270,6 @@ static int commit_state(struct kndProc *self,
     // TODO inform your ancestors
 
     *result = state;
-    return knd_OK;
-}
-
-int knd_proc_entry_clone(struct kndProcEntry *self, struct kndRepo *repo,
-                         struct kndProcEntry **result, struct kndTask *task)
-{
-    struct kndMemPool *mempool = task->mempool;
-    struct kndProcEntry *entry;
-    struct kndDict *name_idx = task->idxs.proc_name_idx;
-    int err;
-
-    if (DEBUG_PROC_LEVEL_2) {
-        knd_log(".. cloning proc entry %.*s (%.*s) to repo \"%.*s\"",
-                self->name_size, self->name, self->repo->name_size, self->repo->name,
-                repo->name_size, repo->name);
-    }
-    err = knd_proc_entry_new(&entry, mempool);
-    KND_TASK_ERR("failed to alloc a proc entry");
-
-    entry->repo = repo;
-    entry->orig = self;
-    entry->proc = self->proc;
-    entry->name = self->name;
-    entry->name_size = self->name_size;
-    entry->ancestors = self->ancestors;
-    entry->num_ancestors = self->num_ancestors;
-    entry->descendants = self->descendants;
-
-    err = knd_dict_set(name_idx, entry->name,  entry->name_size, (void*)entry, task);
-    KND_TASK_ERR("failed to register {proc %.*s}", entry->name_size, entry->name);
-
-    *result = entry;
     return knd_OK;
 }
 

@@ -23,7 +23,7 @@
 
 struct LocalContext {
     struct kndTask      *task;
-    struct kndRepo      *repo;
+    struct kndRepoSnapshot      *snapshot;
     struct kndText      *text;
     struct kndPar       *par;
     struct kndSentence  *sent;
@@ -35,7 +35,7 @@ struct LocalContext {
 static gsl_err_t build_search_plan(void *obj, const char *unused_var(name), size_t unused_var(name_size))    
 {
     struct LocalContext *ctx = obj;
-    struct kndRepo *repo = ctx->repo;
+    struct kndRepoSnapshot *snapshot = ctx->snapshot;
     struct kndTask *task = ctx->task;
     struct kndClassDeclar *declar;
     struct kndClassEntry *entry;
@@ -59,7 +59,7 @@ static gsl_err_t build_search_plan(void *obj, const char *unused_var(name), size
                     entry->name_size, entry->name);
         }
 
-        err = knd_class_acquire(entry, &c, repo, task);
+        err = knd_class_acquire(entry, &c, snapshot, task);
         if (err) {
             KND_TASK_LOG("failed to acquire {cls %.*s}", entry->name_size, entry->name);
             return make_gsl_err_external(err);
@@ -99,12 +99,12 @@ static gsl_err_t set_text_src(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTextSearchReport *report = NULL;
-    struct kndRepo *repo = ctx->repo;
+    struct kndRepoSnapshot *snapshot = ctx->snapshot;
     struct kndTask *task = ctx->task;
     struct kndClassEntry *entry;
     int err;
 
-    err = knd_get_cls_entry_by_name(repo, name, name_size, &entry, task);
+    err = knd_get_cls_entry_by_name(snapshot, name, name_size, &entry, task);
     if (err) {
         KND_TASK_LOG("{cls %.*s} not found", name_size, name);
         return make_gsl_err_external(err);
@@ -122,10 +122,11 @@ static gsl_err_t set_text_src(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_src_attr(void *obj, const char *name, size_t name_size, const char *unused_var(rec), size_t *total_size)
+static gsl_err_t parse_src_attr(void *obj, const char *name, size_t name_size,
+                                const char *unused_var(rec), size_t *total_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndRepo *repo = ctx->repo;
+    struct kndRepoSnapshot *snapshot = ctx->snapshot;
     struct kndTask *task = ctx->task;
     struct kndAttrRef *attr_ref;
     struct kndClassEntry *entry;
@@ -139,7 +140,7 @@ static gsl_err_t parse_src_attr(void *obj, const char *name, size_t name_size, c
     }
 
     entry = ctx->report->entry;
-    err = knd_class_acquire(entry, &c, repo, task);
+    err = knd_class_acquire(entry, &c, snapshot, task);
     if (err) {
         KND_TASK_LOG("failed to acquire {cls %.*s}", entry->name_size, entry->name);
         return *total_size = 0, make_gsl_err_external(err);
@@ -191,11 +192,12 @@ static gsl_err_t parse_text_stm(void *obj, const char *rec, size_t *total_size)
     return make_gsl_err(gsl_OK);
 }
 
-gsl_err_t knd_text_search(struct kndRepo *repo, const char *rec, size_t *total_size, struct kndTask *task)
+gsl_err_t knd_text_search(struct kndRepoSnapshot *snapshot, const char *rec, size_t *total_size,
+                          struct kndTask *task)
 {
     struct LocalContext ctx = {
         .task = task,
-        .repo = repo
+        .snapshot = snapshot
     };
 
     struct gslTaskSpec specs[] = {

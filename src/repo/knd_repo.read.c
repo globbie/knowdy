@@ -513,28 +513,30 @@ static gsl_err_t parse_idx_leaf_array(void *obj, const char *rec, size_t *total_
     return gsl_parse_array(&spec, rec, total_size);
 }
 
-#if 0
-static gsl_err_t parse_attr_name_idx(void *obj, const char *rec, size_t *total_size)
+static gsl_err_t parse_attr_names(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndRepo *repo = ctx->repo;
     struct kndTask *task = ctx->task;
+    struct kndRepo *repo = ctx->repo;
     struct kndRepoSnapshot *snapshot = repo->snapshot;
-    struct kndDict *attr_name_idx = snapshot->cache.attr_name_idx;
-    const char *pref = "attr-name-idx";
+    struct kndDict *dict = snapshot->cache.attr_name_idx;
+    struct kndSet *idx;
+    const char *pref = "attr-names";
     size_t pref_size = strlen(pref);
     char path[KND_PATH_SIZE + 1];
     size_t path_size;
-    struct kndSet *idx;
     gsl_err_t parser_err;
     int err;
 
-    err = knd_set_new(&idx, KND_SET_STORE_MEMONLY, task->mempool);
+    if (DEBUG_REPO_LEVEL_3) {
+        knd_log(".. parsing attr names idx config");
+    }
+
+    err = knd_set_new(&idx, KND_SET_STORE_PERSIST, task->mempool);
     if (err) {
         KND_TASK_LOG("failed to alloc a set");
         return *total_size = 0, make_gsl_err_external(err);
     }
-    idx->cardinal_t = KND_SET_MULTIPLE_VALUES;
 
     err = build_path(path, &path_size, snapshot->path, snapshot->path_size,
                      pref, pref_size, task);
@@ -543,13 +545,57 @@ static gsl_err_t parse_attr_name_idx(void *obj, const char *rec, size_t *total_s
         return *total_size = 0, make_gsl_err_external(err);
     }
 
-    //attr_name_idx->idx = idx;
+    if (DEBUG_REPO_LEVEL_3) {
+        knd_log(">> attr names idx {path %.*s}", path_size, path);
+    }
 
     ctx->path = path;
     ctx->path_size = path_size;
     ctx->idx = idx;
 
-    assert (ctx->idx != NULL);
+    struct gslTaskSpec specs[] = {
+        {   .name = "leaf",
+            .name_size = strlen("leaf"),
+            .type = GSL_GET_ARRAY_STATE,
+            .parse = parse_idx_leaf_array,
+            .obj = ctx
+        }
+    };
+
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) {
+        knd_log("-- config parse error: %d", parser_err.code);
+        return parser_err;
+    }
+
+    dict->idx = idx;
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_attrs(void *obj, const char *rec, size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    struct kndRepo *repo = ctx->repo;
+    struct kndRepoSnapshot *snapshot = repo->snapshot;
+    struct kndSet *idx = snapshot->cache.attr_idx;
+    const char *pref = "attrs";
+    size_t pref_size = strlen(pref);
+    char path[KND_PATH_SIZE + 1];
+    size_t path_size;
+    gsl_err_t parser_err;
+    int err;
+
+    err = build_path(path, &path_size, snapshot->path, snapshot->path_size,
+                     pref, pref_size, task);
+    if (err) {
+        KND_TASK_LOG("failed to build a path for {idx %.*s}", pref_size, pref);
+        return *total_size = 0, make_gsl_err_external(err);
+    }
+    ctx->path = path;
+    ctx->path_size = path_size;
+    ctx->idx = idx;
 
     struct gslTaskSpec specs[] = {
         {   .name = "leaf",
@@ -567,7 +613,6 @@ static gsl_err_t parse_attr_name_idx(void *obj, const char *rec, size_t *total_s
     }
     return make_gsl_err(gsl_OK);
 }
-#endif
 
 static gsl_err_t parse_cls_cache(void *obj, const char *rec, size_t *total_size)
 {
@@ -626,9 +671,6 @@ static gsl_err_t parse_cls_content(void *obj, const char *rec, size_t *total_siz
     gsl_err_t parser_err;
     int err;
 
-    idx->elem_unmarshall_cb = knd_class_unmarshall;
-    idx->elem_unmarshall_ctx = repo;
-
     err = build_path(path, &path_size, snapshot->path, snapshot->path_size,
                      pref, pref_size, task);
     if (err) {
@@ -677,9 +719,6 @@ static gsl_err_t parse_cls_names(void *obj, const char *rec, size_t *total_size)
         knd_log(".. parsing cls names idx config");
     }
 
-    dict->item_fetch_cb = knd_cls_entry_fetch;
-    dict->item_fetch_cb_ctx = repo;
-
     err = knd_set_new(&idx, KND_SET_STORE_PERSIST, task->mempool);
     if (err) {
         KND_TASK_LOG("failed to alloc a set");
@@ -721,6 +760,64 @@ static gsl_err_t parse_cls_names(void *obj, const char *rec, size_t *total_size)
     return make_gsl_err(gsl_OK);
 }
 
+static gsl_err_t parse_charseq_dict(void *obj, const char *rec, size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+    struct kndRepo *repo = ctx->repo;
+    struct kndRepoSnapshot *snapshot = repo->snapshot;
+    struct kndDict *dict = snapshot->cache.str_dict;
+    struct kndSet *idx;
+    const char *pref = "charseq-dict";
+    size_t pref_size = strlen(pref);
+    char path[KND_PATH_SIZE + 1];
+    size_t path_size;
+    gsl_err_t parser_err;
+    int err;
+
+    if (DEBUG_REPO_LEVEL_3) {
+        knd_log(".. parsing charseq dict idx config");
+    }
+
+    err = knd_set_new(&idx, KND_SET_STORE_PERSIST, task->mempool);
+    if (err) {
+        KND_TASK_LOG("failed to alloc a set");
+        return *total_size = 0, make_gsl_err_external(err);
+    }
+
+    err = build_path(path, &path_size, snapshot->path, snapshot->path_size, pref, pref_size, task);
+    if (err) {
+        KND_TASK_LOG("failed to build a path for {idx %.*s}", pref_size, pref);
+        return *total_size = 0, make_gsl_err_external(err);
+    }
+
+    if (DEBUG_REPO_LEVEL_3) {
+        knd_log(">> cls names idx {path %.*s}", path_size, path);
+    }
+
+    ctx->path = path;
+    ctx->path_size = path_size;
+    ctx->idx = idx;
+
+    struct gslTaskSpec specs[] = {
+        {   .name = "leaf",
+            .name_size = strlen("leaf"),
+            .type = GSL_GET_ARRAY_STATE,
+            .parse = parse_idx_leaf_array,
+            .obj = ctx
+        }
+    };
+
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) {
+        knd_log("-- config parse error: %d", parser_err.code);
+        return parser_err;
+    }
+    dict->idx = idx;
+
+    return make_gsl_err(gsl_OK);
+}
+
 static gsl_err_t parse_charseq_idx(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
@@ -728,7 +825,6 @@ static gsl_err_t parse_charseq_idx(void *obj, const char *rec, size_t *total_siz
     struct kndTask *task = ctx->task;
     struct kndRepoSnapshot *snapshot = repo->snapshot;
     struct kndSet *idx = snapshot->cache.str_idx;
-    struct kndDict *dict = snapshot->cache.str_dict;
     const char *pref = "charseqs";
     size_t pref_size = strlen(pref);
     char path[KND_PATH_SIZE + 1];
@@ -742,9 +838,6 @@ static gsl_err_t parse_charseq_idx(void *obj, const char *rec, size_t *total_siz
         KND_TASK_LOG("failed to build a path for {idx %.*s}", pref_size, pref);
         return *total_size = 0, make_gsl_err_external(err);
     }
-
-    dict->item_fetch_cb = knd_charseq_fetch;
-    dict->item_fetch_cb_ctx = repo;
 
     ctx->path = path;
     ctx->path_size = path_size;
@@ -773,12 +866,17 @@ static gsl_err_t parse_snapshot(void *obj, const char *rec, size_t *total_size)
         {   .is_implied = true,
             .run = set_snapshot_numid,
             .obj = obj
-        }/*,
-        {   .name = "attr-name-idx",
-            .name_size = strlen("attr-name-idx"),
-            .parse = parse_attr_name_idx,
+        },
+        {   .name = "attr-names",
+            .name_size = strlen("attr-names"),
+            .parse = parse_attr_names,
             .obj = obj
-            }*/,
+        },
+        {   .name = "attrs",
+            .name_size = strlen("attrs"),
+            .parse = parse_attrs,
+            .obj = obj
+        },
         {   .name = "cls-names",
             .name_size = strlen("cls-names"),
             .parse = parse_cls_names,
@@ -797,6 +895,11 @@ static gsl_err_t parse_snapshot(void *obj, const char *rec, size_t *total_size)
         {   .name = "charseqs",
             .name_size = strlen("charseqs"),
             .parse = parse_charseq_idx,
+            .obj = obj
+        },
+        {   .name = "charseq-dict",
+            .name_size = strlen("charseq-dict"),
+            .parse = parse_charseq_dict,
             .obj = obj
         }
     };

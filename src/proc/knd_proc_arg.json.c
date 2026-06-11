@@ -16,8 +16,7 @@
 #include "knd_state.h"
 
 int knd_proc_arg_var_export_JSON(struct kndProcArgVar *self,
-                                 struct kndRepo *repo, struct kndTask *task,
-                                 size_t depth)
+                                 struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     struct kndClassInst *arg_inst = self->inst;
@@ -37,10 +36,10 @@ int knd_proc_arg_var_export_JSON(struct kndProcArgVar *self,
     OUT(arg_inst->is_a->name, arg_inst->is_a->name_size);
     OUT("\"", 1);
 
-    if (arg_inst->is_a->tr) {
-        err = knd_text_gloss_export_JSON(arg_inst->is_a->tr, repo, task, depth + 1);
-        KND_TASK_ERR("failed to export subclass gloss JSON");
-    }
+    //if (arg_inst->is_a->tr) {
+    //    err = knd_text_glosses_export_JSON(arg_inst->is_a->tr, repo, task, depth + 1);
+    //    KND_TASK_ERR("failed to export subclass gloss JSON");
+    //}
 
     OUT(",", 1);
     OUT("\"inst_id\":", strlen("\"inst_id\":"));
@@ -89,10 +88,10 @@ int knd_proc_arg_export_JSON(struct kndProcArg *self, struct kndRepo *repo, stru
         err = out->writec(out, ' ');                                              RET_ERR();
     }
 
-    if (self->tr) {
-        err = knd_text_gloss_export_JSON(self->tr, repo, task, depth);
+    /*if (self->tr) {
+        err = knd_text_glosses_export_JSON(self->tr, repo, task, depth);
         RET_ERR();
-    }
+        }*/
 
     if (self->classname_size) {
         err = out->write(out, "{c ", strlen("{c "));                              RET_ERR();

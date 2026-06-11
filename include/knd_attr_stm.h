@@ -129,21 +129,21 @@ int knd_import_attr_stm(struct kndAttrStm *attr_stm, const char *name, size_t na
 int knd_import_attr_stm_list(struct kndAttrStm *attr_stm, const char *name, size_t name_size,
                              const char *rec, size_t *total_size, struct kndTask *task);
 
-int knd_attr_stm_export_GSL(struct kndAttrStm *self, struct kndRepo *repo,
+int knd_attr_stm_export_GSL(struct kndAttrStm *self,
                             struct kndTask *task, size_t depth);
-int knd_attr_stms_export_GSL(struct kndAttrStm *stms, struct kndRepo *repo,
+int knd_attr_stms_export_GSL(struct kndAttrStm *stms,
                              struct kndTask *task, size_t depth);
 
-int knd_attr_stm_export_JSON(struct kndAttrStm *stm, struct kndRepo *repo,
+int knd_attr_stm_export_JSON(struct kndAttrStm *stm,
                              struct kndTask *task, size_t depth);
-int knd_attr_stms_export_JSON(struct kndAttrStm *stms, struct kndRepo *repo,
+int knd_attr_stms_export_JSON(struct kndAttrStm *stms,
                               struct kndTask *task, size_t depth);
 
 int knd_attr_stm_export_GSP(struct kndAttrStm *self,
-                            struct kndRepo *repo, struct kndTask *task,
+                            struct kndTask *task,
                             size_t depth);
 int knd_attr_stms_export_GSP(struct kndAttrStm *stms,
-                             struct kndRepo *repo, struct kndTask *task,
+                             struct kndTask *task,
                              size_t depth);
 
 int knd_attr_stm_subj_GSP(void *obj, void *ctx, struct kndStorageLeaf *leaf,
@@ -157,23 +157,22 @@ gsl_err_t knd_select_attr_stm(struct kndClass *class, const char *name, size_t n
 
 // knd_attr_stm.resolve.c
 int knd_resolve_attr_stm(struct kndClass *cls, struct kndAttrStm *stm,
-                         struct kndRepo *repo, struct kndTask *task);
+                         struct kndRepoSnapshot *snapshot, struct kndTask *task);
 
 // knd_attr_stm.index.c
 int knd_index_attr_stm(struct kndClassEntry *topic, struct kndAttr *attr,
-                       struct kndAttrStm *stm, struct kndRepo *repo, struct kndTask *task);
-//int knd_index_inst_attr_stm(struct kndClassInstEntry *topic_inst,
-//                            struct kndAttr *attr, struct kndAttrStm *stm, struct kndTask *task);
-
+                       struct kndAttrStm *stm, struct kndRepoSnapshot *snapshot,
+                       struct kndTask *task);
 int knd_index_attr_stm_list(struct kndClassEntry *topic, struct kndAttr *attr,
-                            struct kndAttrStm *stm, struct kndRepo *repo, struct kndTask *task);
-//int knd_index_inst_attr_stm_list(struct kndClassInstEntry *topic_inst, struct kndAttr *attr,
-//                                 struct kndAttrStm *stm, struct kndTask *task);
+                            struct kndAttrStm *stm, struct kndRepoSnapshot *snapshot,
+                            struct kndTask *task);
 
 int knd_attr_stm_inner_idx(struct kndClassEntry *topic, struct kndAttr *attr,
-                           struct kndAttrStm *stm, struct kndRepo *repo, struct kndTask *task);
+                           struct kndAttrStm *stm, struct kndRepoSnapshot *snapshot,
+                           struct kndTask *task);
 
-int knd_attr_stm_plan(struct kndAttrStm *stm, struct kndRepo *repo, struct kndTask *task);
+int knd_attr_stm_plan(struct kndAttrStm *stm, struct kndRepoSnapshot *snapshot, struct kndTask *task);
+
 
 int knd_cls_ref_attr_stm_new(struct kndClassRefAttrStm **result, struct kndMemPool *mempool);
 int knd_cls_inner_attr_stm_new(struct kndClassInnerAttrStm **result, struct kndMemPool *mempool);
@@ -188,13 +187,12 @@ int knd_read_attr_stm_list(struct kndAttrStm *stm, const char *name, size_t name
                            const char *rec, size_t *total_size, struct kndTask *task);
 
 int knd_decode_attr_stms(struct kndClass *base, struct kndAttrStm *attr_stms,
-                         struct kndRepo *repo, struct kndTask *task);
+                         struct kndRepoSnapshot *snapshot, struct kndTask *task);
 
 // knd_attr.select.c
 int knd_attr_stm_match(struct kndAttrStm *self, struct kndAttrStm *template);
-int knd_attr_parse_query_stm(struct kndAttrStm *stm,
-                             const char *rec, size_t *total_size,
-                             struct kndRepo *repo, struct kndTask *task);
+int knd_attr_parse_query_stm(struct kndAttrStm *stm, const char *rec, size_t *total_size,
+                             struct kndRepoSnapshot *snapshot, struct kndTask *task);
 
 int knd_attr_stm_present_subj(void *obj, void *ctx_obj, struct kndTask *task);
 

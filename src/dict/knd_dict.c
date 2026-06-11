@@ -52,7 +52,7 @@ void knd_dict_entry_free(struct kndDictEntry *entry, struct kndMemPool *mempool)
     knd_mempool_free(mempool, KND_MEMPAGE_TINY, (void*)entry);
 }
 
-static size_t knd_dict_hash(const char *key, size_t key_size)
+size_t knd_dict_hash(const char *key, size_t key_size)
 {
     const char *p = key;
     size_t h = 0;
@@ -67,21 +67,13 @@ static size_t knd_dict_hash(const char *key, size_t key_size)
 }
 
 int knd_dict_get(struct kndDict *dict, const char *key, size_t key_size, void **result,
-                 struct kndTask *task)
+                 struct kndTask *unused_var(task))
 {
     size_t h = knd_dict_hash(key, key_size) % dict->size;
     struct kndDictEntry *entry = dict->hash_array[h];
     struct kndDictItem *item;
 
-    if (!entry) {
-        switch (dict->storage_type) {
-        case KND_DICT_PERSIST:
-            return knd_dict_fetch_item(dict, h, key, key_size, result, task);
-        default:
-            break;
-        }
-        return knd_NO_MATCH;
-    }
+    if (!entry) return knd_NO_MATCH;
 
     FOREACH(item, entry->items) {
         if (item->key_size != key_size) continue;
@@ -111,6 +103,9 @@ static int add_item(struct kndDict *dict, struct kndDictEntry *entry,
 
 int knd_dict_set(struct kndDict *dict, const char *key, size_t key_size, void *data, struct kndTask *task)
 {
+    assert (key_size != 0);
+    assert (key != NULL);
+
     size_t h = knd_dict_hash(key, key_size) % dict->size;
     struct kndDictEntry *entry = dict->hash_array[h];
     struct kndDictItem *item;
@@ -221,7 +216,8 @@ void knd_dict_reset(struct kndDict *dict)
     memset(dict->hash_array, 0, sizeof(struct kndDictEntry*) * dict->size);
 }
 
-int knd_dict_new(struct kndDict **result, size_t init_size, struct kndMemPool *mempool)
+int knd_dict_new(struct kndDict **result, size_t init_size, enum knd_dict_storage_t store_t,
+                 struct kndMemPool *mempool)
 {
     struct kndDict *dict;
 
@@ -231,6 +227,7 @@ int knd_dict_new(struct kndDict **result, size_t init_size, struct kndMemPool *m
     if (!dict->hash_array) return knd_NOMEM;
     dict->size = init_size;
     dict->mempool = mempool;
+    dict->storage_type = store_t;
 
     *result = dict;
     return knd_OK;

@@ -66,7 +66,6 @@ static int marshall_dict_entry(void *elem, void *ctx, struct kndStorageLeaf *lea
     assert (local_ctx->cb != NULL);
 
     out->reset(out);
-
     FOREACH (item, entry->items) {
         item_output_size = 0;
 

@@ -123,9 +123,9 @@ gsl_err_t knd_rel_import(struct kndAttr *attr, struct kndTask *task,
           .parse = parse_proc_ref,
           .obj = rel
         },
-        { .name = "t",
-          .name_size = strlen("t"),
-          .parse = knd_parse_quant_type,
+        { .name = "card",
+          .name_size = strlen("card"),
+          .parse = knd_parse_cardinal_type,
           .obj = attr
         },
         { .name = "idx",
@@ -158,7 +158,7 @@ gsl_err_t knd_rel_import(struct kndAttr *attr, struct kndTask *task,
 
     /* reassign glosses */
     if (task->ctx->tr) {
-        attr->tr = task->ctx->tr;
+        attr->glosses = task->ctx->tr;
         task->ctx->tr = NULL;
     }
 

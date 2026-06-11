@@ -241,16 +241,16 @@ void knd_text_str(struct kndText *self, size_t depth)
 }
 
 int knd_text_export(struct kndText *self, knd_format format,
-                    struct kndRepo *repo, struct kndTask *task, size_t depth)
+                    struct kndTask *task, size_t depth)
 {
     int err;
     switch (format) {
     case KND_FORMAT_JSON:
-        err = knd_text_export_JSON(self, repo, task, depth);
+        err = knd_text_export_JSON(self, task, depth);
         KND_TASK_ERR("failed to export text JSON");
         break;
     default:
-        err = knd_text_export_GSL(self, repo, task, depth);
+        err = knd_text_export_GSL(self, task, depth);
         KND_TASK_ERR("failed to export text GSL");
         break;
     }
@@ -268,7 +268,7 @@ static int charseq_bulk_register(const char *str, size_t str_size,
     assert (str_dict != NULL);
     assert (str_idx != NULL);
 
-    if (DEBUG_TEXT_LEVEL_TMP) {
+    if (DEBUG_TEXT_LEVEL_2) {
         knd_log(".. initial bulk register {seq %.*s}", str_size, str);
     }
 
@@ -303,7 +303,7 @@ static int charseq_bulk_register(const char *str, size_t str_size,
     return knd_OK;
 }
 
-int knd_charseq_register(struct kndRepo *repo, const char *str, size_t str_size,
+int knd_charseq_register(struct kndRepoSnapshot *snapshot, const char *str, size_t str_size,
                          struct kndCharSeq **result, struct kndTask *task)
 {
     struct kndDict *str_dict;
@@ -319,16 +319,15 @@ int knd_charseq_register(struct kndRepo *repo, const char *str, size_t str_size,
         break;
     }
 
-    if (DEBUG_TEXT_LEVEL_TMP) {
+    if (DEBUG_TEXT_LEVEL_2) {
         knd_log(".. register {seq %.*s} {task-type %d}", str_size, str, task->type);
     }
 
-#if 0
-    /* try task local cache */
+    /* try task local memcache */
     str_dict = task->cache.str_dict;
     assert (str_dict != NULL);
 
-    err = knd_dict_get(str_dict, val, val_size, (void**)&seq, task);
+    err = knd_dict_get(str_dict, str, str_size, (void**)&seq, task);
     switch (err) {
     case knd_OK:
         *result = seq;
@@ -339,39 +338,32 @@ int knd_charseq_register(struct kndRepo *repo, const char *str, size_t str_size,
         KND_TASK_ERR("failed to get an str dict entry {err %d}", err);  
     }
 
-    /* try global cache */
-    str_dict = repo->snapshot->cache.str_dict;
-    err = knd_dict_get(str_dict, val, val_size, (void**)&seq, task);
+    /* try global read-only idx */
+    str_dict = snapshot->cache.str_dict;
+    err = knd_dict_fetch(str_dict, str, str_size, knd_charseq_fetch, snapshot, (void**)&seq, task);
     switch (err) {
     case knd_OK:
-        *result = seq;
-        return knd_OK;
-    case knd_NO_MATCH:
-        break;
-    default:
-        KND_TASK_ERR("failed to get an str dict entry {err %d}", err);  
-    }
-
-    err = knd_charseq_new(&seq, task->mempool);
-    KND_TASK_ERR("failed to alloc a charseq");
-    seq->val = val;
-    seq->val_size = val_size;
-    seq->numid = task->idxs.str_idx->num_elems + 1;
-    knd_uid_create(seq->numid, seq->id, &seq->id_size);
-
-    str_idx = task->cache.str_idx;
-    err = knd_set_add(str_idx, seq->id, seq->id_size, (void*)seq, task);
-    KND_TASK_ERR("failed to register a charseq by numid {err %d}", err);
+        /* save in task local cache */
+        str_idx = task->cache.str_idx;
+        err = knd_set_add(str_idx, seq->id, seq->id_size, (void*)seq, task);
+        KND_TASK_ERR("failed to register a charseq by numid {err %d}", err);
  
-    str_dict = task->cache.str_dict;
-    err = knd_dict_set(str_dict, val, val_size, (void*)seq, task);
-    KND_TASK_ERR("failed to register a charseq {err %d}", err);
+        str_dict = task->cache.str_dict;
+        err = knd_dict_set(str_dict, str, str_size, (void*)seq, task);
+        KND_TASK_ERR("failed to register a charseq {err %d}", err);
 
-    if (DEBUG_TEXT_LEVEL_3) {
-        knd_log(">> {seq %.*s {id %.*s}} registered", val_size, val, seq->id_size, seq->id);
+        if (DEBUG_TEXT_LEVEL_3) {
+            knd_log(">> {seq %.*s {id %.*s}} saved in task local memcache",
+                    str_size, str, seq->id_size, seq->id);
+        }
+        *result = seq;
+        return knd_OK;
+    case knd_NO_MATCH:
+        break;
+    default:
+        KND_TASK_ERR("failed to get an str dict entry {err %d}", err);  
     }
-    *result = seq;
-#endif
-    return knd_FAIL;
+
+    return knd_NO_MATCH;
 }
 

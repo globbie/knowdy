@@ -29,5 +29,7 @@ gsl_err_t knd_ignore_named_area(void *obj, const char *name, size_t name_size,
                                 const char *rec, size_t *total_size);
 gsl_err_t knd_ignore_list(void *obj, const char *name, size_t name_size,
                           const char *rec, size_t *total_size);
+gsl_err_t knd_ignore_named_list(void *obj, const char *rec, size_t *total_size);
+
 
 

@@ -84,7 +84,7 @@ static int index_ancestor(struct kndClass *cls, struct kndClass *baseclass, stru
 }
 
 static int register_desc(struct kndClass *base, struct kndClass *sub,
-                         struct kndRepo *repo, struct kndTask *task)
+                         struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
     struct kndClassRef *ref;
@@ -96,7 +96,7 @@ static int register_desc(struct kndClass *base, struct kndClass *sub,
 
     /* update ancestors' indices */
     FOREACH (ref, base->ancestors) {
-        err = knd_class_acquire(ref->entry, &c, repo, task);
+        err = knd_class_acquire(ref->entry, &c, snapshot, task);
         KND_TASK_ERR("failed to acquire {cls %.*s}",
                      ref->entry->name_size, ref->entry->name);
 
@@ -136,32 +136,18 @@ static int register_desc(struct kndClass *base, struct kndClass *sub,
     return knd_OK;
 }
 
-int knd_class_update_indices(struct kndRepo *repo, struct kndClassEntry *self,
-                             struct kndState *unused_var(state), struct kndTask *unused_var(task))
-{
-    //struct kndSharedSet *idx = task->idxs->class_idx;
-    //struct kndStateRef *ref;
-    //int err;
-
-    knd_log(".. update {repo %.*s {cls %.*s}} indices",
-            repo->name_size, repo->name, self->name_size, self->name);
-
-    return knd_OK;
-}
-
-
 static int find_direct_child(struct kndClassEntry *base,
                              struct kndClassEntry *curr_entry,
                              struct kndClassEntry *term,
                              struct kndClassEntry **result, size_t *numval,
-                             struct kndRepo *repo, struct kndTask *task)
+                             struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct kndClass *base_c, *sub_c, *term_c;
     struct kndClassRef *ref;
     bool ff_search = curr_entry != NULL ? true : false;
     int err;
 
-    err = knd_class_acquire(base, &base_c, repo, task);
+    err = knd_class_acquire(base, &base_c, snapshot, task);
     KND_TASK_ERR("failed to acquire {cls %.*s}", base->name_size, base->name);
 
     if (!base_c->num_children) return knd_NO_MATCH;
@@ -189,11 +175,11 @@ static int find_direct_child(struct kndClassEntry *base,
         }
 
         /* check inheritance */
-        err = knd_class_acquire(ref->entry, &sub_c, repo, task);
+        err = knd_class_acquire(ref->entry, &sub_c, snapshot, task);
         KND_TASK_ERR("failed to acquire {cls %.*s}",
                      ref->entry->name_size, ref->entry->name);
 
-        err = knd_class_acquire(term, &term_c, repo, task);
+        err = knd_class_acquire(term, &term_c, snapshot, task);
         KND_TASK_ERR("failed to acquire {cls %.*s}", term->name_size, term->name);
 
         err = knd_class_is_base(sub_c, term_c);
@@ -218,7 +204,7 @@ int knd_facet_cls_hash(void *parent_key, void *curr_key, void *term_key,
     struct kndClassEntry *curr_entry = curr_key;
     struct kndClassEntry *term_entry = term_key;
     struct kndClassEntry *entry;
-    struct kndRepo *repo = ctx;
+    struct kndRepoSnapshot *snapshot = ctx;
     int err;
 
     assert (parent_entry != NULL);
@@ -227,7 +213,7 @@ int knd_facet_cls_hash(void *parent_key, void *curr_key, void *term_key,
     if (parent_entry == term_entry) return knd_NO_MATCH;
 
     err = find_direct_child(parent_entry, curr_entry, term_entry, &entry,
-                            numval, repo, task);
+                            numval, snapshot, task);
     switch (err) {
     case knd_OK:
         *result = entry;
@@ -251,7 +237,7 @@ void knd_facet_cls_key_str(void *key, size_t depth)
     
 }
 
-int knd_class_index(struct kndClass *cls, struct kndRepo *repo, struct kndTask *task)
+int knd_class_index(struct kndClass *cls, struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct kndClassBasePred *bp;
     struct kndClass *c;
@@ -266,22 +252,25 @@ int knd_class_index(struct kndClass *cls, struct kndRepo *repo, struct kndTask *
     FOREACH (bp, cls->base_preds) {
         if (bp->is_root) break;
 
-        err = knd_class_acquire(bp->entry, &c, repo, task);
+        err = knd_class_acquire(bp->entry, &c, snapshot, task);
         KND_TASK_ERR("failed to acquire {cls %.*s}", bp->entry->name_size, bp->entry->name);
 
-        err = register_desc(c, cls, repo, task);
+        err = register_desc(c, cls, snapshot, task);
         KND_TASK_ERR("failed to register a subclass {cls %.*s} in base {cls %.*s}",
                      cls->name_size, cls->name, bp->entry->name_size, bp->entry->name);
 
         FOREACH (stm, bp->attr_stms) {
-            if (stm->attr->is_a_set) {
-                err = knd_index_attr_stm_list(cls->entry, stm->attr, stm, repo, task);
-                KND_TASK_ERR("failed to index {attr-stm-list %.*s}",
-                             stm->attr->name_size, stm->attr->name);
-            } else {
-                err = knd_index_attr_stm(cls->entry, stm->attr, stm, repo, task);
+            switch (stm->attr->mult_t) {
+                case KND_ATTR_MULTIPLE:
+                    err = knd_index_attr_stm_list(cls->entry, stm->attr, stm, snapshot, task);
+                    KND_TASK_ERR("failed to index {attr-stm-list %.*s}",
+                                 stm->attr->name_size, stm->attr->name);
+                    break;
+            default:
+                err = knd_index_attr_stm(cls->entry, stm->attr, stm, snapshot, task);
                 KND_TASK_ERR("failed to index {attr-stm %.*s}",
                              stm->attr->name_size, stm->attr->name);
+                break;
             }
         }
     }

@@ -22,14 +22,9 @@
 #define DEBUG_TEXT_READ_LEVEL_3 0
 #define DEBUG_TEXT_READ_LEVEL_TMP 1
 
-struct ExternalContext {
-    struct kndRepo       *repo;
-    struct kndTask       *task;
-};
-
 struct LocalContext {
-    struct kndRepo       *repo;
     struct kndTask       *task;
+    struct kndRepoSnapshot *snapshot;
     struct kndText       *text;
     struct kndPar        *par;
     struct kndSentence   *sent;
@@ -41,7 +36,7 @@ struct LocalContext {
 
 static gsl_err_t parse_synode(void *obj, const char *rec, size_t *total_size);
 
-static gsl_err_t set_gloss_locale(void *obj, const char *name, size_t name_size)
+static gsl_err_t set_text_locale(void *obj, const char *name, size_t name_size)
 {
     struct kndText *t = obj;
     if (name_size >= KND_ID_SIZE) return make_gsl_err(gsl_LIMIT);
@@ -55,18 +50,15 @@ static gsl_err_t set_gloss_locale(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t set_gloss_id(void *obj, const char *val, size_t val_size)
+static gsl_err_t set_text_id(void *obj, const char *val, size_t val_size)
 {
-    struct LocalContext *ctx = obj;
-    struct kndTask *task = ctx->task;
-    struct kndText *t = ctx->text;
+    struct kndText *t = obj;
     int err;
 
     assert(val_size != 0);
 
     if (val_size > KND_ID_SIZE) {
         err = knd_LIMIT;
-        KND_TASK_LOG("id size exceeds limit: %.*s", val_size, val);
         return make_gsl_err_external(err);
     }
 
@@ -76,85 +68,15 @@ static gsl_err_t set_gloss_id(void *obj, const char *val, size_t val_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t set_gloss_abbr(void *obj, const char *val, size_t val_size)
+static gsl_err_t set_text_abbr(void *obj, const char *val, size_t val_size)
 {
-    struct LocalContext *ctx = obj;
-    struct kndTask *task = ctx->task;
-    int err;
+    struct kndText *t = obj;
 
     assert(val_size != 0);
+    memcpy(t->abbr_id, val, val_size);
+    t->abbr_id_size = val_size;
 
-    err = knd_charseq_decode(ctx->repo, val, val_size, &ctx->text->abbr, task);
-    if (err) {
-        KND_TASK_LOG("failed to decode a gloss abbr charseq %.*s", val_size, val);
-        return make_gsl_err_external(err);
-    }
     return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t read_gloss_item(void *obj, const char *rec, size_t *total_size)
-{
-    struct ExternalContext *ext_ctx = obj;
-    struct kndTask *task = ext_ctx->task;
-    struct kndRepo *repo = ext_ctx->repo;
-    struct kndText *t;
-    int err;
-
-    err = knd_text_new(&t, task->mempool);
-    if (err) {
-        KND_TASK_LOG("failed to alloc a text");
-        return *total_size = 0, make_gsl_err_external(err);
-    }
-
-    struct LocalContext ctx = {
-        .task = task,
-        .repo = repo,
-        .text = t
-    };
-
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = set_gloss_locale,
-          .obj = t
-        },
-        { .name = "t",
-          .name_size = strlen("t"),
-          .run = set_gloss_id,
-          .obj = &ctx
-        },
-        { .name = "abbr",
-          .name_size = strlen("abbr"),
-          .run = set_gloss_abbr,
-          .obj = &ctx
-        }
-    };
-    gsl_err_t parser_err;
-
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return parser_err;
-
-    /* make sure text ids are set */
-    if (t->locale_id_size == 0 || t->id_size == 0)
-        return make_gsl_err(gsl_FORMAT);
-
-    if (DEBUG_TEXT_READ_LEVEL_3) {
-        knd_log(".. gloss translation: {locale %.*s}  {text-id %.*s}",
-                t->locale_size, t->locale, t->id_size, t->id);
-    }
-    // append
-    t->next = task->ctx->tr;
-    task->ctx->tr = t;
-    return make_gsl_err(gsl_OK);
-}
-
-gsl_err_t knd_read_gloss_array(void *obj, const char *rec, size_t *total_size)
-{
-    struct gslTaskSpec item_spec = {
-        .is_list_item = true,
-        .parse = read_gloss_item,
-        .obj = obj
-    };
-    return gsl_parse_array(&item_spec, rec, total_size);
 }
 
 static gsl_err_t set_text_lang(void *obj, const char *val, size_t val_size)    
@@ -172,19 +94,15 @@ static gsl_err_t set_text_seq(void *obj, const char *val, size_t val_size)
     struct kndTask *task = ctx->task;
     int err;
 
-    if (DEBUG_TEXT_READ_LEVEL_2)
-        knd_log(">> text encoded seq: %.*s (size:%zu)", val_size, val, val_size);
-
-    err = knd_charseq_decode(ctx->repo, val, val_size, &ctx->text->seq, task);
-    if (err) {
-        KND_TASK_LOG("failed to decode a text charseq %.*s", val_size, val);
-        return make_gsl_err_external(err);
+    if (DEBUG_TEXT_READ_LEVEL_2) {
+        knd_log(">> text encoded {seq %.*s {size %zu}}", val_size, val, val_size);
     }
+    // TODO
 
-    if (DEBUG_TEXT_READ_LEVEL_3) {
+    /*if (DEBUG_TEXT_READ_LEVEL_3) {
         knd_log(">> locale: %.*s text seq:%.*s", ctx->text->locale_size, ctx->text->locale,
             ctx->text->seq->val_size, ctx->text->seq->val);
-    }
+            }*/
     return make_gsl_err(gsl_OK);
 }
 
@@ -192,14 +110,14 @@ static gsl_err_t set_synode_spec_class(void *obj, const char *name, size_t name_
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndRepo *repo = ctx->repo;
+    struct kndRepoSnapshot *snapshot = ctx->snapshot;
     struct kndSyNodeSpec *spec = ctx->synode_spec;
     int err;
 
     spec->name = name;
     spec->name_size = name_size;
 
-    err = knd_get_cls_by_name(repo, name, name_size, &spec->class, ctx->task);
+    err = knd_get_cls_by_name(snapshot, name, name_size, &spec->class, ctx->task);
     if (err) {
         KND_TASK_LOG("no such {cls %.*s}", name_size, name);
         return make_gsl_err(gsl_NO_MATCH);
@@ -211,14 +129,14 @@ static gsl_err_t set_synode_class(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndRepo *repo = ctx->repo;
+    struct kndRepoSnapshot *snapshot = ctx->snapshot;
     struct kndSyNode *synode = ctx->synode;
     int err;
 
     synode->name = name;
     synode->name_size = name_size;
 
-    err = knd_get_cls_by_name(repo, name, name_size, &synode->role, ctx->task);
+    err = knd_get_cls_by_name(snapshot, name, name_size, &synode->role, ctx->task);
     if (err) {
         KND_TASK_LOG("no such {cls %.*s}", name_size, name);
         return make_gsl_err(gsl_NO_MATCH);
@@ -243,11 +161,12 @@ static gsl_err_t set_sent_seq(void *obj, const char *val, size_t val_size)
     int err;
     if (!val_size) return make_gsl_err(gsl_FORMAT);
 
-    err = knd_charseq_decode(ctx->repo, val, val_size, &sent->seq, task);
+    // TODO
+    /*err = knd_charseq_decode(ctx->repo, val, val_size, &sent->seq, task);
     if (err) {
         KND_TASK_LOG("failed to decode a sent charseq %.*s", val_size, val);
         return make_gsl_err_external(err);
-    }
+        }*/
     return make_gsl_err(gsl_OK);
 }
 
@@ -548,13 +467,13 @@ static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_si
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndRepo *repo = ctx->repo;
+    struct kndRepoSnapshot *snapshot = ctx->snapshot;
     knd_task_type orig_task_type = task->type;
     gsl_err_t parser_err;
 
     /* switch to statement's local scope */
     task->type = KND_TASK_INNER;
-    parser_err = knd_class_select(rec, total_size, repo, task);
+    parser_err = knd_class_select(rec, total_size, snapshot, task);
     task->type = orig_task_type;
 
     return parser_err;
@@ -565,15 +484,13 @@ static gsl_err_t parse_proc_select(void *obj, const char *rec, size_t *total_siz
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndRepo *repo = ctx->repo;
+    struct kndRepoSnapshot *snapshot = ctx->snapshot;
     knd_task_type orig_task_type = task->type;
     gsl_err_t parser_err;
 
-    knd_log("proc inner state  {repo %.*s}", repo->name_size, repo->name);
-
     /* switch to statement's local scope */
     task->type = KND_TASK_INNER;
-    parser_err = knd_proc_select(rec, total_size, repo, task);
+    parser_err = knd_proc_select(rec, total_size, snapshot, task);
     task->type = orig_task_type;
     return parser_err;
 }
@@ -794,12 +711,12 @@ static gsl_err_t parse_translation(void *obj, const char *rec, size_t *total_siz
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = set_gloss_locale,
+          .run = set_text_locale,
           .obj = trn
         },
         { .name = "t",
           .name_size = strlen("t"),
-          .run = set_gloss_id,
+          .run = set_text_id,
           .obj = ctx
         }
     };
@@ -868,8 +785,41 @@ gsl_err_t knd_statement_read(struct kndStatement *stm, const char *rec, size_t *
         return parser_err;
     }
     stm->declars = task->ctx->declars;
-    // stm->proc_declars = task->ctx->proc_declars;
     return make_gsl_err(gsl_OK);
+}
+
+int knd_gloss_parse(struct kndText *t, const char *rec, size_t *total_size, struct kndTask *unused_var(task))
+{
+    gsl_err_t parser_err;
+
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = set_text_locale,
+          .obj = t
+        },
+        { .name = "t",
+          .name_size = strlen("t"),
+          .run = set_text_id,
+          .obj = t
+        },
+        { .name = "abbr",
+          .name_size = strlen("abbr"),
+          .run = set_text_abbr,
+          .obj = t
+        }
+    };
+
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
+
+    /* make sure text ids are set */
+    if (t->locale_id_size == 0 || t->id_size == 0) return knd_FORMAT;
+
+    if (DEBUG_TEXT_READ_LEVEL_3) {
+        knd_log(".. gloss translation: {locale %.*s}  {text-id %.*s}",
+                t->locale_size, t->locale, t->id_size, t->id);
+    }
+    return knd_OK;
 }
 
 gsl_err_t knd_text_read(struct kndText *self, const char *rec, size_t *total_size, struct kndTask *task)
@@ -911,22 +861,17 @@ gsl_err_t knd_text_read(struct kndText *self, const char *rec, size_t *total_siz
     return make_gsl_err(gsl_OK);
 }
 
-int knd_string_unmarshall(const char *elem_id, size_t elem_id_size,
-                          const char *rec, size_t rec_size,
-                          void *unused_var(ctx), void **result, struct kndTask *task)
+int knd_charseq_unmarshall(const char *unused_var(elem_id), size_t unused_var(elem_id_size),
+                           const char *rec, size_t rec_size,
+                           void *unused_var(ctx), size_t *unused_var(parsed_size), void **result,
+                           struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->mempool;
     struct kndMemBlock *memblock;
     struct kndCharSeq *seq;
     int err;
 
-    if (elem_id_size > KND_ID_SIZE) return knd_LIMIT;
-
-    err = knd_charseq_new(&seq, mempool);
-    KND_TASK_ERR("failed to alloc a class to unmarshall");
-
-    memcpy(seq->id, elem_id, elem_id_size);
-    seq->id_size = elem_id_size;
+    err = knd_charseq_new(&seq, task->mempool);
+    KND_TASK_ERR("failed to alloc a charseq to unmarshall");
 
     err = knd_memblock_fetch(&memblock, rec_size, task);
     KND_TASK_ERR("failed to fetch a memblock");
@@ -935,23 +880,44 @@ int knd_string_unmarshall(const char *elem_id, size_t elem_id_size,
     KND_TASK_ERR("failed to to save {seq %.*s}", rec_size, rec);
     seq->val_size = rec_size;
 
-    if (DEBUG_TEXT_READ_LEVEL_3) {
-        knd_log(">> {elem %.*s {seq %.*s}}", elem_id_size, elem_id, rec_size, rec);
-    }
+    *result = seq;
+    return knd_OK;
+}
+
+static int build_charseq(const char *str, size_t str_size, const char *id, size_t id_size,
+                         struct kndCharSeq **result, struct kndTask *task)
+{
+    struct kndCharSeq *seq;
+    struct kndMemBlock *memblock;
+    const char *b;
+    int err;
+
+    err = knd_charseq_new(&seq, task->mempool);
+    KND_TASK_ERR("failed to alloc a charseq");
+    memcpy(seq->id, id, id_size);
+    seq->id_size = id_size;
+
+    err = knd_memblock_fetch(&memblock, str_size, task);
+    KND_TASK_ERR("failed to fetch a memblock");
+
+    err = knd_memblock_write(memblock, str, str_size, false, &b);
+    KND_TASK_ERR("failed to save {seq %.*s}", str_size, str);
+
+    seq->val = b;
+    seq->val_size = str_size;
 
     *result = seq;
     return knd_OK;
 }
 
 int knd_charseq_fetch(const char *rec, size_t unused_var(rec_size), const char *key, size_t key_size,
-                      void *ctx, size_t *result_size, void **result, struct kndTask *task)
+                      void *unused_var(ctx), size_t *result_size, void **result, struct kndTask *task)
 {
-    struct kndRepo *repo = ctx;
     char namebuf[KND_NAME_SIZE];
     size_t namebuf_size = 0;
     char idbuf[KND_ID_SIZE];
     size_t idbuf_size = 0;
-    struct kndClassEntry *entry;
+    struct kndCharSeq *seq;
     gsl_err_t parser_err;
     int err;
 
@@ -979,14 +945,14 @@ int knd_charseq_fetch(const char *rec, size_t unused_var(rec_size), const char *
     if (key_size != namebuf_size) return knd_NO_MATCH;
     if (memcmp(key, namebuf, namebuf_size)) return knd_NO_MATCH;
 
-    if (DEBUG_TEXT_READ_LEVEL_TMP) {
+    if (DEBUG_TEXT_READ_LEVEL_3) {
         knd_log("++ {seq %.*s {id %.*s}} matched, building charseq..",
                 namebuf_size, namebuf, idbuf_size, idbuf);
     }
 
-    //err = build_charseq(namebuf, namebuf_size, idbuf, idbuf_size, &entry, repo, task);
-    //KND_TASK_ERR("failed to build a charseq");
+    err = build_charseq(namebuf, namebuf_size, idbuf, idbuf_size, &seq, task);
+    KND_TASK_ERR("failed to build a charseq");
 
-    *result = entry;
+    *result = seq;
     return knd_OK;
 }

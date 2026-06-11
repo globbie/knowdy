@@ -13,7 +13,7 @@
             {max-small-x4-pages    1000}
             {max-small-x2-pages    1000}
             {max-small-pages       4000}
-            {max-tiny-pages        12000}
+            {max-tiny-pages        14000}
          }
          {cache
             {max-large-pages       300}

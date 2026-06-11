@@ -50,11 +50,11 @@ static int cls_import(const char *rec, size_t *total_size,
     assert (entry != NULL);
 
     /* assign a unique cls entry id */
-    entry->numid = task->idxs.cls_id_count++;
+    entry->numid = ++task->idxs.cls_id_count;
     knd_uid_create(entry->numid, entry->id, &entry->id_size);
 
     err = knd_set_add(cls_idx, entry->id, entry->id_size, (void*)entry, task);
-    KND_TASK_ERR("failed to register {cls %.*s} in class idx",
+    KND_TASK_ERR("failed to register {cls %.*s} in cls idx",
                  entry->name_size, entry->name);
 
     if (DEBUG_REPO_GSL_LEVEL_3) {
@@ -618,14 +618,18 @@ int knd_repo_save_meta(struct kndRepoSnapshot *s, struct kndTask *main_task, str
     OUT("{snapshot ", strlen("{snapshot "));
     OUTF("%zu", s->numid);
 
+    err = present_idx_meta(main_task->idxs.attr_name_idx->idx, "attr-names", strlen("attr-names"),
+                           indent_size, depth + 1, task);
+    KND_TASK_ERR("failed to present attr name idx meta");
+
+    target_idx = s->cache.attr_idx;
+    err = present_idx_meta(target_idx, "attrs", strlen("attrs"),
+                           indent_size, depth + 1, task);
+    KND_TASK_ERR("failed to present attrs");
+
     err = present_idx_meta(main_task->idxs.cls_name_idx->idx, "cls-names", strlen("cls-names"),
                            indent_size, depth + 1, task);
     KND_TASK_ERR("failed to present cls name idx meta");
-
-    /*err = present_idx_meta(s->idxs.attr_name_idx->idx,
-                           "attr-name-idx", strlen("attr-name-idx"), task);
-    KND_TASK_ERR("failed to present attr name idx meta");
-    */
 
     target_idx = s->cache.cls_idx;
     err = present_idx_meta(target_idx, "cls-content", strlen("cls-content"),
@@ -637,13 +641,11 @@ int knd_repo_save_meta(struct kndRepoSnapshot *s, struct kndTask *main_task, str
                            indent_size, depth + 1, task);
     KND_TASK_ERR("failed to present cls cache meta");
 
-    knd_log(".. present charseqs..");
     target_idx = s->cache.str_idx;
     err = present_idx_meta(target_idx, "charseqs", strlen("charseqs"),
                            indent_size, depth + 1, task);
     KND_TASK_ERR("failed to present charseq idx meta");
 
-    knd_log(".. present charseq dict..");
     err = present_idx_meta(main_task->idxs.str_dict->idx, "charseq-dict", strlen("charseq-dict"),
                            indent_size, depth + 1, task);
     KND_TASK_ERR("failed to present charseq dict meta");

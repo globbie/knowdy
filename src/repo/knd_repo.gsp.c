@@ -109,39 +109,44 @@ static int marshall_cls_names(struct kndDict *name_idx, const char *path, size_t
     memcpy(buf, out->buf, out->buf_size);
     buf_size = out->buf_size;
 
-    err = knd_dict_marshall(name_idx, NULL, buf, buf_size, knd_class_name_marshall, NULL, store, task);
+    err = knd_dict_marshall(name_idx, NULL, buf, buf_size, knd_cls_name_marshall, NULL, store, task);
     KND_TASK_ERR("failed to marhall cls names dict");
 
     return knd_OK;
 }
 
-#if 0
-static int marshall_attr_names(const char *path, size_t path_size, struct kndTask *task)
+static int marshall_attr_names(struct kndDict *name_idx, const char *path, size_t path_size,
+                               struct kndStorage *store, struct kndTask *task)
 {
-    //struct kndStorageLeaf *leaf;
-    //size_t num_leaves = 0;
     struct kndOutput *out = task->out;
-    //int err;
+    char buf[KND_PATH_SIZE + 1];
+    size_t buf_size;
+    int err;
 
     assert (path_size != 0);
+
+    if (DEBUG_REPO_GSP_LEVEL_2) {
+        knd_log(">> marshalling attr names in {path %.*s} {num-items %zu}",
+                path_size, path, name_idx->num_items);
+    }
 
     out->reset(out);
     OUT(path, path_size);
     if (path[path_size - 1] != '/') {
         OUT("/", 1);
     }
-    OUT("attr-name-idx/", strlen("attr-name-idx/"));
+
+    OUT("attr-names/", strlen("attr-names/"));
     if (out->buf_size >= KND_PATH_SIZE) return knd_LIMIT;
 
-    //memcpy(task->idxs->attr_name_idx_path, out->buf, out->buf_size);
-    //task->idxs.attr_name_idx_path_size = out->buf_size;
+    memcpy(buf, out->buf, out->buf_size);
+    buf_size = out->buf_size;
 
-    //err = knd_shared_set_marshall(task->idxs->attr_idx, NULL, out->buf, out->buf_size,
-    //                              knd_attr_name_marshall, NULL, &leaf, &num_leaves, task);
-    //KND_TASK_ERR("failed to marshall an attr name idx");
+    err = knd_dict_marshall(name_idx, NULL, buf, buf_size, knd_attr_name_marshall, NULL, store, task);
+    KND_TASK_ERR("failed to marhall attr names dict");
+
     return knd_OK;
 }
-#endif
 
 static int marshall_name_mappings(const char *path, size_t path_size,
                                   struct kndTask *main_task,
@@ -154,13 +159,12 @@ static int marshall_name_mappings(const char *path, size_t path_size,
         err = marshall_cls_names(main_task->idxs.cls_name_idx, path, path_size, store, task);
         KND_TASK_ERR("failed to marshall cls names");
 
-        //err = marshall_attr_names(path, path_size, task);
-        //KND_TASK_ERR("failed to marshall attr names");
+        err = marshall_attr_names(main_task->idxs.attr_name_idx, path, path_size, store, task);
+        KND_TASK_ERR("failed to marshall attr names");
         break;
     default:
         break;
     }
-
     return knd_OK;
 }
 
@@ -198,7 +202,43 @@ static int marshall_content(struct kndRepoSnapshot *s, const char *path, size_t 
     default:
         break;
     }
+    return knd_OK;
+}
 
+static int marshall_attrs(struct kndRepoSnapshot *s, const char *path, size_t path_size,
+                          struct kndTask *main_task, struct kndRepo *repo,
+                          struct kndStorage *store, struct kndTask *task)
+{
+    struct kndSet *target_idx = s->cache.attr_idx;
+    struct kndOutput *out = task->out;
+    char buf[KND_PATH_SIZE + 1];
+    size_t buf_size;
+    int err;
+
+    assert (path_size > 0);
+
+    out->reset(out);
+    OUT(path, path_size);
+    if (path[path_size - 1] != '/') {
+        OUT("/", 1);
+    }
+
+    OUT("attrs/", strlen("attrs/"));
+    if (out->buf_size >= KND_PATH_SIZE) return knd_LIMIT;
+
+    memcpy(buf, out->buf, out->buf_size);
+    buf_size = out->buf_size;
+
+    switch (main_task->type) {
+    case KND_TASK_BULK_LOAD:
+        err = knd_set_marshall(main_task->idxs.attr_idx, NULL, buf, buf_size,
+                               knd_attr_marshall, repo, store,
+                               target_idx->store->leaves, &target_idx->store->num_leaves, task);
+        KND_TASK_ERR("failed to marshall a class idx");
+        break;
+    default:
+        break;
+    }
     return knd_OK;
 }
 
@@ -250,7 +290,7 @@ static int marshall_cache(struct kndRepoSnapshot *s,
 
     switch (main_task->type) {
     case KND_TASK_BULK_LOAD:
-        err = knd_set_marshall(idx, NULL, path, path_size, knd_class_name_marshall, repo, store,
+        err = knd_set_marshall(idx, NULL, path, path_size, knd_cls_entry_ref_marshall, repo, store,
                                target_idx->store->leaves, &target_idx->store->num_leaves, task);
         KND_TASK_ERR("failed to marshall a cls cache idx");
         break;
@@ -310,9 +350,9 @@ static int marshall_charseq_dict(struct kndDict *name_idx, const char *path, siz
 
     assert (path_size != 0);
 
-    if (DEBUG_REPO_GSP_LEVEL_2) {
-        knd_log(">> marshalling charseq dict in {path %.*s} {num-items %zu}",
-                path_size, path, name_idx->num_items);
+    if (DEBUG_REPO_GSP_LEVEL_TMP) {
+        knd_log(">> marshalling charseq dict in {path %.*s} {num-items %zu {size %zu}}",
+                path_size, path, name_idx->num_items, name_idx->size);
     }
 
     out->reset(out);
@@ -369,8 +409,8 @@ int knd_repo_build_snapshot(struct kndRepo *repo, struct kndTask *main_task, str
     err = marshall_cache(s, main_task, repo, store, task);
     KND_TASK_ERR("failed to marshall cache in {path %.*s}", s->path_size, s->path);
 
-    //err = marshall_attr_idx(s, task);
-    //KND_TASK_ERR("failed to marshall attr idx in {path %.*s}", s->path_size, s->path);
+    err = marshall_attrs(s, s->path, s->path_size, main_task, repo, store, task);
+    KND_TASK_ERR("failed to marshall main content in {path %.*s}", s->path_size, s->path);
 
     err = marshall_charseqs(s, s->path, s->path_size, main_task, repo, store, task);
     KND_TASK_ERR("failed to marshall charseqs in {path %.*s}", s->path_size, s->path);

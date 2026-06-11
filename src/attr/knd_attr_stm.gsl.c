@@ -41,20 +41,20 @@
 #define DEBUG_ATTR_STM_GSL_LEVEL_TMP 1
 
 static int attr_stm_list_export_GSL(struct kndAttrStm *parent_item,
-                                    struct kndRepo *repo, struct kndTask *task, size_t depth);
+                                    struct kndTask *task, size_t depth);
 
 static int inner_stm_export_GSL(struct kndAttrStm *stm,
-                                struct kndRepo *repo, struct kndTask *task, size_t depth)
+                                struct kndTask *task, size_t depth)
 {
     int err;
 
-    err = knd_attr_stms_export_GSL(stm->children, repo, task, depth + 1);
+    err = knd_attr_stms_export_GSL(stm->children, task, depth + 1);
     KND_TASK_ERR("failed to export attr stms GSL");
 
     return knd_OK;
 }
 
-static int attr_stm_list_export_GSL(struct kndAttrStm *stm, struct kndRepo *repo,
+static int attr_stm_list_export_GSL(struct kndAttrStm *stm,
                                     struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
@@ -75,7 +75,7 @@ static int attr_stm_list_export_GSL(struct kndAttrStm *stm, struct kndRepo *repo
     OUT(stm->name, stm->name_size);
 
     FOREACH (item, stm->list) {
-        err = knd_attr_stm_export_GSL(item, repo, task, depth + 1);
+        err = knd_attr_stm_export_GSL(item, task, depth + 1);
         KND_TASK_ERR("attr stm GSL export failed");
     }
     OUT("]", 1);
@@ -83,7 +83,7 @@ static int attr_stm_list_export_GSL(struct kndAttrStm *stm, struct kndRepo *repo
     return knd_OK;
 }
 
-int knd_attr_stms_export_GSL(struct kndAttrStm *stms, struct kndRepo *repo,
+int knd_attr_stms_export_GSL(struct kndAttrStm *stms,
                              struct kndTask *task, size_t depth)
 {
     struct kndAttrStm *stm;
@@ -94,25 +94,26 @@ int knd_attr_stms_export_GSL(struct kndAttrStm *stms, struct kndRepo *repo,
         attr = stm->attr;
         assert (attr != NULL);
 
-        if (attr->is_a_set) {
-            err = attr_stm_list_export_GSL(stm, repo, task, depth);
+        switch (attr->mult_t) {
+        case KND_ATTR_MULTIPLE:
+            err = attr_stm_list_export_GSL(stm, task, depth);
             KND_TASK_ERR("attr stm list GSL export failed");
             continue;
+        default:
+            break;
         }
-        err = knd_attr_stm_export_GSL(stm, repo, task, depth);
+        err = knd_attr_stm_export_GSL(stm, task, depth);
         KND_TASK_ERR("attr stm GSL export failed");
     }
     return knd_OK;
 }
 
-int knd_attr_stm_export_GSL(struct kndAttrStm *stm, struct kndRepo *repo,
-                            struct kndTask *task, size_t depth)
+int knd_attr_stm_export_GSL(struct kndAttrStm *stm, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     struct kndAttr *attr = stm->attr;
     assert (attr != NULL);
 
-    struct kndClass *c;
     struct kndClassEntry *entry;
     struct kndClassRefAttrStm *cref;
     size_t indent_size = task->ctx->format_indent;
@@ -134,10 +135,14 @@ int knd_attr_stm_export_GSL(struct kndAttrStm *stm, struct kndRepo *repo,
     if (stm->is_list_item) {
         OUT("{", 1);
     } else {
-        if (!attr->is_a_set) {
+        switch (attr->mult_t) {
+        case KND_ATTR_SINGLE:
             OUT("{", 1);
             OUT(stm->name, stm->name_size);
             OUT(" ", 1);
+            break;
+        default:
+            break;
         }
     }
 
@@ -158,21 +163,17 @@ int knd_attr_stm_export_GSL(struct kndAttrStm *stm, struct kndRepo *repo,
 
         OUT(entry->name, entry->name_size);
 
-        err = knd_class_acquire(entry, &c, repo, task);
-        KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);
-        if (c->tr) {
-            err = knd_text_gloss_export_GSL(c->tr, true, repo, task, depth + 1);
-            KND_TASK_ERR("failed to export gloss GSL");
-        }
+        err = knd_text_glosses_export_GSL(entry->glosses, true, task, depth + 1);
+        KND_TASK_ERR("failed to export glosses GSL");
         break;
     case KND_ATTR_CLS_INNER:
-        err = inner_stm_export_GSL(stm, repo, task, depth);
+        err = inner_stm_export_GSL(stm, task, depth);
         KND_TASK_ERR("GSL inner stm output failed");
         break;
     case KND_ATTR_TEXT:
         assert(stm->subtype != NULL);
 
-        err = knd_text_export(stm->subtype, KND_FORMAT_GSL, repo, task, depth + 1);
+        err = knd_text_export(stm->subtype, KND_FORMAT_GSL, task, depth + 1);
         KND_TASK_ERR("GSL text export failed");
         break;
     case KND_ATTR_BOOL:
@@ -183,8 +184,8 @@ int knd_attr_stm_export_GSL(struct kndAttrStm *stm, struct kndRepo *repo,
         break;
     }
 
-    if (stm->is_list_item || !attr->is_a_set) {
+    if (stm->is_list_item) {
         OUT("}", 1);
-    } 
+    } // TODO mult_t = SINGLE
     return knd_OK;
 }

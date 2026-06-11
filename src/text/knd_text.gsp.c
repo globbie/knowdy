@@ -76,41 +76,12 @@ int knd_charseq_mapping_marshall(void *elem, void *unused_var(ctx), struct kndSt
         err = knd_append_file((const char*)leaf->filepath, out->buf, out->buf_size);
         KND_TASK_ERR("charseq write failure");
     }
-
     leaf->curr_size += out->buf_size;
-    *output_size = seq->val_size;
+    *output_size = out->buf_size;
     return knd_OK;
 }
 
-int knd_charseq_unmarshall(const char *elem_id, size_t elem_id_size,
-                           const char *val, size_t val_size, void **result, struct kndTask *task)
-{
-    struct kndMemPool *mempool = task->mempool;
-    struct kndCharSeq *seq;
-    struct kndSet *str_idx = task->idxs.str_idx;
-    struct kndDict *str_dict = task->idxs.str_dict;
-    int err;
-
-    if (DEBUG_TEXT_GSP_LEVEL_2) {
-        knd_log("{seq %.*s} => %.*s", elem_id_size, elem_id, val_size, val);
-    }
-    err = knd_charseq_new(&seq, mempool);
-    KND_TASK_ERR("charseq alloc failed");
-    seq->val = val;
-    seq->val_size = val_size;
-
-    err = knd_set_add(str_idx, elem_id, elem_id_size, (void*)seq, task);
-    KND_TASK_ERR("failed to register {seq %.*s {err %s}}", val_size, val, knd_err_names[err]);
-
-    err = knd_dict_set(str_dict, val, val_size, (void*)seq, task);
-    KND_TASK_ERR("failed to register {seq %.*s} in str dict {err %s}",
-                 val_size, val, knd_err_names[err]);
-    
-    *result = seq;
-    return knd_OK;
-}
-
-static int export_declars(struct kndClassDeclar *decls, struct kndRepo *repo, struct kndTask *task)
+static int export_declars(struct kndClassDeclar *decls, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndClassInstEntry *entry;
@@ -118,11 +89,11 @@ static int export_declars(struct kndClassDeclar *decls, struct kndRepo *repo, st
     int err;
 
     FOREACH (decl, decls) {
-        OUT("{class ", strlen("{class "));
+        OUT("{cls ", strlen("{cls "));
         OUT(decl->entry->name, decl->entry->name_size);
 
         FOREACH (entry, decl->insts) {
-            err = knd_class_inst_export_GSL(entry->inst, false, KND_CREATED, repo, task, 0);
+            err = knd_class_inst_export_GSL(entry->inst, false, KND_CREATED, task, 0);
             KND_TASK_ERR("failed to export class inst GSL");
         }
         OUT("}", 1);
@@ -150,7 +121,7 @@ static int export_proc_declars(struct kndProcDeclar *decl, struct kndTask *task)
 }
 #endif
 
-static int stm_export_GSP(struct kndStatement *stm, struct kndRepo *repo, struct kndTask *task)
+static int stm_export_GSP(struct kndStatement *stm, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     int err;
@@ -159,7 +130,7 @@ static int stm_export_GSP(struct kndStatement *stm, struct kndRepo *repo, struct
     OUT(stm->schema_name, stm->schema_name_size);
 
     if (stm->declars) {
-        err = export_declars(stm->declars, repo, task);                      RET_ERR();
+        err = export_declars(stm->declars, task);                      RET_ERR();
     }
 
     //if (stm->proc_declars) {
@@ -170,7 +141,7 @@ static int stm_export_GSP(struct kndStatement *stm, struct kndRepo *repo, struct
     return knd_OK;
 }
 
-static int sent_export_GSP(struct kndSentence *sent, struct kndRepo *repo, struct kndTask *task)
+static int sent_export_GSP(struct kndSentence *sent, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     int err;
@@ -178,7 +149,7 @@ static int sent_export_GSP(struct kndSentence *sent, struct kndRepo *repo, struc
     err = out->write(out, sent->seq->val, sent->seq->val_size);   RET_ERR();
 
     if (sent->stm) {
-        err = stm_export_GSP(sent->stm, repo, task);           RET_ERR();
+        err = stm_export_GSP(sent->stm, task);           RET_ERR();
     }
 
     err = out->writec(out, '}');                        RET_ERR();
@@ -186,7 +157,7 @@ static int sent_export_GSP(struct kndSentence *sent, struct kndRepo *repo, struc
     return knd_OK;
 }
 
-int knd_text_export_GSP(struct kndText *self, struct kndRepo *repo, struct kndTask *task)
+int knd_text_export_GSP(struct kndText *self, struct kndTask *task)
 {
     char idbuf[KND_ID_SIZE];
     size_t idbuf_size;
@@ -243,7 +214,7 @@ int knd_text_export_GSP(struct kndText *self, struct kndRepo *repo, struct kndTa
             OUT("{", 1);
             OUT("[s", strlen("[s"));
             FOREACH (sent, par->sents) {
-                err = sent_export_GSP(sent, repo, task);
+                err = sent_export_GSP(sent, task);
                 KND_TASK_ERR("failed to export sent GSP");
             }
             OUT("]", 1);

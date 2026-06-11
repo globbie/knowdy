@@ -16,14 +16,14 @@
 
 struct LocalContext {
     struct kndTask *task;
-    struct kndRepo *repo;
+    struct kndRepoSnapshot *snapshot;
     struct kndAttrStm *attr_stm;
     struct kndClass *class;
     struct kndClassRef *class_ref;
     struct kndClassInst *class_inst;
 };
 
-int knd_class_inst_marshall(void *obj, size_t *output_size, struct kndRepo *repo, struct kndTask *task)
+int knd_class_inst_marshall(void *obj, size_t *output_size, struct kndTask *task)
 {
     struct kndClassInstEntry *entry = obj;
     struct kndOutput *out = task->out;
@@ -31,7 +31,7 @@ int knd_class_inst_marshall(void *obj, size_t *output_size, struct kndRepo *repo
     int err;
     assert(entry->inst != NULL);
 
-    err = knd_class_inst_export_GSP(entry->inst, repo, task);
+    err = knd_class_inst_export_GSP(entry->inst, task);
     KND_TASK_ERR("failed to export class inst GSP");
 
     if (DEBUG_CLASS_INST_GSP_LEVEL_2) {
@@ -43,8 +43,8 @@ int knd_class_inst_marshall(void *obj, size_t *output_size, struct kndRepo *repo
 }
 
 int knd_class_inst_entry_unmarshall(const char *elem_id, size_t elem_id_size,
-                                    const char *rec, size_t rec_size,
-                                    void **result, struct kndRepo *repo, struct kndTask *task)
+                                    const char *rec, size_t rec_size, void **result,
+                                    struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
     struct kndClassInstEntry *entry = NULL;
@@ -65,7 +65,6 @@ int knd_class_inst_entry_unmarshall(const char *elem_id, size_t elem_id_size,
     err = knd_class_inst_entry_new(&entry, mempool);
     KND_TASK_ERR("failed to alloc a class entry");
 
-    entry->repo = repo;
     memcpy(entry->id, elem_id, elem_id_size);
     entry->id_size = elem_id_size;
     entry->is_a = is_a;
@@ -94,7 +93,7 @@ int knd_class_inst_entry_unmarshall(const char *elem_id, size_t elem_id_size,
         }
     }
 
-    err = knd_class_acquire(is_a, &cls, repo, task);
+    err = knd_class_acquire(is_a, &cls, snapshot, task);
     KND_TASK_ERR("failed to acquire {cls %.*s}", is_a->name_size, is_a->name);
 
     err = knd_dict_set(cls->inst_name_idx, entry->name, entry->name_size, (void*)entry, task);
@@ -111,7 +110,7 @@ int knd_class_inst_entry_unmarshall(const char *elem_id, size_t elem_id_size,
     return knd_OK;
 }
 
-int knd_class_inst_export_GSP(struct kndClassInst *self, struct kndRepo *repo, struct kndTask *task)
+int knd_class_inst_export_GSP(struct kndClassInst *self, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     size_t curr_depth;
@@ -134,9 +133,10 @@ int knd_class_inst_export_GSP(struct kndClassInst *self, struct kndRepo *repo, s
         err = out->writef(out, "%zu", self->linear_len);                   RET_ERR();
         err = out->writec(out, '}');                                 RET_ERR();
     }
+
     if (self->attr_stms) {
         curr_depth = task->ctx->depth;
-        err = knd_attr_stms_export_GSP(self->attr_stms, repo, task, 0);
+        err = knd_attr_stms_export_GSP(self->attr_stms, task, 0);
         KND_TASK_ERR("failed to export attr vars GSP");
         task->ctx->depth = curr_depth;
     }

@@ -27,6 +27,14 @@
 #define DEBUG_REPO_CACHE_LEVEL_3 0
 #define DEBUG_REPO_CACHE_LEVEL_TMP 1
 
+struct LocalContext {
+    struct kndTask *task;
+    struct kndRepoSnapshot *snapshot;
+    struct kndClassEntry *entry;
+    struct kndDict *name_idx;
+    struct kndSet *str_idx;
+};
+
 #if 0
 static bool detect_if_cacheable(struct kndClassEntry *unused_var(entry))
 {
@@ -60,26 +68,62 @@ static int build_cls_cache_item(void *elem, void *ctx)
 }
 #endif
 
-static int register_cls_name(void *elem, void *ctx, struct kndTask *task)
+static int expand_cls_entry(void *elem, void *ctx_obj, struct kndTask *task)
 {
     struct kndClassEntry *entry = elem;
-    struct kndDict *name_idx = ctx;
+    struct LocalContext *ctx = ctx_obj;
+    struct kndRepoSnapshot *snapshot = ctx->snapshot;
+    struct kndDict *name_idx = snapshot->cache.cls_name_idx;
+    struct kndSet *str_idx = snapshot->cache.str_idx;
+    struct kndSet *cls_idx = snapshot->cache.cls_idx;
+    struct kndClass *cls;
     int err;
 
     if (DEBUG_REPO_CACHE_LEVEL_2) {
-        knd_log(".. register cls entry {name %.*s}", entry->name_size, entry->name);
+        knd_log(".. indexing cls {entry %.*s}", entry->id_size, entry->id);
     }
 
+    assert (name_idx != NULL);
+    assert (str_idx != NULL);
+    assert (cls_idx != NULL);
+
+    err = knd_cls_entry_decode(entry, snapshot, task);
+    KND_TASK_ERR("failed to decode {cls-entry %.*s}", entry->id_size, entry->id);
+  
     err = knd_dict_set(name_idx, entry->name, entry->name_size, (void*)entry, task);
     KND_TASK_ERR("failed to register cls entry {name %.*s}", entry->name_size, entry->name);
+
+    err = knd_set_fetch(cls_idx, entry->id, entry->id_size, knd_cls_body_unmarshall,
+                        &ctx, (void**)&cls, task);
+    switch (err) {
+    case knd_OK:
+        err = knd_class_decode(cls, snapshot, task);
+        KND_TASK_ERR("failed to decode {cls %.*s}", cls->name_size, cls->name);
+        entry->cls = cls;
+        return knd_OK;
+    case knd_NO_MATCH:
+        return knd_NO_MATCH;
+    default:
+        KND_TASK_ERR("failed to fetch a {cls %.*s {id %.*s}} content {err %d}",
+                     entry->name_size, entry->name, entry->id_size, entry->id, err);
+    }
+
+    if (DEBUG_REPO_CACHE_LEVEL_TMP) {
+        knd_log("++ {cls-entry %.*s {id %.*s}} expanded",
+                entry->name_size, entry->name, entry->id_size, entry->id);
+    }
 
     return knd_OK;
 }
 
-static int read_cls_cache(struct kndSet *cls_cache_idx, struct kndDict *name_idx, struct kndTask *task)
+static int read_cls_cache(struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
-    struct kndStorageLeaf *leaf;
+    struct kndSet *cls_cache_idx = snapshot->cache.cls_cache_idx;
     struct kndSetStore *store = cls_cache_idx->store;
+    struct kndDict *name_idx = snapshot->cache.cls_name_idx;
+    struct kndSet *str_idx = snapshot->cache.str_idx;
+    struct kndSet *cls_idx = snapshot->cache.cls_idx;
+    struct kndStorageLeaf *leaf;
     int err;
 
     assert (store != NULL);
@@ -90,11 +134,17 @@ static int read_cls_cache(struct kndSet *cls_cache_idx, struct kndDict *name_idx
 
     for (size_t i = 0; i < store->num_leaves; i++) {
         leaf = store->leaves[i];
-        err = knd_set_read_leaf(cls_cache_idx, leaf, NULL, knd_class_entry_unmarshall, NULL, task);
+
+        err = knd_set_read_leaf(cls_cache_idx, leaf, NULL, knd_cls_entry_ref_unmarshall, NULL, task);
         KND_TASK_ERR("failed to read a cls entry idx {leaf %zu}", leaf->numid);
     }
 
-    err = knd_set_map(cls_cache_idx, NULL, NULL, NULL, register_cls_name, name_idx, task);
+    struct LocalContext ctx = {
+        .task = task,
+        .snapshot = snapshot
+    };
+
+    err = knd_set_map(cls_cache_idx, NULL, NULL, NULL, expand_cls_entry, &ctx, task);
     KND_TASK_ERR("failed to index cls names");
 
     return knd_OK;
@@ -109,9 +159,10 @@ int knd_repo_read_cache(struct kndRepoSnapshot *snapshot, struct kndTask *task)
                 snapshot->numid, snapshot->path_size, snapshot->path);
     }
 
-    err = read_cls_cache(snapshot->cache.cls_cache_idx, snapshot->cache.cls_name_idx, task);
+    err = read_cls_cache(snapshot, task);
     KND_TASK_ERR("failed to read cls entries cache in {snapshot #%zu {path %.*s}}",
                  snapshot->numid, snapshot->path_size, snapshot->path);
+
 
     /*
     err = read_str_idx(str_idx, task);
@@ -121,4 +172,3 @@ int knd_repo_read_cache(struct kndRepoSnapshot *snapshot, struct kndTask *task)
     
     return knd_OK;
 }
-

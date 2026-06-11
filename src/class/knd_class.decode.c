@@ -48,7 +48,7 @@
 
 struct LocalContext {
     struct kndTask *task;
-    struct kndRepo *repo;
+    struct kndRepoSnapshot *snapshot;
     struct kndClass *class;
     struct kndClass *baseclass;
     struct kndClassBasePred *base_pred;
@@ -134,36 +134,51 @@ static int inherit_attrs(struct kndClass *c, struct kndClass *base, struct kndTa
     return knd_OK;
 }
 
-static int decode_baseclasses(struct kndClass *c, struct kndRepo *repo, struct kndTask *task)
+static int decode_baseclasses(struct kndClass *c, struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct kndClassBasePred *bp;
     struct kndClass *base;
-    size_t numid;
     int err;
 
+    assert (c->entry != NULL);
+
     if (DEBUG_CLASS_DECODE_LEVEL_2) {
-        knd_log("{cls %.*s} to decode its bases", c->name_size, c->name);
+        knd_log("{cls %.*s {id %.*s}} to decode its bases {num-base-preds %zu}",
+                c->name_size, c->name, c->entry->id_size, c->entry->id,
+                c->num_base_preds);
+    }
+
+    // TODO root class
+    if (c->entry->id_size == 1 && *c->entry->id == '1') {
+        c->phase = KND_CLASS_BASE_DECODED;
+        return knd_OK;
     }
 
     if (c->phase >= KND_CLASS_BASE_DECODED) {
-        knd_log("-- vicious circle detected in resolving bases of {class %.*s}",
+        knd_log("-- vicious circle detected in decoding bases of {cls %.*s}",
                 c->name_size, c->name);
         return knd_FAIL;
     }
 
     FOREACH (bp, c->base_preds) {
-        err = knd_class_acquire(bp->entry, &base, repo, task);
-        KND_TASK_ERR("failed to acquire {base %.*s} of {cls %.*s}",
-                     bp->entry->name_size, bp->entry->name, c->name_size, c->name);
+        if (bp->is_root) break;
+
+        err = knd_get_cls_entry_by_id(snapshot, bp->id, bp->id_size, &bp->entry, task);
+        KND_TASK_ERR("failed to get {cls %.*s}", bp->id_size, bp->id);
+
+        assert (bp->entry->name_size != 0);
+
+        err = knd_class_acquire(bp->entry, &base, snapshot, task);
+        KND_TASK_ERR("failed to acquire {cls %.*s}", bp->entry->name_size, bp->entry->name);
 
         if (base->phase < KND_CLASS_BASE_DECODED) {
-            err = decode_baseclasses(base, repo, task);
+            err = decode_baseclasses(base, snapshot, task);
             KND_TASK_ERR("failed to decode base classes of {cls %.*s}",
                          base->name_size, base->name);
         }
 
         /* check if subclass is already registered in the base class */
-        err = knd_class_is_direct_child(base, c, &numid);
+        /*err = knd_class_is_direct_child(base, c, &numid);
         if (err != knd_NO_MATCH) {
             if (DEBUG_CLASS_DECODE_LEVEL_2) {
                 knd_log("-- child {cls %.*s} already registered in base {cls %.*s}?",
@@ -171,54 +186,81 @@ static int decode_baseclasses(struct kndClass *c, struct kndRepo *repo, struct k
             }
             continue;
         }
-        err = knd_class_link_base(c, base, repo, task);
+        err = knd_class_link_base(c, base, snapshot, task);
         KND_TASK_ERR("failed to link {cls %.*s} to base {cls %.*s}",
                      c->name_size, c->name, base->name_size, base->name);
+        */
+    }
+
+    if (DEBUG_CLASS_DECODE_LEVEL_3) {
+        knd_log("++ {cls %.*s {id %.*s}} bases decoded!",
+                c->name_size, c->name, c->entry->id_size,
+                c->entry->id, c->entry->numid);
     }
 
     c->phase = KND_CLASS_BASE_DECODED;
     return knd_OK;
 }
 
-static int register_attr(struct kndClass *self, struct kndAttr *attr, struct kndTask *task)
+static int decode_attr_refs(struct kndClass *cls, struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->mempool;
-    struct kndAttrRef *attr_ref;
+    struct kndAttrRef *ref;
     int err;
 
-    if (DEBUG_CLASS_DECODE_LEVEL_2) {
-        knd_log(".. register {cls %.*s {attr %.*s}}",
-                self->name_size, self->name, attr->name_size, attr->name);
-    }
-    err = knd_attr_ref_new(&attr_ref, mempool);
-    KND_TASK_ERR("failed to alloc kndAttrRef")
-    attr_ref->attr = attr;
-    attr_ref->cls_entry = self->entry;
+    FOREACH (ref, cls->attr_refs) {
+        err = knd_attr_ref_decode(ref, snapshot, task);
+        KND_TASK_ERR("failed to decode {cls %.*s {attr %.*s}}",
+                     cls->name_size, cls->name, ref->id_size, ref->id);
 
-    err = knd_set_add(self->attr_idx, attr->id, attr->id_size, (void*)attr_ref, task);
-    KND_TASK_ERR("failed to register {cls %.*s {attr %.*s}}",
-                 self->name_size, self->name, attr->name_size, attr->name);
+        assert (ref->id_size != 0);
+
+        if (DEBUG_CLASS_DECODE_LEVEL_3) {
+            knd_log(".. {cls %.*s} to register {attr %.*s}",
+                    cls->name_size, cls->name, ref->id_size, ref->id);
+        }
+
+        err = knd_set_add(cls->attr_idx, ref->id, ref->id_size, (void*)ref, task);
+        KND_TASK_ERR("failed to register {cls %.*s {attr %.*s}}",
+                     cls->name_size, cls->name, ref->attr->name_size, ref->attr->name);
+    }
     return knd_OK;
 }
 
-int knd_class_decode(struct kndClass *c, struct kndRepo *repo, struct kndTask *task)
+static int decode_base_preds(struct kndClass *cls, struct kndRepoSnapshot *snapshot,
+                             struct kndTask *task)
 {
     struct kndClassBasePred *bp;
-    struct kndText *t;
-    struct kndAttr *attr;
     struct kndClass *base;
     int err;
 
-    if (DEBUG_CLASS_DECODE_LEVEL_2) {
-        knd_log(".. decoding {cls %.*s {num-bases %zu}}",
-                c->name_size, c->name, c->num_base_preds);
-        size_t count = 0;
-        FOREACH (bp, c->base_preds) {
-            knd_log("  %zu) {base %.*s {id %.*s}}", count,
-                    bp->entry->name_size, bp->entry->name,
-                    bp->entry->id_size, bp->entry->id);
-            count++;
+    FOREACH (bp, cls->base_preds) {
+        if (bp->is_root) break;
+
+        assert (bp->entry != NULL);
+
+        err = knd_class_acquire(bp->entry, &base, snapshot, task);
+        KND_TASK_ERR("failed to acquire {base %.*s} of {cls %.*s}",
+                     bp->entry->name_size, bp->entry->name, cls->name_size, cls->name);
+
+        err = inherit_attrs(cls, base, task);
+        KND_TASK_ERR("failed to inherit attrs from {cls %.*s}",
+                     base->name_size, base->name);
+        if (bp->attr_stms) {
+            err = knd_decode_attr_stms(base, bp->attr_stms, snapshot, task);
+            KND_TASK_ERR("failed to decode attr stms of {cls %.*s}",
+                         base->name_size, base->name);
         }
+    }
+    return knd_OK;
+}
+
+int knd_class_decode(struct kndClass *c, struct kndRepoSnapshot *snapshot, struct kndTask *task)
+{
+    int err;
+
+    if (DEBUG_CLASS_DECODE_LEVEL_TMP) {
+        knd_log(">> decoding {cls %.*s {num-bases %zu}}",
+                c->name_size, c->name, c->num_base_preds);
     }
 
     if (c->phase >= KND_CLASS_DECODED) {
@@ -226,48 +268,53 @@ int knd_class_decode(struct kndClass *c, struct kndRepo *repo, struct kndTask *t
         return knd_FAIL;
     }
 
-    /* immediate attrs */
-    if (c->num_attrs) {
-        FOREACH (attr, c->attrs) {
-            err = knd_attr_decode(attr, repo, task);
-            KND_TASK_ERR("failed to decode {cls %.*s {attr %.*s}}",
-                         c->name_size, c->name, attr->id_size, attr->id);
-
-            err = register_attr(c, attr, task);
-            KND_TASK_ERR("failed to register {cls %.*s {attr %.*s}}",
-                         c->name_size, c->name, attr->id_size, attr->id);
-        }
-    }
-
     if (c->phase < KND_CLASS_BASE_DECODED) {
-        err = decode_baseclasses(c, repo, task);
+        err = decode_baseclasses(c, snapshot, task);
         KND_TASK_ERR("failed to decode base classes of {cls %.*s}", c->name_size, c->name);
     }
 
-    if (c->tr) {
-        FOREACH (t, c->tr) {
-            err = knd_charseq_decode(repo, t->id, t->id_size, &t->seq, task);
-            KND_TASK_ERR("failed to decode {cls %.*s {gloss %.*s}}",
-                         c->name_size, c->name, t->id_size, t->id);
-        }
-    }
+    err = decode_attr_refs(c, snapshot, task);
+    KND_TASK_ERR("failed to decode attr refs of {cls %.*s}", c->name_size, c->name);
 
-    FOREACH (bp, c->base_preds) {
-        err = knd_class_acquire(bp->entry, &base, repo, task);
-        KND_TASK_ERR("failed to acquire {base %.*s} of {cls %.*s}",
-                     bp->entry->name_size, bp->entry->name, c->name_size, c->name);
-
-        err = inherit_attrs(c, base, task);
-        KND_TASK_ERR("failed to inherit attrs from {cls %.*s}",
-                     base->name_size, base->name);
-
-        if (bp->attr_stms) {
-            err = knd_decode_attr_stms(base, bp->attr_stms, repo, task);
-            KND_TASK_ERR("failed to decode attr stms of {cls %.*s}",
-                         base->name_size, base->name);
-        }
-    }
+    err = decode_base_preds(c, snapshot, task);
+    KND_TASK_ERR("failed to decode base preds of {cls %.*s}", c->name_size, c->name);
 
     c->phase = KND_CLASS_DECODED;
+    return knd_OK;
+}
+
+static int decode_glosses(struct kndClassEntry *entry, struct kndSet *str_idx,
+                          struct kndTask *task)
+{
+    struct kndText *t;
+    int err;
+
+    FOREACH (t, entry->glosses) {
+        err = knd_charseq_decode(str_idx, t->id, t->id_size, &t->seq, task);
+        KND_TASK_ERR("failed to decode {cls %.*s {gloss %.*s}}",
+                     entry->name_size, entry->name, t->id_size, t->id);
+    }
+    return knd_OK;
+}
+
+int knd_cls_entry_decode(struct kndClassEntry *entry, struct kndRepoSnapshot *snapshot, struct kndTask *task)
+{
+    struct kndSet *str_idx = snapshot->cache.str_idx;
+    struct kndCharSeq *seq;
+    int err;
+
+    err = knd_charseq_decode(str_idx, entry->name_id, entry->name_id_size, &seq, task);
+    KND_TASK_ERR("failed to decode cls entry name {id %.*s}",
+                 entry->name_id_size, entry->name_id);
+
+    entry->name = seq->val;
+    entry->name_size = seq->val_size;
+    entry->seq = seq;
+
+    assert (entry->name_size != 0);
+
+    err = decode_glosses(entry, str_idx, task);
+    KND_TASK_ERR("failed to decode glosses of {cls %.*s}", entry->name_size, entry->name);
+  
     return knd_OK;
 }

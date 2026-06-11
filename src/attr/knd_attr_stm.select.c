@@ -50,7 +50,7 @@
 struct LocalContext {
     struct kndQuery   *query;
     struct kndTask    *task;
-    struct kndRepo    *repo;
+    struct kndRepoSnapshot    *snapshot;
     struct kndAttrStm *stm;
 
     struct kndClassInnerAttrStm *inner_stm;
@@ -90,7 +90,7 @@ static gsl_err_t check_inner_cls(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndRepo *repo = ctx->repo;
+    struct kndRepoSnapshot *snapshot = ctx->snapshot;
     struct kndClassInnerAttrStm *inner = ctx->inner_stm;
     struct kndClassEntry *entry;
     int err;
@@ -99,14 +99,14 @@ static gsl_err_t check_inner_cls(void *obj, const char *name, size_t name_size)
         knd_log(">> set specific inner {cls %.*s}", name_size, name);
     }
 
-    err = knd_get_cls_entry_by_name(repo, name, name_size, &entry, task);
+    err = knd_get_cls_entry_by_name(snapshot, name, name_size, &entry, task);
     if (err) {
         KND_TASK_LOG("{cls %.*s} not found", name_size, name);
         task->ctx->error = knd_NO_MATCH;
         return make_gsl_err(gsl_FAIL);
     }
 
-    err = knd_class_acquire(entry, &inner->cls, repo, task);
+    err = knd_class_acquire(entry, &inner->cls, snapshot, task);
     if (err) {
         KND_TASK_LOG("failed to acquire {cls %.*s}", entry->name_size, entry->name);
         return make_gsl_err_external(err);
@@ -132,7 +132,7 @@ static gsl_err_t check_inner_cls(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_OK);
 }
 
-static int check_ref_cls(struct kndRepo *repo, const char *name, size_t name_size,
+static int check_ref_cls(struct kndRepoSnapshot *snapshot, const char *name, size_t name_size,
                          struct kndClassRefAttrStm *ref_stm,
                          struct kndTask *task)
 {
@@ -140,10 +140,10 @@ static int check_ref_cls(struct kndRepo *repo, const char *name, size_t name_siz
     struct kndClass *c;
     int err;
 
-    err = knd_get_cls_entry_by_name(repo, name, name_size, &entry, task);
+    err = knd_get_cls_entry_by_name(snapshot, name, name_size, &entry, task);
     KND_TASK_ERR("{cls %.*s} not found", name_size, name);
 
-    err = knd_class_acquire(entry, &c, repo, task);
+    err = knd_class_acquire(entry, &c, snapshot, task);
     KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);
 
     if (c == ref_stm->template_cls) {
@@ -168,7 +168,7 @@ static int check_ref_cls(struct kndRepo *repo, const char *name, size_t name_siz
 static gsl_err_t check_ref_cls_cb(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndRepo *repo = ctx->repo;
+    struct kndRepoSnapshot *snapshot = ctx->snapshot;
     struct kndTask *task = ctx->task;
     int err;
 
@@ -176,7 +176,7 @@ static gsl_err_t check_ref_cls_cb(void *obj, const char *name, size_t name_size)
         knd_log(">> check and set specific ref {cls %.*s}", name_size, name);
     }
 
-    err = check_ref_cls(repo, name, name_size, ctx->ref_stm, task);
+    err = check_ref_cls(snapshot, name, name_size, ctx->ref_stm, task);
     if (err) {
         task->ctx->error = err;
         return make_gsl_err(gsl_FAIL);
@@ -191,7 +191,7 @@ static gsl_err_t select_inner_cls_attr_stm(void *obj, const char *name, size_t n
     struct LocalContext *ctx = obj;
     struct kndAttrStm *parent = ctx->stm;
     struct kndClassInnerAttrStm *inner_stm = ctx->inner_stm;
-    struct kndRepo *repo = ctx->repo;
+    struct kndRepoSnapshot *snapshot = ctx->snapshot;
     struct kndAttrStm *stm;
     struct kndTask    *task = ctx->task;
     struct kndClass *c = inner_stm->cls ? inner_stm->cls : inner_stm->template_cls;
@@ -200,7 +200,7 @@ static gsl_err_t select_inner_cls_attr_stm(void *obj, const char *name, size_t n
 
     assert (c != NULL);
     
-    err = knd_attr_find(c, name, name_size, &attr, repo, task);
+    err = knd_attr_find(c, name, name_size, &attr, snapshot, task);
     if (err) {
         KND_TASK_LOG("{attr %.*s} is not applicable to {cls %.*s}",
                      name_size, name, c->name_size, c->name);
@@ -221,7 +221,7 @@ static gsl_err_t select_inner_cls_attr_stm(void *obj, const char *name, size_t n
     if (err) return make_gsl_err_external(err);   
     stm->attr = attr;
 
-    err = knd_attr_parse_query_stm(stm, rec, total_size, repo, task);
+    err = knd_attr_parse_query_stm(stm, rec, total_size, snapshot, task);
     if (err) return make_gsl_err_external(err);
 
     stm->next = parent->children;
@@ -232,13 +232,13 @@ static gsl_err_t select_inner_cls_attr_stm(void *obj, const char *name, size_t n
 
 static int inner_cls_parse(struct kndAttrStm *stm, struct kndClassInnerAttrStm *inner,
                            const char *rec, size_t *total_size,
-                           struct kndRepo *repo, struct kndTask *task)
+                           struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     gsl_err_t parser_err;
 
     struct LocalContext ctx = {
         .task = task,
-        .repo = repo,
+        .snapshot = snapshot,
         .stm = stm,
         .inner_stm = inner
     };
@@ -265,13 +265,13 @@ static int inner_cls_parse(struct kndAttrStm *stm, struct kndClassInnerAttrStm *
 
 static int ref_cls_parse(struct kndAttrStm *stm, struct kndClassRefAttrStm *ref,
                          const char *rec, size_t *total_size,
-                         struct kndRepo *repo, struct kndTask *task)
+                         struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     gsl_err_t parser_err;
 
     struct LocalContext ctx = {
         .task = task,
-        .repo = repo,
+        .snapshot = snapshot,
         .stm = stm,
         .ref_stm = ref
     };
@@ -294,7 +294,7 @@ static int ref_cls_parse(struct kndAttrStm *stm, struct kndClassRefAttrStm *ref,
 }
 
 int knd_attr_parse_query_stm(struct kndAttrStm *stm, const char *rec, size_t *total_size,
-                             struct kndRepo *repo, struct kndTask *task)
+                             struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct kndAttr *attr = stm->attr;
     struct kndQuantAttrStm *quant_attr_stm;
@@ -320,10 +320,10 @@ int knd_attr_parse_query_stm(struct kndAttrStm *stm, const char *rec, size_t *to
         inner_attr = attr->subtype;
         entry = inner_attr->template_cls;
 
-        err = knd_class_acquire(entry, &inner->template_cls, repo, task);
+        err = knd_class_acquire(entry, &inner->template_cls, snapshot, task);
         KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);
 
-        err = inner_cls_parse(stm, inner, rec, total_size, repo, task);
+        err = inner_cls_parse(stm, inner, rec, total_size, snapshot, task);
         KND_TASK_ERR("failed to parse inner cls stm");
         break;
     case KND_ATTR_CLS_REF:
@@ -334,10 +334,10 @@ int knd_attr_parse_query_stm(struct kndAttrStm *stm, const char *rec, size_t *to
         ref_attr = attr->subtype;
         entry = ref_attr->template_cls;
 
-        err = knd_class_acquire(entry, &cref->template_cls, repo, task);
+        err = knd_class_acquire(entry, &cref->template_cls, snapshot, task);
         KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);
 
-        err = ref_cls_parse(stm, cref, rec, total_size, repo, task);
+        err = ref_cls_parse(stm, cref, rec, total_size, snapshot, task);
         KND_TASK_ERR("failed to parse cls ref stm");
         break;
     case KND_ATTR_UINT:
@@ -379,7 +379,7 @@ static int filter_subj(void *elem, void *ctx_obj)
 }
 
 static int cls_ref_query_plan(struct kndAttrStm *stm, struct kndFacet *facet,
-                              struct kndRepo *repo, struct kndTask *task)
+                              struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct kndClassRefAttrStm *cref = stm->subtype;
     struct kndClassRefAttr *cls_ref_attr = stm->attr->subtype;
@@ -394,13 +394,13 @@ static int cls_ref_query_plan(struct kndAttrStm *stm, struct kndFacet *facet,
     };
 
     err = knd_facet_map(facet, entry, NULL, filter_subj, &ctx,
-                        knd_attr_stm_present_subj, &ctx, repo, task);
+                        knd_attr_stm_present_subj, &ctx, snapshot, task);
     KND_TASK_ERR("failed to map facet fn");
 
     return knd_OK;
 }
 
-int knd_attr_stm_plan(struct kndAttrStm *stm, struct kndRepo *repo, struct kndTask *task)
+int knd_attr_stm_plan(struct kndAttrStm *stm, struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct kndAttr *attr = stm->attr;
     struct kndFacet *facet;
@@ -413,7 +413,7 @@ int knd_attr_stm_plan(struct kndAttrStm *stm, struct kndRepo *repo, struct kndTa
                 attr->name_size, attr->name, knd_attr_names[attr->type]);
     }
 
-    err = knd_facet_acquire(attr, &facet, repo, task);
+    err = knd_facet_acquire(attr, &facet, snapshot, task);
     KND_TASK_ERR("failed to acquire a facet for {attr %.*s}", attr->name_size, attr->name);
 
     switch (attr->type) {
@@ -428,7 +428,7 @@ int knd_attr_stm_plan(struct kndAttrStm *stm, struct kndRepo *repo, struct kndTa
         }
         break;
     case KND_ATTR_CLS_REF:
-        err = cls_ref_query_plan(stm, facet, repo, task);
+        err = cls_ref_query_plan(stm, facet, snapshot, task);
         KND_TASK_ERR("failed to plan a cls ref query");
         break;
     default:

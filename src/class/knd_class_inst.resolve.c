@@ -26,14 +26,14 @@
 #define DEBUG_INST_RESOLVE_LEVEL_3 0
 #define DEBUG_INST_RESOLVE_LEVEL_TMP 1
 
-int knd_class_inst_resolve(struct kndClassInst *self, struct kndRepo *repo, struct kndTask *task)
+int knd_class_inst_resolve(struct kndClassInst *self, struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     assert(self->entry->is_a != NULL);
     struct kndClass *c;
     int err;
     self->resolving_in_progress = true;
 
-    err = knd_class_acquire(self->entry->is_a, &c, repo, task);
+    err = knd_class_acquire(self->entry->is_a, &c, snapshot, task);
     KND_TASK_ERR("failed to acquire {cls %.*s}",
                  self->entry->is_a->name_size, self->entry->is_a->name);
 

@@ -45,7 +45,7 @@ static int proc_call_arg_export_GSL(struct kndProc *unused_var(self),
 }
 
 int knd_proc_export_GSL(struct kndProc *self,
-                        struct kndRepo *repo, struct kndTask *task, bool is_list_item, size_t depth)
+                         struct kndTask *task, bool is_list_item, size_t depth)
 {
     struct kndProcArg *arg;
     struct kndProcCallArg *carg;
@@ -80,14 +80,14 @@ int knd_proc_export_GSL(struct kndProc *self,
     }
 
     if (self->tr) {
-        err = knd_text_gloss_export_GSL(self->tr, true, repo, task, depth);
+        err = knd_text_glosses_export_GSL(self->tr, true, task, depth);
         RET_ERR();
     }
 
     if (self->args) {
         err = out->write(out, "[arg", strlen("[arg"));                            RET_ERR();
         FOREACH (arg, self->args) {
-            err = knd_proc_arg_export_GSL(arg, repo, task, true, depth + 1);            RET_ERR();
+            err = knd_proc_arg_export_GSL(arg, task, true, depth + 1);            RET_ERR();
         }
         err = out->write(out, "]", 1);                                            RET_ERR();
     }

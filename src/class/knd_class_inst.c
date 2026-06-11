@@ -65,15 +65,15 @@ void knd_class_inst_str(struct kndClassInst *self, size_t depth)
 
 int knd_class_inst_export(struct kndClassInst *self, knd_format format,
                           bool is_list_item, knd_state_phase phase,
-                          struct kndRepo *repo, struct kndTask *task)
+                          struct kndTask *task)
 {
     switch (format) {
         case KND_FORMAT_JSON:
-            return knd_class_inst_export_JSON(self, is_list_item, phase, repo, task, 0);
+            return knd_class_inst_export_JSON(self, is_list_item, phase, task, 0);
         case KND_FORMAT_GSL:
-            return knd_class_inst_export_GSL(self, is_list_item, phase, repo, task, 0);
+            return knd_class_inst_export_GSL(self, is_list_item, phase, task, 0);
         case KND_FORMAT_GSP:
-            return knd_class_inst_export_GSP(self, repo, task);
+            return knd_class_inst_export_GSP(self, task);
         default:
             return knd_RANGE;
     }
@@ -112,8 +112,7 @@ int knd_class_inst_commit_state(struct kndClass *self, struct kndStateRef *child
     return knd_OK;
 }
 
-int knd_class_inst_export_commit(struct kndStateRef *state_refs, struct kndRepo *repo,
-                                 struct kndTask *task)
+int knd_class_inst_export_commit(struct kndStateRef *state_refs, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndStateRef *ref;
@@ -130,8 +129,7 @@ int knd_class_inst_export_commit(struct kndStateRef *state_refs, struct kndRepo 
         }
         OUT("inst ", strlen("inst "));
 
-        err = knd_class_inst_export(entry->inst, KND_FORMAT_GSL, true, ref->state->phase,
-                                    repo, task);
+        err = knd_class_inst_export(entry->inst, KND_FORMAT_GSL, true, ref->state->phase, task);
         RET_ERR();
 
         OUT("}", 1);

@@ -267,6 +267,9 @@ struct kndText
 
     struct kndAttrStm *attr_stm;
     struct kndCharSeq *seq;
+
+    char abbr_id[KND_ID_SIZE];
+    size_t abbr_id_size;
     struct kndCharSeq *abbr;
 
     struct kndSyNode *synodes;
@@ -289,39 +292,36 @@ struct kndText
 
 void knd_text_str(struct kndText *self, size_t depth);
 gsl_err_t knd_text_import(struct kndText *self, const char *rec, size_t *total_size,
-                          struct kndRepo *repo, struct kndTask *task);
-int knd_text_resolve(struct kndAttrStm *attr_stm, struct kndRepo *repo, struct kndTask *task);
+                          struct kndRepoSnapshot *snapshot, struct kndTask *task);
+int knd_text_resolve(struct kndAttrStm *attr_stm, struct kndRepoSnapshot *snapshot, struct kndTask *task);
 
 gsl_err_t knd_text_read(struct kndText *self, const char *rec, size_t *total_size, struct kndTask *task);
-int knd_text_index(struct kndText *self, struct kndRepo *repo, struct kndTask *task);
-gsl_err_t knd_text_search(struct kndRepo *repo, const char *rec, size_t *total_size, struct kndTask *task);
+int knd_text_index(struct kndText *self, struct kndRepoSnapshot *snapshot, struct kndTask *task);
+gsl_err_t knd_text_search(struct kndRepoSnapshot *snapshot, const char *rec, size_t *total_size, struct kndTask *task);
 
 gsl_err_t knd_statement_import(struct kndStatement *stm, const char *rec, size_t *total_size, struct kndTask *task);
 gsl_err_t knd_statement_read(struct kndStatement *stm, const char *rec, size_t *total_size, struct kndTask *task);
 int knd_statement_resolve(struct kndStatement *stm, struct kndTask *task);
 
-int knd_text_export(struct kndText *self, knd_format format,
-                    struct kndRepo *repo, struct kndTask *task, size_t depth);
+int knd_text_export(struct kndText *self, knd_format format, struct kndTask *task, size_t depth);
 
 int knd_text_export_query_report(struct kndTask *task);
 int knd_text_export_query_report_GSL(struct kndTask *task);
 
-int knd_text_export_GSL(struct kndText *text, struct kndRepo *repo, struct kndTask *task, size_t depth);
-int knd_text_gloss_export_GSL(struct kndText *text, bool use_locale,
-                              struct kndRepo *repo, struct kndTask *task, size_t depth);
-int knd_text_gloss_export_JSON(struct kndText *text,
-                               struct kndRepo *repo, struct kndTask *task, size_t depth);
+int knd_text_export_GSL(struct kndText *glosses, struct kndTask *task, size_t depth);
+int knd_text_glosses_export_GSL(struct kndText *text, bool use_locale, struct kndTask *task, size_t depth);
+int knd_text_glosses_export_JSON(struct kndText *glosses, struct kndTask *task, size_t depth);
 
-int knd_text_export_GSP(struct kndText *self, struct kndRepo *repo, struct kndTask *task);
-int knd_text_export_JSON(struct kndText *self, struct kndRepo *repo, struct kndTask *task, size_t depth);
-int knd_text_build_JSON(const char *rec, size_t rec_size, struct kndRepo *repo, struct kndTask *task);
+int knd_text_export_GSP(struct kndText *self, struct kndTask *task);
+int knd_text_export_JSON(struct kndText *self, struct kndTask *task, size_t depth);
+int knd_text_build_JSON(const char *rec, size_t rec_size, struct kndTask *task);
 
-int knd_par_export_GSL(struct kndPar *par, struct kndRepo *repo, struct kndTask *task);
+int knd_par_export_GSL(struct kndPar *par, struct kndTask *task);
 
 int knd_charseq_new(struct kndCharSeq **result, struct kndMemPool *mempool);
 void knd_charseq_free(struct kndCharSeq *seq, struct kndMemPool *mempool);
 
-int knd_charseq_register(struct kndRepo *repo, const char *val, size_t val_size, struct kndCharSeq **result, struct kndTask *task);
+int knd_charseq_register(struct kndRepoSnapshot *snapshot, const char *val, size_t val_size, struct kndCharSeq **result, struct kndTask *task);
 
 int knd_charseq_marshall(void *elem, void *ctx, struct kndStorageLeaf *leaf,
                          size_t *output_size, struct kndTask *task);
@@ -330,9 +330,7 @@ int knd_charseq_mapping_marshall(void *elem, void *unused_var(ctx), struct kndSt
 
 int knd_charseq_fetch(const char *rec, size_t unused_var(rec_size), const char *str, size_t str_size,
                       void *ctx, size_t *result_size, void **result, struct kndTask *task);
-int knd_charseq_unmarshall(const char *elem_id, size_t elem_id_size, const char *val, size_t val_size,
-                           void **result, struct kndTask *task);
-int knd_charseq_decode(struct kndRepo *repo, const char *id, size_t id_size,
+int knd_charseq_decode(struct kndSet *str_idx, const char *id, size_t id_size,
                        struct kndCharSeq **result, struct kndTask *task);
 
 int knd_text_new(struct kndText **result, struct kndMemPool *mempool);
@@ -352,10 +350,13 @@ int knd_text_search_report_new(struct kndTextSearchReport **result, struct kndMe
 
 gsl_err_t knd_parse_gloss_array(void *obj, const char *rec, size_t *total_size);
 gsl_err_t knd_parse_summary_array(void *obj, const char *rec, size_t *total_size);
-gsl_err_t knd_read_gloss_array(void *obj, const char *rec, size_t *total_size);
+int knd_read_gloss_array(struct kndClass *cls, const char *rec, size_t *total_size, struct kndTask *task);
 
 int knd_synode_export_JSON(struct kndSyNode *syn, struct kndTask *task);
 int knd_synode_concise_export_JSON(struct kndSyNode *syn, struct kndTask *task);
 
-int knd_string_unmarshall(const char *elem_id, size_t elem_id_size,
-                          const char *rec, size_t rec_size, void *ctx, void **result, struct kndTask *task);
+int knd_charseq_unmarshall(const char *elem_id, size_t elem_id_size,
+                           const char *rec, size_t rec_size,
+                           void *ctx, size_t *parsed_size, void **result,
+                           struct kndTask *task);
+int knd_gloss_parse(struct kndText *t, const char *rec, size_t *total_size, struct kndTask *task);

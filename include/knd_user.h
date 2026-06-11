@@ -37,6 +37,7 @@ struct kndUserContext
     struct kndClassInst *inst;
     struct kndRepo *repo;
     struct kndRepo *base_repo;
+    struct kndRepoSnashot *snapshot;
 
     struct kndMemPool *mempool;
     struct kndMemPool *cache_mempool;

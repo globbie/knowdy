@@ -39,7 +39,6 @@ static int decode_elem(struct kndSet *s, int fd, size_t block_offset, size_t blo
     /* activate callback function */
     switch (s->format_t) {
     case KND_SET_ELEM_STR:
-
         if (block_size >= file_out->capacity) return knd_LIMIT;
 
         /* read rec to file buf */
@@ -51,11 +50,7 @@ static int decode_elem(struct kndSet *s, int fd, size_t block_offset, size_t blo
             err = knd_IO_FAIL;
             KND_TASK_ERR("failed to read elem rec from GSP file: num of bytes mismatch");
         }
-
         buf[block_size] = '\0';
-
-        //knd_log(">> string val elem {REC %.*s {block {offset %zu} {size %zu}}",
-        //        block_size, buf, block_offset, block_size);
 
         err = cb(key, key_size, buf, block_size, cb_ctx, &parsed_rec_size, result, task);
         KND_TASK_ERR("failed to unmarshall {elem %.*s}", key_size, key);
@@ -76,7 +71,7 @@ static int read_elems_idx_spec(int fd, size_t block_offset, size_t block_size,
                                size_t *elems_rec_size, size_t *elems_idx_size)
 {
     unsigned char buf[KND_NAME_SIZE];
-    char size_spec = 0;
+    unsigned char size_spec = 0;
     ssize_t num_bytes;
     size_t numval;
     size_t offset = block_offset + block_size;
@@ -88,15 +83,16 @@ static int read_elems_idx_spec(int fd, size_t block_offset, size_t block_size,
     lseek(fd, offset - tail_size, SEEK_SET);
     num_bytes = read(fd, &size_spec, 1);
     if (num_bytes != 1) return knd_IO_FAIL;
-
     if (size_spec == 0) return knd_LIMIT;
     if (size_spec > KND_UINT_SIZE) return knd_LIMIT;
 
     tail_size += size_spec;
+
     lseek(fd, offset - tail_size, SEEK_SET);
     num_bytes = read(fd, &buf, (size_t)size_spec);
     if (num_bytes != (ssize_t)size_spec) return knd_IO_FAIL;
     footer_size = knd_unpack_int(buf, size_spec);
+
     if (footer_size > (block_size - tail_size)) return knd_LIMIT;
 
     /* read the elems rec size */
@@ -117,7 +113,7 @@ static int read_elems_idx_spec(int fd, size_t block_offset, size_t block_size,
     *elems_rec_size = numval;
     *elems_idx_size = footer_size - (size_spec + 1);
 
-    if (DEBUG_SET_FETCH_LEVEL_TMP) {
+    if (DEBUG_SET_FETCH_LEVEL_3) {
         knd_log("== {elems-rec-size %zu} {elems-idx-size %zu}",
                 *elems_rec_size, *elems_idx_size);
     }
@@ -143,7 +139,7 @@ static int iterate_elems(struct kndSet *s, int fd, size_t block_offset, size_t b
 
     assert (cb != NULL);
 
-    if (DEBUG_SET_FETCH_LEVEL_TMP) {
+    if (DEBUG_SET_FETCH_LEVEL_2) {
         knd_log(".. iterate elems to fetch {key %.*s} {block {offset %zu {size %zu}}",
                 1, key, block_offset, block_size);
     }
@@ -168,7 +164,7 @@ static int iterate_elems(struct kndSet *s, int fd, size_t block_offset, size_t b
     cell_size   = buf[1];
     num_elems = buf[0];
 
-    if (DEBUG_SET_FETCH_LEVEL_TMP) {
+    if (DEBUG_SET_FETCH_LEVEL_3) {
         knd_log("== {key %.*s} {use-keys %d} {cell-size %zu}"
                 " {num-elems %zu}", 1, key, use_keys, cell_size, num_elems);
     }
@@ -255,7 +251,7 @@ static int read_subdirs_rec_size(int fd, size_t block_offset, size_t block_size,
                                  size_t *elems_block_size)
 {
     unsigned char buf[KND_NAME_SIZE];
-    char size_spec = 0;
+    unsigned char size_spec = 0;
     ssize_t num_bytes;
     size_t numval;
     size_t offset = block_offset + block_size;
@@ -282,7 +278,7 @@ static int read_subdirs_rec_size(int fd, size_t block_offset, size_t block_size,
     if (size_spec == 0) {
         *subdirs_rec_size = 0;
         *elems_block_size = block_size - tail_size;
-        if (DEBUG_SET_FETCH_LEVEL_TMP) {
+        if (DEBUG_SET_FETCH_LEVEL_3) {
             knd_log("-- no subdirs, just {elem-block {size %zu}}", *elems_block_size);
         }
         return knd_OK;
@@ -316,12 +312,10 @@ static int read_subdirs_rec_size(int fd, size_t block_offset, size_t block_size,
     *subdirs_rec_size = numval;
     *subdirs_footer_size = footer_size - (size_spec + 1);
 
-    knd_log(">> subdirs footer size %zu", *subdirs_footer_size);
-
     *elems_block_size = block_size -\
         (*subdirs_rec_size + *subdirs_footer_size + tail_size);
 
-    if (DEBUG_SET_FETCH_LEVEL_TMP) {
+    if (DEBUG_SET_FETCH_LEVEL_3) {
         knd_log("== {subdirs-rec-size %zu} {subdirs-footer-size %zu}"
                 " {tail-size %zu} {elems-block-size %zu}\n",
                 *subdirs_rec_size, *subdirs_footer_size,
@@ -455,15 +449,15 @@ static int fetch_elem(struct kndSet *s, int fd, size_t block_offset, size_t bloc
     int err;
 
     if (DEBUG_SET_FETCH_LEVEL_2) {
-        knd_log(".. {key %.*s} to unmarshall its {block {offset %zu} {size %zu}}",
-                key_size, key, block_offset, block_size);
+        knd_log(".. reading {block {offset %zu} {size %zu}}",
+               block_offset, block_size);
     }
 
     err = read_subdirs_rec_size(fd, block_offset, block_size, &subdirs_rec_size,
                                 &subdirs_footer_size, &elems_block_size);
     KND_TASK_ERR("failed to read subdirs rec size {err %d}", err);
 
-    if (DEBUG_SET_FETCH_LEVEL_2) {
+    if (DEBUG_SET_FETCH_LEVEL_3) {
         knd_log("== {subdirs {rec-size %zu} {footer-size %zu} {elems {block-size %zu}}",
                 subdirs_rec_size, subdirs_footer_size, elems_block_size);
     }
@@ -507,6 +501,8 @@ static int match_storage_leaf(struct kndSet *s, const char *key, size_t key_size
     struct kndStorageLeaf *leaf;
     size_t elem_numval;
 
+    assert (s->store != NULL);
+
     knd_calc_num_id(key, key_size, &elem_numval);
 
     if (s->store->num_leaves == 0) return knd_NO_MATCH;
@@ -517,13 +513,12 @@ static int match_storage_leaf(struct kndSet *s, const char *key, size_t key_size
         *result = leaf;
         return knd_OK;
     }
-
     return knd_NO_MATCH;
 }
 
-int knd_set_fetch_elem(struct kndSet *s, const char *key, size_t key_size,
-                       knd_set_elem_unmarshall_cb_t cb, void *cb_ctx,
-                       void **result, struct kndTask *task)
+int knd_set_fetch(struct kndSet *s, const char *key, size_t key_size,
+                  knd_set_elem_unmarshall_cb_t cb, void *cb_ctx,
+                  void **result, struct kndTask *task)
 {
     struct kndStorageLeaf *leaf;
     const char *filename;
@@ -533,14 +528,17 @@ int knd_set_fetch_elem(struct kndSet *s, const char *key, size_t key_size,
     int fd;
     int err;
 
+    assert (cb != NULL);
+
     err = match_storage_leaf(s, key, key_size, &leaf);
     if (err == knd_NO_MATCH) return knd_NO_MATCH;
 
     filename = leaf->filepath;
     filename_size = leaf->filepath_size;
 
-    if (DEBUG_SET_FETCH_LEVEL_TMP) {
-        knd_log(".. fetching elem from {leaf %zu}", leaf->numid);
+    if (DEBUG_SET_FETCH_LEVEL_2) {
+        knd_log(".. fetching elem {key %.*s} from {leaf %zu}",
+                key_size, key, leaf->numid);
         knd_log(".. open storage {leaf %.*s {filepath %.*s} {size %zu}}",
                 leaf->name_size, leaf->name, filename_size, filename, leaf->curr_size);
     }

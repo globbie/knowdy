@@ -46,14 +46,14 @@ struct LocalContext {
     struct kndTask     *task;
 };
 
-
-static int export_glosses(struct kndAttr *self, struct kndOutput *out)
+static int export_glosses(struct kndAttr *attr, struct kndOutput *out)
 {
     char idbuf[KND_ID_SIZE];
     size_t id_size = 0;
     struct kndText *t;
+
     OUT("[g", strlen("[g"));
-    FOREACH (t, self->tr) {
+    FOREACH (t, attr->glosses) {
         OUT("{", 1);
         OUT(t->locale, t->locale_size);
         OUT("{t ", strlen("{t "));
@@ -78,7 +78,6 @@ int knd_attr_name_marshall(void *elem, void *unused_var(ctx),
     out->reset(out);
 
     attr = attr_refs->attr;
-
     OUT("{", strlen("{"));
     OUT(attr->name, attr->name_size);
 
@@ -103,12 +102,13 @@ int knd_attr_name_marshall(void *elem, void *unused_var(ctx),
 
     switch (task->mode) {
     case KND_TASK_TRACE_MODE:
-        knd_log(".. write {attr %.*s} to {filepath %.*s}", attr->name_size, attr->name,
-                leaf->filepath_size, leaf->filepath);
+        //knd_log(".. write {attr %.*s} to {filepath %.*s}", attr->name_size, attr->name,
+        //        leaf->filepath_size, leaf->filepath);
         break;
     default:
         err = knd_append_file((const char*)leaf->filepath, out->buf, out->buf_size);
         KND_TASK_ERR("attr name write failure");
+        leaf->curr_size += out->buf_size;
         break;
     }
 
@@ -116,32 +116,32 @@ int knd_attr_name_marshall(void *elem, void *unused_var(ctx),
     return knd_OK;
 }
 
-int knd_attr_export_GSP(struct kndAttr *attr, struct kndRepo *unused_var(repo), struct kndTask *task)
+int knd_attr_export_GSP(struct kndAttr *attr, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
-    const char *type_name = knd_attr_names[attr->type];
-    size_t type_name_size = strlen(knd_attr_names[attr->type]);
+    char idbuf[KND_ID_SIZE];
+    size_t idbuf_size = 0;
     struct kndClassRefAttr *cls_ref_attr;
     struct kndClassInnerAttr *cls_inner_attr;
     struct kndClassEntry *entry;
     int err;
 
-    OUT("{", 1);
-    OUT(type_name, type_name_size);
+    assert(attr->seq != NULL);
 
-    OUT(" ", 1);
-    OUT(attr->id, attr->id_size);
+    out->reset(out);
+    knd_uid_create(attr->seq->numid, idbuf, &idbuf_size);
+    OUT(idbuf, idbuf_size);
 
-    if (attr->is_a_set) {
-        OUT("{t set}", strlen("{t set}"));
-    }
+    OUT("{t ", strlen("{t "));
+    OUTF("%d", attr->type);
+    OUT("}", 1);
 
-    if (attr->is_required) {
-        OUT("{req}", strlen("{req}"));
-    }
-
-    if (attr->is_unique) {
-        OUT("{uniq}", strlen("{uniq}"));
+    switch (attr->mult_t) {
+    case KND_ATTR_MULTIPLE:
+        OUT("{m}", strlen("{m}"));
+        break;
+    default:
+        break;
     }
 
     switch (attr->type) {
@@ -163,18 +163,43 @@ int knd_attr_export_GSP(struct kndAttr *attr, struct kndRepo *unused_var(repo), 
         break;
     }
 
-    if (attr->ref_proc_name_size) {
-        OUT("{p ", strlen("{p "));
-        OUT(attr->ref_proc_name, attr->ref_proc_name_size);
-        OUT("}", 1);
-    }
-
-    /* choose gloss */
-    if (attr->tr) {
+    if (attr->glosses) {
         err = export_glosses(attr, out);
         KND_TASK_ERR("failed to export glosses GSP");
     }
 
     OUT("}", 1);
+    return knd_OK;
+}
+
+int knd_attr_marshall(void *elem, void *unused_var(ctx), struct kndStorageLeaf *leaf,
+                      size_t *output_size, struct kndTask *task)
+{
+    struct kndAttrRef *attr_ref = elem;
+    struct kndAttr *attr = attr_ref->attr;
+    struct kndOutput *out = task->out;
+    int err;
+
+    assert (out != NULL);
+
+    err = knd_attr_export(attr, KND_FORMAT_GSP, task);
+    KND_TASK_ERR("failed to export {attr %.*s}", attr->name_size, attr->name);
+
+    if (out->buf_size > leaf->max_size - leaf->curr_size) {
+        err = knd_LIMIT;
+        KND_TASK_ERR("leaf output limit reached {leaf {max-size %zu} {curr-size %zu}}",
+                     leaf->max_size, leaf->curr_size);
+    }
+
+    switch (task->mode) {
+    case KND_TASK_TRACE_MODE:
+        break;
+    default:
+        err = knd_append_file((const char*)leaf->filepath, out->buf, out->buf_size);
+        KND_TASK_ERR("attr GSP write failure");
+        leaf->curr_size += out->buf_size;
+    }
+
+    *output_size = out->buf_size;
     return knd_OK;
 }

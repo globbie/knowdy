@@ -29,7 +29,7 @@
 #define DEBUG_INST_IDX_LEVEL_TMP 1
 
 #if 0
-static int update_attr_stm_indices(struct kndClassInstEntry *entry, struct kndRepo *unused_var(repo),
+static int update_attr_stm_indices(struct kndClassInstEntry *entry, struct kndRepoSnapshot *unused_var(snapshot),
                                    struct kndTask *unused_var(task))
 {
     struct kndAttrStm *var;
@@ -43,7 +43,7 @@ static int update_attr_stm_indices(struct kndClassInstEntry *entry, struct kndRe
         case KND_ATTR_TEXT:
             if (DEBUG_INST_IDX_LEVEL_3)
                 knd_log(".. indexing text attr \"%.*s\"", var->name_size, var->name);
-            //err = knd_text_index(var->text, repo, task);
+            //err = knd_text_index(var->text, snapshot, task);
             //KND_TASK_ERR("failed to index text attr var \"%.*s\"", var->name_size, var->name);
             break;
         default:
@@ -54,7 +54,7 @@ static int update_attr_stm_indices(struct kndClassInstEntry *entry, struct kndRe
 }
 #endif
 
-int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *is_a,
+int knd_class_inst_update_indices(struct kndRepoSnapshot *snapshot, struct kndClassEntry *is_a,
                                   struct kndStateRef *state_refs,
                                   struct kndTask *task)
 {
@@ -65,14 +65,9 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *is
 
     assert(commit != NULL);
 
-    err = knd_class_acquire(is_a, &c, repo, task);
+    err = knd_class_acquire(is_a, &c, snapshot, task);
     KND_TASK_ERR("failed to acquire class %.*s", is_a->name_size, is_a->name);
    
-    if (DEBUG_INST_IDX_LEVEL_2) {
-        knd_log(".. {repo %.*s} to update inst indices of {cls %.*s}}",
-                repo->name_size, repo->name, is_a->name_size, is_a->name);
-    }
-
     /* user repo selected: activate copy-on-write */
     if (task->user_ctx) {
         //class_entry = knd_dict_get(task->idxs.cls_name_idx, is_a->name, is_a->name_size);
@@ -100,7 +95,7 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *is
             // TODO free new_name_idx if (new_name_idx != NULL) 
             break;
         }
-        err = knd_dict_new(&new_name_idx, KND_MEDIUM_DICT_SIZE, mempool);
+        err = knd_dict_new(&new_name_idx, KND_MEDIUM_DICT_SIZE, KND_DICT_MEMONLY, mempool);
         KND_TASK_ERR("failed to create inst name idx");
 
     } while (!atomic_compare_exchange_weak(&c->inst_name_idx, &name_idx, new_name_idx));
@@ -134,7 +129,7 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *is
                          entry->name_size, entry->name);
 
             if (entry->inst->num_attr_stms) {
-                err = update_attr_stm_indices(entry, repo, task);
+                err = update_attr_stm_indices(entry, snapshot, task);
                 KND_TASK_ERR("failed to update attr inst indices with \"%.*s\"",
                              entry->id_size, entry->id);
             }
@@ -148,7 +143,7 @@ int knd_class_inst_update_indices(struct kndRepo *repo, struct kndClassEntry *is
     return knd_OK;
 }
 
-int knd_class_inst_index(struct kndClassInst *self, struct kndRepo *repo, struct kndTask *task)
+int knd_class_inst_index(struct kndClassInst *self, struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct kndClass *c;
     struct kndAttrStm *stm;
@@ -157,7 +152,7 @@ int knd_class_inst_index(struct kndClassInst *self, struct kndRepo *repo, struct
 
     assert(self->entry->is_a != NULL);
 
-    err = knd_class_acquire(self->entry->is_a, &c, repo, task);
+    err = knd_class_acquire(self->entry->is_a, &c, snapshot, task);
     KND_TASK_ERR("failed to acquire {cls %.*s}",
                  self->entry->is_a->name_size, self->entry->is_a->name);
 

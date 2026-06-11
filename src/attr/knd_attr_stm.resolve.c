@@ -45,9 +45,9 @@
 #define DEBUG_ATTR_STM_RESOLVE_LEVEL_5 0
 #define DEBUG_ATTR_STM_RESOLVE_LEVEL_TMP 1
 
-static int resolve_cls_ref(struct kndAttrStm *stm, struct kndRepo *repo, struct kndTask *task);
+static int resolve_cls_ref(struct kndAttrStm *stm, struct kndRepoSnapshot *snapshot, struct kndTask *task);
 
-static int resolve_inner_cls(struct kndAttrStm *stm, struct kndRepo *repo, struct kndTask *task)
+static int resolve_inner_cls(struct kndAttrStm *stm, struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct kndClassEntry *entry;
     struct kndClass *template_c;
@@ -69,11 +69,11 @@ static int resolve_inner_cls(struct kndAttrStm *stm, struct kndRepo *repo, struc
     cls_inner_attr = stm->attr->subtype;
     entry = cls_inner_attr->template_cls;
 
-    err = knd_class_acquire(entry, &template_c, repo, task);
+    err = knd_class_acquire(entry, &template_c, snapshot, task);
     KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);
 
     if (template_c->phase < KND_CLASS_RESOLVED) {
-        err = knd_class_resolve(template_c, repo, task);
+        err = knd_class_resolve(template_c, snapshot, task);
         KND_TASK_ERR("failed to resolve {cls %.*s}", entry->name_size, entry->name);
     }
 
@@ -86,11 +86,11 @@ static int resolve_inner_cls(struct kndAttrStm *stm, struct kndRepo *repo, struc
 
     /* explicit subclass is present */
     if (stm->val_size) {
-        err = knd_get_cls_by_name(repo, stm->val, stm->val_size, &c, task);
+        err = knd_get_cls_by_name(snapshot, stm->val, stm->val_size, &c, task);
         KND_TASK_ERR("no such {cls %.*s}", stm->val_size, stm->val);
 
         if (c->phase < KND_CLASS_RESOLVED) {
-            err = knd_class_resolve(c, repo, task);
+            err = knd_class_resolve(c, snapshot, task);
             KND_TASK_ERR("{cls %.*s} failed to resolve", c->name_size, c->name);
         }
 
@@ -103,7 +103,7 @@ static int resolve_inner_cls(struct kndAttrStm *stm, struct kndRepo *repo, struc
 
     FOREACH (item, stm->children) {
         if (item->phase < KND_ATTR_STM_RESOLVED) {
-            err = knd_resolve_attr_stm(c, item, repo, task);
+            err = knd_resolve_attr_stm(c, item, snapshot, task);
             KND_TASK_ERR("failed to resolve attr stm {cls %.*s {%.*s}}",
                          c->name_size, c->name, item->name_size, item->name);
         }
@@ -111,7 +111,7 @@ static int resolve_inner_cls(struct kndAttrStm *stm, struct kndRepo *repo, struc
     return knd_OK;
 }
 
-static int resolve_cls_ref(struct kndAttrStm *stm, struct kndRepo *repo, struct kndTask *task)
+static int resolve_cls_ref(struct kndAttrStm *stm, struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct kndClass *c, *ref_c;
     struct kndClassEntry *entry;
@@ -129,15 +129,15 @@ static int resolve_cls_ref(struct kndAttrStm *stm, struct kndRepo *repo, struct 
     cls_ref_attr = stm->attr->subtype;
     entry = cls_ref_attr->template_cls;
 
-    err = knd_class_acquire(entry, &c, repo, task);
+    err = knd_class_acquire(entry, &c, snapshot, task);
     KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);
 
     if (c->phase < KND_CLASS_RESOLVED) {
-        err = knd_class_resolve(c, repo, task);
+        err = knd_class_resolve(c, snapshot, task);
         KND_TASK_ERR("failed to resolve {cls %.*s}", c->name_size, c->name);
     }
 
-    err = knd_resolve_cls_ref(stm->val, stm->val_size, c, &ref_c, repo, task);
+    err = knd_resolve_cls_ref(stm->val, stm->val_size, c, &ref_c, snapshot, task);
     KND_TASK_ERR("failed to resolve {cls-ref %.*s}", stm->val_size,  stm->val);
 
     cls_ref_stm->cls_entry = ref_c->entry;
@@ -146,13 +146,12 @@ static int resolve_cls_ref(struct kndAttrStm *stm, struct kndRepo *repo, struct 
 }
 
 int knd_resolve_attr_stm(struct kndClass *cls, struct kndAttrStm *stm,
-                         struct kndRepo *repo, struct kndTask *task)
+                         struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct kndAttrStm *item;
     struct kndQuantAttrStm *quant_attr_stm;
     struct kndAttrRef *attr_ref;
     struct kndAttr *attr;
-    struct kndProc *proc;
     struct kndQuantUInt *uint;
     struct kndQuantUReal *ureal;
     int err;
@@ -191,33 +190,36 @@ int knd_resolve_attr_stm(struct kndClass *cls, struct kndAttrStm *stm,
                     stm->name_size, stm->name);
         }
 
-        if (attr->is_a_set) {
+        switch (attr->mult_t) {
+        case KND_ATTR_MULTIPLE:
             FOREACH (item, stm->list) {
                 item->attr = attr;
-                err = knd_resolve_attr_stm(cls, item, repo, task);
+                err = knd_resolve_attr_stm(cls, item, snapshot, task);
                 KND_TASK_ERR("failed to resolve attr stm {cls %.*s {%.*s}}",
                              cls->name_size, cls->name, stm->name_size, stm->name);
             }
             return knd_OK;
+        default:
+            break;
         }
     }
 
     switch (attr->type) {
     case KND_ATTR_CLS_INNER:
-        err = resolve_inner_cls(stm, repo, task);
+        err = resolve_inner_cls(stm, snapshot, task);
         KND_TASK_ERR("failed to resolve an inner {cls %.*s}", stm->val_size, stm->val);
         break;
     case KND_ATTR_CLS_REF:
-        err = resolve_cls_ref(stm, repo, task);
+        err = resolve_cls_ref(stm, snapshot, task);
         KND_TASK_ERR("failed to resolve {cls-ref %.*s}", stm->val_size, stm->val);
         break;
     case KND_ATTR_PROC_REF:
-        proc = attr->proc;
+        //proc = attr->proc;
         //err = knd_resolve_proc_ref(stm->val, stm->val_size, proc, &stm->proc_entry, task);
         //KND_TASK_ERR("failed to resolve a proc ref");
         break;
     case KND_ATTR_TEXT:
-        err = knd_text_resolve(stm, repo, task);
+        err = knd_text_resolve(stm, snapshot, task);
         KND_TASK_ERR("failed to resolve a text attr");
         break;
     case KND_ATTR_UINT:
@@ -241,7 +243,7 @@ int knd_resolve_attr_stm(struct kndClass *cls, struct kndAttrStm *stm,
         /* TODO: call a validation callback function? */
         assert (stm->val != NULL);
         assert (stm->val_size != 0);
-        err = knd_charseq_register(repo, stm->val, stm->val_size, &stm->seq, task);
+        err = knd_charseq_register(snapshot, stm->val, stm->val_size, &stm->seq, task);
         KND_TASK_ERR("failed to encode a charseq for attr stm val");
         break;
     default:

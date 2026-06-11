@@ -25,7 +25,7 @@
 #define DEBUG_PROC_IMPORT_LEVEL_TMP 1
 
 struct LocalContext {
-    struct kndRepo *repo;
+    struct kndRepoSnapshot *snapshot;
     struct kndTask *task;
     struct kndProc *proc;
     struct kndProcVar *proc_var;
@@ -198,12 +198,12 @@ static gsl_err_t set_proc_name(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndRepo *repo = ctx->repo;
-    struct kndProc *self = ctx->proc, *proc;
+    struct kndRepoSnapshot *snapshot = ctx->snapshot;
+    struct kndProc *self = ctx->proc;
     struct kndProcEntry *entry;
     int err;
 
-    assert(repo != NULL);
+    assert(snapshot != NULL);
     assert(task->idxs.proc_name_idx != NULL);
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
@@ -246,8 +246,8 @@ static gsl_err_t set_proc_name(void *obj, const char *name, size_t name_size)
 
     /* import commit in progress */
 
-    err = knd_get_proc(repo, name, name_size, &proc, task);
-    if (!err) goto doublet;
+    //err = knd_get_proc(snapshot, name, name_size, &proc, task);
+    //if (!err) goto doublet;
     //entry = knd_dict_get(task->idxs->proc_name_idx, name, name_size);
     //if (!entry) {
     //    entry = self->entry;
@@ -262,13 +262,13 @@ static gsl_err_t set_proc_name(void *obj, const char *name, size_t name_size)
     return make_gsl_err(gsl_FAIL);
 }
 
-int knd_inner_proc_import(struct kndProc *proc, const char *rec, size_t *total_size, struct kndRepo *repo, struct kndTask *task)
+int knd_inner_proc_import(struct kndProc *proc, const char *rec, size_t *total_size, struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     if (DEBUG_PROC_IMPORT_LEVEL_2)
         knd_log(".. import an anonymous inner proc: %.*s..", 64, rec);
 
     struct LocalContext ctx = {
-        .repo = repo,
+        .snapshot = snapshot,
         .task = task,
         .proc = proc
     };
@@ -333,7 +333,7 @@ int knd_inner_proc_import(struct kndProc *proc, const char *rec, size_t *total_s
     return knd_OK;
 }
 
-gsl_err_t knd_proc_import(const char *rec, size_t *total_size, struct kndRepo *repo, struct kndTask *task)
+gsl_err_t knd_proc_import(const char *rec, size_t *total_size, struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
     struct kndProcEntry *entry;
@@ -348,7 +348,6 @@ gsl_err_t knd_proc_import(const char *rec, size_t *total_size, struct kndRepo *r
 
     entry->name = "/";
     entry->name_size = 1;
-    entry->repo = repo;
 
     err = knd_proc_new(&proc, mempool);
     if (err) return *total_size = 0, make_gsl_err_external(err);
@@ -359,7 +358,7 @@ gsl_err_t knd_proc_import(const char *rec, size_t *total_size, struct kndRepo *r
     proc->entry = entry;
 
     struct LocalContext ctx = {
-        .repo = repo,
+        .snapshot = snapshot,
         .task = task,
         .proc = proc
     };

@@ -21,7 +21,7 @@
 #define DEBUG_TEXT_JSON_LEVEL_3 0
 #define DEBUG_TEXT_JSON_LEVEL_TMP 1
 
-static int export_propositions(struct kndProposition *props, struct kndRepo *repo, struct kndTask *task)
+static int export_propositions(struct kndProposition *props, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndProcInst *inst;
@@ -50,10 +50,10 @@ static int export_propositions(struct kndProposition *props, struct kndRepo *rep
         OUT(inst->is_a->name, inst->is_a->name_size);
         OUT("\"", 1);
         
-        if (inst->is_a->tr) {
-            err = knd_text_gloss_export_JSON(inst->is_a->tr, repo, task, 0);
+        /*if (inst->is_a->tr) {
+            err = knd_text_glosses_export_JSON(inst->is_a->tr, task, 0);
             KND_TASK_ERR("failed to export proposition proc gloss JSON");
-        }
+            }*/
 
         if (inst->repr) {
             OUT(",\"synode\":", strlen(",\"synode\":"));
@@ -72,7 +72,7 @@ static int export_propositions(struct kndProposition *props, struct kndRepo *rep
                 OUT(var->arg->name, var->arg->name_size);
                 OUT("\"", 1);
                 OUT(":", 1);
-                err = knd_proc_arg_var_export_JSON(var, repo, task, 0);
+                err = knd_proc_arg_var_export_JSON(var, task, 0);
                 KND_TASK_ERR("failed to export proc arg var JSON");
                 arg_count++;
             }
@@ -100,12 +100,11 @@ static int export_declar_inst(struct kndClassInstEntry *entry, struct kndTask *t
     return knd_OK;
 }
 
-static int export_class_declars(struct kndClassDeclar *decls, struct kndRepo *repo, struct kndTask *task)
+static int export_class_declars(struct kndClassDeclar *decls, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndClassInstEntry *entry;
     struct kndClassDeclar *decl;
-    struct kndClass *c;
     int decl_count = 0;
     int inst_count = 0;
     int err;
@@ -116,18 +115,12 @@ static int export_class_declars(struct kndClassDeclar *decls, struct kndRepo *re
             OUT(",", 1);
         }
 
-        err = knd_class_acquire(decl->entry, &c, repo, task);
-        KND_TASK_ERR("failed to acquire class \"%.*s\"",
-                     decl->entry->name_size, decl->entry->name);
-
         OUT("{\"class\":\"", strlen("{\"class\":\""));
-        OUT(c->name, c->name_size);
+        OUT(decl->entry->name, decl->entry->name_size);
         OUT("\"", 1);
 
-        if (c->tr) {
-            err = knd_text_gloss_export_JSON(c->tr, repo, task, 0);
-            KND_TASK_ERR("failed to export class gloss JSON");
-        }
+        err = knd_text_glosses_export_JSON(decl->entry->glosses, task, 0);
+        KND_TASK_ERR("failed to export class gloss JSON");
 
         OUT(",\"num_insts\":", strlen(",\"num_insts\":"));
         OUTF("%zu", decl->num_insts);
@@ -154,7 +147,7 @@ static int export_class_declars(struct kndClassDeclar *decls, struct kndRepo *re
     return knd_OK;
 }
 
-static int stm_export_JSON(struct kndStatement *stm, struct kndRepo *repo, struct kndTask *task)
+static int stm_export_JSON(struct kndStatement *stm, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     size_t count = 0;
@@ -170,7 +163,7 @@ static int stm_export_JSON(struct kndStatement *stm, struct kndRepo *repo, struc
         if (count)
             OUT(",", 1);
         OUT("\"declars\":", strlen("\"declars\":"));
-        err = export_class_declars(stm->declars, repo, task);
+        err = export_class_declars(stm->declars, task);
         KND_TASK_ERR("failed to export class declar JSON");
         count++;
     }
@@ -180,7 +173,7 @@ static int stm_export_JSON(struct kndStatement *stm, struct kndRepo *repo, struc
             OUT(",", 1);
 
         OUT("\"propositions\":", strlen("\"propositions\":"));
-        err = export_propositions(stm->propositions, repo, task);
+        err = export_propositions(stm->propositions, task);
         KND_TASK_ERR("failed to export propositions JSON");
         count++;
     }
@@ -254,7 +247,7 @@ int knd_synode_export_JSON(struct kndSyNode *syn, struct kndTask *task)
     OUT(syn->role->name, syn->role->name_size);
     OUT("\"", 1);
 
-    err = export_gloss(syn->role->tr, task);
+    err = export_gloss(syn->role->entry->glosses, task);
     KND_TASK_ERR("failed to export a gloss");
 
     OUTF(",\"pos\":%zu", syn->linear_pos);
@@ -306,7 +299,7 @@ int knd_synode_concise_export_JSON(struct kndSyNode *syn, struct kndTask *task)
     return knd_OK;
 }
 
-static int sent_export_JSON(struct kndSentence *sent, struct kndRepo *repo, struct kndTask *task)
+static int sent_export_JSON(struct kndSentence *sent, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     int err;
@@ -318,7 +311,7 @@ static int sent_export_JSON(struct kndSentence *sent, struct kndRepo *repo, stru
 
     if (sent->stm) {
         OUT(",\"stm\":", strlen(",\"stm\":"));
-        err = stm_export_JSON(sent->stm, repo, task);
+        err = stm_export_JSON(sent->stm, task);
         KND_TASK_ERR("failed to export statement representation in JSON");
     }
 
@@ -332,8 +325,7 @@ static int sent_export_JSON(struct kndSentence *sent, struct kndRepo *repo, stru
     return knd_OK;
 }
 
-int knd_text_export_JSON(struct kndText *self, struct kndRepo *repo,
-                         struct kndTask *task, size_t unused_var(depth))
+int knd_text_export_JSON(struct kndText *self, struct kndTask *task, size_t unused_var(depth))
 {
     struct kndOutput *out = task->out;
     struct kndPar *par;
@@ -380,7 +372,7 @@ int knd_text_export_JSON(struct kndText *self, struct kndRepo *repo,
             OUT("\",", 2);
             OUT("\"sents\":[", strlen("\"sents\":["));
             FOREACH (sent, par->sents) {
-                err = sent_export_JSON(sent, repo, task);
+                err = sent_export_JSON(sent, task);
                 KND_TASK_ERR("failed to export sentence JSON");
             }
             OUT("]", 1);
@@ -457,17 +449,17 @@ int knd_text_export_query_report_JSON(struct kndTask *task)
     return knd_OK;
 }
 
-int knd_text_gloss_export_JSON(struct kndText *text, struct kndRepo *unused_var(repo),
-                               struct kndTask *task, size_t depth)
+int knd_text_glosses_export_JSON(struct kndText *glosses,
+                                 struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
-    struct kndText *tr;
+    struct kndText *g;
     size_t indent_size = task->ctx->format_indent;
     int err;
 
-    FOREACH (tr, text) {
-        if (task->ctx->locale_size != tr->locale_size) continue;
-        if (memcmp(task->ctx->locale, tr->locale, tr->locale_size)) {
+    FOREACH (g, glosses) {
+        if (task->ctx->locale_size != g->locale_size) continue;
+        if (memcmp(task->ctx->locale, g->locale, g->locale_size)) {
             continue;
         }
         OUT(",", 1);
@@ -481,11 +473,11 @@ int knd_text_gloss_export_JSON(struct kndText *text, struct kndRepo *unused_var(
             OUT(" ", 1);
         }
         OUT("\"", 1);
-        err = out->write_escaped(out, tr->seq->val,  tr->seq->val_size);
+        err = out->write_escaped(out, g->seq->val,  g->seq->val_size);
         RET_ERR();
         OUT("\"", 1);
 
-        if (tr->abbr) {
+        if (g->abbr) {
             OUT(",", 1);
             if (indent_size) {
                 OUT("\n", 1);
@@ -497,39 +489,11 @@ int knd_text_gloss_export_JSON(struct kndText *text, struct kndRepo *unused_var(
                 OUT(" ", 1);
             }
             OUT("\"", 1);
-            OUT(tr->abbr->val, tr->abbr->val_size);
+            OUT(g->abbr->val, g->abbr->val_size);
             OUT("\"", 1);
         }
         break;
     }
-    return knd_OK;
-}
-
-int knd_text_build_JSON(const char *rec, size_t rec_size, struct kndRepo *repo, struct kndTask *task)
-{
-    struct kndOutput *out = task->out;
-    struct kndText *text;
-    struct kndMemPool *mempool = task->mempool;
-    gsl_err_t parser_err;
-    int err;
-
-    out->reset(out);
-
-    err = knd_text_new(&text, mempool);
-    KND_TASK_ERR("failed to alloc text");
-
-    parser_err = knd_text_import(text, rec, &rec_size, repo, task);
-    if (parser_err.code) {
-        KND_TASK_LOG("text parsing failed: %d %.*s", parser_err.code,
-                     task->log->buf_size, task->log->buf);
-        return knd_FAIL;
-    }
-
-    err = knd_text_export(text, KND_FORMAT_JSON, repo, task, 0);
-    KND_TASK_ERR("failed to export text JSON");
-
-    task->output = task->out->buf;
-    task->output_size = task->out->buf_size;
     return knd_OK;
 }
 

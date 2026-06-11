@@ -526,7 +526,7 @@ static int steward_init(struct kndSteward *steward)
     err = knd_set_new(&steward->repo_idx, KND_SET_STORE_MEMONLY, task->mempool);
     KND_STEWARD_ERR("failed to create a set idx");
 
-    err = knd_dict_new(&steward->repo_name_idx, KND_SMALL_DICT_SIZE, task->mempool);
+    err = knd_dict_new(&steward->repo_name_idx, KND_SMALL_DICT_SIZE, KND_DICT_MEMONLY, task->mempool);
     KND_STEWARD_ERR("failed to create a repo name idx");
 
     err = knd_repo_new(&repo, "/", 1, steward->schema_path, steward->schema_path_size);

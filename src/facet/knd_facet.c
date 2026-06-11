@@ -63,7 +63,7 @@ void knd_facet_str(struct kndFacet *facet,
 }
 
 int knd_facet_acquire(struct kndAttr *attr, struct kndFacet **result,
-                      struct kndRepo *unused_var(repo), struct kndTask *task)
+                      struct kndRepoSnapshot *unused_var(snapshot), struct kndTask *task)
 {
     struct kndQuantAttr *quant_attr;
     struct kndClassInnerAttr *cls_inner_attr;

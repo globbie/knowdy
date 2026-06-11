@@ -39,7 +39,7 @@
 #define DEBUG_ATTR_GSL_LEVEL_5 0
 #define DEBUG_ATTR_GSL_LEVEL_TMP 1
 
-int knd_attr_export_GSL(struct kndAttr *self, struct kndRepo *repo, struct kndTask *task, size_t depth)
+int knd_attr_export_GSL(struct kndAttr *self, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     const char *type_name = knd_attr_names[self->type];
@@ -49,19 +49,19 @@ int knd_attr_export_GSL(struct kndAttr *self, struct kndRepo *repo, struct kndTa
 
     OUT("{", 1);              
     OUT(type_name, type_name_size);  
-    OUT(" ", 1);                     
+    OUT(" ", 1);
     OUT(self->name, self->name_size);
 
-    if (self->tr) {
-        err = knd_text_gloss_export_GSL(self->tr, true, repo, task, depth + 1);
-        KND_TASK_ERR("failed to export attr gloss GSL");
-    }
+    err = knd_text_glosses_export_GSL(self->glosses, true, task, depth + 1);
+    KND_TASK_ERR("failed to export attr gloss GSL");
 
     if (indent_size) {
         OUT("\n", 1);
         err = knd_print_offset(out, (depth + 1) * indent_size);
         RET_ERR();
     }
+
+#if 0
     if (self->is_a_set) {
         OUT(" {t set}", strlen(" {t set}"));
     }
@@ -77,6 +77,7 @@ int knd_attr_export_GSL(struct kndAttr *self, struct kndRepo *repo, struct kndTa
         OUT(self->ref_proc_name, self->ref_proc_name_size);
         OUT("}", 1);
     }
+#endif
 
     OUT("}", 1);
 

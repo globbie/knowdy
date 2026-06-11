@@ -48,6 +48,8 @@ void knd_attr_stm_str(struct kndAttrStm *stm, size_t depth)
     assert (attr != NULL);
 
     type_name = knd_attr_names[attr->type];
+
+#if 0
     if (stm->is_list_item) {
         switch (attr->type) {
         case KND_ATTR_CLS_INNER:
@@ -65,8 +67,10 @@ void knd_attr_stm_str(struct kndAttrStm *stm, size_t depth)
         }
         return;
     }
+#endif
 
-    if (attr->is_a_set) {
+    switch (attr->mult_t) {
+    case KND_ATTR_MULTIPLE:
         knd_log("%*s%.*s (%s)  [", depth * KND_OFFSET_SIZE, "",
                 stm->name_size, stm->name, type_name);
 
@@ -75,8 +79,11 @@ void knd_attr_stm_str(struct kndAttrStm *stm, size_t depth)
 
         knd_log("%*s]", depth * KND_OFFSET_SIZE, "");
         return;
+    default:
+        break;
     }
 
+#if 0
     switch (attr->type) {
         case KND_ATTR_CLS_INNER:
             knd_log("%*s%.*s (inner \"%.*s\")", depth * KND_OFFSET_SIZE, "",
@@ -100,6 +107,8 @@ void knd_attr_stm_str(struct kndAttrStm *stm, size_t depth)
                    stm->name_size, stm->name,  type_name, stm->val_size, stm->val);
             break;
     }
+#endif
+
 }
 
 int knd_attr_stm_present_subj(void *obj, void *ctx_obj, struct kndTask *unused_var(task))

@@ -45,13 +45,13 @@
 
 struct LocalContext {
     struct kndTask *task;
-    struct kndRepo *repo;
+    struct kndRepoSnapshot *snapshot;
     struct kndClass *class;
     struct kndClass *baseclass;
     struct kndClassBasePred *base_pred;
 };
 
-static int resolve_base(struct kndClass *self, struct kndRepo *repo, struct kndTask *task);
+static int resolve_base(struct kndClass *self, struct kndRepoSnapshot *snapshot, struct kndTask *task);
 
 static int inherit_attr(void *elem, void *ctx_obj, struct kndTask *task)
 {
@@ -115,12 +115,12 @@ static int inherit_attr(void *elem, void *ctx_obj, struct kndTask *task)
 }
 
 static int inherit_attrs(struct kndClass *self, struct kndClass *base,
-                         struct kndRepo *repo, struct kndTask *task)
+                         struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     int err;
 
     if (base->phase < KND_CLASS_RESOLVED) {
-        err = knd_class_resolve(base, repo, task);
+        err = knd_class_resolve(base, snapshot, task);
         KND_TASK_ERR("base {cls %.*s} failed to resolve", base->name_size, base->name);
     }
 
@@ -143,7 +143,7 @@ static int inherit_attrs(struct kndClass *self, struct kndClass *base,
 }
 
 static int link_ancestor(struct kndClass *self, struct kndClass *baseclass,
-                         struct kndRepo *repo, struct kndTask *task)
+                         struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
     struct kndClassRef *ref;
@@ -152,7 +152,9 @@ static int link_ancestor(struct kndClass *self, struct kndClass *baseclass,
 
     /* check doublets */
     FOREACH (ref, self->ancestors) {
-        err = knd_class_acquire(ref->entry, &c, repo, task);
+        assert (ref->entry != NULL);
+
+        err = knd_class_acquire(ref->entry, &c, snapshot, task);
         KND_TASK_ERR("failed to acquire {cls %.*s}", ref->entry->name_size, ref->entry->name);
 
         if (c == baseclass) return knd_OK;
@@ -199,7 +201,7 @@ static int set_child_ref(struct kndClass *base, struct kndClass *cls, struct knd
 }
 
 int knd_class_link_base(struct kndClass *cls, struct kndClass *base,
-                        struct kndRepo *repo, struct kndTask *task)
+                        struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
     struct kndClassRef *ref, *baseref;
@@ -215,12 +217,12 @@ int knd_class_link_base(struct kndClass *cls, struct kndClass *base,
 
         // get entry by id
 
-        err = knd_class_acquire(baseref->entry, &c, repo, task);
+        err = knd_class_acquire(baseref->entry, &c, snapshot, task);
         KND_TASK_ERR("failed to acquire {cls %.*s}", baseref->entry->name_size, baseref->entry->name);
 
         //if (c->state_top) continue;
 
-        err = link_ancestor(cls, c, repo, task);
+        err = link_ancestor(cls, c, snapshot, task);
         KND_TASK_ERR("failed to link an ancestor");
     }
 
@@ -236,7 +238,7 @@ int knd_class_link_base(struct kndClass *cls, struct kndClass *base,
     return knd_OK;
 }
 
-static int resolve_baseclasses(struct kndClass *cls, struct kndRepo *repo, struct kndTask *task)
+static int resolve_baseclasses(struct kndClass *cls, struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct kndClassBasePred *bp;
     struct kndClass *c = NULL;
@@ -261,7 +263,7 @@ static int resolve_baseclasses(struct kndClass *cls, struct kndRepo *repo, struc
 
         if (bp->is_root) break;
 
-        err = knd_get_cls_by_name(repo, bp->name, bp->name_size, &c, task);
+        err = knd_get_cls_by_name(snapshot, bp->name, bp->name_size, &c, task);
         KND_TASK_ERR("no {cls %.*s} found", bp->name_size, bp->name);
         bp->entry = c->entry;
 
@@ -272,7 +274,7 @@ static int resolve_baseclasses(struct kndClass *cls, struct kndRepo *repo, struc
         }
 
         if (c->phase < KND_CLASS_BASE_RESOLVED) {
-            err = resolve_base(c, repo, task);
+            err = resolve_base(c, snapshot, task);
             KND_TASK_ERR("failed to resolve base {cls %.*s}", c->name_size, c->name);
         }
 
@@ -286,7 +288,7 @@ static int resolve_baseclasses(struct kndClass *cls, struct kndRepo *repo, struc
             continue;
         }
 
-        err = knd_class_link_base(cls, c, repo, task);
+        err = knd_class_link_base(cls, c, snapshot, task);
         KND_TASK_ERR("failed to link {cls %.*s} to its base {cls %.*s}",
                      cls->name_size, cls->name, c->name_size, c->name);
     }
@@ -295,7 +297,7 @@ static int resolve_baseclasses(struct kndClass *cls, struct kndRepo *repo, struc
     return knd_OK;
 }
 
-int knd_class_resolve(struct kndClass *cls, struct kndRepo *repo, struct kndTask *task)
+int knd_class_resolve(struct kndClass *cls, struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct kndClassBasePred *bp;
     struct kndClassEntry *entry = cls->entry;
@@ -317,13 +319,13 @@ int knd_class_resolve(struct kndClass *cls, struct kndRepo *repo, struct kndTask
     }
 
     if (cls->num_attrs) {
-        err = knd_resolve_primary_attrs(cls, repo, task);
+        err = knd_resolve_primary_attrs(cls, snapshot, task);
         KND_TASK_ERR("failed to resolve primary attrs of {cls %.*s}",
                      entry->name_size, entry->name);
     }
 
     if (cls->phase < KND_CLASS_BASE_RESOLVED) {
-        err = resolve_baseclasses(cls, repo, task);
+        err = resolve_baseclasses(cls, snapshot, task);
         KND_TASK_ERR("failed to resolve base classes of {cls %.*s}",
                      cls->name_size, cls->name);
     }
@@ -331,14 +333,14 @@ int knd_class_resolve(struct kndClass *cls, struct kndRepo *repo, struct kndTask
     FOREACH (bp, cls->base_preds) {
         if (bp->is_root) break;
 
-        err = knd_class_acquire(bp->entry, &c, repo, task);
+        err = knd_class_acquire(bp->entry, &c, snapshot, task);
         KND_TASK_ERR("failed to acquire {cls %.*s}", bp->entry->name_size, bp->entry->name);
 
-        err = inherit_attrs(cls, c, repo, task);
+        err = inherit_attrs(cls, c, snapshot, task);
         KND_TASK_ERR("failed to inherit attrs from {cls %.*s}", c->name_size, c->name);
 
         FOREACH (stm, bp->attr_stms) {
-            err = knd_resolve_attr_stm(cls, stm, repo, task);
+            err = knd_resolve_attr_stm(cls, stm, snapshot, task);
             KND_TASK_ERR("failed to resolve attr stm {cls %.*s {%.*s}}",
                          c->name_size, c->name, stm->name_size, stm->name);
         }
@@ -358,11 +360,10 @@ int knd_class_resolve(struct kndClass *cls, struct kndRepo *repo, struct kndTask
         knd_log("++ {cls %.*s {id %.*s}} resolved!",
                 entry->name_size, entry->name, entry->id_size, entry->id);
     }
-
     return knd_OK;
 }
 
-static int resolve_base(struct kndClass *cls, struct kndRepo *repo, struct kndTask *task)
+static int resolve_base(struct kndClass *cls, struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct kndClassEntry *entry = cls->entry;
     int err;
@@ -373,7 +374,7 @@ static int resolve_base(struct kndClass *cls, struct kndRepo *repo, struct kndTa
                      entry->name_size, entry->name);
     }
 
-    err = resolve_baseclasses(cls, repo, task);
+    err = resolve_baseclasses(cls, snapshot, task);
     KND_TASK_ERR("failed to resolve baseclasses of {cls %.*s}", entry->name_size, entry->name);
 
     return knd_OK;
@@ -381,7 +382,7 @@ static int resolve_base(struct kndClass *cls, struct kndRepo *repo, struct kndTa
 
 int knd_resolve_cls_ref(const char *name, size_t name_size,
                         struct kndClass *base, struct kndClass **result,
-                        struct kndRepo *repo, struct kndTask *task)
+                        struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct kndClass *c;
     int err;
@@ -397,17 +398,17 @@ int knd_resolve_cls_ref(const char *name, size_t name_size,
 
     /* initial bulk load */
     if (task->type == KND_TASK_BULK_LOAD) {
-        err = knd_get_cls_by_name(repo, name, name_size, &c, task);
+        err = knd_get_cls_by_name(snapshot, name, name_size, &c, task);
         KND_TASK_ERR("failed to resolve a ref to {cls %.*s}", name_size, name);
 
         if (c->phase < KND_CLASS_BASE_RESOLVED) {
-            err = resolve_base(c, repo, task);
+            err = resolve_base(c, snapshot, task);
             KND_TASK_ERR("failed to resolve bases of {cls %.*s}", name_size, name);
         }
 
         if (base) {
             if (base->phase < KND_CLASS_BASE_RESOLVED) {
-                err = resolve_base(base, repo, task);
+                err = resolve_base(base, snapshot, task);
                 KND_TASK_ERR("failed to resolve base classes of {cls %.*s}", name_size, name);
             }
             if (base != c) {
@@ -420,17 +421,17 @@ int knd_resolve_cls_ref(const char *name, size_t name_size,
         return knd_OK;
     }
 
-    err = knd_get_cls_by_name(repo, name, name_size, &c, task);
+    err = knd_get_cls_by_name(snapshot, name, name_size, &c, task);
     KND_TASK_ERR("{cls %.*s} not found", name_size, name);
 
     if (c->phase < KND_CLASS_BASE_RESOLVED) {
-        err = resolve_base(c, repo, task);
+        err = resolve_base(c, snapshot, task);
         KND_TASK_ERR("failed to resolve {cls %.*s}", c->name_size, c->name);
     }
 
     if (base) {
         if (base->phase < KND_CLASS_BASE_RESOLVED) {
-            err = resolve_base(base, repo, task);
+            err = resolve_base(base, snapshot, task);
             KND_TASK_ERR("failed to resolve {cls %.*s}", base->name_size, base->name);
         }
         err = knd_class_is_base(base, c);

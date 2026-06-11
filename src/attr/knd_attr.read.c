@@ -24,6 +24,7 @@
 #include "knd_mempool.h"
 #include "knd_memblock.h"
 #include "knd_text.h"
+#include "knd_quant.h"
 #include "knd_rel.h"
 #include "knd_proc.h"
 #include "knd_proc_arg.h"
@@ -40,42 +41,22 @@
 #define DEBUG_ATTR_READ_LEVEL_TMP 1
 
 struct LocalContext {
-    const char *name;
-    size_t name_size;
-    struct kndClassBasePred *class_var;
-    struct kndAttr     *attr;
     struct kndTask     *task;
+    struct kndTask     *repo;
+    struct kndAttr     *attr;
+    struct kndAttrRef  *attr_refs;
+    const char *id;
+    size_t id_size;
 };
 
-static gsl_err_t set_attr_id(void *obj, const char *id, size_t id_size)
+static gsl_err_t set_attr_name_id(void *obj, const char *id, size_t id_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndTask *task = ctx->task;
     struct kndAttr *attr = ctx->attr;
-    struct kndAttrRef *ref;
-    int err;
     if (!id_size) return make_gsl_err(gsl_FORMAT);
     if (id_size > KND_ID_SIZE) return make_gsl_err(gsl_LIMIT);
-
-    memcpy(attr->id, id, id_size);
-    attr->id_size = id_size;
-
-    err = knd_set_get(task->idxs.attr_idx, id, id_size, (void**)&ref, task);
-    if (err) {
-        KND_TASK_LOG("failed to get {attr %.*s}", id_size, id);
-        return make_gsl_err_external(err);
-    }
-    attr->name = ref->name;
-    attr->name_size = ref->name_size;
-
-    /*if (ref->attr) {
-        knd_log("?? doublet {attr %.*s {id %.*s}} {owner %.*s}",
-                ref->name_size, ref->name, ref->id_size, ref->id,
-                attr->owner->name_size, attr->owner->name);
-        return make_gsl_err(gsl_FAIL);
-    } */
-    // ref->attr = attr;
-
+    memcpy(attr->name_id, id, id_size);
+    attr->name_id_size = id_size;
     return make_gsl_err(gsl_OK);
 }
 
@@ -103,113 +84,20 @@ static gsl_err_t set_owner_class_id(void *obj, const char *id, size_t id_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t set_template_cls(void *obj, const char *id, size_t id_size)
+static gsl_err_t confirm_attr(void *unused_var(obj), const char *unused_var(name), size_t unused_var(name_size))
 {
-    struct LocalContext *ctx = obj;
-    struct kndAttr *attr = ctx->attr;
-    struct kndClassEntry *entry;
-    struct kndTask *task = ctx->task;
-    struct kndClassRefAttr *cls_ref_attr;
-    struct kndClassInnerAttr *cls_inner_attr;
-    int err;
-
-    if (!id_size) return make_gsl_err(gsl_FORMAT);
-    if (id_size > KND_ID_SIZE) return make_gsl_err(gsl_FORMAT);
-
-    err = knd_set_get(task->idxs.cls_idx, id, id_size, (void**)&entry, task);
-    if (err) {
-        KND_TASK_LOG("no such {cls %.*s}", id_size, id);
-        return make_gsl_err_external(err);
-    }
-
-    attr->cls_name = entry->name;
-    attr->cls_name_size = entry->name_size;
-
-    switch (attr->type) {
-    case KND_ATTR_CLS_INNER:
-        cls_inner_attr = attr->subtype;
-        cls_inner_attr->template_cls = entry;
-        break;
-    case KND_ATTR_CLS_REF:
-        cls_ref_attr = attr->subtype;
-        cls_ref_attr->template_cls = entry;
-        break;
-    default:
-        break;
-    }
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t confirm_required(void *obj,
-                                  const char *unused_var(name),
-                                  size_t unused_var(name_size))
+static gsl_err_t parse_mult_type(void *obj, const char *rec, size_t *total_size)
 {
     struct kndAttr *attr = obj;
-    attr->is_required = true;
-    return make_gsl_err(gsl_OK);
-}
 
-static gsl_err_t confirm_unique(void *obj,
-                                const char *unused_var(name),
-                                size_t unused_var(name_size))
-{
-    struct kndAttr *attr = obj;
-    attr->is_unique = true;
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t set_quant(void *obj, const char *name, size_t name_size)
-{
-    struct kndAttr *attr = (struct kndAttr*)obj;
-    if (!name_size) return make_gsl_err(gsl_FORMAT);
-    if (name_size >= KND_SHORT_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
-    if (!memcmp("set", name, name_size)) {
-        attr->quant_type = KND_ATTR_SET;
-        attr->is_a_set = true;
-    }
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t set_quant_uniq(void *obj, const char *unused_var(name), size_t unused_var(name_size))
-{
-    struct kndAttr *attr = (struct kndAttr*)obj;
-    attr->set_is_unique = true;
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t set_quant_atomic(void *obj, const char *unused_var(name), size_t unused_var(name_size))
-{
-    struct kndAttr *attr = obj;
-    attr->set_is_atomic = true;
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t confirm_attr(void *obj, const char *unused_var(name), size_t unused_var(name_size))
-{
-    struct kndAttr *attr = obj;
-    if (DEBUG_ATTR_READ_LEVEL_2)
-        knd_log("++ confirm attr: %.*s",
-                attr->name_size, attr->name);
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_quant_type(void *obj, const char *rec, size_t *total_size)
-{
-    struct kndAttr *attr = obj;
+    attr->mult_t = KND_ATTR_MULTIPLE;
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = set_quant,
-          .obj = attr
-        },
-        { .name = "uniq",
-          .name_size = strlen("uniq"),
-          .run = set_quant_uniq,
-          .obj = attr
-        },
-        { .name = "atom",
-          .name_size = strlen("atom"),
-          .run = set_quant_atomic,
+          .run = knd_ignore_value,
           .obj = attr
         },
         { .is_default = true,
@@ -220,84 +108,168 @@ static gsl_err_t parse_quant_type(void *obj, const char *rec, size_t *total_size
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
-static gsl_err_t read_glosses(void *obj, const char *rec, size_t *total_size)
+static gsl_err_t parse_gloss(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
     struct kndAttr *attr = ctx->attr;
-    gsl_err_t parser_err;
+    struct kndText *t;
+    int err;
 
-    parser_err = knd_read_gloss_array((void*)task, rec, total_size);
-    if (parser_err.code) return *total_size = 0, parser_err;
-
-    if (task->ctx->tr) {
-        attr->tr = task->ctx->tr;
-        task->ctx->tr = NULL;
+    err = knd_text_new(&t, task->mempool);
+    if (err) {
+        KND_TASK_LOG("failed to alloc a text");
+        return *total_size = 0, make_gsl_err_external(err);
     }
+
+    err = knd_gloss_parse(t, rec, total_size, task);
+    if (err) {
+        KND_TASK_LOG("failed to parse gloss");
+        return *total_size = 0, make_gsl_err_external(err);
+    }
+
+    t->next = attr->glosses;
+    attr->glosses = t;
+
     return make_gsl_err(gsl_OK);
 }
 
-gsl_err_t knd_attr_read(struct kndAttr *attr, struct kndTask *task,
-                        const char *rec, size_t *total_size)
+static gsl_err_t parse_glosses(void *obj, const char *rec, size_t *total_size)
 {
+    struct gslTaskSpec spec = {
+        .is_list_item = true,
+        .parse = parse_gloss,
+        .obj = obj
+    };
+    return gsl_parse_array(&spec, rec, total_size);
+}
+
+static int select_attr_type(struct kndAttr *attr, size_t type_num, struct kndTask *task)
+{
+    struct kndMemPool *mempool = task->mempool;
+    struct kndQuantAttr *quant_attr;
+    struct kndClassRefAttr *cls_ref_attr;
+    struct kndClassInnerAttr *cls_inner_attr;
+    int err;
+
+    if (type_num >= KND_ATTR_SENTINEL) return knd_FORMAT;
+
+    attr->type = (knd_attr_type)type_num;
+
+    switch (attr->type) {
+    case KND_ATTR_NONE:
+        knd_log("{attr-type %zu} is not supported", type_num);
+        return knd_CONFLICT;
+    case KND_ATTR_UINT:
+        err = knd_quant_attr_new(&quant_attr, KND_QUANT_UINT,
+                                 attr->id, attr->id_size, mempool);
+        KND_TASK_ERR("failed to alloc a quant attr");
+        attr->subtype = quant_attr;
+        break;
+    case KND_ATTR_UREAL:
+        err = knd_quant_attr_new(&quant_attr, KND_QUANT_UREAL,
+                                 attr->id, attr->id_size, mempool);
+        KND_TASK_ERR("failed to alloc a quant attr");
+        attr->subtype = quant_attr;
+        break;
+    case KND_ATTR_CLS_INNER:
+        err = knd_cls_inner_attr_new(&cls_inner_attr,
+                                     attr->id, attr->id_size, mempool);
+        KND_TASK_ERR("failed to alloc a cls inner attr");
+        attr->subtype = cls_inner_attr;
+        break;
+    case KND_ATTR_CLS_REF:
+        err = knd_cls_ref_attr_new(&cls_ref_attr,
+                                   attr->id, attr->id_size, mempool);
+        KND_TASK_ERR("failed to alloc a ref attr");
+        attr->subtype = cls_ref_attr;
+        break;
+    default:
+        break;
+    }
+    return knd_OK;
+}
+
+static int attr_read(struct kndAttr *attr,
+                     const char *rec, size_t *total_size, struct kndTask *task)
+{
+    size_t attr_type_num = 0;
+    char name_id[KND_ID_SIZE];
+    size_t name_id_size = 0;
+    struct kndClassRefAttr *cls_ref_attr;
+    struct kndClassInnerAttr *cls_inner_attr;
+    int err;
+    gsl_err_t parser_err;
+
     struct LocalContext ctx = {
         .attr = attr,
         .task = task
     };
+
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = set_attr_id,
+          .run = set_attr_name_id,
           .obj = &ctx
         },
         { .type = GSL_GET_ARRAY_STATE,
           .name = "g",
           .name_size = strlen("g"),
-          .parse = read_glosses,
-          .obj = &ctx
-        },
-        { .name = "c",
-          .name_size = strlen("c"),
-          .run = set_template_cls,
+          .parse = parse_glosses,
           .obj = &ctx
         },
         { .name = "t",
           .name_size = strlen("t"),
-          .parse = parse_quant_type,
-          .obj = attr
+          .parse = gsl_parse_size_t,
+          .obj = &attr_type_num
         },
-        { .name = "req",
-          .name_size = strlen("req"),
-          .run = confirm_required,
-          .obj = attr
+        { .name = "c",
+          .name_size = strlen("c"),
+          .buf = name_id,
+          .buf_size = &name_id_size,
+          .max_buf_size = KND_ID_SIZE
         },
-        { .name = "uniq",
-          .name_size = strlen("uniq"),
-          .run = confirm_unique,
+        { .name = "m",
+          .name_size = strlen("m"),
+          .parse = parse_mult_type,
           .obj = attr
         }
     };
-    gsl_err_t err;
 
-    err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (err.code) {
-        knd_log("-- failed to parse attr rec: %d", err.code);
-        return err;
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
+
+    err = select_attr_type(attr, attr_type_num, task);
+    KND_TASK_ERR("failed to select attr type {num %zu}", attr_type_num);
+
+    if (name_id_size) {
+        switch (attr->type) {
+        case KND_ATTR_CLS_REF:
+            cls_ref_attr = attr->subtype;
+            cls_ref_attr->cls_name = name_id;
+            cls_ref_attr->cls_name_size = name_id_size;        
+            break;
+        case KND_ATTR_CLS_INNER:
+            cls_inner_attr = attr->subtype;
+            cls_inner_attr->cls_name = name_id;
+            cls_inner_attr->cls_name_size = name_id_size;
+            break;
+        default:
+            err = knd_FORMAT;
+            KND_TASK_ERR("cls template not supported in {attr %d}", attr->type);
+        }
     }
 
-    return make_gsl_err(gsl_OK);
+    return knd_OK;
 }
 
 static gsl_err_t parse_attr_ref_array_item(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndMemPool *mempool = task->mempool;
-    struct kndDict *attr_name_idx = task->idxs.attr_name_idx;
-    struct kndSet *attr_idx = task->idxs.attr_idx;
-    struct kndAttrRef *ref, *refs;
+    struct kndAttrRef *ref;
     int err;
 
-    err = knd_attr_ref_new(&ref, mempool);
+    err = knd_attr_ref_new(&ref, task->mempool);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
     struct gslTaskSpec specs[] = {
@@ -309,48 +281,15 @@ static gsl_err_t parse_attr_ref_array_item(void *obj, const char *rec, size_t *t
           .name_size = strlen("c"),
           .run = set_owner_class_id,
           .obj = ref
-        }        
+        }
     };
     gsl_err_t parser_err;
 
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return parser_err;
 
-    ref->name = ctx->name;
-    ref->name_size = ctx->name_size;
-    knd_calc_num_id(ref->id, ref->id_size, &ref->numid);
+    //knd_calc_num_id(ref->id, ref->id_size, &ref->numid);
 
-    if (DEBUG_ATTR_READ_LEVEL_3) {
-        knd_log(".. register {attr %.*s}", ref->name_size, ref->name);
-    }
-
-    err = knd_dict_get(attr_name_idx, ref->name, ref->name_size, (void**)&refs, task);
-    switch (err) {
-    case knd_OK:
-        if (refs->tail) {
-            refs->tail->next = ref;
-        } else {
-            refs->next = ref;
-        }
-        refs->tail = ref;
-        break;
-    case knd_NO_MATCH:
-        err = knd_dict_set(attr_name_idx, ref->name, ref->name_size, (void*)ref, task);
-        if (err) {
-            KND_TASK_LOG("failed to register {attr %.*s}", ref->name_size, ref->name);
-            return make_gsl_err_external(err);
-        }
-        break;
-    default:
-        return make_gsl_err_external(err);
-    }
-
-    err = knd_set_add(attr_idx, ref->id, ref->id_size, (void*)ref, task);
-    if (err) {
-        KND_TASK_LOG("failed to register {attr-id %.*s} {err %d}",
-                     ref->id_size, ref->id, err);
-        return make_gsl_err_external(err);
-    }
     return make_gsl_err(gsl_OK);
 }
 
@@ -366,96 +305,79 @@ static gsl_err_t parse_attr_ref_array(void *obj, const char *rec, size_t *total_
     return gsl_parse_array(&spec, rec, total_size);
 }
 
-static gsl_err_t set_attr_name(void *obj, const char *name, size_t name_size)
+int knd_attr_name_fetch(const char *rec, size_t unused_var(rec_size), const char *key, size_t key_size,
+                        void *unused_var(ctx), size_t *result_size, void **result, struct kndTask *task)
 {
-    struct LocalContext *ctx = obj;
-    struct kndTask *task = ctx->task;
-    struct kndMemBlock *memblock;
-    const char *b;
-    int err;
+    char namebuf[KND_NAME_SIZE];
+    size_t namebuf_size = 0;
 
-    err = knd_memblock_fetch(&memblock, name_size, task);
-    if (err) {
-        KND_TASK_LOG("failed to fetch a memblock to save {attr-name %.*s}", name_size, name);
-        return make_gsl_err_external(err);
+    if (DEBUG_ATTR_READ_LEVEL_2) {
+        knd_log(">> attr name block: %s", rec);
     }
 
-    err = knd_memblock_write(memblock, name, name_size, false, &b);
-    if (err) {
-        KND_TASK_LOG("failed to to save {attr-name %.*s}", name_size, name);
-        return make_gsl_err_external(err);
-    }
-
-    ctx->name = b;
-    ctx->name_size = name_size;
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_attr_name_array_item(void *obj, const char *rec, size_t *total_size)
-{
-    struct kndTask *task = obj;
-    struct LocalContext ctx = {
+    struct LocalContext local_ctx = {
         .task = task
     };
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = set_attr_name,
-          .obj = &ctx
+          .buf = namebuf,
+          .buf_size = &namebuf_size,
+          .max_buf_size = KND_NAME_SIZE
         },
         { .type = GSL_GET_ARRAY_STATE,
           .name = "a",
           .name_size = strlen("a"),
           .parse = parse_attr_ref_array,
-          .obj = &ctx
+          .obj = &local_ctx
         }
     };
     gsl_err_t parser_err;
 
-    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
-    if (parser_err.code) return parser_err;
-
-    return make_gsl_err(gsl_OK);
-}
-
-static gsl_err_t parse_attr_name_array(void *obj, const char *rec, size_t *total_size)
-{
-    struct LocalContext *ctx = obj;
-
-    struct gslTaskSpec spec = {
-        .is_list_item = true,
-        .parse = parse_attr_name_array_item,
-        .obj = ctx
-    };
-    return gsl_parse_array(&spec, rec, total_size);
-}
-
-int knd_attr_name_unmarshall(const char *unused_var(elem_id), size_t unused_var(elem_id_size),
-                             const char *rec, size_t rec_size,
-                             void *unused_var(ctx), void **unused_var(result), struct kndTask *task)
-{
-    size_t total_size = rec_size;
-
-    if (DEBUG_ATTR_READ_LEVEL_2) {
-        knd_log(">> attr name block: %.*s", rec_size, rec);
-    }
-
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = knd_ignore_value,
-          .obj = task
-        },
-        { .type = GSL_GET_ARRAY_STATE,
-          .name = "n",
-          .name_size = strlen("n"),
-          .parse = parse_attr_name_array,
-          .obj = task
-        }
-    };
-    gsl_err_t parser_err;
-
-    parser_err = gsl_parse_task(rec, &total_size, specs, sizeof specs / sizeof specs[0]);
+    parser_err = gsl_parse_task(rec, result_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return parser_err.code;
 
+    if (key_size != namebuf_size) return knd_NO_MATCH;
+    if (memcmp(key, namebuf, namebuf_size)) return knd_NO_MATCH;
+
+    if (DEBUG_ATTR_READ_LEVEL_2) {
+        knd_log("++ {attr %.*s} matched", namebuf_size, namebuf);
+    }
+
+    if (!local_ctx.attr_refs) return knd_FAIL;
+
+    *result = local_ctx.attr_refs;
+
+    return knd_OK;
+}
+
+int knd_attr_unmarshall(const char *elem_id, size_t elem_id_size,
+                         const char *rec, size_t unused_var(rec_size),
+                        void *ctx_obj, size_t *parsed_size, void **result, struct kndTask *task)
+{
+    struct LocalContext *ctx = ctx_obj;
+    struct kndAttr *attr;
+    int err;
+
+    if (DEBUG_ATTR_READ_LEVEL_2) {
+        knd_log(".. unmarshall {attr %.*s {rec %s}}", ctx->id_size, ctx->id, rec);
+    }
+
+    err = knd_attr_new(&attr, task->mempool);
+    KND_TASK_ERR("failed to alloc an attr to unmarshall");
+    memcpy(attr->id, ctx->id, ctx->id_size);
+    attr->id_size = ctx->id_size;
+
+    err = attr_read(attr, rec, parsed_size, task);
+    KND_TASK_ERR("failed to read GSP of {attr %.*s}", elem_id_size, elem_id);
+
+    if (DEBUG_ATTR_READ_LEVEL_3) {
+        const char *attr_type_name = knd_attr_names[attr->type];
+        size_t attr_type_name_size = strlen(attr_type_name);
+        knd_log("++ {attr %.*s {type %.*s}} unmarshalled OK!",
+                attr->id_size, attr->id, attr_type_name_size, attr_type_name);
+    }
+
+    *result = attr;
     return knd_OK;
 }

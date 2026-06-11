@@ -97,6 +97,23 @@ gsl_err_t knd_ignore_list(void *obj, const char *name, size_t name_size,
     return gsl_parse_array(&ignore_item_spec, rec, total_size);
 }
 
+gsl_err_t knd_ignore_named_list(void *obj, const char *rec, size_t *total_size)
+{
+    struct LocalContext *ctx = obj;
+    struct kndTask *task = ctx->task;
+
+    struct LocalContext local_ctx = {
+        .task = task
+    };
+
+    struct gslTaskSpec ignore_item_spec = {
+        .is_list_item = true,
+        .parse = knd_ignore_obj,
+        .obj = &local_ctx
+    };
+    return gsl_parse_array(&ignore_item_spec, rec, total_size);
+}
+
 gsl_err_t knd_ignore_named_area(void *obj, const char *name, size_t name_size,
                                 const char *rec, size_t *total_size)
 {

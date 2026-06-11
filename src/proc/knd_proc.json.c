@@ -70,10 +70,8 @@ static int export_gloss_JSON(struct kndText *tr,
     return knd_OK;
 }
 
-int knd_proc_export_JSON(struct kndProc *self, struct kndRepo *repo,
-                         struct kndTask *task,
-                         bool is_list_item,
-                         size_t depth)
+int knd_proc_export_JSON(struct kndProc *self, struct kndTask *task,
+                         bool is_list_item, size_t depth)
 {
     struct kndOutput  *out = task->out;
     struct kndProcArg *arg;
@@ -108,7 +106,7 @@ int knd_proc_export_JSON(struct kndProc *self, struct kndRepo *repo,
             if (in_arg) {
                 err = out->write(out, ",", 1);                                    RET_ERR();
             }
-            err = knd_proc_arg_export(arg, KND_FORMAT_JSON, repo, task, out);           RET_ERR();
+            err = knd_proc_arg_export(arg, KND_FORMAT_JSON, task, out);           RET_ERR();
             in_arg = true;
         }
         err = out->write(out, "]", 1);                                            RET_ERR();

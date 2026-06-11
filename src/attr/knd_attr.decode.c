@@ -34,32 +34,62 @@
 #define DEBUG_ATTR_DECODE_LEVEL_5 0
 #define DEBUG_ATTR_DECODE_LEVEL_TMP 1
 
-static int decode_glosses(struct kndText *trs, struct kndRepo *repo, struct kndTask *task)
+static int decode_glosses(struct kndText *trs, struct kndSet *str_idx, struct kndTask *task)
 {
     struct kndText *t;
     int err;
 
     FOREACH (t, trs) {
-        err = knd_charseq_decode(repo, t->id, t->id_size, &t->seq, task);
+        err = knd_charseq_decode(str_idx, t->id, t->id_size, &t->seq, task);
         KND_TASK_ERR("failed to decode a charseq");
     }
     return knd_OK;
 }
 
-int knd_attr_decode(struct kndAttr *attr, struct kndRepo *repo, struct kndTask *task)
+int knd_attr_decode(struct kndAttr *attr, struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
+    struct kndSet *str_idx = snapshot->cache.str_idx;
+    struct kndCharSeq *seq;
+    //struct kndClassEntry *owner;
     int err;
 
     if (DEBUG_ATTR_DECODE_LEVEL_2) {
-        knd_log("decoding {cls %.*s {attr %.*s {id %.*s}}}",
-                attr->owner->name_size, attr->owner->name,
-                attr->name_size, attr->name, attr->id_size, attr->id);
+        knd_log("decoding {attr {id %.*s}}}", attr->id_size, attr->id);
     }
 
-    if (attr->tr) {
-        err = decode_glosses(attr->tr, repo, task);
-        KND_TASK_ERR("failed to decode glosses of {attr %.*s}", attr->name_size, attr->name);
+    err = knd_charseq_decode(str_idx, attr->name_id, attr->name_id_size, &seq, task);
+    KND_TASK_ERR("failed to decode cls entry name {id %.*s}", attr->name_id_size, attr->name_id);
+    attr->name = seq->val;
+    attr->name_size = seq->val_size;
+    attr->seq = seq;
+
+    // TODO owner
+
+    err = decode_glosses(attr->glosses, str_idx, task);
+    KND_TASK_ERR("failed to decode glosses of {attr %.*s}", attr->name_size, attr->name);
+    return knd_OK;
+}
+
+int knd_attr_ref_decode(struct kndAttrRef *ref, struct kndRepoSnapshot *snapshot, struct kndTask *task)
+{
+    struct kndAttr *attr;
+    int err;
+
+    if (DEBUG_ATTR_DECODE_LEVEL_2) {
+        knd_log(".. decoding {attr-ref {id %.*s}}}", ref->id_size, ref->id);
     }
-    
+
+    err = knd_attr_get_by_id(snapshot, ref->id, ref->id_size, &attr, task);
+    KND_TASK_ERR("failed to get attr by {id %.*s}", ref->id_size, ref->id);
+    ref->attr = attr;
+
+    if (DEBUG_ATTR_DECODE_LEVEL_TMP) {
+        const char *attr_type_name = knd_attr_names[attr->type];
+        size_t attr_type_name_size = strlen(attr_type_name);
+        knd_log("++ decoded {attr %.*s {type %.*s}}}",
+                attr->name_size, attr->name,
+                attr_type_name_size, attr_type_name);
+    }
+
     return knd_OK;
 }

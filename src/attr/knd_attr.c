@@ -26,6 +26,15 @@
 #define DEBUG_ATTR_LEVEL_5 0
 #define DEBUG_ATTR_LEVEL_TMP 1
 
+struct LocalContext {
+    struct kndTask     *task;
+    struct kndRepoSnapshot     *snapshot;
+    struct kndAttr     *attr;
+    struct kndAttrRef  *attr_refs;
+    const char *id;
+    size_t id_size;
+};
+
 void append_inner_hash_spec(struct kndClassInnerAttr *attr, struct kndFacetHashSpec *spec)
 {
     if (attr->hash_specs_tail) {
@@ -52,37 +61,10 @@ void append_hash_spec(struct kndClassRefAttr *attr, struct kndFacetHashSpec *spe
 
 void knd_attr_str(struct kndAttr *self, size_t depth)
 {
-    struct kndText *tr;
     const char *type_name = knd_attr_names[self->type];
 
-    if (self->is_a_set)
-        knd_log("\n%*s[%.*s", depth * KND_OFFSET_SIZE, "",
-                self->name_size, self->name);
-    else
-        knd_log("\n%*s{%s %.*s", depth * KND_OFFSET_SIZE, "",
-                type_name, self->name_size, self->name);
-
-    if (self->quant_type == KND_ATTR_SET) {
-        knd_log("%*s  QUANT:SET",
-                depth * KND_OFFSET_SIZE, "");
-    }
-
-    tr = self->tr;
-    while (tr) {
-        knd_log("%*s   ~ %s %.*s",
-                depth * KND_OFFSET_SIZE, "", tr->locale, tr->seq->val_size, tr->seq->val);
-        tr = tr->next;
-    }
-
-    if (self->cls_name_size) {
-        knd_log("%*s  REF class template: %.*s",
-                depth * KND_OFFSET_SIZE, "",
-                self->cls_name_size, self->cls_name);
-    }
-    if (self->is_a_set)
-        knd_log("%*s]", depth * KND_OFFSET_SIZE, "");
-    else
-        knd_log("%*s}",  depth * KND_OFFSET_SIZE, "");
+    knd_log("%*s{%s %.*s", depth * KND_OFFSET_SIZE, "",
+            type_name, self->name_size, self->name);
 }
 
 static int get_immediate_attr(struct kndClass *owner, const char *id, size_t id_size,
@@ -100,7 +82,7 @@ static int get_immediate_attr(struct kndClass *owner, const char *id, size_t id_
 
 int knd_attr_find(struct kndClass *cls, const char *name, size_t name_size,
                   struct kndAttr **result,
-                  struct kndRepo *repo, struct kndTask *task)
+                  struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct kndDict *attr_name_idx = task->idxs.attr_name_idx;
     struct kndAttrRef *refs, *ref = NULL;
@@ -118,10 +100,7 @@ int knd_attr_find(struct kndClass *cls, const char *name, size_t name_size,
         } else {
             assert (ref->owner_id_size != 0 && ref->owner_id != NULL);
 
-            err = knd_set_get(task->idxs.cls_idx, ref->owner_id, ref->owner_id_size,
-                              (void**)&entry, task);
-            KND_TASK_ERR("failed to get a {cls-entry %.*s}",
-                         ref->owner_id_size, ref->owner_id);
+            // TOD get cls entry by id
         }
 
         /* direct owner for this attr */
@@ -138,7 +117,7 @@ int knd_attr_find(struct kndClass *cls, const char *name, size_t name_size,
             break;
         }
 
-        err = knd_class_acquire(entry, &c, repo, task);
+        err = knd_class_acquire(entry, &c, snapshot, task);
         KND_TASK_ERR("failed to acquire {cls-entry %.*s}", entry->name_size, entry->name);
 
         err = knd_class_is_base(c, cls);
@@ -161,9 +140,61 @@ int knd_attr_find(struct kndClass *cls, const char *name, size_t name_size,
         KND_TASK_ERR("{cls %.*s} has no {attr %.*s}",
                      cls->name_size, cls->name, name_size, name);
     }
-
     *result = attr;
     return knd_OK;
+}
+
+static int update_attr_task_cache(const char *id, size_t id_size,
+                                  struct kndAttr *attr, struct kndTask *task)
+{
+    struct kndSet *idx = task->cache.attr_idx;
+    int err;
+    err = knd_set_add(idx, id, id_size, (void**)attr, task);
+    KND_TASK_ERR("failed to add {attr %.*s}", attr->name_size, attr->name);
+    return knd_OK;
+}
+
+int knd_attr_get_by_id(struct kndRepoSnapshot *snapshot, const char *id, size_t id_size,
+                       struct kndAttr **result, struct kndTask *task)
+{
+    struct kndSet *attr_idx;
+    struct kndSetElem *elem;
+    struct kndAttr *attr;
+    int err;
+
+    if (DEBUG_ATTR_LEVEL_2) {
+        knd_log(">> acquire {attr %.*s}", id_size, id);
+    }
+
+    attr_idx = task->cache.attr_idx;
+    err = knd_set_get(attr_idx, id, id_size, (void**)&elem, task);
+    if (err == knd_OK) {
+        *result = elem->val;
+        return knd_OK;
+    }
+
+    /* check global cache */
+    attr_idx = snapshot->cache.attr_idx;
+
+    struct LocalContext ctx = {
+        .task = task,
+        .snapshot = snapshot,
+        .id = id,
+        .id_size = id_size
+    };
+
+    err = knd_set_fetch(attr_idx, id, id_size, knd_attr_unmarshall, &ctx, (void**)&attr, task);
+    if (err == knd_OK) {
+        err = knd_attr_decode(attr, snapshot, task);
+        KND_TASK_ERR("failed to decode {attr {id %.*s}}", id_size, id);        
+        
+        err = update_attr_task_cache(id, id_size, attr, task);
+        KND_TASK_ERR("failed to update task cache with {attr %.*s {id %.*s}}",
+                     attr->name_size, attr->name, id_size, id);        
+        *result = attr;
+        return knd_OK;
+    }
+    return knd_NO_MATCH;
 }
 
 int knd_attr_register(struct kndAttr *attr, struct kndClass *cls, struct kndTask *task)
@@ -234,13 +265,13 @@ int knd_attr_register(struct kndAttr *attr, struct kndClass *cls, struct kndTask
     return knd_OK;
 }
 
-int knd_attr_export(struct kndAttr *self, knd_format format, struct kndRepo *repo, struct kndTask *task)
+int knd_attr_export(struct kndAttr *self, knd_format format, struct kndTask *task)
 {
     switch (format) {
     case KND_FORMAT_JSON:
-        return knd_attr_export_JSON(self, repo, task, 0);
+        return knd_attr_export_JSON(self, task, 0);
     case KND_FORMAT_GSP:
-        return knd_attr_export_GSP(self, repo, task);
+        return knd_attr_export_GSP(self, task);
     default:
         break;
     }

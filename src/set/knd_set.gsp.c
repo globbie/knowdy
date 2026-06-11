@@ -125,13 +125,13 @@ static int build_elems_footer(struct kndSetDir *dir, struct kndSetDirBlock *bloc
             knd_pack_int(buf, elem->size, idx_val_size);
             OUT((const char*)buf, idx_val_size);
 
-            //knd_log(">>   {elem %d {size %zu}}", i, elem->size);
-
+            if (DEBUG_SET_GSP_LEVEL_3) {
+                knd_log(">>   {elem %d {size %zu}}", i, elem->size);
+            }
         } else {
             knd_pack_int(buf, 0, idx_val_size);
             OUT((const char*)buf, idx_val_size);
         }
-
     }
 
     /* idx meta */
@@ -166,10 +166,10 @@ final:
     block->elems_footer_size = out->buf_size;
     block->size += out->buf_size;
 
-    if (DEBUG_SET_GSP_LEVEL_2) {
-        knd_log("== ELEMS {elems-rec-size %zu} {elems-footer-size %zu} {total %zu}",
+    if (DEBUG_SET_GSP_LEVEL_3) {
+        knd_log("  == ELEMS {elems-payload-size %zu} {elems-footer-size %zu} {elems-block-size %zu}",
                 block->elems_rec_size, block->elems_footer_size,
-                block->elems_rec_size +  block->elems_footer_size);
+                block->elems_rec_size + block->elems_footer_size);
     }
 
     return knd_OK;
@@ -292,14 +292,17 @@ static int build_subdirs_footer(struct kndSetDir *dir, struct kndSetDirBlock *bl
     block->subdirs_footer_size = out->buf_size;
     block->size += out->buf_size;
 
-    if (DEBUG_SET_GSP_LEVEL_2) {
-        knd_log("== {DIR %.*s {elem-block-size %zu} "
-                "{subdirs-rec-size %zu} {subdirs-footer-size %zu {tail-size %zu}} {total %zu}",
-                dir->id_size, dir->id,
+    if (DEBUG_SET_GSP_LEVEL_3) {
+        const char *dir_id = dir->id_size ? dir->id : "/";
+        size_t dir_id_size = dir->id_size ? dir->id_size : 1;
+
+        knd_log("== {DIR %.*s {elems-block-size %zu} "
+                "{subdirs-rec-size %zu} {subdirs-footer-size %zu} "
+                "{block-size %zu}",
+                dir_id_size, dir_id,
                 block->elems_rec_size + block->elems_footer_size,
                 block->subdirs_rec_size, block->subdirs_footer_size,
-                tail_size,
-                block->subdirs_rec_size + block->subdirs_footer_size);
+                block->size);
     }
     return knd_OK;
 }
@@ -376,7 +379,8 @@ int knd_set_leaf_marshall(struct kndSet *s, struct kndSetRange *range,
         break;
     default:
         err = knd_append_file(leaf->filepath, "GSP", strlen("GSP"));
-        KND_TASK_ERR("failed to append write to {file %.*s}", leaf->filepath_size, leaf->filepath);
+        KND_TASK_ERR("failed to append write to {file %.*s}",
+                     leaf->filepath_size, leaf->filepath);
         leaf->curr_size = strlen("GSP");
         break;
     }
@@ -392,6 +396,9 @@ int knd_set_leaf_marshall(struct kndSet *s, struct kndSetRange *range,
         err = knd_FAIL;
         KND_TASK_ERR("no payload written");
     }
+
+    // TODO check file size against dir block size
+
     return knd_OK;
 }
 

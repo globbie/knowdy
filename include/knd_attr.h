@@ -8,10 +8,10 @@
  *   as part of this distribution.
  *
  *   Project homepage:
- *   <http://www.knowdy.net>
+ *   <http://www.knowdy.org>
  *
  *   Initial author and maintainer:
- *         Dmitri Dmitriev aka M0nsteR <dmitri@globbie.net>
+ *         Dmitri Dmitriev aka M0nsteR <dmitri@glottie.com>
  *
  *   ----------
  *   knd_attr.h
@@ -66,7 +66,8 @@ typedef enum knd_attr_type {
     KND_ATTR_PROB,
     KND_ATTR_PROC_REF,
     KND_ATTR_PROC_ARG_REF,
-    KND_ATTR_FILE
+    KND_ATTR_FILE,
+    KND_ATTR_SENTINEL
 } knd_attr_type;
 
 static const char* const knd_attr_names[] = {
@@ -95,11 +96,80 @@ static const char* const knd_attr_names[] = {
     "file"
 };
 
-typedef enum knd_attr_quant_type {
+typedef enum knd_attr_mult_t {
     KND_ATTR_SINGLE,
-    KND_ATTR_SET,
-    KND_ATTR_LIST
-} knd_attr_quant_type;
+    KND_ATTR_MULTIPLE
+} knd_attr_mult_t;
+
+struct kndClassInnerAttr
+{
+    const char *name;
+    size_t name_size;
+
+    struct kndFacetHashSpec *hash_specs;
+    struct kndFacetHashSpec *hash_specs_tail;
+    size_t num_hash_specs;
+
+    const char *cls_name;
+    size_t cls_name_size;
+    struct kndClassEntry *template_cls;
+};
+
+struct kndClassRefAttr
+{
+    const char *name;
+    size_t name_size;
+
+    struct kndFacetHashSpec *hash_specs;
+    struct kndFacetHashSpec *hash_specs_tail;
+    size_t num_hash_specs;
+
+    const char *cls_name;
+    size_t cls_name_size;
+    struct kndClassEntry *template_cls;
+};
+
+struct kndClassInstRefAttr
+{
+    const char *name;
+    size_t name_size;
+
+    const char *cls_inst_name;
+    size_t cls_inst_name_size;
+    struct kndClassEntry *entry;
+};
+
+struct kndAttr
+{
+    knd_attr_type type;
+    void *subtype;
+
+    struct kndClass *owner;
+
+    char id[KND_ID_SIZE];
+    size_t id_size;
+    size_t numid;
+    knd_attr_mult_t mult_t;
+
+    const char *name;
+    size_t name_size;
+    char name_id[KND_ID_SIZE];
+    size_t name_id_size;
+    struct kndCharSeq *seq;
+    struct kndText *glosses;
+
+    const char *format_cls_name;
+    size_t format_cls_name_size;
+    struct kndClassEntry *format_cls_entry;
+
+    struct kndFacet *facet;
+
+    struct kndState *states;
+    size_t init_state;
+    size_t num_states;
+
+    struct kndAttr *next;
+};
 
 struct kndAttrRef
 {
@@ -122,81 +192,6 @@ struct kndAttrRef
     struct kndAttrRef *tail;
 };
 
-struct kndClassInnerAttr
-{
-    const char *name;
-    size_t name_size;
-
-    struct kndFacetHashSpec *hash_specs;
-    struct kndFacetHashSpec *hash_specs_tail;
-    size_t num_hash_specs;
-
-    struct kndClassEntry *template_cls;
-};
-
-struct kndClassRefAttr
-{
-    const char *name;
-    size_t name_size;
-
-    struct kndFacetHashSpec *hash_specs;
-    struct kndFacetHashSpec *hash_specs_tail;
-    size_t num_hash_specs;
-
-    struct kndClassEntry *template_cls;
-};
-
-struct kndClassInstRefAttr
-{
-    const char *name;
-    size_t name_size;
-    struct kndClassEntry *entry;
-};
-
-struct kndAttr
-{
-    knd_attr_type type;
-    void *subtype;
-
-    char id[KND_ID_SIZE];
-    size_t id_size;
-    size_t numid;
-    knd_attr_quant_type quant_type;
-
-    const char *name;
-    size_t name_size;
-
-    struct kndClass *owner;
-
-    bool is_a_set;
-    bool set_is_unique;
-    bool set_is_atomic;
-    bool is_required;
-
-    bool is_unique;
-
-    const char *cls_name;
-    size_t cls_name_size;
-
-    const char *format_cls_name;
-    size_t format_cls_name_size;
-    struct kndClassEntry *format_cls_entry;
-
-    const char *ref_proc_name;
-    size_t ref_proc_name_size;
-    struct kndProc *proc;
-
-    struct kndFacet *facet;
-
-    struct kndState *states;
-    size_t init_state;
-    size_t num_states;
-
-    struct kndText *tr;
-
-    struct kndAttr *next;
-};
-
 
 int knd_attr_register(struct kndAttr *attr, struct kndClass *cls, struct kndTask *task);
 
@@ -210,19 +205,19 @@ int knd_register_attr_ref(void *obj, const char *elem_id, size_t elem_id_size,
 int knd_get_arg_value(struct kndAttrStm *src, struct kndAttrStm *query,
                       struct kndProcCallArg *arg, struct kndTask *task);
 
-int knd_attr_export_GSL(struct kndAttr *self, struct kndRepo *repo, struct kndTask *task, size_t depth);
-int knd_attr_export_JSON(struct kndAttr *self, struct kndRepo *repo, struct kndTask *task, size_t depth);
-int knd_attr_export_GSP(struct kndAttr *self, struct kndRepo *repo, struct kndTask *task);
+int knd_attr_export_GSL(struct kndAttr *self, struct kndTask *task, size_t depth);
+int knd_attr_export_JSON(struct kndAttr *self, struct kndTask *task, size_t depth);
+int knd_attr_export_GSP(struct kndAttr *self, struct kndTask *task);
 
-int knd_attr_export(struct kndAttr *self, knd_format format, struct kndRepo *repo, struct kndTask *task);
+int knd_attr_export(struct kndAttr *self, knd_format format, struct kndTask *task);
 void knd_attr_str(struct kndAttr *attr, size_t depth);
 
 int knd_attr_new(struct kndAttr **result, struct kndMemPool *mempool);
 int knd_attr_ref_new(struct kndAttrRef **result, struct kndMemPool *mempool);
 
 // knd_attr.import.c
-gsl_err_t knd_attr_import(struct kndAttr *attr, const char *rec, size_t *total_size,
-                          struct kndRepo *repo, struct kndTask *task);
+int knd_attr_import(struct kndAttr *attr, const char *rec, size_t *total_size,
+                    struct kndRepoSnapshot *s, struct kndTask *task);
 
 // knd_attr.gsp.c
 gsl_err_t knd_attr_read(struct kndAttr *self, struct kndTask *task,
@@ -232,22 +227,29 @@ int knd_attr_select_clause(struct kndAttr *attr, struct kndClass *cls,
                            const char *rec, size_t *total_size, struct kndTask *task);
 
 // knd_attr.resolve.c
-int knd_attr_resolve(struct kndAttr *attr, struct kndRepo *repo, struct kndTask *task);
-int knd_resolve_primary_attrs(struct kndClass *self, struct kndRepo *repo, struct kndTask *task);
+int knd_attr_resolve(struct kndAttr *attr, struct kndRepoSnapshot *s, struct kndTask *task);
+int knd_resolve_primary_attrs(struct kndClass *self, struct kndRepoSnapshot *s, struct kndTask *task);
 
 gsl_err_t knd_attr_idx(void *obj, const char *name, size_t name_size);
 gsl_err_t knd_attr_implied(void *obj, const char *name, size_t name_size);
 gsl_err_t knd_attr_required(void *obj, const char *name, size_t name_size);
 gsl_err_t knd_attr_unique(void *obj, const char *name, size_t name_size);
-gsl_err_t knd_parse_quant_type(void *obj, const char *rec, size_t *total_size);
+gsl_err_t knd_parse_cardinal_type(void *obj, const char *rec, size_t *total_size);
 
 int knd_attr_name_marshall(void *elem, void *ctx, struct kndStorageLeaf *leaf,
                            size_t *output_size, struct kndTask *task);
-int knd_attr_name_unmarshall(const char *elem_id, size_t elem_id_size,
-                             const char *rec, size_t rec_size,
-                             void *ctx, void **result, struct kndTask *task);
+int knd_attr_marshall(void *elem, void *ctx, struct kndStorageLeaf *leaf, size_t *output_size,
+                      struct kndTask *task);
+int knd_attr_unmarshall(const char *elem_id, size_t elem_id_size,
+                        const char *rec, size_t unused_var(rec_size),
+                        void *ctx_obj, size_t *parsed_size, void **result, struct kndTask *task);
 
-int knd_attr_decode(struct kndAttr *attr, struct kndRepo *repo, struct kndTask *task);
+int knd_attr_name_fetch(const char *rec, size_t unused_var(rec_size), const char *key, size_t key_size,
+                        void *ctx, size_t *result_size, void **result, struct kndTask *task);
+int knd_attr_get_by_id(struct kndRepoSnapshot *snapshot, const char *id, size_t id_size,
+                       struct kndAttr **result, struct kndTask *task);
+
+int knd_attr_decode(struct kndAttr *attr, struct kndRepoSnapshot *snapshot, struct kndTask *task);
 
 int knd_cls_inner_attr_new(struct kndClassInnerAttr **result,
                            const char *name, size_t name_size,
@@ -260,7 +262,8 @@ int knd_cls_inst_ref_attr_new(struct kndClassInstRefAttr **result,
                               struct kndMemPool *mempool);
 
 int knd_attr_find(struct kndClass *cls, const char *name, size_t name_size,
-                  struct kndAttr **result, struct kndRepo *repo, struct kndTask *task);
+                  struct kndAttr **result, struct kndRepoSnapshot *snapshot, struct kndTask *task);
 
 int knd_cls_attrs_select(struct kndQuery *query,
                          const char *rec, size_t *total_size, struct kndTask *task);
+int knd_attr_ref_decode(struct kndAttrRef *ref, struct kndRepoSnapshot *snapshot, struct kndTask *task);

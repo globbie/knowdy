@@ -83,7 +83,7 @@ static int export_commit_GSL(struct kndCommit *commit,
         }
 
         if (state->phase == KND_SELECTED) {
-            err = knd_class_inst_export_commit(state->children, repo, task);
+            err = knd_class_inst_export_commit(state->children, task);
             KND_TASK_ERR("failed to export class inst commit");
         }
         OUT("}", 1);
@@ -223,17 +223,17 @@ static int update_indices(struct kndCommit *commit,
         case KND_UPDATED:
             entry->phase = KND_UPDATED;
 
-            err = knd_class_update_indices(repo, entry, ref->state, task);
-            KND_TASK_ERR("failed to update indices of {cls %.*s}",
-                         entry->name_size, entry->name);
+            //err = knd_class_update_indices(repo, entry, ref->state, task);
+            //KND_TASK_ERR("failed to update indices of {cls %.*s}",
+            //             entry->name_size, entry->name);
             continue;
         default:
             // KND_SELECTED
-            if (ref->state->children != NULL) {
+            /*if (ref->state->children != NULL) {
                 err = knd_class_inst_update_indices(repo, entry, ref->state->children, task);
                 KND_TASK_ERR("failed to update inst indices of {cls %.*s}",
                              entry->name_size, entry->name);
-            }
+                             }*/
             break;
         }
     }

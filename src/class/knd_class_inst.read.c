@@ -15,7 +15,7 @@
 
 struct LocalContext {
     struct kndTask *task;
-    struct kndRepo *repo;
+    struct kndRepoSnapshot *snapshot;
     struct kndAttrStm *attr_stm;
     struct kndClass *class;
     struct kndClassRef *class_ref;
@@ -23,7 +23,7 @@ struct LocalContext {
 };
 
 int knd_class_inst_unmarshall(const char *elem_id, size_t elem_id_size, const char *rec, size_t rec_size,
-                              void **result, struct kndRepo *repo, struct kndTask *task)
+                              void **result, struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
     struct kndClassInst *inst = NULL;
@@ -37,7 +37,7 @@ int knd_class_inst_unmarshall(const char *elem_id, size_t elem_id_size, const ch
     err = knd_class_inst_new(&inst, mempool);
     KND_TASK_ERR("failed to alloc a class inst");
 
-    err = knd_class_inst_read(inst, rec, &total_size, repo, task);
+    err = knd_class_inst_read(inst, rec, &total_size, snapshot, task);
     KND_TASK_ERR("failed to read GSP class inst rec");
 
     *result = inst;
@@ -45,7 +45,7 @@ int knd_class_inst_unmarshall(const char *elem_id, size_t elem_id_size, const ch
 }
 
 int knd_class_inst_acquire(struct kndClassInstEntry *entry, struct kndClassInst **result,
-                           struct kndRepo *repo, struct kndTask *task)
+                           struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct kndClassInst *inst = NULL;
     struct kndClass *c;
@@ -54,7 +54,7 @@ int knd_class_inst_acquire(struct kndClassInstEntry *entry, struct kndClassInst 
 
     assert(entry->is_a != NULL);
 
-    err = knd_class_acquire(entry->is_a, &c, repo, task);
+    err = knd_class_acquire(entry->is_a, &c, snapshot, task);
     KND_TASK_ERR("failed to acquire {cls %.*s}", entry->is_a->name_size, entry->is_a->name);
 
     //    leaf = c->class_inst_idx_leaf;
@@ -64,14 +64,9 @@ int knd_class_inst_acquire(struct kndClassInstEntry *entry, struct kndClassInst 
     return knd_OK;
 }
 
-static gsl_err_t check_class_inst_name(void *obj, const char *name, size_t name_size)
+// TODO
+static gsl_err_t check_class_inst_name(void *unused_var(obj), const char *unused_var(name), size_t name_size)
 {
-    struct LocalContext *ctx      = obj;
-    struct kndRepo *repo          = ctx->repo;
-
-    if (DEBUG_CLASS_INST_READ_LEVEL_2)
-        knd_log(".. repo \"%.*s\" to check a class name: \"%.*s\" (size:%zu)",
-                repo->name_size, repo->name, name_size, name, name_size);
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
     return make_gsl_err(gsl_OK);
@@ -122,7 +117,7 @@ static gsl_err_t read_attr_stm_list(void *obj, const char *name, size_t name_siz
 }
 
 int knd_class_inst_read(struct kndClassInst *self, const char *rec, size_t *total_size,
-                        struct kndRepo *repo, struct kndTask *task)
+                        struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct kndClassEntry *entry = NULL;
     struct kndClass *c;
@@ -134,11 +129,11 @@ int knd_class_inst_read(struct kndClassInst *self, const char *rec, size_t *tota
         knd_log(".. reading class inst GSP \"%.*s\"..", 128, rec);
     }
 
-    err = knd_class_acquire(entry, &c, repo, task);
+    err = knd_class_acquire(entry, &c, snapshot, task);
     KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);
 
     struct LocalContext ctx = {
-        .repo = repo,
+        .snapshot = snapshot,
         .task = task,
         .class_inst = self,
     };

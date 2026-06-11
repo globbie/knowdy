@@ -86,8 +86,7 @@ int knd_rel_pred_resolve(struct kndAttrStm *var, struct kndRepo *repo, struct kn
     /* other args */
     FOREACH (item, var->children) {
         if (DEBUG_REL_PRED_RESOLVE_LEVEL_TMP) {
-            knd_log(".. check rel {proc %.*s {arg %.*s}}",
-                    attr->ref_proc_name_size, attr->ref_proc_name,
+            knd_log(".. check rel {proc {arg %.*s}}",
                     item->name_size, item->name);
         }
     }

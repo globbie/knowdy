@@ -72,7 +72,6 @@ static int check_attr_name_conflict(struct kndClass *self, struct kndAttr *attr_
 
     FOREACH (attr_ref, attr_refs) {
         attr = attr_ref->attr;
-
         err = knd_set_get(attr_idx, attr->id, attr->id_size, &obj, task);
         if (!err) {
             err = knd_CONFLICT;
@@ -84,7 +83,7 @@ static int check_attr_name_conflict(struct kndClass *self, struct kndAttr *attr_
     return knd_OK;
 }
 
-int knd_attr_resolve(struct kndAttr *attr, struct kndRepo *repo, struct kndTask *task)
+int knd_attr_resolve(struct kndAttr *attr, struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct kndClassInnerAttr *cls_inner_attr;
     struct kndClassRefAttr *cls_ref_attr;
@@ -101,51 +100,35 @@ int knd_attr_resolve(struct kndAttr *attr, struct kndRepo *repo, struct kndTask 
             name = attr->format_cls_name;
             name_size = attr->format_cls_name_size;
 
-            err = knd_get_cls_entry_by_name(repo, name, name_size, &attr->format_cls_entry, task);
+            err = knd_get_cls_entry_by_name(snapshot, name, name_size, &attr->format_cls_entry, task);
             KND_TASK_ERR("no such {cls %.*s}", name_size, name);
         }
         break;
     case KND_ATTR_CLS_INNER:
         cls_inner_attr = attr->subtype;
-        if (!attr->cls_name_size) {
+        if (!cls_inner_attr->cls_name_size) {
             err = knd_FAIL;
-            KND_TASK_ERR("no class specified for {attr %.*s}", attr->name_size, attr->name);
+            KND_TASK_ERR("no template cls specified for {inner-attr %.*s}",
+                         attr->name_size, attr->name);
         }
-        name = attr->cls_name;
-        name_size = attr->cls_name_size;
+        name = cls_inner_attr->cls_name;
+        name_size = cls_inner_attr->cls_name_size;
 
-        err = knd_get_cls_entry_by_name(repo, name, name_size, &cls_inner_attr->template_cls, task);
+        err = knd_get_cls_entry_by_name(snapshot, name, name_size, &cls_inner_attr->template_cls, task);
         KND_TASK_ERR("no such {cls %.*s}", name_size, name);
         break;
     case KND_ATTR_CLS_REF:
         cls_ref_attr = attr->subtype;
-        if (!attr->cls_name_size) {
+        if (!cls_ref_attr->cls_name_size) {
             err = knd_FAIL;
-            KND_TASK_ERR("no template class specified for {attr %.*s}",
+            KND_TASK_ERR("no template cls specified for {attr %.*s}",
                          attr->name_size, attr->name);
         }
-        name = attr->cls_name;
-        name_size = attr->cls_name_size;
+        name = cls_ref_attr->cls_name;
+        name_size = cls_ref_attr->cls_name_size;
 
-        err = knd_get_cls_entry_by_name(repo, name, name_size, &cls_ref_attr->template_cls, task);
+        err = knd_get_cls_entry_by_name(snapshot, name, name_size, &cls_ref_attr->template_cls, task);
         KND_TASK_ERR("no such {cls %.*s}", name_size, name);
-        break;
-    case KND_ATTR_PROC_REF:
-        if (!attr->ref_proc_name_size) {
-            knd_log("-- no proc name specified for attr \"%.*s\"", attr->name_size, attr->name);
-            return knd_FAIL;
-        }
-        /*proc_entry = knd_shared_dict_get(task->idxs->proc_name_idx,
-                                         attr->ref_proc_name, attr->ref_proc_name_size);
-        if (!proc_entry) {
-            knd_log("-- no such proc: \"%.*s\" .."
-                    "couldn't resolve the \"%.*s\" attr of %.*s :(",
-                    attr->ref_proc_name_size,
-                    attr->ref_proc_name,
-                    attr->name_size, attr->name,
-                    attr->owner->name_size, attr->owner->name);
-            return knd_FAIL;
-            }*/
         break;
     default:
         // TODO
@@ -154,7 +137,7 @@ int knd_attr_resolve(struct kndAttr *attr, struct kndRepo *repo, struct kndTask 
     return knd_OK;
 }
 
-int knd_resolve_primary_attrs(struct kndClass *cls, struct kndRepo *repo, struct kndTask *task)
+int knd_resolve_primary_attrs(struct kndClass *cls, struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct kndAttr *attr;
     int err;
@@ -168,7 +151,7 @@ int knd_resolve_primary_attrs(struct kndClass *cls, struct kndRepo *repo, struct
         err = check_attr_name_conflict(cls, attr, task);
         KND_TASK_ERR("name conflict detected");
 
-        err = knd_attr_resolve(attr, repo, task);
+        err = knd_attr_resolve(attr, snapshot, task);
         KND_TASK_ERR("failed to resolve attr");
 
         err = knd_attr_register(attr, cls, task);

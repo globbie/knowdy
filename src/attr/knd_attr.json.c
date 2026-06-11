@@ -39,10 +39,9 @@
 #define DEBUG_ATTR_JSON_LEVEL_5 0
 #define DEBUG_ATTR_JSON_LEVEL_TMP 1
 
-int knd_attr_export_JSON(struct kndAttr *self, struct kndRepo *repo, struct kndTask *task, size_t depth)
+int knd_attr_export_JSON(struct kndAttr *self, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
-    struct kndProc *p;
     const char *type_name = knd_attr_names[self->type];
     size_t type_name_size = strlen(knd_attr_names[self->type]);
     int err;
@@ -58,10 +57,15 @@ int knd_attr_export_JSON(struct kndAttr *self, struct kndRepo *repo, struct kndT
     OUT(type_name, type_name_size);
     OUT("\"", 1);
 
-    if (self->is_a_set) {
-        OUT(",\"is_a_set\":true", strlen(",\"is_a_set\":true"));
+    switch (self->mult_t) {
+    case KND_ATTR_MULTIPLE:
+        OUT(",\"mult\":true", strlen(",\"mult\":true"));
+        break;
+    default:
+        break;
     }
 
+#if 0
     if (self->cls_name_size) {
         err = out->write(out, ",\"cls\":\"", strlen(",\"cls\":\""));
         if (err) return err;
@@ -70,12 +74,12 @@ int knd_attr_export_JSON(struct kndAttr *self, struct kndRepo *repo, struct kndT
         err = out->write(out, "\"", 1);
         if (err) return err;
    }
+#endif
 
-    if (self->tr) {
-        err = knd_text_gloss_export_JSON(self->tr, repo, task, depth + 1);
-        KND_TASK_ERR("failed to export attr gloss JSON");
-    }
+    err = knd_text_glosses_export_JSON(self->glosses, task, depth + 1);
+    KND_TASK_ERR("failed to export attr gloss JSON");
 
+#if 0
     if (self->proc) {
         err = out->write(out, ",\"proc\":", strlen(",\"proc\":"));
         if (err) return err;
@@ -83,6 +87,8 @@ int knd_attr_export_JSON(struct kndAttr *self, struct kndRepo *repo, struct kndT
         err = knd_proc_export(p, KND_FORMAT_JSON, repo, task, out);
         if (err) return err;
     }
+#endif
+
     OUT("}", 1);
     return knd_OK;
 }

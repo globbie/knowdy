@@ -42,7 +42,7 @@ static int update_index(struct kndFacet *facet, void *elem, struct kndTask *task
 }
 
 static int facetize_elem(struct kndFacet *facet, void *elem,
-                         struct kndRepo *repo, struct kndTask *task)
+                         struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct kndFacetHashSpec *spec = facet->hash_specs;
     struct kndFacet *f;
@@ -61,11 +61,11 @@ static int facetize_elem(struct kndFacet *facet, void *elem,
     assert (spec->key_get_cb != NULL);
     assert (spec->hash_cb != NULL);
 
-    err = spec->key_get_cb(elem, (void*)repo, &term_key, task);
+    err = spec->key_get_cb(elem, (void*)snapshot, &term_key, task);
     KND_TASK_ERR("failed to obtain a facet key from elem");
 
     do {
-        err = spec->hash_cb(facet->key, curr_key, term_key, (void*)repo, &result_key, &numval, task);
+        err = spec->hash_cb(facet->key, curr_key, term_key, (void*)snapshot, &result_key, &numval, task);
         if (err) {
             if (err == knd_NO_MATCH) break;
             KND_TASK_ERR("failed to apply a facet hash func {err %d}", err);
@@ -84,7 +84,7 @@ static int facetize_elem(struct kndFacet *facet, void *elem,
             facet->children[numval] = f;
             facet->num_children++;
         }
-        err = knd_facet_add(f, elem, repo, task);
+        err = knd_facet_add(f, elem, snapshot, task);
         KND_TASK_ERR("failed to add a facet elem {err %d}", err);
         is_idx_updated = true;
 
@@ -104,7 +104,7 @@ static int facetize_elem(struct kndFacet *facet, void *elem,
     return knd_OK;
 }
 
-int knd_facet_add(struct kndFacet *facet, void *elem, struct kndRepo *repo, struct kndTask *task)
+int knd_facet_add(struct kndFacet *facet, void *elem, struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     size_t cache_size;
     int err;
@@ -123,12 +123,12 @@ int knd_facet_add(struct kndFacet *facet, void *elem, struct kndRepo *repo, stru
         facet->cache_size = 0;
 
         for (size_t i = 0; i < cache_size; i++) {
-            err = facetize_elem(facet, facet->cache[i], repo, task);
+            err = facetize_elem(facet, facet->cache[i], snapshot, task);
             KND_TASK_ERR("failed to facetize a cached elem");
         }
     }
 
-    err = facetize_elem(facet, elem, repo, task);
+    err = facetize_elem(facet, elem, snapshot, task);
     KND_TASK_ERR("failed to facetize an elem");
     facet->num_elems++;
 

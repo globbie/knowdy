@@ -50,13 +50,13 @@ void knd_proc_inst_str(struct kndProcInst *self, size_t depth)
 
 
 int knd_proc_inst_export(struct kndProcInst *self, knd_format format, bool is_list_item,
-                         struct kndRepo *repo, struct kndTask *task)
+                         struct kndTask *task)
 {
     switch (format) {
     case KND_FORMAT_JSON:
-        return knd_proc_inst_export_JSON(self, is_list_item, KND_SELECTED, repo, task, 0);
+        return knd_proc_inst_export_JSON(self, is_list_item, KND_SELECTED, task, 0);
     case KND_FORMAT_GSL:
-        return knd_proc_inst_export_GSL(self, is_list_item, KND_SELECTED, repo, task, 0);
+        return knd_proc_inst_export_GSL(self, is_list_item, KND_SELECTED, task, 0);
     default:
         return knd_RANGE;
     }

@@ -33,6 +33,7 @@ struct LocalContext {
     struct kndTask *task;
     struct kndQuery *query;
     struct kndRepo *repo;
+    struct kndRepoSnapshot *snapshot;
 };
 
 void knd_user_del(struct kndUser *self)
@@ -45,13 +46,13 @@ void knd_user_del(struct kndUser *self)
 static gsl_err_t parse_proc_import(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndRepo *repo = ctx->repo;
+    struct kndRepo *snapshot = ctx->snapshot;
     struct kndTask *task = ctx->task;
     struct kndUserContext *user_ctx = task->user_ctx;
     struct kndRepoAccess *acl = user_ctx->acls;
     int err;
 
-    assert(user_ctx->repo != NULL);
+    assert(user_ctx->snapshot != NULL);
     assert(acl != NULL);
 
     if (DEBUG_USER_LEVEL_3) {
@@ -67,15 +68,15 @@ static gsl_err_t parse_proc_import(void *obj, const char *rec, size_t *total_siz
     //if (!task->ctx->commit->orig_state_id)
     //    task->ctx->commit->orig_state_id = atomic_load_explicit(&task->snapshot->num_commits,
     //                                                            memory_order_relaxed);
-    return knd_proc_import(rec, total_size, repo, task);
+    return knd_proc_import(rec, total_size, snapshot, task);
 }
 
 static gsl_err_t parse_proc_select(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndRepo *repo = ctx->repo;
-    return knd_proc_select(rec, total_size, repo, task);
+    struct kndRepo *snapshot = ctx->snapshot;
+    return knd_proc_select(rec, total_size, snapshot, task);
 }
 
 int knd_create_user_repo(struct kndTask *task)
@@ -83,7 +84,7 @@ int knd_create_user_repo(struct kndTask *task)
     struct kndUserContext *ctx = task->user_ctx;
     struct kndRepo *repo;
     int err;
-    assert(ctx->repo == NULL);
+    assert(ctx->snapshot == NULL);
 
     err = knd_repo_new(&repo, "~", 1, "", 0);
     KND_TASK_ERR("failed to alloc new repo");
@@ -107,7 +108,7 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndRepo *repo = ctx->repo;
+    struct kndRepo *snapshot = ctx->snapshot;
     struct kndUserContext *user_ctx = task->user_ctx;
     struct kndRepoAccess *acl = user_ctx->acls;
     struct kndClass *cls;
@@ -133,7 +134,7 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
         //                                                        memory_order_relaxed);
     }
 
-    err = knd_class_import(rec, total_size, &cls, repo, task);
+    err = knd_class_import(rec, total_size, &cls, snapshot, task);
     if (err) return make_gsl_err_external(err);
 
     /* assign a unique class entry id */
@@ -148,7 +149,7 @@ static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_si
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndRepo *repo = ctx->repo;
+    struct kndRepo *snapshot = ctx->snapshot;
     gsl_err_t parser_err;
     if (!task->user_ctx) {
         KND_TASK_LOG("no user selected");
@@ -156,8 +157,8 @@ static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_si
     }
 
     /* check private repo first */
-    if (task->user_ctx->repo) {
-        parser_err = knd_class_select(rec, total_size, repo, task);
+    if (task->user_ctx->snapshot) {
+        parser_err = knd_class_select(rec, total_size, snapshot, task);
         if (parser_err.code == gsl_OK) {
             return parser_err;
         }
@@ -167,7 +168,7 @@ static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_si
         }
     }
     /* shared read-only repo */
-    return knd_class_select(rec, total_size, repo, task);
+    return knd_class_select(rec, total_size, snapshot, task);
 }
 #endif
 
@@ -178,7 +179,7 @@ static gsl_err_t parse_text_search(void *obj, const char *rec, size_t *total_siz
         KND_TASK_LOG("no user selected");
         return make_gsl_err(gsl_FAIL);
     }
-    return knd_text_search(task->user_ctx->repo, rec, total_size, task);
+    return knd_text_search(task->user_ctx->snapshot, rec, total_size, task);
 }
 
 static int build_user_ctx(struct kndUser *self, struct kndClassInst *inst,
@@ -290,7 +291,7 @@ static gsl_err_t run_present_user(void *obj, const char *unused_var(val), size_t
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndRepo *repo = ctx->repo;
+    struct kndRepo *snapshot = ctx->snapshot;
 
     struct kndClassInst *user_inst;
     struct kndOutput *out = task->out;
@@ -323,7 +324,7 @@ static gsl_err_t run_present_user(void *obj, const char *unused_var(val), size_t
 
     user_inst = task->user_ctx->inst;
 
-    err = knd_class_inst_export(user_inst, task->ctx->format, false, KND_SELECTED, repo, task);
+    err = knd_class_inst_export(user_inst, task->ctx->format, false, KND_SELECTED, task);
     if (err) return make_gsl_err_external(err);
 
     err = user_footer_export(task);
@@ -424,7 +425,7 @@ gsl_err_t knd_create_user(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndRepo *repo = ctx->repo;
+    struct kndRepo *snapshot = ctx->snapshot;
     struct kndUser *self = task->user;
     int err;
 
@@ -434,7 +435,7 @@ gsl_err_t knd_create_user(void *obj, const char *rec, size_t *total_size)
         //task->ctx->commit->orig_state_id = atomic_load_explicit(&task->snapshot->num_commits,
         //                                                        memory_order_relaxed);
     }
-    err = knd_import_class_inst(self->class->entry, rec, total_size, repo, task);
+    err = knd_import_class_inst(self->class->entry, rec, total_size, snapshot, task);
     if (err) {
         return *total_size = 0, make_gsl_err_external(err);
     }

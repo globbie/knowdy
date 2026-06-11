@@ -138,8 +138,6 @@ struct kndSet
     knd_set_cardinal_t cardinal_t;
     knd_set_elem_format_t format_t;
 
-    knd_set_elem_unmarshall_cb_t elem_unmarshall_cb;
-    void *elem_unmarshall_ctx;
 
     struct kndSetDir *dir;
     size_t num_elems;
@@ -161,7 +159,8 @@ int knd_set_dir_new(struct kndSetDir **result, const char *parent_id, size_t par
 int knd_set_dir_block_new(struct kndSetDirBlock **result, struct kndMemPool *mempool);
 
 int knd_set_add(struct kndSet *self, const char *key, size_t key_size, void *elem, struct kndTask *task);
-int knd_set_get(struct kndSet *set, const char *key, size_t key_size, void **elem, struct kndTask *task);
+int knd_set_get(struct kndSet *set, const char *key, size_t key_size,
+                void **result, struct kndTask *task);
 
 int knd_set_filter(struct kndSet *set, filter_cb_t filter_cb, void *filter_ctx, struct kndSet **result);
 int knd_set_map(struct kndSet *set, struct kndSetRange *range,
@@ -190,5 +189,5 @@ int knd_set_build_path(struct kndSet *idx, const char *path, size_t path_size,
 int knd_set_read_leaf(struct kndSet *idx, struct kndStorageLeaf *leaf, struct kndSetRange *range,
                       knd_set_elem_unmarshall_cb_t cb, void *cb_ctx, struct kndTask *task);
 
-int knd_set_fetch_elem(struct kndSet *s, const char *key, size_t key_size,
-                       knd_set_elem_unmarshall_cb_t cb, void *cb_ctx, void **result, struct kndTask *task);
+int knd_set_fetch(struct kndSet *s, const char *key, size_t key_size,
+                  knd_set_elem_unmarshall_cb_t cb, void *cb_ctx, void **result, struct kndTask *task);

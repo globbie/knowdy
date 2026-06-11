@@ -163,8 +163,14 @@ struct kndTaskContext {
 struct kndTaskCache {
     struct kndMemPool *mempool;
 
+    struct kndSet *attr_idx;
+    struct kndDict *attr_name_idx;
+
     struct kndSet *cls_idx;
     struct kndDict *cls_name_idx;
+
+    struct kndSet  *str_idx;
+    struct kndDict *str_dict;
 
     struct kndCacheItem *cls_entries;
     struct kndCacheItem *cls_entries_tail;

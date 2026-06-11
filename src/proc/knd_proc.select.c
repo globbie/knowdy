@@ -33,7 +33,7 @@
 #define DEBUG_PROC_SELECT_LEVEL_TMP 1
 
 struct LocalContext {
-    struct kndRepo *repo;
+    struct kndRepoSnapshot *snapshot;
     struct kndTask *task;
     struct kndProc *proc;
     struct kndProcEntry *entry;
@@ -42,7 +42,7 @@ struct LocalContext {
 static gsl_err_t run_get_proc(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndRepo *repo = ctx->repo;
+    struct kndRepoSnapshot *snapshot = ctx->snapshot;
     struct kndProc *proc;
     int err;
     if (!name_size) return make_gsl_err(gsl_FORMAT);
@@ -50,7 +50,7 @@ static gsl_err_t run_get_proc(void *obj, const char *name, size_t name_size)
 
     ctx->proc = NULL;
 
-    err = knd_get_proc(repo, name, name_size, &proc, ctx->task);
+    err = knd_get_proc(snapshot, name, name_size, &proc, ctx->task);
     if (err) return make_gsl_err_external(err);
 
     ctx->proc =  proc;
@@ -63,7 +63,6 @@ static gsl_err_t present_proc_selection(void *obj, const char *unused_var(val), 
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndRepo *repo = ctx->repo;
     struct kndProc *proc = ctx->proc;
     knd_format format = task->ctx->format;
     struct kndOutput *out = task->out;
@@ -77,7 +76,7 @@ static gsl_err_t present_proc_selection(void *obj, const char *unused_var(val), 
     out->reset(out);
     
     /* export BODY */
-    err = knd_proc_export(proc, format, repo, task, out);
+    err = knd_proc_export(proc, format, task, out);
     if (err) return make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);
@@ -136,18 +135,6 @@ static gsl_err_t parse_proc_inst_import(void *obj, const char *rec, size_t *tota
         return *total_size = 0, make_gsl_err_external(knd_FAIL);
     }
 
-    if (task->user_ctx) {
-        if (entry->repo != task->user_ctx->repo) {
-            knd_log(".. proc entry cloning..");
-            err = knd_proc_entry_clone(ctx->entry, task->user_ctx->repo, &entry, task);
-            if (err) {
-                KND_TASK_LOG("failed to clone proc entry");
-                return *total_size = 0, make_gsl_err_external(err);
-            }
-            ctx->entry = entry;
-        }
-    }
-
     switch (task->type) {
     case KND_TASK_QUERY:
         if (!commit) {
@@ -166,11 +153,11 @@ static gsl_err_t parse_proc_inst_import(void *obj, const char *rec, size_t *tota
     return make_gsl_err(gsl_OK);
 }
 
-gsl_err_t knd_proc_select(const char *rec, size_t *total_size, struct kndRepo *repo, struct kndTask *task)
+gsl_err_t knd_proc_select(const char *rec, size_t *total_size, struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct LocalContext ctx = {
         .task = task,
-        .repo = repo
+        .snapshot = snapshot
     };
     gsl_err_t parser_err;
     int err;

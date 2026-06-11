@@ -63,11 +63,10 @@ struct kndDict
 
     knd_dict_item_marshall_cb_t item_marshall_cb;
     knd_dict_item_unmarshall_cb_t item_unmarshall_cb;
-    knd_dict_item_fetch_cb_t item_fetch_cb;
-    void *item_fetch_cb_ctx;
 };
 
-int knd_dict_new(struct kndDict **self, size_t init_size, struct kndMemPool *mempool);
+int knd_dict_new(struct kndDict **self, size_t init_size, enum knd_dict_storage_t store_t,
+                 struct kndMemPool *mempool);
 int knd_dict_entry_new(struct kndDictEntry **result, struct kndMemPool *mempool);
 void knd_dict_entry_free(struct kndDictEntry *entry, struct kndMemPool *mempool);
 int knd_dict_item_new(struct kndDictItem **result, struct kndMemPool *mempool);
@@ -75,6 +74,8 @@ void knd_dict_item_free(struct kndDictItem *item, struct kndMemPool *mempool);
 
 void knd_dict_del(struct kndDict *self);
 void knd_dict_reset(struct kndDict *self);
+
+size_t knd_dict_hash(const char *key, size_t key_size);
 
 int knd_dict_get(struct kndDict *self, const char *key, size_t key_size, void **result, struct kndTask *task);
 int knd_dict_set(struct kndDict *self, const char *key, size_t key_size, void *data, struct kndTask *task);
@@ -94,9 +95,9 @@ int knd_dict_unmarshall_entry(const char *elem_id, size_t elem_id_size,
 
 int knd_dict_append_leaf(struct kndDict *dict, struct kndStorageLeaf *leaf, struct kndTask *task);
 
-int knd_dict_fetch_entry(const char *elem_id, size_t elem_id_size,
-                         const char *rec, size_t unused_var(rec_size),
-                         void *ctx_obj, size_t *result_size, void **unused_var(result),
-                         struct kndTask *task);
-int knd_dict_fetch_item(struct kndDict *dict, size_t hash_val, const char *name, size_t name_size, void **result, struct kndTask *task);
+int knd_dict_fetch(struct kndDict *dict,
+                   const char *name, size_t name_size,
+                   knd_dict_item_fetch_cb_t item_fetch_cb,
+                   void *item_fetch_cb_ctx,
+                   void **result, struct kndTask *task);
 
