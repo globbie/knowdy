@@ -176,9 +176,9 @@ int knd_get_class_inst(struct kndClass *self, const char *name, size_t name_size
         KND_TASK_LOG("\"%s\" class inst was removed", name);
         return knd_NO_MATCH;
     }
-    if (DEBUG_CLASS_LEVEL_3)
+    if (DEBUG_CLASS_LEVEL_3) {
         knd_class_inst_str(inst, 1);
-
+    }
     *result = inst;
 #endif
     return knd_OK;
@@ -533,21 +533,74 @@ static int init_load_get_cls_entry_by_name(struct kndRepoSnapshot *unused_var(sn
     return knd_OK;
 }
 
-static int update_cls_entry_task_cache(struct kndClassEntry *entry, struct kndTask *task)
+static int index_cls_entry_copy(struct kndClassEntry *orig_entry, struct kndClass *cls, struct kndTask *task)
 {
+    struct kndClassEntry *entry;
     struct kndDict *name_idx = task->cache.cls_name_idx;
-    struct kndSet *idx = task->cache.cls_idx;
+    struct kndSet *cls_idx = task->cache.cls_idx;
     int err;
 
     if (DEBUG_CLASS_LEVEL_2) {
-        knd_log("++ update cls entry task cache with {cls %.*s {id %.*s}}",
-            entry->name_size, entry->name, entry->id_size, entry->id);
+        knd_log(">> index cls entry copy of {cls %.*s {id %.*s}}",
+                orig_entry->name_size, orig_entry->name, orig_entry->id_size, orig_entry->id);
     }
 
-    err = knd_dict_set(name_idx, entry->name,  entry->name_size, (void*)entry, task);
-    KND_TASK_ERR("failed to register {cls %.*s}", entry->name_size, entry->name);
+    err = knd_class_entry_new(&entry, task->cache.mempool);
+    KND_TASK_ERR("failed to alloc a cls entry");
+    memcpy(entry->id, orig_entry->id, orig_entry->id_size);
+    entry->id_size = orig_entry->id_size;
+    entry->seq = orig_entry->seq;
+    entry->name = orig_entry->name;
+    entry->name_size = orig_entry->name_size;
 
-    err = knd_set_add(idx, entry->id, entry->id_size, (void*)entry, task);
+    entry->cls = cls;
+    cls->entry = entry;
+
+    err = knd_dict_set(name_idx, entry->name,  entry->name_size, (void*)entry, task);
+    KND_TASK_ERR("failed to register {cls %.*s} {err %d}", entry->name_size, entry->name, err);
+
+    err = knd_set_add(cls_idx, entry->id, entry->id_size, (void*)entry, task);
+    KND_TASK_ERR("failed to update task cls idx of {cls %.*s}", entry->name_size, entry->name);
+
+    return knd_OK;
+}
+
+static int update_cls_entry_cache(struct kndClassEntry *entry,
+                                  struct kndRepoSnapshot *snapshot, struct kndTask *task)
+{
+    struct kndDict *name_idx = snapshot->cache.cls_name_idx;
+    struct kndSet *cls_idx = snapshot->cache.cls_idx;
+    int err;
+
+    if (DEBUG_CLASS_LEVEL_2) {
+        knd_log("++ update cls entry cache with {cls %.*s {id %.*s}} {task-type %d}",
+                entry->name_size, entry->name, entry->id_size, entry->id, task->type);
+    }
+
+    assert (entry->name_size != 0);
+
+    switch (task->type) {
+    case KND_TASK_CACHE_UPDATE:
+        entry->phase = KND_CLASS_CACHED;
+
+        err = knd_dict_set(name_idx, entry->name,  entry->name_size, (void*)entry, task);
+        KND_TASK_ERR("failed to register {cls %.*s} {err %d}", entry->name_size, entry->name, err);
+
+        err = knd_set_add(cls_idx, entry->id, entry->id_size, (void*)entry, task);
+        KND_TASK_ERR("failed to update task cls idx of {cls %.*s}", entry->name_size, entry->name);
+
+        return knd_OK;
+    default:
+        break;
+    }
+
+    name_idx = task->cache.cls_name_idx;
+    cls_idx = task->cache.cls_idx;
+
+    err = knd_dict_set(name_idx, entry->name,  entry->name_size, (void*)entry, task);
+    KND_TASK_ERR("failed to register {cls %.*s} {err %d}", entry->name_size, entry->name, err);
+
+    err = knd_set_add(cls_idx, entry->id, entry->id_size, (void*)entry, task);
     KND_TASK_ERR("failed to update task cls idx of {cls %.*s}", entry->name_size, entry->name);
 
     err = update_cls_cache(entry, task);
@@ -562,11 +615,11 @@ static int query_get_cls_entry_by_name(struct kndRepoSnapshot *snapshot,
 {
     struct kndDict *name_idx;
     struct kndClassEntry *entry;
-    struct kndClassRef ref;
+    struct kndClassRef ref = { {0}, 0, 0, 0, 0 };
     int err;
 
     if (DEBUG_CLASS_LEVEL_2) {
-        knd_log(".. query to get a {cls %.*s}", name_size, name);
+        knd_log(".. query to get a {cls %.*s} {agent-role %d}", name_size, name, task->role);
     }
 
     /* lookup task local write idx */
@@ -594,6 +647,9 @@ static int query_get_cls_entry_by_name(struct kndRepoSnapshot *snapshot,
     if (!err) {
         assert (entry != NULL);
         assert (entry->name_size != 0);
+
+        knd_log("++ task local name_idx match {cls-entry %.*s}", entry->name_size, entry->name);
+
         *result = entry;
         return knd_OK;
     }
@@ -608,8 +664,7 @@ static int query_get_cls_entry_by_name(struct kndRepoSnapshot *snapshot,
         .cls_ref = &ref
     };
 
-    err = knd_dict_fetch(name_idx, name, name_size,
-                         knd_cls_name_fetch, &ctx, (void**)NULL, task);
+    err = knd_dict_fetch(name_idx, name, name_size, knd_cls_name_fetch, &ctx, (void**)NULL, task);
     if (!err) {
         err = knd_get_cls_entry_by_id(snapshot, ref.id, ref.id_size, &entry, task);
         KND_TASK_ERR("failed to get {cls-entry %.*s} by id", ref.id_size, ref.id);
@@ -650,10 +705,42 @@ int knd_get_cls_entry_by_id(struct kndRepoSnapshot *snapshot, const char *id, si
     assert (id != NULL);
     assert (id_size != 0);
 
+    if (DEBUG_CLASS_LEVEL_2) {
+        knd_log(">> get {cls-entry {id %.*s}}", id_size, id);
+    }
+
+    /* task-local operational cache */
     err = knd_set_get(cls_idx, id, id_size, (void**)&elem, task);
     switch (err) {
     case knd_OK:
-        *result = elem->val;
+        entry = elem->val;
+
+        if (DEBUG_CLASS_LEVEL_3) {
+            knd_log("++ task local cache {cls %.*s {id %.*s}}",
+                    entry->name_size, entry->name, entry->id_size, entry->id);
+        }
+
+        *result = entry;
+        return knd_OK;
+    case knd_NO_MATCH:
+        break;
+    default:
+        break;
+    }
+
+    /* global read-only cache */
+    cls_idx = snapshot->cache.cls_idx;
+    err = knd_set_get(cls_idx, id, id_size, (void**)&elem, task);
+    switch (err) {
+    case knd_OK:
+        entry = elem->val;
+
+        if (DEBUG_CLASS_LEVEL_3) {
+            knd_log("++ global cache {cls-entry %.*s {id %.*s} {body %p}}",
+                    entry->name_size, entry->name, id_size, id, entry->cls);
+        }
+
+        *result = entry;
         return knd_OK;
     case knd_NO_MATCH:
         break;
@@ -668,6 +755,10 @@ int knd_get_cls_entry_by_id(struct kndRepoSnapshot *snapshot, const char *id, si
         .id_size = id_size
     };
 
+    if (DEBUG_CLASS_LEVEL_3) {
+        knd_log("-- no cache match, fetching {cls-entry {id %.*s}}", id_size, id);
+    }
+
     cls_idx = snapshot->cache.cls_idx;
     err = knd_set_fetch(cls_idx, id, id_size, knd_cls_entry_unmarshall, &ctx, (void**)&entry, task);
     switch (err) {
@@ -675,9 +766,8 @@ int knd_get_cls_entry_by_id(struct kndRepoSnapshot *snapshot, const char *id, si
         err = knd_cls_entry_decode(entry, snapshot, task);
         KND_TASK_ERR("failed to decode {cls-entry %.*s}", id_size, id);
 
-        err = update_cls_entry_task_cache(entry, task);
-        KND_TASK_ERR("failed to update task cache with {cls %.*s}",
-                     entry->name_size, entry->name);
+        err = update_cls_entry_cache(entry, snapshot, task);
+        KND_TASK_ERR("failed to update task cache with {cls %.*s}", entry->name_size, entry->name);
 
         *result = entry;
         return knd_OK;
@@ -692,24 +782,23 @@ int knd_get_cls_entry_by_id(struct kndRepoSnapshot *snapshot, const char *id, si
 int knd_class_acquire(struct kndClassEntry *entry, struct kndClass **result,
                       struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
-    struct kndClass *c = entry->cls;
+    struct kndClass *cls = entry->cls;
     int err;
 
     if (DEBUG_CLASS_LEVEL_2) {
-        knd_log(">> acquire {cls %.*s {id %.*s}}",
-                entry->name_size, entry->name, entry->id_size, entry->id);
+        knd_log(">> acquire {cls-entry %.*s {id %.*s} {phase %d}}",
+                entry->name_size, entry->name, entry->id_size, entry->id, entry->phase);
     }
 
-    if (c) {
+    if (cls) {
         /* check cls status, it may be deleted */
-        if (c->num_states) {
-            if (c->states->phase == KND_REMOVED) {
+        if (cls->num_states) {
+            if (cls->states->phase == KND_REMOVED) {
                 err = knd_NO_MATCH;
-                KND_TASK_ERR("{cls %.*s} was removed",
-                             entry->name_size, entry->name);
+                KND_TASK_ERR("{cls %.*s} was removed", entry->name_size, entry->name);
             }
         }
-        *result = c;
+        *result = cls;
         return knd_OK;
     }
 
@@ -722,13 +811,32 @@ int knd_class_acquire(struct kndClassEntry *entry, struct kndClass **result,
 
     /* try global read-only cache */
     err = knd_set_fetch(snapshot->cache.cls_idx, entry->id, entry->id_size,
-                        knd_cls_body_unmarshall, &ctx, (void**)&c, task);
+                        knd_cls_body_unmarshall, &ctx, (void**)&cls, task);
     switch (err) {
     case knd_OK:
-        err = knd_class_decode(c, snapshot, task);
-        KND_TASK_ERR("failed to decode {cls %.*s}", c->name_size, c->name);
-        entry->cls = c;        
-        *result = c;
+        err = knd_class_decode(cls, snapshot, task);
+        KND_TASK_ERR("failed to decode {cls %.*s}", cls->name_size, cls->name);
+
+        switch (task->type) {
+        case KND_TASK_CACHE_UPDATE:
+            entry->cls = cls;
+            *result = cls;
+            return knd_OK;
+        default:
+            break;
+        }
+
+        switch (entry->phase) {
+        case KND_CLASS_CACHED:
+            err = index_cls_entry_copy(entry, cls, task);
+            KND_TASK_ERR("failed to index a local copy of a cls entry");
+            break;
+        default:
+            entry->cls = cls;
+            break;
+        }
+
+        *result = cls;
         return knd_OK;
     case knd_NO_MATCH:
         return knd_NO_MATCH;
@@ -778,7 +886,7 @@ int knd_class_base_pred_new(struct kndClassBasePred **result, struct kndClass *c
 {
     void *page;
     int err;
-    assert(mempool->small_page_size >= sizeof(struct kndClassBasePred));
+    assert(KND_SMALL_MEMPAGE_SIZE >= sizeof(struct kndClassBasePred));
     err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndClassBasePred));
@@ -791,7 +899,7 @@ int knd_class_ref_new(struct kndClassRef **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndClassRef));
+    assert(KND_TINY_MEMPAGE_SIZE >= sizeof(struct kndClassRef));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndClassRef));
@@ -803,7 +911,7 @@ int knd_class_idx_new(struct kndClassIdx **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndClassIdx));
+    assert(KND_TINY_MEMPAGE_SIZE >= sizeof(struct kndClassIdx));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndClassIdx));
@@ -815,7 +923,7 @@ int knd_class_entry_new(struct kndClassEntry **result, struct kndMemPool *mempoo
 {
     void *page;
     int err;
-    assert(mempool->small_page_size >= sizeof(struct kndClassEntry));
+    assert(KND_SMALL_MEMPAGE_SIZE >= sizeof(struct kndClassEntry));
     err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndClassEntry));
@@ -832,7 +940,6 @@ void knd_class_entry_free(struct kndClassEntry *entry, struct kndMemPool *mempoo
     if (entry->cls) {
         // free cls
     }
-
     knd_mempool_free(mempool, KND_MEMPAGE_SMALL, (void*)entry);
 }
 
@@ -842,7 +949,7 @@ int knd_class_new(struct kndClass **result, struct kndMemPool *mempool)
     void *page;
     int err;
 
-    assert(mempool->small_x4_page_size >= sizeof(struct kndClass));
+    assert(KND_SMALL_X4_MEMPAGE_SIZE >= sizeof(struct kndClass));
     err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL_X4, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndClass));

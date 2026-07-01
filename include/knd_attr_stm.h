@@ -93,10 +93,10 @@ struct kndAttrStm
 
     void *subtype;
 
-    const char *val;
-    size_t val_size;
     char val_id[KND_ID_SIZE];
     size_t val_id_size;
+    const char *val;
+    size_t val_size;
 
     struct kndCharSeq *seq;
 

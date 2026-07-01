@@ -575,7 +575,7 @@ int knd_proc_arg_ref_new(struct kndProcArgRef **result, struct kndMemPool *mempo
 {
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndProcArgRef));
+    assert(KND_TINY_MEMPAGE_SIZE >= sizeof(struct kndProcArgRef));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndProcArgRef));
@@ -587,7 +587,7 @@ int knd_proc_arg_var_new(struct kndProcArgVar **result, struct kndMemPool *mempo
 {
     void *page;
     int err;
-    assert(mempool->small_page_size >= sizeof(struct kndProcArgVar));
+    assert(KND_SMALL_MEMPAGE_SIZE >= sizeof(struct kndProcArgVar));
     err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndProcArgVar));
@@ -599,7 +599,7 @@ int knd_proc_arg_new(struct kndProcArg **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
-    assert(mempool->small_x2_page_size >= sizeof(struct kndProcArg));
+    assert(KND_SMALL_X2_MEMPAGE_SIZE >= sizeof(struct kndProcArg));
     err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL_X2, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndProcArgVar));

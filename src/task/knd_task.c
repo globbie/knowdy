@@ -62,6 +62,8 @@ void knd_task_reset(struct kndTask *self)
     self->out->reset(self->out);
     self->log->reset(self->log);
 
+    /* only operational mempool is reset,
+       cache mempool remains */
     knd_mempool_reset(self->mempool);
 }
 

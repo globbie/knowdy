@@ -23,7 +23,7 @@
 
 struct ExternalContext {
     struct kndRepoSnapshot  *snapshot;
-    struct kndTask       *task;
+    struct kndTask          *task;
 };
 
 struct LocalContext {
@@ -90,6 +90,7 @@ static gsl_err_t parse_gloss_item(void *obj, const char *rec, size_t *total_size
     int err;
 
     assert (task != NULL);
+    assert (task->mempool != NULL);
 
     err = knd_text_new(&t, task->mempool);
     if (err) {

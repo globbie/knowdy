@@ -56,14 +56,55 @@ struct LocalContext {
 static gsl_err_t read_attr_stm_list_item(void *obj, const char *rec, size_t *total_size);
 static gsl_err_t read_nested_attr_stm(void *obj, const char *name, size_t name_size,
                                       const char *rec, size_t *total_size);
-static gsl_err_t set_attr_stm_val_id(void *obj, const char *val, size_t val_size);
 static gsl_err_t confirm_attr_stm(void *obj, const char *unused_var(name), size_t unused_var(name_size));
+
+static gsl_err_t set_attr_stm_val_id(void *obj, const char *val_id, size_t val_id_size)
+{
+    struct LocalContext *ctx = obj;
+    struct kndAttrStm *self = ctx->attr_stm;
+
+    if (!val_id_size) return make_gsl_err(gsl_FORMAT);
+    if (val_id_size > KND_ID_SIZE) return make_gsl_err(gsl_LIMIT);
+    
+    memcpy(self->val_id, val_id, val_id_size);
+    self->val_id_size = val_id_size;
+
+    return make_gsl_err(gsl_OK);
+}
+
+static int write_raw_val(struct kndAttrStm *stm, const char *val, size_t val_size, struct kndTask *task)
+{
+    struct kndMemBlock *memblock;
+    int err;
+
+    err = knd_memblock_fetch(&memblock, val_size, task);
+    KND_TASK_ERR("failed to fetch a memblock");
+
+    err = knd_memblock_write(memblock, val, val_size, false, &stm->val);
+    KND_TASK_ERR("failed to to save {val %.*s}", val_size, val);
+    stm->val_size = val_size;
+
+    return knd_OK;
+}
+
+static gsl_err_t read_raw_val(void *obj, const char *val, size_t val_size)
+{
+    struct LocalContext *ctx = obj;
+    int err;
+    if (!val_size) return make_gsl_err(gsl_FORMAT);
+
+    err = write_raw_val(ctx->attr_stm, val, val_size, ctx->task);
+    if (err) return make_gsl_err_external(err);
+
+    return make_gsl_err(gsl_OK);
+}
 
 static gsl_err_t parse_text(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndMemPool *mempool = task->mempool;
+    struct kndTaskCache *cache = &task->cache;
+    struct kndMemPool *mempool = cache->mempool;
     struct kndText *text;
     gsl_err_t parser_err;
     int err;
@@ -88,14 +129,16 @@ static gsl_err_t set_proc_ref(void *obj, const char *val, size_t val_size)
     struct kndAttrStm *self = ctx->attr_stm;
     // int err;
 
-    if (DEBUG_ATTR_STM_READ_LEVEL_3)
+    if (DEBUG_ATTR_STM_READ_LEVEL_3) {
         knd_log(".. set proc ref: \"%.*s\" => \"%.*s\"",
                 self->attr->name_size, self->attr->name, val_size, val);
-
+    }
     if (!val_size) return make_gsl_err(gsl_FORMAT);
     self->val = val;
     self->val_size = val_size;
+
     // TODO resolve ref
+
     return make_gsl_err(gsl_OK);
 }
 
@@ -121,7 +164,8 @@ static gsl_err_t read_nested_attr_stm_list(void *obj, const char *id, size_t id_
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndMemPool *mempool = task->mempool;
+    struct kndTaskCache *cache = &task->cache;
+    struct kndMemPool *mempool = cache->mempool;
     struct kndAttrStm *parent_attr_stm = ctx->attr_stm;
     struct kndAttrStm *attr_stm;
     struct kndAttrRef *ref;
@@ -144,7 +188,7 @@ static gsl_err_t read_nested_attr_stm_list(void *obj, const char *id, size_t id_
     assert(ref->attr != NULL);
     attr = ref->attr;
 
-    if (DEBUG_ATTR_STM_READ_LEVEL_2) {
+    if (DEBUG_ATTR_STM_READ_LEVEL_3) {
         knd_log(">> list attr decoded: %.*s  {type %s}",
                 attr->name_size, attr->name, knd_attr_names[attr->type]);
     }
@@ -198,8 +242,9 @@ static gsl_err_t read_nested_attr_stm(void *obj, const char *id, size_t id_size,
     struct LocalContext *ctx = obj;
     struct kndAttrStm *parent = ctx->attr_stm;
     struct kndTask    *task = ctx->task;
+    struct kndTaskCache *cache = &task->cache;
+    struct kndMemPool *mempool = cache->mempool;
     struct kndAttrStm *stm;
-    struct kndMemPool *mempool = task->mempool;
     gsl_err_t parser_err;
     int err;
 
@@ -227,6 +272,11 @@ static gsl_err_t read_nested_attr_stm(void *obj, const char *id, size_t id_size,
         { .name = "_t",
           .name_size = strlen("_t"),
           .parse = parse_text,
+          .obj = &attr_stm_ctx
+        },
+        { .name = "_raw",
+          .name_size = strlen("_raw"),
+          .run = read_raw_val,
           .obj = &attr_stm_ctx
         },
         { .name = "_p",
@@ -258,20 +308,6 @@ static gsl_err_t read_nested_attr_stm(void *obj, const char *id, size_t id_size,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t set_attr_stm_val_id(void *obj, const char *val_id, size_t val_id_size)
-{
-    struct LocalContext *ctx = obj;
-    struct kndAttrStm *self = ctx->attr_stm;
-
-    if (!val_id_size) return make_gsl_err(gsl_FORMAT);
-    if (val_id_size > KND_ID_SIZE) return make_gsl_err(gsl_LIMIT);
-    
-    memcpy(self->val_id, val_id, val_id_size);
-    self->val_id_size = val_id_size;
-
-    return make_gsl_err(gsl_OK);
-}
-
 static gsl_err_t confirm_attr_stm(void *obj, const char *unused_var(name), size_t unused_var(name_size))
 {
     struct kndAttrStm *attr_stm = obj;
@@ -280,15 +316,16 @@ static gsl_err_t confirm_attr_stm(void *obj, const char *unused_var(name), size_
 
     if (DEBUG_ATTR_STM_READ_LEVEL_2) {
         if (!attr_stm->val_size)
-            knd_log("NB: attr var value not set in %.*s (class: %.*s)",
+            knd_log("NB: attr stm value not set in %.*s {cls %.*s}",
                     attr_stm->name_size, attr_stm->name,
                     attr_stm->attr->owner->name_size,
                     attr_stm->attr->owner->name);
     }
+
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t append_attr_stm_list_item(void *accu, void *obj)
+static void append_attr_stm_list_item(void *accu, void *obj)
 {
     struct kndAttrStm *self = accu;
     struct kndAttrStm *attr_stm = obj;
@@ -302,17 +339,16 @@ static gsl_err_t append_attr_stm_list_item(void *accu, void *obj)
         self->list_tail = attr_stm;
     }
     self->num_list_elems++;
-
-    return make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t read_attr_stm_list_item(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
+    struct kndTaskCache *cache = &task->cache;
+    struct kndMemPool *mempool = cache->mempool;
     struct kndAttrStm *self = ctx->list_parent;
     struct kndAttrStm *attr_stm, *prev_attr_stm;
-    struct kndMemPool *mempool = task->mempool;
     int err;
 
     err = knd_attr_stm_new(&attr_stm, self->subj, mempool);
@@ -352,9 +388,9 @@ static gsl_err_t read_attr_stm_list_item(void *obj, const char *rec, size_t *tot
         return parser_err;
     }
     ctx->attr_stm = prev_attr_stm;
+    append_attr_stm_list_item(self, attr_stm);
 
-    // append
-    return append_attr_stm_list_item(self, attr_stm);
+    return make_gsl_err(gsl_OK);
 }
 
 int knd_read_attr_stm_list(struct kndAttrStm *stm, const char *id, size_t id_size,
@@ -407,6 +443,11 @@ int knd_read_attr_stm(struct kndAttrStm *stm, const char *id, size_t id_size,
         { .name = "_t",
           .name_size = strlen("_t"),
           .parse = parse_text,
+          .obj = &ctx
+        },
+        { .name = "_raw",
+          .name_size = strlen("_raw"),
+          .run = read_raw_val,
           .obj = &ctx
         },
         { .name = "_p",

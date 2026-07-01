@@ -126,7 +126,8 @@ static int build_elems_footer(struct kndSetDir *dir, struct kndSetDirBlock *bloc
             OUT((const char*)buf, idx_val_size);
 
             if (DEBUG_SET_GSP_LEVEL_3) {
-                knd_log(">>   {elem %d {size %zu}}", i, elem->size);
+                knd_log(">>   {elem %d {rec-size %zu}} {cell-bytes %zu {block-max-elem-size %zu}}",
+                        i, elem->size, idx_val_size, block->max_elem_size);
             }
         } else {
             knd_pack_int(buf, 0, idx_val_size);
@@ -204,6 +205,10 @@ static int marshall_elems(struct kndSetDir *dir, struct kndSetDirBlock *block,
         elem->size = curr_size;
         block->elems_rec_size += curr_size;
         block->num_elems++;
+
+        /* calculate cell size */
+        if (curr_size > block->max_elem_size) 
+            block->max_elem_size = curr_size;
 
         /* leaf limit reached? */
         // TODO:  mark last elem

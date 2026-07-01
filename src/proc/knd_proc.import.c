@@ -256,10 +256,9 @@ static gsl_err_t set_proc_name(void *obj, const char *name, size_t name_size)
     //    return make_gsl_err(gsl_OK);
     //}
     return make_gsl_err(gsl_OK);
-
- doublet:
-    KND_TASK_LOG("{proc %.*s} doublet found?", name_size, name);
-    return make_gsl_err(gsl_FAIL);
+    // doublet:
+    //KND_TASK_LOG("{proc %.*s} doublet found?", name_size, name);
+    //return make_gsl_err(gsl_FAIL);
 }
 
 int knd_inner_proc_import(struct kndProc *proc, const char *rec, size_t *total_size, struct kndRepoSnapshot *snapshot, struct kndTask *task)

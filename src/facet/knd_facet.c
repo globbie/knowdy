@@ -144,10 +144,11 @@ int knd_facet_hash_spec_new(struct kndFacetHashSpec **result, knd_facet_type fac
     struct kndFacetHashSpec *spec;
     int err;
 
-    assert(mempool->tiny_page_size >= sizeof(struct kndFacetHashSpec));
+    assert(KND_TINY_MEMPAGE_SIZE >= sizeof(struct kndFacetHashSpec));
+
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
-    memset(page, 0,  sizeof(struct kndFacetHashSpec));
+    memset(page, 0, sizeof(struct kndFacetHashSpec));
     spec = page;
 
     spec->type = facet_type;
@@ -169,11 +170,11 @@ int knd_facet_new(struct kndFacet **result, void *key,
     void *page;
     int err;
 
-    assert(mempool->base_page_size >= sizeof(struct kndFacet));
+    assert(KND_BASE_MEMPAGE_SIZE >= sizeof(struct kndFacet));
 
     err = knd_mempool_page(mempool, KND_MEMPAGE_BASE, &page);
     if (err) return err;
-    memset(page, 0,  sizeof(struct kndFacet));
+    memset(page, 0, sizeof(struct kndFacet));
     f = page;
 
     f->key = key;

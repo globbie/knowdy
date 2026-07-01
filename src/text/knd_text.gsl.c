@@ -289,50 +289,73 @@ int knd_text_export_query_report(struct kndTask *task)
     return knd_OK;
 }
 
+static int present_gloss(struct kndText *g, struct kndTask *task, size_t depth)
+{
+    struct kndOutput *out = task->out;
+    int err;
+
+    if (task->ctx->format_offset) {
+        OUT("\n", 1);
+        err = knd_print_offset(out, depth * task->ctx->format_offset);
+        RET_ERR();
+    }
+    OUT("{ ", strlen("{ "));
+    OUT(g->locale, g->locale_size);
+    OUT(" ", strlen(" "));
+    OUT("{t ", strlen("{t "));
+    err = out->write_escaped(out, g->seq->val,  g->seq->val_size);
+    RET_ERR();
+    OUT("}", 1);
+    if (g->abbr) {
+        OUT("{abbr ", strlen("{abbr "));
+        OUT(g->abbr->val, g->abbr->val_size);
+        OUT("}", 1);
+    }
+    OUT("}", 1);
+    return knd_OK;
+}
+
 int knd_text_glosses_export_GSL(struct kndText *glosses, bool use_locale,
                                 struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     const char *locale = task->ctx->locale;
     size_t locale_size = task->ctx->locale_size;
-    struct kndText *g;
+    struct kndText *g = NULL;
     int err;
+
+    if (!glosses) return knd_OK;
+
+    if (use_locale) {
+        FOREACH (g, glosses) {
+            if (locale_size != g->locale_size) continue;
+            if (!memcmp(locale, g->locale, g->locale_size)) break;
+        }
+        if (!g) return knd_OK;
+
+        if (task->ctx->format_indent) {
+            OUT("\n", 1);
+            err = knd_print_offset(out, depth * task->ctx->format_indent);
+            RET_ERR();
+        }
+
+        OUT("{gloss ", strlen("{gloss "));
+        err = present_gloss(g, task, depth);
+        KND_TASK_ERR("failed to present gloss GSL");
+        OUT("}", 1);
+        return knd_OK;
+    }
 
     if (task->ctx->format_indent) {
         OUT("\n", 1);
         err = knd_print_offset(out, depth * task->ctx->format_indent);
         RET_ERR();
     }
+
     OUT("[gloss ", strlen("[gloss "));
-
     FOREACH (g, glosses) {
-        if (use_locale) {
-            if (locale_size != g->locale_size) continue;
-            if (memcmp(locale, g->locale, g->locale_size)) {
-                continue;
-            }
-        }
-
-        if (task->ctx->format_offset) {
-            OUT("\n", 1);
-            err = knd_print_offset(out, depth * task->ctx->format_offset);
-            RET_ERR();
-        }
-        OUT("{ ", strlen("{ "));
-        OUT(g->locale, g->locale_size);
-        OUT(" ", strlen(" "));
-        OUT("{t ", strlen("{t "));
-        err = out->write_escaped(out, g->seq->val,  g->seq->val_size);
-        RET_ERR();
-        OUT("}", 1);
-
-        if (g->abbr) {
-            OUT("{abbr ", strlen("{abbr "));
-            OUT(g->abbr->val, g->abbr->val_size);
-            OUT("}", 1);
-        }
-        OUT("}", 1);
-        if (use_locale) break;
+        err = present_gloss(g, task, depth);
+        KND_TASK_ERR("failed to present gloss GSL");
     }
     OUT("]", 1);
     return knd_OK;

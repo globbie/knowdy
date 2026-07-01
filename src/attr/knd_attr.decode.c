@@ -50,6 +50,10 @@ int knd_attr_decode(struct kndAttr *attr, struct kndRepoSnapshot *snapshot, stru
 {
     struct kndSet *str_idx = snapshot->cache.str_idx;
     struct kndCharSeq *seq;
+    struct kndClassRefAttr *cls_ref_attr;
+    struct kndClassInnerAttr *cls_inner_attr;
+    const char *id;
+    size_t id_size;
     //struct kndClassEntry *owner;
     int err;
 
@@ -58,15 +62,45 @@ int knd_attr_decode(struct kndAttr *attr, struct kndRepoSnapshot *snapshot, stru
     }
 
     err = knd_charseq_decode(str_idx, attr->name_id, attr->name_id_size, &seq, task);
-    KND_TASK_ERR("failed to decode cls entry name {id %.*s}", attr->name_id_size, attr->name_id);
+    KND_TASK_ERR("failed to decode attr name {id %.*s}", attr->name_id_size, attr->name_id);
     attr->name = seq->val;
     attr->name_size = seq->val_size;
     attr->seq = seq;
 
-    // TODO owner
-
     err = decode_glosses(attr->glosses, str_idx, task);
     KND_TASK_ERR("failed to decode glosses of {attr %.*s}", attr->name_size, attr->name);
+
+    switch (attr->type) {
+    case KND_ATTR_CLS_INNER:
+        cls_inner_attr = attr->subtype;
+        if (!cls_inner_attr->cls_id_size) {
+            err = knd_FAIL;
+            KND_TASK_ERR("no template cls specified for {inner-attr %.*s}",
+                         attr->name_size, attr->name);
+        }
+        id = cls_inner_attr->cls_id;
+        id_size = cls_inner_attr->cls_id_size;
+
+        err = knd_get_cls_entry_by_id(snapshot, id, id_size, &cls_inner_attr->template_cls, task);
+        KND_TASK_ERR("no such {cls %.*s}", id_size, id);
+        break;
+    case KND_ATTR_CLS_REF:
+        cls_ref_attr = attr->subtype;
+        if (!cls_ref_attr->cls_id_size) {
+            err = knd_FAIL;
+            KND_TASK_ERR("no template cls specified for {attr %.*s}",
+                         attr->name_size, attr->name);
+        }
+        id = cls_ref_attr->cls_id;
+        id_size = cls_ref_attr->cls_id_size;
+
+        err = knd_get_cls_entry_by_id(snapshot, id, id_size, &cls_ref_attr->template_cls, task);
+        KND_TASK_ERR("no such {cls %.*s}", id_size, id);
+        break;
+    default:
+        break;
+    }
+
     return knd_OK;
 }
 
@@ -83,13 +117,11 @@ int knd_attr_ref_decode(struct kndAttrRef *ref, struct kndRepoSnapshot *snapshot
     KND_TASK_ERR("failed to get attr by {id %.*s}", ref->id_size, ref->id);
     ref->attr = attr;
 
-    if (DEBUG_ATTR_DECODE_LEVEL_TMP) {
+    if (DEBUG_ATTR_DECODE_LEVEL_3) {
         const char *attr_type_name = knd_attr_names[attr->type];
         size_t attr_type_name_size = strlen(attr_type_name);
         knd_log("++ decoded {attr %.*s {type %.*s}}}",
-                attr->name_size, attr->name,
-                attr_type_name_size, attr_type_name);
+                attr->name_size, attr->name, attr_type_name_size, attr_type_name);
     }
-
     return knd_OK;
 }

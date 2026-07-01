@@ -110,6 +110,8 @@ struct kndClassInnerAttr
     struct kndFacetHashSpec *hash_specs_tail;
     size_t num_hash_specs;
 
+    char cls_id[KND_ID_SIZE];
+    size_t cls_id_size;
     const char *cls_name;
     size_t cls_name_size;
     struct kndClassEntry *template_cls;
@@ -124,6 +126,8 @@ struct kndClassRefAttr
     struct kndFacetHashSpec *hash_specs_tail;
     size_t num_hash_specs;
 
+    char cls_id[KND_ID_SIZE];
+    size_t cls_id_size;
     const char *cls_name;
     size_t cls_name_size;
     struct kndClassEntry *template_cls;

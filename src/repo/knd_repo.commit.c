@@ -35,10 +35,10 @@ struct LocalContext {
     struct kndRepo *repo;
 };
 
-static int export_commit_GSL(struct kndCommit *commit,
-                             struct kndRepo *repo, struct kndTask *task)
+static int export_commit_GSL(struct kndCommit *commit, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
+    struct kndRepo *repo = commit->repo;
     struct kndStateRef *ref;
     struct kndState *state;
     struct kndClassEntry *entry;
@@ -99,7 +99,8 @@ static int export_commit_GSL(struct kndCommit *commit,
 }
 
 static int check_class_conflicts(struct kndCommit *new_commit,
-                                 struct kndRepo *unused_var(repo), struct kndTask *unused_var(task))
+                                 struct kndRepoSnapshot *unused_var(snapshot),
+                                 struct kndTask *unused_var(task))
 {
     struct kndStateRef *ref;
     struct kndClassEntry *entry;
@@ -151,17 +152,15 @@ static int check_class_conflicts(struct kndCommit *new_commit,
     return knd_OK;
 }
 
-static int check_commit_conflicts(struct kndCommit *commit, struct kndRepo *repo, struct kndTask *task)
+static int check_commit_conflicts(struct kndCommit *commit, struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct kndCommit *head_commit = NULL;
-    struct kndRepoSnapshot *snapshot;
     int err;
 
     if (DEBUG_REPO_COMMIT_LEVEL_TMP) {
         knd_log(".. new commit #%zu (%p) to check any commit conflicts since state #%zu",
                 commit->numid, commit, commit->orig_state_id);
     }
-    snapshot = repo->snapshot;
 
     do {
         head_commit = atomic_load_explicit(&snapshot->commits, memory_order_relaxed);
@@ -174,7 +173,7 @@ static int check_commit_conflicts(struct kndCommit *commit, struct kndRepo *repo
         } else {
             knd_log("no head commit found?");
         }
-        err = check_class_conflicts(commit, repo, task);
+        err = check_class_conflicts(commit, snapshot, task);
         KND_TASK_ERR("class level conflicts detected");
 
     } while (!atomic_compare_exchange_weak(&snapshot->commits, &head_commit, commit));
@@ -189,11 +188,12 @@ static int check_commit_conflicts(struct kndCommit *commit, struct kndRepo *repo
 }
 
 static int update_indices(struct kndCommit *commit,
-                          struct kndRepo *repo, struct kndTask *task)
+                          struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct kndStateRef *ref;
     struct kndClassEntry *entry;
-    struct kndDict *name_idx = task->idxs.cls_name_idx;
+    struct kndDict *name_idx = snapshot->cache.cls_name_idx;
+    struct kndRepo *repo = snapshot->repo;
     int err;
 
     if (DEBUG_REPO_COMMIT_LEVEL_2) {
@@ -218,10 +218,10 @@ static int update_indices(struct kndCommit *commit,
             KND_TASK_ERR("failed to register {cls %.*s}", entry->name_size, entry->name);
             continue;
         case KND_REMOVED:
-            entry->phase = KND_REMOVED;
+            entry->phase = KND_CLASS_REMOVED;
             continue;
         case KND_UPDATED:
-            entry->phase = KND_UPDATED;
+            entry->phase = KND_CLASS_UPDATED;
 
             //err = knd_class_update_indices(repo, entry, ref->state, task);
             //KND_TASK_ERR("failed to update indices of {cls %.*s}",
@@ -292,11 +292,10 @@ static int build_journal_filename(struct kndRepoSnapshot *snapshot,
     return knd_OK;
 }
 
-static int build_commit_WAL(struct kndCommit *commit, struct kndRepo *repo, struct kndTask *task)
+static int build_commit_WAL(struct kndCommit *commit, struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndOutput *file_out = task->file_out;
-    struct kndRepoSnapshot *snapshot = repo->snapshot;
     char filename[KND_PATH_SIZE + 1];
     size_t filename_size = 0;
     size_t planned_journal_size = 0;
@@ -334,7 +333,7 @@ static int build_commit_WAL(struct kndCommit *commit, struct kndRepo *repo, stru
 
  append_wal_rec:
 
-    err = export_commit_GSL(commit, repo, task);
+    err = export_commit_GSL(commit, task);
     KND_TASK_ERR("failed to export commit");
 
     file_out->reset(file_out);
@@ -356,11 +355,13 @@ static int build_commit_WAL(struct kndCommit *commit, struct kndRepo *repo, stru
     return knd_OK;
 }
 
-int knd_confirm_commit(struct kndRepo *repo, struct kndTask *task)
+int knd_confirm_commit(struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct kndTaskContext *ctx = task->ctx;
     struct kndCommit *commit = ctx->commit;
+    struct kndRepo *repo = snapshot->repo;
     int err;
+
     assert(commit != NULL);
 
     if (DEBUG_REPO_COMMIT_LEVEL_TMP) {
@@ -369,26 +370,26 @@ int knd_confirm_commit(struct kndRepo *repo, struct kndTask *task)
     }
     commit->repo = repo;
 
-    err = knd_commit_resolve(commit, repo, task);
+    err = knd_commit_resolve(commit, snapshot, task);
     KND_TASK_ERR("failed to resolve commit #%zu", commit->numid);
 
-    err = knd_commit_dedup(commit, repo, task);
+    err = knd_commit_dedup(commit, snapshot, task);
     KND_TASK_ERR("failed to dedup commit #%zu", commit->numid);
 
     switch (task->role) {
     case KND_AGENT_ARBITER:
-        err = update_indices(commit, repo, task);
+        err = update_indices(commit, snapshot, task);
         KND_TASK_ERR("index update failed");
 
-        err = check_commit_conflicts(commit, repo, task);
+        err = check_commit_conflicts(commit, snapshot, task);
         KND_TASK_ERR("commit conflicts detected, please get the latest repo updates");
 
-        err = build_commit_WAL(commit, repo, task);
+        err = build_commit_WAL(commit, snapshot, task);
         KND_TASK_ERR("WAL build failed");
         break;
     default:
         /* delegate commit confirmation to an Arbiter */
-        err = export_commit_GSL(commit, repo, task);
+        err = export_commit_GSL(commit, task);
         KND_TASK_ERR("failed to export commit");
         ctx->phase = KND_CONFIRM_COMMIT;
     }
@@ -398,11 +399,10 @@ int knd_confirm_commit(struct kndRepo *repo, struct kndTask *task)
 int knd_apply_commit(void *elem, void *ctx, struct kndTask *task)
 {
     struct kndCommit *commit = elem;
-    struct kndRepo *repo = ctx;
+    struct kndRepoSnapshot *snapshot = ctx;
     struct kndUserContext *user_ctx = task->user_ctx;
     struct kndMemPool *mempool = task->mempool;
     struct kndCommit *head_commit;
-    struct kndRepoSnapshot *snapshot = repo->snapshot;
     gsl_err_t parser_err;
     size_t total_size = commit->rec_size;
     int err;
@@ -429,10 +429,10 @@ int knd_apply_commit(void *elem, void *ctx, struct kndTask *task)
     parser_err = gsl_parse_task(commit->rec, &total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
 
-    err = knd_commit_resolve(commit, repo, task);
+    err = knd_commit_resolve(commit, snapshot, task);
     KND_TASK_ERR("failed to resolve {commit #%zu}", commit->numid);
 
-    err = update_indices(commit, repo, task);
+    err = update_indices(commit, snapshot, task);
     KND_TASK_ERR("index update failed");
 
     do {

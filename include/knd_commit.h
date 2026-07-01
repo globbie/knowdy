@@ -5,6 +5,8 @@
 
 struct kndMemPool;
 struct kndTask;
+struct kndRepo;
+struct kndRepoSnapshot;
 
 typedef enum knd_commit_confirm { KND_INIT_STATE, 
                                   KND_FAILED_STATE,
@@ -40,6 +42,6 @@ struct kndCommit
 };
 
 int knd_commit_new(struct kndCommit **result, struct kndMemPool *mempool);
-int knd_commit_resolve(struct kndCommit *self, struct kndRepo *repo, struct kndTask *task);
-int knd_commit_dedup(struct kndCommit *commit, struct kndRepo *repo, struct kndTask *task);
+int knd_commit_resolve(struct kndCommit *commit, struct kndRepoSnapshot *snapshot, struct kndTask *task);
+int knd_commit_dedup(struct kndCommit *commit, struct kndRepoSnapshot *snapshot, struct kndTask *task);
 gsl_err_t knd_commit_run(void *obj, const char *rec, size_t *total_size);

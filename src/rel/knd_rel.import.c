@@ -14,11 +14,12 @@
 #define DEBUG_REL_IMPORT_LEVEL_TMP 1
 
 struct LocalContext {
+    struct kndRepoSnapshot *snapshot;
+    struct kndTask     *task;
     struct kndClassBasePred *class_var;
     struct kndAttrStm  *list_parent;
     struct kndAttr     *attr;
     struct kndRel     *rel;
-    struct kndTask     *task;
 };
 
 static gsl_err_t run_set_name(void *obj, const char *name, size_t name_size)

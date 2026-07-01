@@ -22,7 +22,7 @@ int knd_dict_item_new(struct kndDictItem **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndDictItem));
+    assert(KND_TINY_MEMPAGE_SIZE >= sizeof(struct kndDictItem));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndDictItem));
@@ -39,7 +39,7 @@ int knd_dict_entry_new(struct kndDictEntry **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndDictEntry));
+    assert(KND_TINY_MEMPAGE_SIZE >= sizeof(struct kndDictEntry));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndDictEntry));
@@ -112,7 +112,7 @@ int knd_dict_set(struct kndDict *dict, const char *key, size_t key_size, void *d
     int err;
 
     if (!entry) {
-        err = knd_dict_entry_new(&entry, task->mempool);
+        err = knd_dict_entry_new(&entry, dict->mempool);
         if (err) return err;
         dict->hash_array[h] = entry;
         return add_item(dict, entry, key, key_size, data, task);

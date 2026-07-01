@@ -70,14 +70,14 @@ int knd_set_intersect(struct kndSet **sets, size_t num_sets,
     return knd_OK;
 }
 
-static int save_list_elem(struct kndSet *unused_var(s), struct kndSetDir *parent_dir,
+static int save_list_elem(struct kndSet *s, struct kndSetDir *parent_dir,
                           int dir_pos, void *obj, struct kndTask *task)
 {
     struct kndSetElem *elem, *prev;
     int err;
 
-    err = knd_set_elem_new(&elem, task->mempool);
-    KND_TASK_ERR("failed to alloc a set elem");
+    err = knd_set_elem_new(&elem, s->mempool);
+    KND_TASK_ERR("failed to alloc a list set elem");
     elem->val = obj;
 
     if (parent_dir->elems[dir_pos]) {
@@ -106,7 +106,7 @@ static int save_elem(struct kndSet *s, struct kndSetDir *parent_dir,
     if (id_size > 1) {
         dir = parent_dir->subdirs[dir_pos];
         if (!dir) {
-            err = knd_set_dir_new(&dir, parent_dir->id, parent_dir->id_size, id, task->mempool);
+            err = knd_set_dir_new(&dir, parent_dir->id, parent_dir->id_size, id, s->mempool);
             KND_TASK_ERR("failed to alloc a set dir");
             
             parent_dir->subdirs[dir_pos] = dir;
@@ -121,7 +121,7 @@ static int save_elem(struct kndSet *s, struct kndSetDir *parent_dir,
     case KND_SET_UNIQUE_VALUES:
         if (parent_dir->elems[dir_pos] != NULL) return knd_CONFLICT;
 
-        err = knd_set_elem_new(&elem, task->mempool);
+        err = knd_set_elem_new(&elem, s->mempool);
         KND_TASK_ERR("failed to alloc a set elem");
 
         elem->val = obj;
@@ -324,7 +324,7 @@ int knd_set_new(struct kndSet **result, knd_set_store_t store_t, struct kndMemPo
     struct kndSet *s;
     int err;
 
-    assert(mempool->small_page_size >= sizeof(struct kndSet));
+    assert(KND_SMALL_MEMPAGE_SIZE >= sizeof(struct kndSet));
 
     err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
     if (err) return err;
@@ -357,7 +357,7 @@ int knd_set_dir_new(struct kndSetDir **result, const char *parent_id, size_t par
     void *page;
     int err;
 
-    assert(mempool->base_page_size >= sizeof(struct kndSetDir));
+    assert(KND_BASE_MEMPAGE_SIZE >= sizeof(struct kndSetDir));
 
     err = knd_mempool_page(mempool, KND_MEMPAGE_BASE, &page);
     if (err) return err;
@@ -381,7 +381,7 @@ int knd_set_elem_new(struct kndSetElem **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndSetElem));
+    assert(KND_TINY_MEMPAGE_SIZE >= sizeof(struct kndSetElem));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndSetElem));
@@ -393,7 +393,7 @@ int knd_set_store_new(struct kndSetStore **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
-    assert(mempool->base_page_size >= sizeof(struct kndSetStore));
+    assert(KND_BASE_MEMPAGE_SIZE >= sizeof(struct kndSetStore));
     err = knd_mempool_page(mempool, KND_MEMPAGE_BASE, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndSetStore));
@@ -407,7 +407,7 @@ int knd_set_dir_block_new(struct kndSetDirBlock **result, struct kndMemPool *mem
     void *page;
     int err;
 
-    assert(mempool->base_page_size >= sizeof(struct kndSetDirBlock));
+    assert(KND_BASE_MEMPAGE_SIZE >= sizeof(struct kndSetDirBlock));
     err = knd_mempool_page(mempool, KND_MEMPAGE_BASE, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndSetDirBlock));
@@ -421,7 +421,7 @@ int knd_set_range_new(struct kndSetRange **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndSetRange));
+    assert(KND_TINY_MEMPAGE_SIZE >= sizeof(struct kndSetRange));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndSetRange));

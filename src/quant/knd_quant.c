@@ -118,7 +118,7 @@ int knd_quant_parse_uint(const char *val, size_t val_size,
     KND_TASK_ERR("failed to alloc a uint");
     uint->numval = numval;
 
-    knd_num_to_str(numval, uint->seq, &uint->seq_size,  KND_RADIX_BASE);
+    knd_num_to_str(numval, uint->seq, &uint->seq_size, KND_RADIX_BASE);
 
     if (DEBUG_NUM_LEVEL_3) {
         knd_log("{uint %lu} => {seq %.*s}", numval, uint->seq_size, uint->seq);
@@ -173,7 +173,7 @@ int knd_quant_attr_new(struct kndQuantAttr **result, knd_quant_type type,
     struct kndFacetHashSpec *spec;
     int err;
 
-    assert(mempool->tiny_page_size >= sizeof(struct kndQuantAttr));
+    assert(KND_TINY_MEMPAGE_SIZE >= sizeof(struct kndQuantAttr));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndQuantAttr));
@@ -206,7 +206,7 @@ int knd_quant_uint_new(struct kndQuantUInt **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
-    assert(mempool->small_page_size >= sizeof(struct kndQuantUInt));
+    assert(KND_SMALL_MEMPAGE_SIZE >= sizeof(struct kndQuantUInt));
     err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndQuantUInt));
@@ -218,7 +218,7 @@ int knd_quant_uint_range_new(struct kndQuantUIntRange **result, struct kndMemPoo
 {
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndQuantUIntRange));
+    assert(KND_TINY_MEMPAGE_SIZE >= sizeof(struct kndQuantUIntRange));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndQuantUIntRange));
@@ -230,7 +230,7 @@ int knd_quant_attr_stm_new(struct kndQuantAttrStm **result, struct kndMemPool *m
 {
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndQuantAttrStm));
+    assert(KND_TINY_MEMPAGE_SIZE >= sizeof(struct kndQuantAttrStm));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndQuantAttrStm));
@@ -242,7 +242,7 @@ int knd_quant_uint_facet_new(struct kndQuantUIntFacet **result, struct kndMemPoo
 {
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndQuantUIntFacet));
+    assert(KND_TINY_MEMPAGE_SIZE >= sizeof(struct kndQuantUIntFacet));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndQuantUIntFacet));
@@ -254,7 +254,7 @@ int knd_quant_ureal_new(struct kndQuantUReal **result, struct kndMemPool *mempoo
 {
     void *page;
     int err;
-    assert(mempool->small_x2_page_size >= sizeof(struct kndQuantUReal));
+    assert(KND_SMALL_X2_MEMPAGE_SIZE >= sizeof(struct kndQuantUReal));
     err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL_X2, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndQuantUReal));
@@ -266,7 +266,7 @@ int knd_quant_new(struct kndQuant **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
-    assert(mempool->small_page_size >= sizeof(struct kndQuant));
+    assert(KND_SMALL_MEMPAGE_SIZE >= sizeof(struct kndQuant));
     err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndQuant));

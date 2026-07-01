@@ -10,7 +10,7 @@ int knd_state_new(struct kndState **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndState));
+    assert(KND_TINY_MEMPAGE_SIZE >= sizeof(struct kndState));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndState));
@@ -22,7 +22,7 @@ int knd_state_ref_new(struct kndStateRef **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndStateRef));
+    assert(KND_TINY_MEMPAGE_SIZE >= sizeof(struct kndStateRef));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndStateRef));
@@ -34,7 +34,7 @@ int knd_state_val_new(struct kndStateVal **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndStateVal));
+    assert(KND_TINY_MEMPAGE_SIZE >= sizeof(struct kndStateVal));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndStateVal));

@@ -73,7 +73,7 @@ struct kndMemPool
 
     /* 2048 bytes */
     char *large_pages;
-    size_t large_page_size;
+    //size_t large_page_size;
     size_t num_large_pages;
     size_t large_pages_used;
     struct kndMemPageHeader *large_page_list;
@@ -82,7 +82,7 @@ struct kndMemPool
 
     /* 1024 bytes */
     char *base_pages;
-    size_t base_page_size;
+    //size_t base_page_size;
     size_t num_base_pages;
     size_t base_pages_used;
     struct kndMemPageHeader *base_page_list;
@@ -91,7 +91,7 @@ struct kndMemPool
 
     /* 512 bytes */
     char *small_x4_pages;
-    size_t small_x4_page_size;
+    //size_t small_x4_page_size;
     size_t num_small_x4_pages;
     size_t small_x4_pages_used;
     struct kndMemPageHeader *small_x4_page_list;
@@ -100,7 +100,7 @@ struct kndMemPool
 
     /* 256 bytes */
     char *small_x2_pages;
-    size_t small_x2_page_size;
+    //size_t small_x2_page_size;
     size_t num_small_x2_pages;
     size_t small_x2_pages_used;
     struct kndMemPageHeader *small_x2_page_list;
@@ -109,7 +109,7 @@ struct kndMemPool
 
     /* 128 bytes */
     char *small_pages;
-    size_t small_page_size;
+    //size_t small_page_size;
     size_t num_small_pages;
     size_t small_pages_used;
     struct kndMemPageHeader *small_page_list;
@@ -118,7 +118,7 @@ struct kndMemPool
 
     /* 64 bytes */
     char *tiny_pages;
-    size_t tiny_page_size;
+    //size_t tiny_page_size;
     size_t num_tiny_pages;
     size_t tiny_pages_used;
     struct kndMemPageHeader *tiny_page_list;
@@ -143,3 +143,4 @@ void knd_mempool_reset_capacity(struct kndMemPool *self);
 
 void knd_mempool_report(struct kndMemPool *self, struct kndMemPoolReport *report);
 int knd_mempool_present(struct kndMemPool *self, struct kndOutput *out);
+void knd_memconf_apply_defaults(struct kndMemConfig *conf);

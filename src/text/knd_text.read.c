@@ -88,11 +88,11 @@ static gsl_err_t set_text_lang(void *obj, const char *val, size_t val_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t set_text_seq(void *obj, const char *val, size_t val_size)    
+static gsl_err_t set_text_seq(void *unused_var(obj), const char *val, size_t val_size)    
 {
-    struct LocalContext *ctx = obj;
-    struct kndTask *task = ctx->task;
-    int err;
+    //struct LocalContext *ctx = obj;
+    //struct kndTask *task = ctx->task;
+    //int err;
 
     if (DEBUG_TEXT_READ_LEVEL_2) {
         knd_log(">> text encoded {seq %.*s {size %zu}}", val_size, val, val_size);
@@ -153,12 +153,12 @@ static gsl_err_t set_clause_class(void *obj, const char *val, size_t val_size)
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t set_sent_seq(void *obj, const char *val, size_t val_size)    
+static gsl_err_t set_sent_seq(void *unused_var(obj), const char *unused_var(val), size_t val_size)    
 {
-    struct LocalContext *ctx = obj;
-    struct kndTask *task = ctx->task;
-    struct kndSentence *sent = ctx->sent;
-    int err;
+    //struct LocalContext *ctx = obj;
+    //struct kndTask *task = ctx->task;
+    //struct kndSentence *sent = ctx->sent;
+    //int err;
     if (!val_size) return make_gsl_err(gsl_FORMAT);
 
     // TODO
@@ -866,11 +866,12 @@ int knd_charseq_unmarshall(const char *unused_var(elem_id), size_t unused_var(el
                            void *unused_var(ctx), size_t *unused_var(parsed_size), void **result,
                            struct kndTask *task)
 {
+    struct kndTaskCache *cache = &task->cache;
     struct kndMemBlock *memblock;
     struct kndCharSeq *seq;
     int err;
 
-    err = knd_charseq_new(&seq, task->mempool);
+    err = knd_charseq_new(&seq, cache->mempool);
     KND_TASK_ERR("failed to alloc a charseq to unmarshall");
 
     err = knd_memblock_fetch(&memblock, rec_size, task);
@@ -888,11 +889,12 @@ static int build_charseq(const char *str, size_t str_size, const char *id, size_
                          struct kndCharSeq **result, struct kndTask *task)
 {
     struct kndCharSeq *seq;
+    struct kndTaskCache *cache = &task->cache;
     struct kndMemBlock *memblock;
     const char *b;
     int err;
 
-    err = knd_charseq_new(&seq, task->mempool);
+    err = knd_charseq_new(&seq, cache->mempool);
     KND_TASK_ERR("failed to alloc a charseq");
     memcpy(seq->id, id, id_size);
     seq->id_size = id_size;

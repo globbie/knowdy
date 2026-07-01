@@ -30,9 +30,11 @@
 struct LocalContext {
     struct kndTask *task;
     struct kndRepoSnapshot *snapshot;
+    const char *id;
+    size_t id_size;
+    const char *name;
+    size_t name_size;
     struct kndClassEntry *entry;
-    struct kndDict *name_idx;
-    struct kndSet *str_idx;
 };
 
 #if 0
@@ -68,51 +70,71 @@ static int build_cls_cache_item(void *elem, void *ctx)
 }
 #endif
 
-static int expand_cls_entry(void *elem, void *ctx_obj, struct kndTask *task)
+static int index_cls_entry(void *elem, void *ctx_obj, struct kndTask *task)
 {
     struct kndClassEntry *entry = elem;
     struct LocalContext *ctx = ctx_obj;
     struct kndRepoSnapshot *snapshot = ctx->snapshot;
     struct kndDict *name_idx = snapshot->cache.cls_name_idx;
-    struct kndSet *str_idx = snapshot->cache.str_idx;
+    struct kndSet *cls_idx = snapshot->cache.cls_idx;
+    int err;
+
+    if (DEBUG_REPO_CACHE_LEVEL_2) {
+        knd_log(".. indexing cls {entry {id %.*s}}", entry->id_size, entry->id);
+    }
+
+    err = knd_cls_entry_decode(entry, snapshot, task);
+    KND_TASK_ERR("failed to decode {cls-entry %.*s}", entry->id_size, entry->id);
+
+    entry->phase = KND_CLASS_CACHED;
+
+    err = knd_dict_set(name_idx, entry->name, entry->name_size, (void*)entry, task);
+    KND_TASK_ERR("failed to register cls entry {name %.*s} {err %d}",
+                 entry->name_size, entry->name, err);
+
+    err = knd_set_add(cls_idx, entry->id, entry->id_size, (void*)entry, task);
+    KND_TASK_ERR("failed to update snapshot cls idx of {cls %.*s} {err %d}",
+                 entry->name_size, entry->name, err);
+
+    return knd_OK;
+}
+
+static int expand_cls_entry(void *elem, void *ctx_obj, struct kndTask *task)
+{
+    struct kndClassEntry *entry = elem;
+    struct LocalContext *ctx = ctx_obj;
+    struct kndRepoSnapshot *snapshot = ctx->snapshot;
     struct kndSet *cls_idx = snapshot->cache.cls_idx;
     struct kndClass *cls;
     int err;
 
+    assert (entry != NULL);
+
     if (DEBUG_REPO_CACHE_LEVEL_2) {
-        knd_log(".. indexing cls {entry %.*s}", entry->id_size, entry->id);
+        knd_log(".. expanding cls {entry %.*s {id %.*s}}",
+                entry->name_size, entry->name, entry->id_size, entry->id);
     }
 
-    assert (name_idx != NULL);
-    assert (str_idx != NULL);
-    assert (cls_idx != NULL);
-
-    err = knd_cls_entry_decode(entry, snapshot, task);
-    KND_TASK_ERR("failed to decode {cls-entry %.*s}", entry->id_size, entry->id);
-  
-    err = knd_dict_set(name_idx, entry->name, entry->name_size, (void*)entry, task);
-    KND_TASK_ERR("failed to register cls entry {name %.*s}", entry->name_size, entry->name);
-
-    err = knd_set_fetch(cls_idx, entry->id, entry->id_size, knd_cls_body_unmarshall,
-                        &ctx, (void**)&cls, task);
+    ctx->entry = entry;
+    err = knd_set_fetch(cls_idx, entry->id, entry->id_size, knd_cls_body_unmarshall, ctx, (void**)&cls, task);
     switch (err) {
     case knd_OK:
         err = knd_class_decode(cls, snapshot, task);
         KND_TASK_ERR("failed to decode {cls %.*s}", cls->name_size, cls->name);
         entry->cls = cls;
-        return knd_OK;
+        break;
     case knd_NO_MATCH:
         return knd_NO_MATCH;
     default:
         KND_TASK_ERR("failed to fetch a {cls %.*s {id %.*s}} content {err %d}",
                      entry->name_size, entry->name, entry->id_size, entry->id, err);
+        break;
     }
 
-    if (DEBUG_REPO_CACHE_LEVEL_TMP) {
+    if (DEBUG_REPO_CACHE_LEVEL_3) {
         knd_log("++ {cls-entry %.*s {id %.*s}} expanded",
                 entry->name_size, entry->name, entry->id_size, entry->id);
     }
-
     return knd_OK;
 }
 
@@ -120,10 +142,11 @@ static int read_cls_cache(struct kndRepoSnapshot *snapshot, struct kndTask *task
 {
     struct kndSet *cls_cache_idx = snapshot->cache.cls_cache_idx;
     struct kndSetStore *store = cls_cache_idx->store;
-    struct kndDict *name_idx = snapshot->cache.cls_name_idx;
-    struct kndSet *str_idx = snapshot->cache.str_idx;
-    struct kndSet *cls_idx = snapshot->cache.cls_idx;
+    //struct kndDict *name_idx = snapshot->cache.cls_name_idx;
+    //struct kndSet *str_idx = snapshot->cache.str_idx;
+    //struct kndSet *cls_idx = snapshot->cache.cls_idx;
     struct kndStorageLeaf *leaf;
+    size_t total_cache_items = 0;
     int err;
 
     assert (store != NULL);
@@ -137,6 +160,8 @@ static int read_cls_cache(struct kndRepoSnapshot *snapshot, struct kndTask *task
 
         err = knd_set_read_leaf(cls_cache_idx, leaf, NULL, knd_cls_entry_ref_unmarshall, NULL, task);
         KND_TASK_ERR("failed to read a cls entry idx {leaf %zu}", leaf->numid);
+
+        total_cache_items += leaf->num_elems;
     }
 
     struct LocalContext ctx = {
@@ -144,9 +169,15 @@ static int read_cls_cache(struct kndRepoSnapshot *snapshot, struct kndTask *task
         .snapshot = snapshot
     };
 
-    err = knd_set_map(cls_cache_idx, NULL, NULL, NULL, expand_cls_entry, &ctx, task);
-    KND_TASK_ERR("failed to index cls names");
+    err = knd_set_map(cls_cache_idx, NULL, NULL, NULL, index_cls_entry, &ctx, task);
+    KND_TASK_ERR("failed to index cached cls entries");
 
+    err = knd_set_map(cls_cache_idx, NULL, NULL, NULL, expand_cls_entry, &ctx, task);
+    KND_TASK_ERR("failed to expand cached cls entries");
+
+    if (DEBUG_REPO_CACHE_LEVEL_3) {
+        knd_log("++ cls cache initialized {total %zu}", total_cache_items);
+    }
     return knd_OK;
 }
 
@@ -159,10 +190,11 @@ int knd_repo_read_cache(struct kndRepoSnapshot *snapshot, struct kndTask *task)
                 snapshot->numid, snapshot->path_size, snapshot->path);
     }
 
+    task->type = KND_TASK_CACHE_UPDATE;
+
     err = read_cls_cache(snapshot, task);
     KND_TASK_ERR("failed to read cls entries cache in {snapshot #%zu {path %.*s}}",
                  snapshot->numid, snapshot->path_size, snapshot->path);
-
 
     /*
     err = read_str_idx(str_idx, task);

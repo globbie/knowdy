@@ -59,7 +59,7 @@ int knd_query_new(struct kndQuery **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
-    assert(mempool->small_x2_page_size >= sizeof(struct kndQuery));
+    assert(KND_SMALL_X2_MEMPAGE_SIZE >= sizeof(struct kndQuery));
     err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL_X2, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndQuery));

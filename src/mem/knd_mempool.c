@@ -250,38 +250,37 @@ int knd_mempool_page(struct kndMemPool *self, knd_mempage_t page_type, void **re
 
     switch (page_type) {
     case KND_MEMPAGE_LARGE:
-        page_size = self->large_page_size;
+        page_size = KND_LARGE_MEMPAGE_SIZE;
         num_pages = self->num_large_pages;
         pages_used = &self->large_pages_used;
         pages = self->large_pages;
         break;
     case KND_MEMPAGE_SMALL_X4:
-        page_size = self->small_x4_page_size;
+        page_size = KND_SMALL_X4_MEMPAGE_SIZE;
         num_pages = self->num_small_x4_pages;
         pages_used = &self->small_x4_pages_used;
         pages = self->small_x4_pages;
         break;
     case KND_MEMPAGE_SMALL_X2:
-        page_size = self->small_x2_page_size;
+        page_size = KND_SMALL_X2_MEMPAGE_SIZE;
         num_pages = self->num_small_x2_pages;
         pages_used = &self->small_x2_pages_used;
         pages = self->small_x2_pages;
         break;
     case KND_MEMPAGE_SMALL:
-        page_size = self->small_page_size;
+        page_size = KND_SMALL_MEMPAGE_SIZE;
         num_pages = self->num_small_pages;
         pages_used = &self->small_pages_used;
         pages = self->small_pages;
         break;
     case KND_MEMPAGE_TINY:
-        page_size = self->tiny_page_size;
+        page_size = KND_TINY_MEMPAGE_SIZE;
         num_pages = self->num_tiny_pages;
         pages_used = &self->tiny_pages_used;
         pages = self->tiny_pages;
         break;
     default:
-        // KND_MEMPAGE_BASE
-        page_size = self->base_page_size;
+        page_size = KND_BASE_MEMPAGE_SIZE;
         num_pages = self->num_base_pages;
         pages_used = &self->base_pages_used;
         pages = self->base_pages;
@@ -349,19 +348,17 @@ void knd_mempool_free(struct kndMemPool *self, knd_mempage_t page_type, void *pa
 }
 
 static int alloc_page_buf(struct kndMemPool *self, char **result_pages,
-                          size_t *result_num_pages, size_t default_num_pages,
-                          size_t *result_page_size, size_t default_page_size)
+                          size_t num_pages, size_t page_size)
 {
-    size_t num_pages = *result_num_pages;
-    size_t page_size = *result_page_size;
     char *pages;
 
-    if (!num_pages)
-        num_pages = default_num_pages;
-    if (!page_size)
-        page_size = default_page_size;
+    assert (num_pages != 0);
+    assert (page_size != 0);
 
-    if (page_size <= sizeof(struct kndMemPageHeader)) return knd_LIMIT;
+    if (page_size <= sizeof(struct kndMemPageHeader)) {
+        knd_log("{mem-page-size %zu} is less than mem page header size", page_size);
+        return knd_LIMIT;
+    }
 
     pages = calloc(num_pages, page_size);
     if (!pages) {
@@ -371,17 +368,18 @@ static int alloc_page_buf(struct kndMemPool *self, char **result_pages,
     self->capacity += (num_pages * page_size);
 
     *result_pages = pages;
-    *result_page_size = page_size;
-    *result_num_pages = num_pages;
     return knd_OK;
 }
 
 static void build_linked_list(char *pages, size_t num_pages, size_t page_size,
                               struct kndMemPageHeader **page_list)
 {
+    assert (pages != NULL);
+    assert (num_pages != 0);
+    assert (page_size != 0);
+
     for (size_t i = 0; i < num_pages; i++) {
         *page_list = (struct kndMemPageHeader*)pages;
-
         pages += page_size;
         page_list = &(*page_list)->next;
     }
@@ -390,57 +388,97 @@ static void build_linked_list(char *pages, size_t num_pages, size_t page_size,
 
 void knd_mempool_reset_capacity(struct kndMemPool *self)
 {
-    memset(self->large_pages, 0, self->large_page_size * self->num_large_pages);
-    build_linked_list(self->large_pages, self->num_large_pages, self->large_page_size, &self->large_page_list);
+    if (self->num_large_pages) {
+        memset(self->large_pages, 0, KND_LARGE_MEMPAGE_SIZE * self->num_large_pages);
+        build_linked_list(self->large_pages, self->num_large_pages, KND_LARGE_MEMPAGE_SIZE, &self->large_page_list);
+    }
+    if (self->num_base_pages) {
+        memset(self->base_pages, 0, KND_BASE_MEMPAGE_SIZE * self->num_base_pages);
+        build_linked_list(self->base_pages, self->num_base_pages, KND_BASE_MEMPAGE_SIZE, &self->base_page_list);
+    }
 
-    memset(self->base_pages, 0, self->base_page_size * self->num_base_pages);
-    build_linked_list(self->base_pages, self->num_base_pages, self->base_page_size, &self->base_page_list);
+    if (self->num_small_x4_pages) {
+        memset(self->small_x4_pages, 0, KND_SMALL_X4_MEMPAGE_SIZE * self->num_small_x4_pages);
+        build_linked_list(self->small_x4_pages, self->num_small_x4_pages, KND_SMALL_X4_MEMPAGE_SIZE, &self->small_x4_page_list);
+    }
 
-    memset(self->small_x4_pages, 0, self->small_x4_page_size * self->num_small_x4_pages);
-    build_linked_list(self->small_x4_pages, self->num_small_x4_pages, self->small_x4_page_size, &self->small_x4_page_list);
+    if (self->num_small_x2_pages) {
+        memset(self->small_x2_pages, 0, KND_SMALL_X2_MEMPAGE_SIZE * self->num_small_x2_pages);
+        build_linked_list(self->small_x2_pages, self->num_small_x2_pages, KND_SMALL_X2_MEMPAGE_SIZE, &self->small_x2_page_list);
+    }
 
-    memset(self->small_x2_pages, 0, self->small_x2_page_size * self->num_small_x2_pages);
-    build_linked_list(self->small_x2_pages, self->num_small_x2_pages, self->small_x2_page_size, &self->small_x2_page_list);
+    if (self->num_small_pages) {
+        memset(self->small_pages, 0,  KND_SMALL_MEMPAGE_SIZE * self->num_small_pages);
+        build_linked_list(self->small_pages, self->num_small_pages,  KND_SMALL_MEMPAGE_SIZE, &self->small_page_list);
+    }
 
-    memset(self->small_pages, 0, self->small_page_size * self->num_small_pages);
-    build_linked_list(self->small_pages, self->num_small_pages, self->small_page_size, &self->small_page_list);
-
-    memset(self->tiny_pages, 0, self->tiny_page_size * self->num_tiny_pages);
-    build_linked_list(self->tiny_pages, self->num_tiny_pages, self->tiny_page_size, &self->tiny_page_list);
+    if (self->num_tiny_pages) {
+        memset(self->tiny_pages, 0, KND_TINY_MEMPAGE_SIZE * self->num_tiny_pages);
+        build_linked_list(self->tiny_pages, self->num_tiny_pages, KND_TINY_MEMPAGE_SIZE, &self->tiny_page_list);
+    }
 }
 
 int knd_mempool_alloc(struct kndMemPool *self)
 {
     int err;
 
-    err = alloc_page_buf(self, &self->large_pages, &self->num_large_pages, KND_NUM_LARGE_MEMPAGES,
-                         &self->large_page_size, KND_LARGE_MEMPAGE_SIZE);                RET_ERR();
+    if (self->num_large_pages) {
+        err = alloc_page_buf(self, &self->large_pages, self->num_large_pages, KND_LARGE_MEMPAGE_SIZE);
+        RET_ERR();
+    }
 
-    err = alloc_page_buf(self, &self->base_pages, &self->num_base_pages, KND_NUM_BASE_MEMPAGES,
-                         &self->base_page_size, KND_BASE_MEMPAGE_SIZE);                RET_ERR();
+    if (self->num_base_pages) {
+        err = alloc_page_buf(self, &self->base_pages, self->num_base_pages, KND_BASE_MEMPAGE_SIZE);
+        RET_ERR();
+    }
 
-    err = alloc_page_buf(self, &self->small_x4_pages, &self->num_small_x4_pages, KND_NUM_SMALL_X4_MEMPAGES,
-                         &self->small_x4_page_size, KND_SMALL_X4_MEMPAGE_SIZE);   RET_ERR();
+    if (self->num_small_x4_pages) {
+        err = alloc_page_buf(self, &self->small_x4_pages, self->num_small_x4_pages, KND_SMALL_X4_MEMPAGE_SIZE);
+        RET_ERR();
+    }
 
-    err = alloc_page_buf(self, &self->small_x2_pages, &self->num_small_x2_pages, KND_NUM_SMALL_X2_MEMPAGES,
-                         &self->small_x2_page_size, KND_SMALL_X2_MEMPAGE_SIZE);   RET_ERR();
+    if (self->num_small_x2_pages) {
+        err = alloc_page_buf(self, &self->small_x2_pages, self->num_small_x2_pages, KND_SMALL_X2_MEMPAGE_SIZE);
+        RET_ERR();
+    }
 
-    err = alloc_page_buf(self, &self->small_pages, &self->num_small_pages, KND_NUM_SMALL_MEMPAGES,
-                         &self->small_page_size, KND_SMALL_MEMPAGE_SIZE);         RET_ERR();
+    if (self->num_small_pages) {
+        err = alloc_page_buf(self, &self->small_pages, self->num_small_pages, KND_SMALL_MEMPAGE_SIZE);
+        RET_ERR();
+    }
 
-    err = alloc_page_buf(self, &self->tiny_pages, &self->num_tiny_pages, KND_NUM_TINY_MEMPAGES,
-                         &self->tiny_page_size, KND_TINY_MEMPAGE_SIZE);           RET_ERR();
+    if (self->num_tiny_pages) {
+        err = alloc_page_buf(self, &self->tiny_pages, self->num_tiny_pages, KND_TINY_MEMPAGE_SIZE);
+        RET_ERR();
+    }
 
     switch (self->type) {
     case KND_ALLOC_SHARED:
         // fall through
     case KND_ALLOC_LIST:
-        build_linked_list(self->large_pages, self->num_large_pages, self->large_page_size, &self->large_page_list);
-        build_linked_list(self->base_pages, self->num_base_pages, self->base_page_size, &self->base_page_list);
-        build_linked_list(self->small_x4_pages, self->num_small_x4_pages, self->small_x4_page_size, &self->small_x4_page_list);
-        build_linked_list(self->small_x2_pages, self->num_small_x2_pages, self->small_x2_page_size, &self->small_x2_page_list);
-        build_linked_list(self->small_pages, self->num_small_pages, self->small_page_size, &self->small_page_list);
-        build_linked_list(self->tiny_pages, self->num_tiny_pages, self->tiny_page_size, &self->tiny_page_list);
+        if (self->num_large_pages) {
+            build_linked_list(self->large_pages, self->num_large_pages, KND_LARGE_MEMPAGE_SIZE, &self->large_page_list);
+        }
+
+        if (self->num_base_pages) {
+            build_linked_list(self->base_pages, self->num_base_pages, KND_BASE_MEMPAGE_SIZE, &self->base_page_list);
+        }
+
+        if (self->num_small_x4_pages) {
+            build_linked_list(self->small_x4_pages, self->num_small_x4_pages, KND_SMALL_X4_MEMPAGE_SIZE, &self->small_x4_page_list);
+        }
+
+        if (self->num_small_x2_pages) {
+            build_linked_list(self->small_x2_pages, self->num_small_x2_pages, KND_SMALL_X2_MEMPAGE_SIZE, &self->small_x2_page_list);
+        }
+
+        if (self->num_small_pages) {
+            build_linked_list(self->small_pages, self->num_small_pages, KND_SMALL_MEMPAGE_SIZE, &self->small_page_list);
+        }
+
+        if (self->num_tiny_pages) {
+            build_linked_list(self->tiny_pages, self->num_tiny_pages, KND_TINY_MEMPAGE_SIZE, &self->tiny_page_list);
+        }
         break;
     default:
         break;
@@ -455,6 +493,16 @@ int knd_mempool_alloc(struct kndMemPool *self)
         atomic_store_explicit(&self->shared_small_x4_page_list, self->small_x4_page_list, memory_order_relaxed);
     }    
     return knd_OK;
+}
+
+void knd_memconf_apply_defaults(struct kndMemConfig *config)
+{
+    config->num_large_pages = KND_NUM_LARGE_MEMPAGES;
+    config->num_base_pages = KND_NUM_BASE_MEMPAGES;
+    config->num_small_pages = KND_NUM_SMALL_MEMPAGES;
+    config->num_small_x2_pages = KND_NUM_SMALL_X2_MEMPAGES;
+    config->num_small_x4_pages = KND_NUM_SMALL_X4_MEMPAGES;
+    config->num_tiny_pages = KND_NUM_TINY_MEMPAGES;
 }
 
 int knd_mempool_create(struct kndMemPool **result, struct kndMemConfig *config, size_t numid)

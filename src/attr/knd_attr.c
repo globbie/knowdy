@@ -278,12 +278,11 @@ int knd_attr_export(struct kndAttr *self, knd_format format, struct kndTask *tas
     return knd_NO_MATCH;
 }
 
-
 int knd_attr_ref_new(struct kndAttrRef **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
-    assert(mempool->small_page_size >= sizeof(struct kndAttrRef));
+    assert(KND_SMALL_MEMPAGE_SIZE >= sizeof(struct kndAttrRef));
     err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndAttrRef));
@@ -298,8 +297,9 @@ int knd_cls_inner_attr_new(struct kndClassInnerAttr **result,
     struct kndFacetHashSpec *spec;
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndClassInnerAttr));
-    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
+    assert(KND_SMALL_MEMPAGE_SIZE >= sizeof(struct kndClassInnerAttr));
+
+    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndClassInnerAttr));
     inner = page;
@@ -319,16 +319,17 @@ int knd_cls_inner_attr_new(struct kndClassInnerAttr **result,
     return knd_OK;
 }
 
-int knd_cls_ref_attr_new(struct kndClassRefAttr **result,
-                         const char *name, size_t name_size,
+int knd_cls_ref_attr_new(struct kndClassRefAttr **result, const char *name, size_t name_size,
                          struct kndMemPool *mempool)
 {
     struct kndClassRefAttr *refattr;
     struct kndFacetHashSpec *spec;
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndClassRefAttr));
-    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
+
+    assert(KND_SMALL_MEMPAGE_SIZE >= sizeof(struct kndClassRefAttr));
+
+    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndClassRefAttr));
     refattr = page;
@@ -353,7 +354,7 @@ int knd_cls_inst_ref_attr_new(struct kndClassInstRefAttr **result,
 {
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndClassInstRefAttr));
+    assert(KND_TINY_MEMPAGE_SIZE >= sizeof(struct kndClassInstRefAttr));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndClassInstRefAttr));
@@ -367,7 +368,7 @@ int knd_attr_new(struct kndAttr **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
-    assert(mempool->small_x2_page_size >= sizeof(struct kndAttr));
+    assert(KND_SMALL_X2_MEMPAGE_SIZE >= sizeof(struct kndAttr));
     err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL_X2, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndAttr));

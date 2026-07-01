@@ -138,7 +138,6 @@ struct kndSet
     knd_set_cardinal_t cardinal_t;
     knd_set_elem_format_t format_t;
 
-
     struct kndSetDir *dir;
     size_t num_elems;
 

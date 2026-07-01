@@ -84,7 +84,7 @@ static int decode_inner_attr_stm(struct kndClass *base, struct kndAttrStm *stm,
     err = knd_class_acquire(entry, &c, snapshot, task);
     KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);
 
-    /* specific inner subclass */
+    /* specific inner cls */
     if (stm->val_id_size) {
         err = knd_get_cls_by_id(snapshot, stm->val_id, stm->val_id_size, &c, task);
         KND_TASK_ERR("no such {cls %.*s}", stm->val_id_size, stm->val_id);
@@ -93,7 +93,7 @@ static int decode_inner_attr_stm(struct kndClass *base, struct kndAttrStm *stm,
             err = knd_class_decode(c, snapshot, task);
             KND_TASK_ERR("failed to decode {cls %.*s}", c->name_size, c->name);
         }
-        inner_stm->cls_entry = entry;
+        inner_stm->cls_entry = c->entry;
     }
 
     err = knd_decode_attr_stms(c, stm->children, snapshot, task);
@@ -131,7 +131,7 @@ static int decode_uint(struct kndAttrStm *stm, struct kndRepoSnapshot *snapshot,
     struct kndQuantUInt *uint;
     int err;
 
-    err = knd_charseq_decode(snapshot->cache.str_idx, stm->val_id, stm->val_id_size, &seq, task);
+    /*err = knd_charseq_decode(snapshot->cache.str_idx, stm->val_id, stm->val_id_size, &seq, task);
     KND_TASK_ERR("failed to decode a charseq");
 
     err = knd_quant_parse_uint(seq->val, seq->val_size, &uint, task);
@@ -146,6 +146,11 @@ static int decode_uint(struct kndAttrStm *stm, struct kndRepoSnapshot *snapshot,
 
     quant_attr_stm->uint = uint;
     stm->subtype = quant_attr_stm;
+    */
+
+    // TODO
+    //stm->val = stm->val_id;
+    //stm->val_size = stm->val_id_size;
     return knd_OK;
 }
 
@@ -154,12 +159,15 @@ static int decode_ureal(struct kndAttrStm *stm, struct kndRepoSnapshot *snapshot
     struct kndCharSeq *seq;
     int err;
 
-    err = knd_charseq_decode(snapshot->cache.str_idx, stm->val_id, stm->val_id_size, &seq, task);
+    /*err = knd_charseq_decode(snapshot->cache.str_idx, stm->val_id, stm->val_id_size, &seq, task);
     KND_TASK_ERR("failed to decode a charseq");
-
     stm->val = seq->val;
     stm->val_size = seq->val_size;
+    */
 
+    // TODO
+    //stm->val = stm->val_id;
+    //stm->val_size = stm->val_id_size;
     return knd_OK;
 }
 
@@ -207,7 +215,7 @@ static int decode_attr_stm(struct kndClass *base, struct kndAttrStm *stm,
         break;
     case KND_ATTR_UREAL:
         err = decode_ureal(stm, snapshot, task);
-        KND_TASK_ERR("failed to decode {%.*s {val-id %.*s}}",
+        KND_TASK_ERR("failed to decode {%.*s {ureal %.*s}}",
                      stm->name_size, stm->name, stm->val_id_size, stm->val_id);
         break;
     case KND_ATTR_STR:
@@ -239,7 +247,7 @@ static int decode_attr_stm_list(struct kndClass *base, struct kndAttrStm *parent
     if (DEBUG_ATTR_STM_DECODE_LEVEL_2) {
             const char *attr_type_name = knd_attr_names[attr->type];
             size_t attr_type_name_size = strlen(attr_type_name);
-            knd_log(".. decoding a list of {attr %.*s {type %.*s {set}}}",
+            knd_log(".. decoding a list of {attr %.*s {type %.*s {mult}}}",
                     parent->name_size, parent->name, attr_type_name_size, attr_type_name);
     }
 
@@ -256,17 +264,19 @@ int knd_decode_attr_stms(struct kndClass *base, struct kndAttrStm *attr_stms,
 {
     struct kndAttrStm *stm;
     struct kndAttrRef *ref;
+    struct kndSetElem *elem;
     int err;
 
     if (DEBUG_ATTR_STM_DECODE_LEVEL_2) {
-        knd_log(".. decoding attr stms of {base %.*s}", base->name_size, base->name);
+        knd_log(".. decoding attr stms from base {cls %.*s}", base->name_size, base->name);
     }
 
     FOREACH (stm, attr_stms) {
-        err = knd_set_get(base->attr_idx, stm->id, stm->id_size, (void**)&ref, task);
+        err = knd_set_get(base->attr_idx, stm->id, stm->id_size, (void**)&elem, task);
         KND_TASK_ERR("no {attr %.*s} in {cls %.*s}",
                      stm->id_size, stm->id, base->name_size, base->name);
 
+        ref = elem->val;
         assert (ref->attr != NULL);
 
         stm->attr = ref->attr;

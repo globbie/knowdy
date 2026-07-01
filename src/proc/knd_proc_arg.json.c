@@ -16,7 +16,7 @@
 #include "knd_state.h"
 
 int knd_proc_arg_var_export_JSON(struct kndProcArgVar *self,
-                                 struct kndTask *task, size_t depth)
+                                 struct kndTask *task, size_t unused_var(depth))
 {
     struct kndOutput *out = task->out;
     struct kndClassInst *arg_inst = self->inst;
@@ -57,7 +57,7 @@ int knd_proc_arg_var_export_JSON(struct kndProcArgVar *self,
     return knd_OK;
 }
 
-int knd_proc_arg_export_JSON(struct kndProcArg *self, struct kndRepo *repo, struct kndTask *task, bool is_list_item, size_t depth)
+int knd_proc_arg_export_JSON(struct kndProcArg *self, struct kndTask *task, bool is_list_item, size_t depth)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size;

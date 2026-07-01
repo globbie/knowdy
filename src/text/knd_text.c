@@ -36,7 +36,7 @@ int knd_charseq_new(struct kndCharSeq **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndCharSeq));
+    assert(KND_TINY_MEMPAGE_SIZE >= sizeof(struct kndCharSeq));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndCharSeq));
@@ -53,7 +53,7 @@ int knd_text_search_report_new(struct kndTextSearchReport **result, struct kndMe
 {
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndTextSearchReport));
+    assert(KND_TINY_MEMPAGE_SIZE >= sizeof(struct kndTextSearchReport));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndTextSearchReport));
@@ -65,7 +65,7 @@ int knd_text_loc_new(struct kndTextLoc **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndTextLoc));
+    assert( KND_TINY_MEMPAGE_SIZE >= sizeof(struct kndTextLoc));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndTextLoc));
@@ -77,7 +77,7 @@ int knd_text_repr_new(struct kndTextRepr **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndTextRepr));
+    assert(KND_TINY_MEMPAGE_SIZE >= sizeof(struct kndTextRepr));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndTextRepr));
@@ -89,7 +89,7 @@ int knd_class_declar_new(struct kndClassDeclar **result, struct kndMemPool *memp
 {
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndClassDeclar));
+    assert(KND_TINY_MEMPAGE_SIZE >= sizeof(struct kndClassDeclar));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndClassDeclar));
@@ -101,7 +101,7 @@ int knd_proposition_new(struct kndProposition **result, struct kndMemPool *mempo
 {
     void *page;
     int err;
-    assert(mempool->small_page_size >= sizeof(struct kndProposition));
+    assert(KND_SMALL_MEMPAGE_SIZE >= sizeof(struct kndProposition));
     err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndProposition));
@@ -113,7 +113,7 @@ int knd_synode_spec_new(struct kndSyNodeSpec **result, struct kndMemPool *mempoo
 {
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndSyNodeSpec));
+    assert(KND_TINY_MEMPAGE_SIZE >= sizeof(struct kndSyNodeSpec));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndSyNodeSpec));
@@ -125,7 +125,7 @@ int knd_synode_new(struct kndSyNode **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
-    assert(mempool->small_page_size >= sizeof(struct kndSyNode));
+    assert(KND_SMALL_MEMPAGE_SIZE >= sizeof(struct kndSyNode));
     err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndSyNode));
@@ -137,7 +137,7 @@ int knd_clause_new(struct kndClause **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndClause));
+    assert(KND_TINY_MEMPAGE_SIZE >= sizeof(struct kndClause));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndClause));
@@ -149,7 +149,7 @@ int knd_sentence_new(struct kndSentence **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
-    assert(mempool->small_page_size >= sizeof(struct kndSentence));
+    assert(KND_SMALL_MEMPAGE_SIZE >= sizeof(struct kndSentence));
     err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndSentence));
@@ -161,7 +161,7 @@ int knd_statement_new(struct kndStatement **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
-    assert(mempool->small_page_size >= sizeof(struct kndStatement));
+    assert(KND_SMALL_MEMPAGE_SIZE >= sizeof(struct kndStatement));
     err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndStatement));
@@ -173,7 +173,7 @@ int knd_par_new(struct kndPar **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndPar));
+    assert(KND_TINY_MEMPAGE_SIZE >= sizeof(struct kndPar));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndPar));
@@ -185,7 +185,7 @@ int knd_text_new(struct kndText **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
-    assert(mempool->small_x2_page_size >= sizeof(struct kndText));
+    assert(KND_SMALL_X2_MEMPAGE_SIZE >= sizeof(struct kndText));
     err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL_X2, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndText));
@@ -363,6 +363,8 @@ int knd_charseq_register(struct kndRepoSnapshot *snapshot, const char *str, size
     default:
         KND_TASK_ERR("failed to get an str dict entry {err %d}", err);  
     }
+
+    // TODO new charseq in import commit
 
     return knd_NO_MATCH;
 }

@@ -142,7 +142,7 @@ static int query_plan(struct kndQuery *query, struct kndTask *task)
     // TODO query cache lookup
 
     FOREACH (stm, query->attr_stms) {
-        err = knd_attr_stm_plan(stm, repo, task);
+        err = knd_attr_stm_plan(stm, repo->snapshot, task);
         switch (err) {
         case knd_OK:
             query->num_matches += stm->num_matches;

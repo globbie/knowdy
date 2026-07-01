@@ -39,6 +39,8 @@
 #include "knd_text.h"
 #include "knd_utils.h"
 
+#define MEM_TRACE 0
+
 static const char *options_string = "c:h?";
 
 static struct option main_options[] =
@@ -58,6 +60,31 @@ void sigHandler(int sig_num)
     printf("\n Termination signal received: %s\n", strsignal(sig_num)); 
     fflush(stdout);
     exit(0);
+}
+
+static int present_mempools(struct kndTask *task)
+{
+    struct kndOutput *out = task->out;
+    struct kndMemPool *mempool = task->mempool;
+
+    out->reset(out);
+    knd_mempool_present(mempool, out);
+
+    knd_log("** Task Main Mempool\n%.*s", out->buf_size, out->buf);
+
+    mempool = task->cache.mempool;
+
+    out->reset(out);
+    knd_mempool_present(mempool, out);
+
+    knd_log("** Task Cache Mempool\n%.*s", out->buf_size, out->buf);
+
+    /*out->reset(out);
+    mempool = steward->user->mempool_write;
+    knd_mempool_present(mempool, out);
+    knd_log("** User Space Mempool\n%.*s", out->buf_size, out->buf);
+    */
+    return knd_OK;
 }
 
 static int check_file_rec(struct kndTask *task, const char *rec, size_t rec_size,
@@ -102,7 +129,7 @@ static int check_file_rec(struct kndTask *task, const char *rec, size_t rec_size
 static int knd_interact(struct kndSteward *steward)
 {
     struct kndTask *reader_task;
-    struct kndTask *writer_task;
+    //struct kndTask *writer_task;
     char  *buf;
     size_t buf_size;
     struct kndMemBlock *memblock = NULL;
@@ -112,13 +139,13 @@ static int knd_interact(struct kndSteward *steward)
     const char *steward_role_name = knd_agent_role_names[steward->role];
     struct kndOutput *out = steward->out;
     struct kndOutput *log = steward->log;
-    struct kndResourceReport report;
-    struct kndRepoSnapshot *snapshot = steward->repo->snapshot;
+    //struct kndResourceReport report;
+    //struct kndRepoSnapshot *snapshot = steward->repo->snapshot;
     int err;
 
-    err = knd_task_new(&writer_task, KND_AGENT_WRITER, 1,
-                       &steward->mem_task_ctx_config, &steward->mem_task_cache_config, steward);
-    KND_STEWARD_ERR("failed to create a writer task");
+    //err = knd_task_new(&writer_task, KND_AGENT_WRITER, 1,
+    //                    &steward->mem_task_ctx_config, &steward->mem_task_cache_config, steward);
+    //KND_STEWARD_ERR("failed to create a writer task");
 
     err = knd_task_new(&reader_task, KND_AGENT_READER, 2,
                        &steward->mem_task_ctx_config, &steward->mem_task_cache_config, steward);
@@ -138,7 +165,6 @@ static int knd_interact(struct kndSteward *steward)
         }
         if (!buf_size) continue;
 
-        // printf("[%s :%zu]\n", buf, buf_size);
         block = buf;
         block_size = buf_size;
 
@@ -168,10 +194,6 @@ static int knd_interact(struct kndSteward *steward)
 
         knd_log("=== REPLY ===\n\n%.*s", reader_task->output_size, reader_task->output);
 
-        // out->reset(out);
-        // reader_task->mempool->present(reader_task->mempool, out);
-        // knd_log("** Task Mempool (%p)\n%.*s", reader_task->mempool, out->buf_size, out->buf);
-
         /* writing tasks require another run,
            possibly involving network communication */
         switch (reader_task->ctx->phase) {
@@ -185,8 +207,8 @@ static int knd_interact(struct kndSteward *steward)
                 goto next_line;
             }
 
+#if 0
             knd_task_reset(writer_task);
-
             err = knd_task_run(writer_task, write_memblock->buf, write_memblock->buf_size);
             if (err != knd_OK) {
                 knd_log("-- update confirm failed: %.*s",
@@ -212,8 +234,9 @@ static int knd_interact(struct kndSteward *steward)
                 KND_STEWARD_ERR("steward cleanup failed");
 
                 /* re-initialize all writing tasks */
-                knd_task_reset(writer_task);
+                knd_task_reset(writer_task);                
             }
+#endif
             break;
         default:
             break;
@@ -231,9 +254,11 @@ static int knd_interact(struct kndSteward *steward)
             break;
         }
 
-
     next_line:
 
+        if (MEM_TRACE) {
+            present_mempools(reader_task);
+        }
         knd_task_reset(reader_task);
 
         /* readline allocates a new buffer every time */
@@ -241,24 +266,6 @@ static int knd_interact(struct kndSteward *steward)
         memblock = NULL;
         write_memblock = NULL;
     }
-    return knd_OK;
-}
-
-static int present_mempools(struct kndTask *task)
-{
-    struct kndOutput *out = task->out;
-    struct kndMemPool *mempool = task->mempool;
-
-    out->reset(out);
-    knd_mempool_present(mempool, out);
-
-    knd_log("** System Mempool %p\n%.*s", task->mempool, out->buf_size, out->buf);
-
-    /*out->reset(out);
-    mempool = steward->user->mempool_write;
-    knd_mempool_present(mempool, out);
-    knd_log("** User Space Mempool\n%.*s", out->buf_size, out->buf);
-    */
     return knd_OK;
 }
 

@@ -29,10 +29,11 @@ static int create_dir_block(struct kndSetDir *dir, struct kndSetRange *unused_va
                             size_t offset, size_t block_size,
                             struct kndSetDirBlock **result, struct kndTask *task)
 {
+    struct kndMemPool *mempool = task->cache.mempool;
     struct kndSetDirBlock *block;
     int err;
 
-    err = knd_set_dir_block_new(&block, task->mempool);
+    err = knd_set_dir_block_new(&block, mempool);
     KND_TASK_ERR("failed to alloc a set dir block");
 
     block->offset = offset;
@@ -139,6 +140,7 @@ static int elems_linear_scan(struct kndSetDir *dir, struct kndSetDirBlock *block
                              char *rec, size_t rec_size, size_t num_elems, size_t cell_size,
                              knd_set_elem_unmarshall_cb_t cb, void *cb_ctx, struct kndTask *task)
 {
+    struct kndMemPool *mempool = task->cache.mempool;
     char *dir_entry;
     struct kndSetElem *elem;
     const char *elem_rec;
@@ -159,7 +161,7 @@ static int elems_linear_scan(struct kndSetDir *dir, struct kndSetDirBlock *block
         elem_rec_size = knd_unpack_int((unsigned char*)dir_entry + 1, cell_size);
         if (elem_rec_size == 0) return knd_LIMIT;
 
-        err = knd_set_elem_new(&elem, task->mempool);
+        err = knd_set_elem_new(&elem, mempool);
         KND_TASK_ERR("failed to alloc a set elem");
 
         memcpy(elem->id, dir->id, dir->id_size);
@@ -249,6 +251,7 @@ static int unmarshall_elems(struct kndSetDir *dir, struct kndSetDirBlock *block,
                             knd_set_elem_unmarshall_cb_t cb, void *cb_ctx,
                             struct kndTask *task)
 {
+    struct kndMemPool *mempool = task->cache.mempool;
     struct kndSetElem *elem;
     unsigned char spec;
     bool use_keys = false;
@@ -339,7 +342,7 @@ static int unmarshall_elems(struct kndSetDir *dir, struct kndSetDirBlock *block,
 
         key = &obj_id_seq[i];
 
-        err = knd_set_elem_new(&elem, task->mempool);
+        err = knd_set_elem_new(&elem, mempool);
         KND_TASK_ERR("failed to alloc a set elem");
         memcpy(elem->id, dir->id, dir->id_size);
         elem->id_size = dir->id_size;
@@ -448,6 +451,7 @@ static int read_subdirs(struct kndSetDir *dir, struct kndSetDirBlock *block,
                         size_t global_offset, struct kndSetRange *range,
                         int fd, knd_set_elem_unmarshall_cb_t cb, void *cb_ctx, struct kndTask *task)
 {
+    struct kndMemPool *mempool = task->cache.mempool;
     unsigned char buf[KND_NAME_SIZE];
     struct kndSetDir *subdir;
     struct kndSetDirBlock *subdir_block;
@@ -523,7 +527,7 @@ static int read_subdirs(struct kndSetDir *dir, struct kndSetDirBlock *block,
             if (subdir_block_size == 0) return knd_LIMIT;
             if (subdir_block_size > block->subdirs_rec_size) return knd_LIMIT;
 
-            err = knd_set_dir_new(&subdir, dir->id, dir->id_size, (const char *)c, task->mempool);
+            err = knd_set_dir_new(&subdir, dir->id, dir->id_size, (const char *)c, mempool);
             KND_TASK_ERR("failed to alloc a set subdir");
 
             err = create_dir_block(subdir, range, global_offset + block_offset,
@@ -550,7 +554,7 @@ static int read_subdirs(struct kndSetDir *dir, struct kndSetDirBlock *block,
         subdir_block_size = knd_unpack_int(c, cell_size);
         if (subdir_block_size == 0) continue;
 
-        err = knd_set_dir_new(&subdir, dir->id, dir->id_size, &obj_id_seq[i], task->mempool);
+        err = knd_set_dir_new(&subdir, dir->id, dir->id_size, &obj_id_seq[i], mempool);
         KND_TASK_ERR("failed to alloc a set subdir");
 
         err = create_dir_block(subdir, range, offset + block_offset, subdir_block_size, &block, task);

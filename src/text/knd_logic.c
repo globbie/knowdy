@@ -28,7 +28,7 @@ int knd_situation_new(struct kndSituation **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndSituation));
+    assert(KND_TINY_MEMPAGE_SIZE >= sizeof(struct kndSituation));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndSituation));
@@ -40,7 +40,7 @@ int knd_logic_clause_new(struct kndLogicClause **result, struct kndMemPool *memp
 {
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndLogicClause));
+    assert(KND_TINY_MEMPAGE_SIZE >= sizeof(struct kndLogicClause));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndLogicClause));

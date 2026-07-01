@@ -32,18 +32,18 @@
 
 struct LocalContext {
     struct kndTask *task;
-    struct kndRepo *repo;
+    struct kndRepoSnapshot *snapshot;
 };
 
 static int cls_import(const char *rec, size_t *total_size,
-                      struct kndRepo *repo, struct kndTask *task)
+                      struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct kndClass *cls;
     struct kndClassEntry *entry;
     struct kndSet *cls_idx = task->idxs.cls_idx;
     int err;
 
-    err = knd_class_import(rec, total_size, &cls, repo, task);
+    err = knd_class_import(rec, total_size, &cls, snapshot, task);
     KND_TASK_ERR("failed to import a cls");
 
     entry = cls->entry;
@@ -68,7 +68,7 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndRepo *repo = ctx->repo;
+    struct kndRepoSnapshot *snapshot = ctx->snapshot;
     int err;
 
 #if 0
@@ -85,7 +85,7 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
     }
 #endif
 
-    err = cls_import(rec, total_size, repo, task);
+    err = cls_import(rec, total_size, snapshot, task);
     if (err) return make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);
@@ -103,7 +103,7 @@ static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_si
 static gsl_err_t parse_proc_import(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndRepo *repo = ctx->repo;
+    struct kndRepoSnapshot *snapshot = ctx->snapshot;
     struct kndTask *task = ctx->task;
     //struct kndUserContext *ctx = task->user_ctx;
     //int err;
@@ -119,13 +119,14 @@ static gsl_err_t parse_proc_import(void *obj, const char *rec, size_t *total_siz
             //                                                        memory_order_relaxed);
         }
     }
-    return knd_proc_import(rec, total_size, repo, task);
+    return knd_proc_import(rec, total_size, snapshot, task);
 }
 
 static gsl_err_t run_get_schema(void *obj, const char *name, size_t name_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndRepo *repo = ctx->repo;
+    struct kndRepoSnapshot *snapshot = ctx->snapshot;
+    struct kndRepo *repo = snapshot->repo;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
     if (name_size >= KND_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
@@ -279,10 +280,10 @@ static gsl_err_t parse_include(void *obj, const char *rec, size_t *total_size)
 }
 
 static int parse_GSL(const char *rec, size_t *total_size,
-                     struct kndRepo *repo, struct kndTask *task)
+                     struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct LocalContext ctx = {
-        .repo = repo,
+        .snapshot = snapshot,
         .task = task
     };
 
@@ -380,7 +381,7 @@ static int read_GSL_file(struct kndRepo *repo, struct kndConcFolder *parent_fold
     KND_TASK_ERR("failed to read memblock from %s {size %zu}", out->buf, file_size);
     task->input_size = file_size;
 
-    err = parse_GSL(task->input, &chunk_size, repo, task);
+    err = parse_GSL(task->input, &chunk_size, repo->snapshot, task);
     if (err) {
         knd_log("-- parsing of GSL source {file %.*s} failed, err: %d",
                 out->buf_size, out->buf, err);
@@ -438,7 +439,7 @@ static int read_GSL_file(struct kndRepo *repo, struct kndConcFolder *parent_fold
 static int resolve_cls(void *elem, void *ctx, struct kndTask *task)
 {
     struct kndClassEntry *entry = elem;
-    struct kndRepo *repo = ctx;
+    struct kndRepoSnapshot *snapshot = ctx;
     struct kndClass *c;
     int err;
 
@@ -449,12 +450,12 @@ static int resolve_cls(void *elem, void *ctx, struct kndTask *task)
                 entry->name_size, entry->name, entry->id_size, entry->id);
     }
 
-    err = knd_class_acquire(entry, &c, repo, task);
+    err = knd_class_acquire(entry, &c, snapshot, task);
     KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);
 
     if (c->phase >= KND_CLASS_RESOLVED) return knd_OK;
 
-    err = knd_class_resolve(c, repo, task);
+    err = knd_class_resolve(c, snapshot, task);
     KND_TASK_ERR("failed to resolve {cls %.*s}", entry->name_size, entry->name);
 
     return knd_OK;
@@ -463,18 +464,18 @@ static int resolve_cls(void *elem, void *ctx, struct kndTask *task)
 static int index_cls(void *elem, void *ctx, struct kndTask *task)
 {
     struct kndClassEntry *entry = elem;
-    struct kndRepo *repo = ctx;
+    struct kndRepoSnapshot *snapshot = ctx;
     struct kndClass *cls;
     int err;
 
     assert (entry != NULL);
 
-    err = knd_class_acquire(entry, &cls, repo, task);
+    err = knd_class_acquire(entry, &cls, snapshot, task);
     KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);
 
     if (cls->phase >= KND_CLASS_INDEXED) return knd_OK;
 
-    err = knd_class_index(cls, repo, task);
+    err = knd_class_index(cls, snapshot, task);
     KND_TASK_ERR("failed to index {cls %.*s}", entry->name_size, entry->name);
 
     return knd_OK;
@@ -665,6 +666,7 @@ int knd_repo_save_meta(struct kndRepoSnapshot *s, struct kndTask *main_task, str
 
 int knd_repo_read_sources(struct kndRepo *repo, struct kndTask *task)
 {
+    struct kndRepoSnapshot *snapshot = repo->snapshot;
     int err;
 
     if (DEBUG_REPO_GSL_LEVEL_TMP) {
@@ -683,14 +685,14 @@ int knd_repo_read_sources(struct kndRepo *repo, struct kndTask *task)
     }
 
     /* resolve class references */
-    err = knd_set_map(task->idxs.cls_idx, NULL, NULL, NULL, resolve_cls, repo, task);
+    err = knd_set_map(task->idxs.cls_idx, NULL, NULL, NULL, resolve_cls, snapshot, task);
     KND_TASK_ERR("failed to resolve all entries in class idx");
 
     //err = resolve_procs(repo, task);
     //KND_TASK_ERR("proc resolving failed");
 
     /* build reverse indices */
-    err = knd_set_map(task->idxs.cls_idx, NULL, NULL, NULL, index_cls, repo, task);
+    err = knd_set_map(task->idxs.cls_idx, NULL, NULL, NULL, index_cls, snapshot, task);
     KND_TASK_ERR("failed to index all entries in class idx");
 
     /* any instances to load? */

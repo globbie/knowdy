@@ -181,19 +181,20 @@ int knd_class_set_export_GSL(struct kndSet *set, struct kndTask *task)
     return knd_OK;
 }
 
-static int present_subclass(struct kndClassRef *ref,
-                            struct kndTask *task, size_t depth)
+static int present_subclass(struct kndClassRef *ref, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     struct kndClassEntry *entry = ref->entry;
     int err;
+
+    assert (entry != NULL);
 
     OUT("{", 1);
     OUT(" ", 1);
     OUT(entry->name, entry->name_size);
 
     err = knd_text_glosses_export_GSL(entry->glosses, true, task, depth + 1);
-    RET_ERR();
+    KND_TASK_ERR("failed to export glosses GSL");
 
     OUT("}", 1);
     return knd_OK;
@@ -228,15 +229,15 @@ static int present_subclasses(struct kndClass *self, size_t num_children,
 
     // TODO sort by?
     FOREACH (ref, self->children) {
-        
         state = self->states;
         if (state && state->phase == KND_REMOVED) continue;
         if (task->ctx->format_indent) {
             err = out->writec(out, '\n');                                         RET_ERR();
             err = knd_print_offset(out, (depth + 2) * task->ctx->format_indent);       RET_ERR();
         }
+
         err = present_subclass(ref, task, depth + 2);
-        RET_ERR();       
+        KND_TASK_ERR("failed to present a subclass GSL");       
     }
 
     /*    if (orig_entry) {
@@ -265,27 +266,32 @@ static int present_subclasses(struct kndClass *self, size_t num_children,
     return knd_OK;
 }
 
-static int export_attrs(struct kndClass *self, struct kndTask *task, size_t depth)
+static int export_attrs(struct kndClass *cls, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
+    struct kndAttrRef *ref;
     struct kndAttr *attr;
     size_t i = 0;
     int err;
 
-    FOREACH (attr, self->attrs) {
+    FOREACH (ref, cls->attr_refs) {
+        attr = ref->attr;
+
         if (task->ctx->format_indent) {
             OUT("\n", 1);
             err = knd_print_offset(out, (depth + 1) * task->ctx->format_indent);
             RET_ERR();
         }
+
         err = knd_attr_export_GSL(attr, task, depth + 1);
         KND_TASK_ERR("failed to export {attr %.*s}", attr->name_size, attr->name);
+
         i++;
     }
     return knd_OK;
 }
 
-static int export_base_preds(struct kndClass *self, struct kndTask *task, size_t depth)
+static int export_base_preds(struct kndClass *cls, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     struct kndClassBasePred *bp;
@@ -301,13 +307,14 @@ static int export_base_preds(struct kndClass *self, struct kndTask *task, size_t
 
     OUT("[is", strlen("[is"));
 
-    FOREACH (bp, self->base_preds) {
+    FOREACH (bp, cls->base_preds) {
+        assert (bp->entry != NULL);
+
         if (indent_size) {
             OUT("\n", 1);
             err = knd_print_offset(out, (depth + 1) * indent_size);
             RET_ERR();
         }
-
         OUT("{", 1);
         if (indent_size) OUT(" ", 1);
         OUT(bp->entry->name, bp->entry->name_size);
@@ -315,11 +322,9 @@ static int export_base_preds(struct kndClass *self, struct kndTask *task, size_t
         err = knd_text_glosses_export_GSL(bp->entry->glosses, true, task, depth + 2);
         KND_TASK_ERR("failed to export baseclass gloss GSL");
 
-        if (bp->attr_stms) {
-            //curr_depth = task->ctx->depth;
+        if (bp->num_attr_stms) {
             err = knd_attr_stms_export_GSL(bp->attr_stms, task, depth + 2);
             KND_TASK_ERR("failed to export attr stms GSL");
-            //task->ctx->depth = curr_depth;   
         }
 
         OUT(" ", 1);
@@ -330,20 +335,19 @@ static int export_base_preds(struct kndClass *self, struct kndTask *task, size_t
     return knd_OK;
 }
 
-int knd_class_export_GSL(struct kndClass *self,
-                         struct kndTask *task, bool is_list_item, size_t depth)
+int knd_class_export_GSL(struct kndClass *cls, struct kndTask *task, bool is_list_item, size_t depth)
 {
     struct kndOutput *out = task->out;
-    struct kndState *state = self->states;
+    struct kndState *state = cls->states;
     size_t indent_size = task->ctx->format_indent;
     size_t num_children;
     bool use_locale = false; // TODO
     int err;
 
-    if (DEBUG_GSL_LEVEL_TMP) {
+    if (DEBUG_GSL_LEVEL_2) {
         knd_log(".. GSL export {cls %.*s} "
                 " {depth %zu} {max-depth %zu} {indent-size %zu}",
-                self->name_size, self->name,
+                cls->name_size, cls->name,
                 task->depth, task->max_depth, indent_size);
     }
 
@@ -361,8 +365,8 @@ int knd_class_export_GSL(struct kndClass *self,
 
     OUT(" ", 1);
 
-    if (self->name_size) {
-        OUT(self->name, self->name_size);
+    if (cls->name_size) {
+        OUT(cls->name, cls->name_size);
     }
 
     if (is_list_item) {
@@ -408,22 +412,22 @@ int knd_class_export_GSL(struct kndClass *self,
         OUT("}", 1);
     }
 
-    err = knd_text_glosses_export_GSL(self->entry->glosses, use_locale, task, depth + 1);
+    err = knd_text_glosses_export_GSL(cls->entry->glosses, use_locale, task, depth + 1);
     KND_TASK_ERR("failed to export cls glosses to GSL");
 
-
-    if (self->num_base_preds) {
-        err = export_base_preds(self, task, depth + 1);
+    if (cls->num_base_preds && !cls->base_preds->is_root) {
+        err = export_base_preds(cls, task, depth + 1);
         KND_TASK_ERR("failed to export cls base preds GSL");
     }
-    if (self->attrs) {
-        err = export_attrs(self, task, depth + 1);
+
+    if (cls->num_attr_refs) {
+        err = export_attrs(cls, task, depth + 1);
         KND_TASK_ERR("failed to export cls attrs GSL");
     }
 
-    num_children = self->num_children;
-    if (self->desc_states) {
-        state = self->desc_states;
+    num_children = cls->num_children;
+    if (cls->desc_states) {
+        state = cls->desc_states;
         num_children = state->val? state->val->val_size : 0;
     }
 
@@ -441,7 +445,7 @@ int knd_class_export_GSL(struct kndClass *self,
             err = knd_print_offset(out, (depth + 1) * indent_size);
             RET_ERR();
         }
-        err = present_subclasses(self, num_children, task, depth + 1);
+        err = present_subclasses(cls, num_children, task, depth + 1);
         RET_ERR();
     }
 

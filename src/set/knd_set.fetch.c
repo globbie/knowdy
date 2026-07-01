@@ -196,7 +196,7 @@ static int iterate_elems(struct kndSet *s, int fd, size_t block_offset, size_t b
             elem_block_size = knd_unpack_int(c + 1, cell_size);
 
             if (DEBUG_SET_FETCH_LEVEL_3) {
-                knd_log(">> [%zu] {elem %c {size %zu}}", i, *c, elem_block_size);
+                knd_log("    ** [%zu] {elem %c {size %zu}}", i, *c, elem_block_size);
             }
 
             if (elem_block_size == 0) return knd_LIMIT;
@@ -385,7 +385,7 @@ static int iterate_subdirs(struct kndSet *s, int fd, size_t global_offset,
     if (num_bytes != (ssize_t)block_subdirs_footer_size) return knd_IO_FAIL;
 
     if (use_keys) {
-        if (DEBUG_SET_FETCH_LEVEL_3) {
+        if (DEBUG_SET_FETCH_LEVEL_2) {
             knd_log(">> {dir %.*s {num-subdirs %zu}} "
                     "linear traversal needed {cell-size %zu} {footer-size %zu}",
                     key_size, key, num_subdirs, cell_size, block_subdirs_footer_size);

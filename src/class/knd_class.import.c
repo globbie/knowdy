@@ -481,7 +481,7 @@ int knd_class_import(const char *rec, size_t *total_size, struct kndClass **resu
 
     if (!cls->name_size) {
         err = knd_FORMAT;
-        KND_TASK_ERR("no class name specified");
+        KND_TASK_ERR("no cls name specified");
     }
 
     /* reassign glosses */

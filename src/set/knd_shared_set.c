@@ -281,7 +281,7 @@ int knd_shared_set_elem_idx_new(struct kndSharedSetElemIdx **result, struct kndM
 {
     void *page;
     int err;
-    assert(mempool->base_page_size >= sizeof(struct kndSharedSetElemIdx));
+    assert(KND_BASE_MEMPAGE_SIZE >= sizeof(struct kndSharedSetElemIdx));
     err = knd_mempool_page(mempool, KND_MEMPAGE_BASE, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndSharedSetElemIdx));
@@ -295,13 +295,13 @@ int knd_shared_set_dir_new(struct kndSharedSetDir **result, struct kndMemPool *m
     void *page;
     int err;
 
-    assert(mempool->small_page_size >= sizeof(struct kndSharedSetDir));
+    assert(KND_SMALL_MEMPAGE_SIZE >= sizeof(struct kndSharedSetDir));
     err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndSharedSetDir));
     dir = page;
 
-    assert(mempool->base_page_size >= sizeof(struct kndSharedSetDirIdx));
+    assert(KND_BASE_MEMPAGE_SIZE >= sizeof(struct kndSharedSetDirIdx));
     err = knd_mempool_page(mempool, KND_MEMPAGE_BASE, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndSharedSetDirIdx));

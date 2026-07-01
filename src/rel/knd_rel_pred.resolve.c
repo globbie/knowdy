@@ -24,7 +24,7 @@
 #define DEBUG_REL_PRED_RESOLVE_LEVEL_3 0
 #define DEBUG_REL_PRED_RESOLVE_LEVEL_TMP 1
 
-int knd_rel_pred_resolve(struct kndAttrStm *var, struct kndRepo *repo, struct kndTask *task)
+int knd_rel_pred_resolve(struct kndAttrStm *var, struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct kndDict *class_name_idx = task->idxs.cls_name_idx;
     struct kndAttr *attr = var->attr;
@@ -55,18 +55,18 @@ int knd_rel_pred_resolve(struct kndAttrStm *var, struct kndRepo *repo, struct kn
                       var->val_size, var->val, var->name_size, var->name);
     }
     
-    err = knd_class_acquire(entry, &c, repo, task);
+    err = knd_class_acquire(entry, &c, snapshot, task);
     KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);
 
     if (c->phase < KND_CLASS_RESOLVED) {
-        err = knd_class_resolve(c, repo, task);
+        err = knd_class_resolve(c, snapshot, task);
         KND_TASK_ERR("failed to resolve {cls %.*s}", c->name_size, c->name);
     }
     
     entry = rel->impl_arg->template;
     if (!entry) {
-        err = knd_dict_get(class_name_idx,
-                           rel->impl_arg->classname, rel->impl_arg->classname_size, (void**)&entry, task);
+        err = knd_dict_get(class_name_idx, rel->impl_arg->classname, rel->impl_arg->classname_size,
+                           (void**)&entry, task);
         if (err) {
             err = knd_NO_MATCH;
             KND_TASK_ERR("no such {cls %.*s} "
@@ -76,7 +76,7 @@ int knd_rel_pred_resolve(struct kndAttrStm *var, struct kndRepo *repo, struct kn
         rel->impl_arg->template = entry;
     }
 
-    err = knd_class_acquire(entry, &template_c, repo, task);
+    err = knd_class_acquire(entry, &template_c, snapshot, task);
     KND_TASK_ERR("failed to acquire template {cls %.*s}", entry->name_size, entry->name);
 
     err = knd_class_is_base(template_c, c);

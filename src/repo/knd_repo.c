@@ -38,7 +38,7 @@ void knd_repo_del(struct kndRepo *self)
     free(self);
 }
 
-int knd_repo_index_proc_arg(struct kndRepo *repo, struct kndProc *proc,
+int knd_repo_index_proc_arg(struct kndRepoSnapshot *unused_var(snapshot), struct kndProc *proc,
                             struct kndProcArg *arg, struct kndTask *task)
 {
     struct kndMemPool *mempool   = task->mempool;
@@ -86,11 +86,6 @@ int knd_repo_index_proc_arg(struct kndRepo *repo, struct kndProc *proc,
     //err = knd_dict_set(task->idxs->proc_arg_name_idx, arg->name, arg->name_size, (void*)arg_ref);
     //KND_TASK_ERR("failed to register arg name %.*s", arg->name_size, arg->name);
 
-    if (DEBUG_REPO_LEVEL_2) {
-        knd_log("++ new primary {arg %.*s {id %.*s}} of {proc %.*s} {repo %.*s}",
-                arg->name_size, arg->name, arg->id_size, arg->id,
-                proc->name_size, proc->name, repo->name_size, repo->name);
-    }
     return knd_OK;
 }
 
@@ -98,7 +93,7 @@ int knd_conc_folder_new(struct kndConcFolder **result, struct kndMemPool *mempoo
 {
     void *page;
     int err;
-    assert(mempool->large_page_size >= sizeof(struct kndConcFolder));
+    assert(KND_LARGE_MEMPAGE_SIZE >= sizeof(struct kndConcFolder));
     err = knd_mempool_page(mempool, KND_MEMPAGE_LARGE, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndConcFolder));

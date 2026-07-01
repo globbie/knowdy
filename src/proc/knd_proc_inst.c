@@ -66,7 +66,7 @@ int knd_proc_inst_entry_new(struct kndProcInstEntry **result, struct kndMemPool 
 {
     void *page;
     int err;
-    assert(mempool->small_page_size >= sizeof(struct kndProcInstEntry));
+    assert(KND_SMALL_MEMPAGE_SIZE >= sizeof(struct kndProcInstEntry));
     err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndProcInstEntry));
@@ -78,7 +78,7 @@ int knd_proc_inst_new(struct kndProcInst **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
-    assert(mempool->small_page_size >= sizeof(struct kndProcInst));
+    assert(KND_SMALL_MEMPAGE_SIZE >= sizeof(struct kndProcInst));
     err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndProcInst));

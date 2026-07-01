@@ -46,7 +46,7 @@ void knd_user_del(struct kndUser *self)
 static gsl_err_t parse_proc_import(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndRepo *snapshot = ctx->snapshot;
+    struct kndRepoSnapshot *snapshot = ctx->snapshot;
     struct kndTask *task = ctx->task;
     struct kndUserContext *user_ctx = task->user_ctx;
     struct kndRepoAccess *acl = user_ctx->acls;
@@ -75,7 +75,7 @@ static gsl_err_t parse_proc_select(void *obj, const char *rec, size_t *total_siz
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndRepo *snapshot = ctx->snapshot;
+    struct kndRepoSnapshot *snapshot = ctx->snapshot;
     return knd_proc_select(rec, total_size, snapshot, task);
 }
 
@@ -108,7 +108,7 @@ static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_si
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndRepo *snapshot = ctx->snapshot;
+    struct kndRepoSnapshot *snapshot = ctx->snapshot;
     struct kndUserContext *user_ctx = task->user_ctx;
     struct kndRepoAccess *acl = user_ctx->acls;
     struct kndClass *cls;
@@ -170,7 +170,6 @@ static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_si
     /* shared read-only repo */
     return knd_class_select(rec, total_size, snapshot, task);
 }
-#endif
 
 static gsl_err_t parse_text_search(void *obj, const char *rec, size_t *total_size)
 {
@@ -181,6 +180,7 @@ static gsl_err_t parse_text_search(void *obj, const char *rec, size_t *total_siz
     }
     return knd_text_search(task->user_ctx->snapshot, rec, total_size, task);
 }
+#endif
 
 static int build_user_ctx(struct kndUser *self, struct kndClassInst *inst,
                           struct kndUserContext **result, struct kndTask *task)
@@ -291,8 +291,7 @@ static gsl_err_t run_present_user(void *obj, const char *unused_var(val), size_t
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndRepo *snapshot = ctx->snapshot;
-
+    //struct kndRepoSnapshot *snapshot = ctx->snapshot;
     struct kndClassInst *user_inst;
     struct kndOutput *out = task->out;
     int err;
@@ -391,12 +390,12 @@ gsl_err_t knd_parse_select_user(void *obj, const char *rec, size_t *total_size)
           .name_size = strlen("proc"),
           .parse = parse_proc_select,
           .obj = obj
-        },
+        }/*,
         { .name = "text",
           .name_size = strlen("text"),
           .parse = parse_text_search,
           .obj = obj
-        },
+          }*/,
         { .is_default = true,
           .run = run_present_user,
           .obj = obj
@@ -425,7 +424,7 @@ gsl_err_t knd_create_user(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
-    struct kndRepo *snapshot = ctx->snapshot;
+    struct kndRepoSnapshot *snapshot = ctx->snapshot;
     struct kndUser *self = task->user;
     int err;
 
@@ -486,6 +485,7 @@ int knd_user_new(struct kndUser **result,
     struct kndOutput *log = steward->log;
     // TODO
     struct kndRepo *repo = steward->repo;
+    struct kndRepoSnapshot *snapshot = repo->snapshot;
     struct kndClassEntry *entry;
     int err;
 
@@ -494,13 +494,13 @@ int knd_user_new(struct kndUser **result,
     user->classname = classname;
     user->classname_size = classname_size;
 
-    err = knd_get_cls_entry_by_name(repo, classname, classname_size, &entry, task);
+    err = knd_get_cls_entry_by_name(snapshot, classname, classname_size, &entry, task);
     if (err) {
         KND_TASK_LOG("no such user {cls %.*s}", classname_size, classname);
         goto error;
     }
 
-    err = knd_class_acquire(entry, &user->class, repo, task);
+    err = knd_class_acquire(entry, &user->class, snapshot, task);
     KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);
 
     user->schema_path = schema_path;
@@ -583,7 +583,7 @@ int knd_repo_access_new(struct kndRepoAccess **result, struct kndMemPool *mempoo
 {
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndRepoAccess));
+    assert(KND_TINY_MEMPAGE_SIZE >= sizeof(struct kndRepoAccess));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndRepoAccess));

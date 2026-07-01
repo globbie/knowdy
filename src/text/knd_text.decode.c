@@ -25,6 +25,7 @@ int knd_charseq_decode(struct kndSet *str_idx, const char *id, size_t id_size,
                        struct kndCharSeq **result, struct kndTask *task)
 {
     struct kndSet *local_str_idx = task->cache.str_idx;
+    struct kndSetElem *elem;
     struct kndCharSeq *seq;
     int err;
 
@@ -36,9 +37,12 @@ int knd_charseq_decode(struct kndSet *str_idx, const char *id, size_t id_size,
 
     // TODO writers can check their operational idxs
 
-    err = knd_set_get(local_str_idx, id, id_size, (void**)&seq, task);
+    err = knd_set_get(local_str_idx, id, id_size, (void**)&elem, task);
     switch (err) {
     case knd_OK:
+        seq = elem->val;
+        assert (seq->val_size != 0);
+
         *result = seq;
         return knd_OK;
     case knd_NO_MATCH:
@@ -47,16 +51,15 @@ int knd_charseq_decode(struct kndSet *str_idx, const char *id, size_t id_size,
         KND_TASK_ERR("failed to fetch a charseq");
     }
 
-    /* check global read-only cache */
     err = knd_set_fetch(str_idx, id, id_size, knd_charseq_unmarshall, NULL, (void**)&seq, task);
     switch (err) {
     case knd_OK:
         memcpy(seq->id, id, id_size);
         seq->id_size = id_size;
 
-        /* update local task str cache */
         err = knd_set_add(local_str_idx, id, id_size, (void*)seq, task);
         KND_TASK_ERR("failed to update task cache with a charseq");
+
         *result = seq;
         return knd_OK;
     case knd_NO_MATCH:

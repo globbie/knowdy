@@ -98,7 +98,7 @@ static int resolve_inner_cls(struct kndAttrStm *stm, struct kndRepoSnapshot *sna
         KND_TASK_ERR("no inheritance from {cls %.*s} to {cls %.*s}",
                      template_c->name_size, template_c->name, c->name_size, c->name);
 
-        inner_stm->cls_entry = entry;
+        inner_stm->cls_entry = c->entry;
     }
 
     FOREACH (item, stm->children) {
@@ -229,15 +229,20 @@ int knd_resolve_attr_stm(struct kndClass *cls, struct kndAttrStm *stm,
         KND_TASK_ERR("failed to parse an uint value");
         
         err = knd_quant_attr_stm_new(&quant_attr_stm, task->mempool);
-        KND_TASK_ERR("failed to alloc a quant attr stm");
-        
-        quant_attr_stm->uint = uint;
-        
+        KND_TASK_ERR("failed to alloc a quant attr stm");        
+        quant_attr_stm->uint = uint;        
         stm->subtype = quant_attr_stm;
         break;
     case KND_ATTR_UREAL:
+        assert (stm->val != NULL && stm->val_size != 0);
+
         err = knd_quant_parse_ureal(stm->val, stm->val_size, &ureal, task);
         KND_TASK_ERR("failed to parse an ureal value");
+
+        err = knd_quant_attr_stm_new(&quant_attr_stm, task->mempool);
+        KND_TASK_ERR("failed to alloc a quant attr stm");
+        quant_attr_stm->ureal = ureal;
+        stm->subtype = quant_attr_stm;
         break;
     case KND_ATTR_STR:
         /* TODO: call a validation callback function? */

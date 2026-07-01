@@ -181,12 +181,12 @@ struct kndRepo
 };
 
 int knd_present_repo_state(struct kndRepo *self, struct kndTask *task);
-int knd_confirm_commit(struct kndRepo *self, struct kndTask *task);
+int knd_confirm_commit(struct kndRepoSnapshot *self, struct kndTask *task);
 
 gsl_err_t knd_parse_repo_select(void *obj, const char *rec, size_t *total_size);
 int knd_repo_read_sources(struct kndRepo *self, struct kndTask *task);
 
-int knd_repo_index_proc_arg(struct kndRepo *repo, struct kndProc *self,
+int knd_repo_index_proc_arg(struct kndRepoSnapshot *snapshot, struct kndProc *self,
                             struct kndProcArg *arg, struct kndTask *task);
 int knd_repo_commit_indices(struct kndRepo *self, struct kndTaskContext *ctx);
 int knd_repo_check_conflicts(struct kndRepo *self, struct kndTaskContext *ctx);

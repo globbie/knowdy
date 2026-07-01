@@ -9,7 +9,7 @@ int knd_rel_pred_new(struct kndMemPool *mempool, struct kndRelPred **result)
 {
     void *page;
     int err;
-    assert(mempool->small_x2_page_size >= sizeof(struct kndRelPred));
+    assert(KND_SMALL_X2_MEMPAGE_SIZE >= sizeof(struct kndRelPred));
     err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL_X2, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndRelPred));
@@ -21,7 +21,7 @@ int knd_rel_new(struct kndMemPool *mempool, struct kndRel **result)
 {
     void *page;
     int err;
-    assert(mempool->small_x2_page_size >= sizeof(struct kndRel));
+    assert(KND_SMALL_X2_MEMPAGE_SIZE >= sizeof(struct kndRel));
     err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL_X2, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndRel));

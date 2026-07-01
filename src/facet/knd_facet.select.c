@@ -20,7 +20,7 @@
 
 struct LocalContext {
     struct kndTask *task;
-    struct kndRepo *repo;
+    struct kndRepoSnapshot *snapshot;
     struct kndFacetHashSpec *spec;
     void *key;
     filter_cb_t filter_cb;
@@ -30,7 +30,7 @@ struct LocalContext {
 static int match_elem(void *elem, void *ctx_obj)
 {
     struct LocalContext *ctx = ctx_obj;
-    struct kndRepo *repo = ctx->repo;
+    struct kndRepoSnapshot *snapshot = ctx->snapshot;
     struct kndFacetHashSpec *spec = ctx->spec;
     void *key = ctx->key;
     struct kndTask *task = ctx->task;
@@ -42,11 +42,11 @@ static int match_elem(void *elem, void *ctx_obj)
     int err;
 
     if (key) {
-        err = spec->key_get_cb(elem, (void*)repo, &elem_key, task);
+        err = spec->key_get_cb(elem, (void*)snapshot, &elem_key, task);
         KND_TASK_ERR("failed to obtain a facet key from elem");
 
         if (elem_key != key) {
-            err = spec->hash_cb(key, NULL, elem_key, (void*)repo, &next_key, &numval, task);
+            err = spec->hash_cb(key, NULL, elem_key, (void*)snapshot, &next_key, &numval, task);
             switch (err) {
             case knd_OK:
                 break;
@@ -64,19 +64,17 @@ static int match_elem(void *elem, void *ctx_obj)
     }
     return knd_OK;
 }
- 
-static int apply_cb(struct kndFacet *facet, void *key,
-                    struct kndSetRange *unused_var(range),
-                    filter_cb_t filter_cb, void *filter_ctx,
-                    map_cb_t map_cb, void *map_ctx,
-                    struct kndRepo *repo, struct kndTask *task)
+
+static int apply_cb(struct kndFacet *facet, void *key, struct kndSetRange *unused_var(range),
+                    filter_cb_t filter_cb, void *filter_ctx, map_cb_t map_cb, void *map_ctx,
+                    struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct kndFacetHashSpec *spec = facet->hash_specs;
     void *elem;
     int err;
 
     struct LocalContext ctx = {
-        .repo = repo,
+        .snapshot = snapshot,
         .spec = spec,
         .key = key,
         .filter_cb = filter_cb,
@@ -124,14 +122,14 @@ static int apply_cb(struct kndFacet *facet, void *key,
         if (!facet->children[i]) continue;
 
         err = apply_cb(facet->children[i], key, NULL,
-                       filter_cb, filter_ctx, map_cb, map_ctx, repo, task);
+                       filter_cb, filter_ctx, map_cb, map_ctx, snapshot, task);
         KND_TASK_ERR("failed to apply cb to a subfacet");
     }
     return knd_OK;
 }
 
 /**
- *   find a matching facet and apply map_cb to its elems
+ *   find a matching facet and apply map_cb to each of its elems
  *   (apply extra filtering if required)
  */
 int knd_facet_map(struct kndFacet *facet, void *key, struct kndSetRange *range,

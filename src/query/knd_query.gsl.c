@@ -105,34 +105,31 @@ static int export_attr_stms(struct kndQuery *query, struct kndTask *task, size_t
 }
 #endif
 
-int knd_query_obj_export_GSL(struct kndQuery *query, struct kndTask *task,
-                             size_t unused_var(depth))
+int knd_query_obj_export_GSL(struct kndQuery *query, struct kndTask *task, size_t unused_var(depth))
 {
     struct kndOutput *out = task->out;
-    struct kndRepo *repo = query->repo;
     struct kndClass *c;
     int err;
 
     out->reset(out);
-
     OUT("{", 1);
     OUT("result", strlen("result"));
 
     switch (query->obj_type) {
     case KND_QUERY_OBJ_REPO:
-        // present repo
-        
+        // present repo        
         break;
     case KND_QUERY_OBJ_CLASS:
         assert (query->cls != NULL);
         c = query->cls;
-
         err = knd_class_export_GSL(c, task, false, 1);
         KND_TASK_ERR("failed to export {cls %.*s} GSL", c->name_size, c->name);
         break;
     default:
         break;
     }
+
+    OUT("}", 1);
     return knd_OK;
 }
 

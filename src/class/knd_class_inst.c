@@ -141,10 +141,10 @@ int knd_class_inst_ref_new(struct kndClassInstRef **result, struct kndMemPool *m
 {
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndClassInstRef));
+    assert(KND_TINY_MEMPAGE_SIZE >= sizeof(struct kndClassInstRef));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
-    memset(page, 0,  sizeof(struct kndClassInstRef));
+    memset(page, 0, sizeof(struct kndClassInstRef));
     *result = page;
     return knd_OK;
 }
@@ -153,10 +153,10 @@ int knd_class_inst_entry_new(struct kndClassInstEntry **result, struct kndMemPoo
 {
     void *page;
     int err;
-    assert(mempool->small_page_size >= sizeof(struct kndClassInstEntry));
+    assert(KND_SMALL_MEMPAGE_SIZE >= sizeof(struct kndClassInstEntry));
     err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
     if (err) return err;
-    memset(page, 0,  sizeof(struct kndClassInstEntry));
+    memset(page, 0, sizeof(struct kndClassInstEntry));
     *result = page;
     return knd_OK;
 }
@@ -165,7 +165,7 @@ int knd_class_inst_new(struct kndClassInst **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
-    assert(mempool->small_x2_page_size >= sizeof(struct kndClassInst));
+    assert(KND_SMALL_X2_MEMPAGE_SIZE >= sizeof(struct kndClassInst));
     err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL_X2, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndClassInst));

@@ -59,4 +59,4 @@ extern int knd_rel_pred_new(struct kndMemPool *mempool, struct kndRelPred **resu
 gsl_err_t knd_rel_import(struct kndAttr *attr, struct kndTask *task, const char *rec, size_t *total_size);
 
 extern int knd_rel_resolve(struct kndRel *rel, struct kndRepo *repo, struct kndTask *task);
-extern int knd_rel_pred_resolve(struct kndAttrStm *var, struct kndRepo *repo, struct kndTask *task);
+extern int knd_rel_pred_resolve(struct kndAttrStm *var, struct kndRepoSnapshot *repo, struct kndTask *task);

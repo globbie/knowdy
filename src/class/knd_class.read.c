@@ -49,7 +49,7 @@
 
 struct LocalContext {
     struct kndTask *task;
-    struct kndRepo *repo;
+    struct kndRepoSnapshot *snapshot;
     const char *id;
     size_t id_size;
     const char *name;
@@ -64,15 +64,29 @@ struct LocalContext {
     struct kndClassBasePred *base_pred;
 };
 
+static inline void base_pred_append_attr_stm(struct kndClassBasePred *bp, struct kndAttrStm *stm)
+{
+    if (!bp->attr_stms_tail) {
+        bp->attr_stms_tail  = stm;
+        bp->attr_stms = stm;
+    }
+    else {
+        bp->attr_stms_tail->next = stm;
+        bp->attr_stms_tail = stm;
+    }
+    bp->num_attr_stms++;
+}
+
 static gsl_err_t read_attr_stm(void *obj, const char *name, size_t name_size,
                                const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
+    struct kndTaskCache *cache = &task->cache;
     struct kndAttrStm *stm;
     int err;
 
-    err = knd_attr_stm_new(&stm, ctx->base_pred->subj, task->mempool);
+    err = knd_attr_stm_new(&stm, ctx->base_pred->subj, cache->mempool);
     if (err) {
         KND_TASK_LOG("failed to alloc an attr stm");
         return *total_size = 0, make_gsl_err_external(err);
@@ -91,10 +105,12 @@ static gsl_err_t read_attr_stm_list(void *obj, const char *name, size_t name_siz
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
+    struct kndTaskCache *cache = &task->cache;
+    struct kndClassBasePred *bp = ctx->base_pred;
     struct kndAttrStm *stm;
     int err;
 
-    err = knd_attr_stm_new(&stm, ctx->base_pred->subj, task->mempool);
+    err = knd_attr_stm_new(&stm, bp->subj, cache->mempool);
     if (err) {
         KND_TASK_LOG("failed to alloc an attr stm");
         return *total_size = 0, make_gsl_err_external(err);
@@ -104,7 +120,8 @@ static gsl_err_t read_attr_stm_list(void *obj, const char *name, size_t name_siz
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
     assert (stm->list != NULL);
-    knd_base_pred_append_attr_stm(ctx->base_pred, stm);
+
+    base_pred_append_attr_stm(bp, stm);
 
     return make_gsl_err(gsl_OK);
 }
@@ -128,6 +145,7 @@ static gsl_err_t set_cls_ref(void *obj, const char *id, size_t id_size)
 
     if (!id_size) return make_gsl_err(gsl_FORMAT);
     if (id_size > KND_ID_SIZE) return make_gsl_err(gsl_LIMIT);
+
     memcpy(ref->id, id, id_size);
     ref->id_size = id_size;
 
@@ -160,7 +178,9 @@ static gsl_err_t parse_baseclass_array_item(void *obj, const char *rec, size_t *
     struct LocalContext *ctx = obj;
     struct kndClass *cls = ctx->cls;
     struct kndClassBasePred *bp;
-    struct kndMemPool *mempool = ctx->task->mempool;
+    struct kndTask *task = ctx->task;
+    struct kndTaskCache *cache = &task->cache;
+    struct kndMemPool *mempool = cache->mempool;
     int err;
 
     err = knd_class_base_pred_new(&bp, cls, mempool);
@@ -210,7 +230,9 @@ static gsl_err_t parse_ancestor_array_item(void *obj, const char *rec, size_t *t
 {
     struct LocalContext *ctx = obj;
     struct kndClass *cls = ctx->cls;
-    struct kndMemPool *mempool = ctx->task->mempool;
+    struct kndTask *task = ctx->task;
+    struct kndTaskCache *cache = &task->cache;
+    struct kndMemPool *mempool = cache->mempool;
     struct kndClassRef *ref;
     int err;
 
@@ -252,11 +274,12 @@ static gsl_err_t parse_attr_ref_array_item(void *obj, const char *rec, size_t *t
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
+    struct kndTaskCache *cache = &task->cache;
     struct kndClass *cls = ctx->cls;
     struct kndAttrRef *ref;
     int err;
 
-    err = knd_attr_ref_new(&ref, task->mempool);
+    err = knd_attr_ref_new(&ref, cache->mempool);
     if (err) return make_gsl_err_external(err);
     ctx->attr_ref = ref;
 
@@ -293,7 +316,9 @@ static gsl_err_t parse_child_item(void *obj, const char *rec, size_t *total_size
 {
     struct LocalContext *ctx = obj;
     struct kndClass *cls = ctx->cls;
-    struct kndMemPool *mempool = ctx->task->mempool;
+    struct kndTask *task = ctx->task;
+    struct kndTaskCache *cache = &task->cache;
+    struct kndMemPool *mempool = cache->mempool;
     struct kndClassRef *ref;
     int err;
 
@@ -315,6 +340,7 @@ static gsl_err_t parse_child_item(void *obj, const char *rec, size_t *total_size
     ref->next = cls->children;
     cls->children = ref;
     cls->num_children++;
+
     return make_gsl_err(gsl_OK);
 }
 
@@ -332,6 +358,7 @@ static gsl_err_t set_descendant_ref(void *obj, const char *id, size_t id_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
+    struct kndTaskCache *cache = &task->cache;
     struct kndClass *cls = ctx->cls;
     struct kndClassRef *ref;
     int err;
@@ -339,7 +366,7 @@ static gsl_err_t set_descendant_ref(void *obj, const char *id, size_t id_size)
     if (!id_size) return make_gsl_err(gsl_FORMAT);
     if (id_size > KND_ID_SIZE) return make_gsl_err(gsl_LIMIT);
 
-    err = knd_class_ref_new(&ref, task->mempool);
+    err = knd_class_ref_new(&ref, cache->mempool);
     if (err) return make_gsl_err_external(err);
 
     memcpy(ref->id, id, id_size);
@@ -372,11 +399,12 @@ static gsl_err_t parse_descendant_array(void *obj, const char *rec, size_t *tota
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
+    struct kndTaskCache *cache = &task->cache;
     struct kndClass *cls = ctx->cls;
     int err;
 
     if (!cls->descendants) {
-        err = knd_set_new(&cls->descendants, KND_SET_STORE_MEMONLY, task->mempool);
+        err = knd_set_new(&cls->descendants, KND_SET_STORE_MEMONLY, cache->mempool);
         if (err) return *total_size = 0, make_gsl_err_external(err);
     }
 
@@ -392,11 +420,12 @@ static gsl_err_t parse_gloss(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
+    struct kndTaskCache *cache = &task->cache;
     struct kndClassEntry *entry = ctx->entry;
     struct kndText *t;
     int err;
 
-    err = knd_text_new(&t, task->mempool);
+    err = knd_text_new(&t, cache->mempool);
     if (err) {
         KND_TASK_LOG("failed to alloc a text");
         return *total_size = 0, make_gsl_err_external(err);
@@ -427,11 +456,12 @@ static gsl_err_t bp_is_root(void *obj, const char *unused_var(name), size_t unus
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
+    struct kndTaskCache *cache = &task->cache;
     struct kndClass *cls = ctx->cls;
     struct kndClassBasePred *bp;
     int err;
 
-    err = knd_class_base_pred_new(&bp, cls, task->mempool);
+    err = knd_class_base_pred_new(&bp, cls, cache->mempool);
     if (err) return make_gsl_err_external(err);
 
     bp->is_root = true;
@@ -527,7 +557,8 @@ int knd_cls_body_unmarshall(const char *unused_var(elem_id), size_t unused_var(e
                             const char *rec, size_t unused_var(rec_size),
                             void *ctx_obj, size_t *parsed_size, void **result, struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->mempool;
+    struct kndTaskCache *cache = &task->cache;
+    struct kndMemPool *mempool = cache->mempool;
     struct LocalContext *ctx = ctx_obj;
     struct kndClassEntry *entry = ctx->entry;
     struct kndClass *c;
@@ -565,6 +596,8 @@ int knd_cls_name_fetch(const char *rec, size_t unused_var(rec_size),
     gsl_err_t parser_err;
 
     assert (ref != NULL);
+
+    memset(ref, 0, sizeof(struct kndClassRef));
 
     if (DEBUG_CLASS_READ_LEVEL_2) {
         knd_log(">> fetching cls entry from {rec %s}", rec);
@@ -625,6 +658,7 @@ int knd_cls_entry_ref_unmarshall(const char *elem_id, size_t elem_id_size,
                                  void **result, struct kndTask *task)
 {
     struct kndClassEntry *entry;
+    struct kndTaskCache *cache = &task->cache;
     gsl_err_t parser_err;
     int err;
 
@@ -633,8 +667,7 @@ int knd_cls_entry_ref_unmarshall(const char *elem_id, size_t elem_id_size,
                 elem_id_size, elem_id, rec_size, rec);
     }
 
-    /* NB: allocation from the main task pool */
-    err = knd_class_entry_new(&entry, task->mempool);
+    err = knd_class_entry_new(&entry, cache->mempool);
     KND_TASK_ERR("failed to alloc a cls entry");
 
     struct gslTaskSpec specs[] = {
@@ -653,7 +686,7 @@ int knd_cls_entry_ref_unmarshall(const char *elem_id, size_t elem_id_size,
     parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
     if (parser_err.code) return gsl_err_to_knd_err_codes(parser_err);
 
-    if (DEBUG_CLASS_READ_LEVEL_TMP) {
+    if (DEBUG_CLASS_READ_LEVEL_3) {
         knd_log("++ {cls-entry-ref {name-id %.*s} {id %.*s}}",
                 entry->name_id_size, entry->name_id, entry->id_size, entry->id);
     }
@@ -678,7 +711,7 @@ int knd_cls_entry_unmarshall(const char *unused_var(elem_id), size_t unused_var(
     int err;
 
     if (DEBUG_CLASS_READ_LEVEL_2) {
-        knd_log(">> unmarshall cls entry name for {id %.*s} {rec %.*s}",
+        knd_log(">> unmarshall cls name id and glosses for {cls {id %.*s}} {rec %.*s}",
                 ctx->id_size, ctx->id, rec_size, rec);
     }
 
@@ -723,6 +756,11 @@ int knd_cls_entry_unmarshall(const char *unused_var(elem_id), size_t unused_var(
         break;
     default:
         return gsl_err_to_knd_err_codes(parser_err);
+    }
+
+    if (entry->name_id_size == 0) {
+        err = knd_FORMAT;
+        KND_TASK_ERR("failed to read cls entry name id {cls %.*s}", ctx->id_size, ctx->id);
     }
 
     if (DEBUG_CLASS_READ_LEVEL_2) {

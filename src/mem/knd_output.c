@@ -222,7 +222,7 @@ int knd_name_buf_new(struct kndMemPool *mempool, struct kndNameBuf **result)
 {
     void *page;
     int err;
-    assert(mempool->base_page_size >= sizeof(struct kndNameBuf));
+    assert(KND_BASE_MEMPAGE_SIZE >= sizeof(struct kndNameBuf));
     err = knd_mempool_page(mempool, KND_MEMPAGE_BASE, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndNameBuf));

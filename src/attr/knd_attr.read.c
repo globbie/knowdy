@@ -116,7 +116,7 @@ static gsl_err_t parse_gloss(void *obj, const char *rec, size_t *total_size)
     struct kndText *t;
     int err;
 
-    err = knd_text_new(&t, task->mempool);
+    err = knd_text_new(&t, task->cache.mempool);
     if (err) {
         KND_TASK_LOG("failed to alloc a text");
         return *total_size = 0, make_gsl_err_external(err);
@@ -146,7 +146,7 @@ static gsl_err_t parse_glosses(void *obj, const char *rec, size_t *total_size)
 
 static int select_attr_type(struct kndAttr *attr, size_t type_num, struct kndTask *task)
 {
-    struct kndMemPool *mempool = task->mempool;
+    struct kndMemPool *mempool = task->cache.mempool;
     struct kndQuantAttr *quant_attr;
     struct kndClassRefAttr *cls_ref_attr;
     struct kndClassInnerAttr *cls_inner_attr;
@@ -161,26 +161,22 @@ static int select_attr_type(struct kndAttr *attr, size_t type_num, struct kndTas
         knd_log("{attr-type %zu} is not supported", type_num);
         return knd_CONFLICT;
     case KND_ATTR_UINT:
-        err = knd_quant_attr_new(&quant_attr, KND_QUANT_UINT,
-                                 attr->id, attr->id_size, mempool);
+        err = knd_quant_attr_new(&quant_attr, KND_QUANT_UINT, attr->id, attr->id_size, mempool);
         KND_TASK_ERR("failed to alloc a quant attr");
         attr->subtype = quant_attr;
         break;
     case KND_ATTR_UREAL:
-        err = knd_quant_attr_new(&quant_attr, KND_QUANT_UREAL,
-                                 attr->id, attr->id_size, mempool);
+        err = knd_quant_attr_new(&quant_attr, KND_QUANT_UREAL, attr->id, attr->id_size, mempool);
         KND_TASK_ERR("failed to alloc a quant attr");
         attr->subtype = quant_attr;
         break;
     case KND_ATTR_CLS_INNER:
-        err = knd_cls_inner_attr_new(&cls_inner_attr,
-                                     attr->id, attr->id_size, mempool);
+        err = knd_cls_inner_attr_new(&cls_inner_attr, attr->id, attr->id_size, mempool);
         KND_TASK_ERR("failed to alloc a cls inner attr");
         attr->subtype = cls_inner_attr;
         break;
     case KND_ATTR_CLS_REF:
-        err = knd_cls_ref_attr_new(&cls_ref_attr,
-                                   attr->id, attr->id_size, mempool);
+        err = knd_cls_ref_attr_new(&cls_ref_attr, attr->id, attr->id_size, mempool);
         KND_TASK_ERR("failed to alloc a ref attr");
         attr->subtype = cls_ref_attr;
         break;
@@ -190,12 +186,11 @@ static int select_attr_type(struct kndAttr *attr, size_t type_num, struct kndTas
     return knd_OK;
 }
 
-static int attr_read(struct kndAttr *attr,
-                     const char *rec, size_t *total_size, struct kndTask *task)
+static int attr_read(struct kndAttr *attr, const char *rec, size_t *total_size, struct kndTask *task)
 {
     size_t attr_type_num = 0;
-    char name_id[KND_ID_SIZE];
-    size_t name_id_size = 0;
+    char id[KND_ID_SIZE];
+    size_t id_size = 0;
     struct kndClassRefAttr *cls_ref_attr;
     struct kndClassInnerAttr *cls_inner_attr;
     int err;
@@ -224,8 +219,8 @@ static int attr_read(struct kndAttr *attr,
         },
         { .name = "c",
           .name_size = strlen("c"),
-          .buf = name_id,
-          .buf_size = &name_id_size,
+          .buf = id,
+          .buf_size = &id_size,
           .max_buf_size = KND_ID_SIZE
         },
         { .name = "m",
@@ -241,17 +236,17 @@ static int attr_read(struct kndAttr *attr,
     err = select_attr_type(attr, attr_type_num, task);
     KND_TASK_ERR("failed to select attr type {num %zu}", attr_type_num);
 
-    if (name_id_size) {
+    if (id_size) {
         switch (attr->type) {
         case KND_ATTR_CLS_REF:
             cls_ref_attr = attr->subtype;
-            cls_ref_attr->cls_name = name_id;
-            cls_ref_attr->cls_name_size = name_id_size;        
+            memcpy(cls_ref_attr->cls_id, id, id_size);
+            cls_ref_attr->cls_id_size = id_size;        
             break;
         case KND_ATTR_CLS_INNER:
             cls_inner_attr = attr->subtype;
-            cls_inner_attr->cls_name = name_id;
-            cls_inner_attr->cls_name_size = name_id_size;
+            memcpy(cls_inner_attr->cls_id, id, id_size);
+            cls_inner_attr->cls_id_size = id_size;
             break;
         default:
             err = knd_FORMAT;
@@ -269,7 +264,7 @@ static gsl_err_t parse_attr_ref_array_item(void *obj, const char *rec, size_t *t
     struct kndAttrRef *ref;
     int err;
 
-    err = knd_attr_ref_new(&ref, task->mempool);
+    err = knd_attr_ref_new(&ref, task->cache.mempool);
     if (err) return *total_size = 0, make_gsl_err_external(err);
 
     struct gslTaskSpec specs[] = {
@@ -363,7 +358,7 @@ int knd_attr_unmarshall(const char *elem_id, size_t elem_id_size,
         knd_log(".. unmarshall {attr %.*s {rec %s}}", ctx->id_size, ctx->id, rec);
     }
 
-    err = knd_attr_new(&attr, task->mempool);
+    err = knd_attr_new(&attr, task->cache.mempool);
     KND_TASK_ERR("failed to alloc an attr to unmarshall");
     memcpy(attr->id, ctx->id, ctx->id_size);
     attr->id_size = ctx->id_size;

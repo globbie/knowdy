@@ -110,7 +110,11 @@ static int inner_attr_export_GSP(struct kndAttrStm *stm, struct kndTask *task)
             OUT(item->seq->id, item->seq->id_size);
             break;
         default:
-            OUT(item->val, item->val_size);
+            if (item->val_size) {
+                OUT("{_raw ", strlen("{_raw "));
+                OUT(item->val, item->val_size);
+                OUT("}", 1);
+            }
             break;
         }
         OUT("}", 1);
@@ -118,8 +122,7 @@ static int inner_attr_export_GSP(struct kndAttrStm *stm, struct kndTask *task)
     return knd_OK;
 }
 
-static int attr_stm_list_export_GSP(struct kndAttrStm *stm,
-                                    struct kndTask *task)
+static int attr_stm_list_export_GSP(struct kndAttrStm *stm, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndAttrStm *item;
@@ -163,9 +166,9 @@ static int attr_stm_list_export_GSP(struct kndAttrStm *stm,
             break;
         default:
             if (item->val_size) {
+                OUT("{_raw ", strlen("{_raw "));
                 OUT(item->val, item->val_size);
-                err = knd_attr_stm_export_GSP(item, task, 0);
-                KND_TASK_ERR("failed to export attr stm");
+                OUT("}", 1);
             }
             break;
         }
@@ -206,9 +209,7 @@ int knd_attr_stms_export_GSP(struct kndAttrStm *items,
     return knd_OK;
 }
 
-int knd_attr_stm_export_GSP(struct kndAttrStm *stm, 
-                            struct kndTask *task,
-                            size_t unused_var(depth))
+int knd_attr_stm_export_GSP(struct kndAttrStm *stm, struct kndTask *task, size_t unused_var(depth))
 {
     struct kndOutput *out = task->out;
     struct kndClassEntry *entry;
@@ -239,7 +240,9 @@ int knd_attr_stm_export_GSP(struct kndAttrStm *stm,
         OUT(stm->seq->id, stm->seq->id_size);
         break;
     default:
+        OUT("{_raw ", strlen("{_raw "));
         OUT(stm->val, stm->val_size);
+        OUT("}", 1);
         break;
     }
     return knd_OK;
@@ -251,6 +254,7 @@ int knd_attr_stm_subj_GSP(void *obj, void *unused_var(ctx),
 {
     struct kndAttrStm *stm = obj;
     struct kndClass *c = stm->subj;
+
     assert (c != NULL);
 
     knd_log("** {cls %.*s {%.*s %.*s}}",

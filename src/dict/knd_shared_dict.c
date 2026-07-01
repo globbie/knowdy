@@ -24,7 +24,8 @@ static int dict_item_new(struct kndSharedDict *self, struct kndSharedDictItem **
     struct kndMemPool *mempool = self->mempool;
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndSharedDictItem));
+
+    assert(KND_TINY_MEMPAGE_SIZE >= sizeof(struct kndSharedDictItem));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndSharedDictItem));
@@ -182,7 +183,8 @@ int knd_shared_dict_new(struct kndSharedDict **dict, size_t init_size,
     struct kndSharedDict *self;
     int err;
 
-    assert(mempool->tiny_page_size >= sizeof(struct kndSharedDict));
+    assert(KND_TINY_MEMPAGE_SIZE >= sizeof(struct kndSharedDict));
+
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndSharedDict));

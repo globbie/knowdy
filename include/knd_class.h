@@ -49,6 +49,9 @@ typedef enum knd_class_phase_t {
      KND_CLASS_BASE_DECODED,
      KND_CLASS_DECODED,
      KND_CLASS_INDEXED,
+     KND_CLASS_CACHED,
+     KND_CLASS_UPDATED,
+     KND_CLASS_REMOVED,
      KND_CLASS_COMPLETE
 } knd_class_phase_t;
 
@@ -117,7 +120,7 @@ struct kndClassBasePred
 
 struct kndClassEntry
 {
-    knd_state_phase phase;
+    knd_class_phase_t phase;
 
     char id[KND_ID_SIZE];
     size_t id_size;

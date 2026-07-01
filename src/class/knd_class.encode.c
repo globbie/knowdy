@@ -288,12 +288,6 @@ int knd_class_export_GSP(struct kndClass *self, struct kndTask *task)
     knd_uid_create(entry->seq->numid, idbuf, &idbuf_size);
     OUT(idbuf, idbuf_size);
 
-    if (DEBUG_CLASS_ENCODE_LEVEL_2) {
-        knd_log(".. GSP export of {cls %.*s {id %.*s} {seq %.*s}}",
-                entry->name_size, entry->name, entry->id_size, entry->id,
-                idbuf_size, idbuf);
-    }
-
     err = export_glosses(self, out);
     KND_TASK_ERR("failed to export glosses");
 
@@ -322,6 +316,13 @@ int knd_class_export_GSP(struct kndClass *self, struct kndTask *task)
         err = export_descendants(self, task);
         KND_TASK_ERR("failed to export descendants GSP");
     }
+
+    if (DEBUG_CLASS_ENCODE_LEVEL_3) {
+        knd_log(">> GSP export of {cls %.*s {id %.*s} {seq %.*s}} {rec %.*s {size %zu}}",
+                entry->name_size, entry->name, entry->id_size, entry->id,
+                idbuf_size, idbuf, out->buf_size, out->buf, out->buf_size);
+    }
+
     return knd_OK;
 }
 
@@ -436,7 +437,7 @@ int knd_cls_facet_key_encode(void *key, void *unused_var(ctx),
     struct kndClassEntry *entry = key;
     struct kndOutput *out = task->out;
 
-    if (DEBUG_CLASS_ENCODE_LEVEL_TMP) {
+    if (DEBUG_CLASS_ENCODE_LEVEL_2) {
         knd_log(".. building GSP of facet key {cls %.*s}", entry->name_size, entry->name);
     }
 

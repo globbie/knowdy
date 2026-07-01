@@ -152,7 +152,7 @@ int knd_cls_ref_attr_stm_new(struct kndClassRefAttrStm **result, struct kndMemPo
 {
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndClassRefAttrStm));
+    assert(KND_TINY_MEMPAGE_SIZE >= sizeof(struct kndClassRefAttrStm));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndClassRefAttrStm));
@@ -164,7 +164,7 @@ int knd_cls_inner_attr_stm_new(struct kndClassInnerAttrStm **result, struct kndM
 {
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndClassInnerAttrStm));
+    assert(KND_TINY_MEMPAGE_SIZE >= sizeof(struct kndClassInnerAttrStm));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndClassInnerAttrStm));
@@ -176,7 +176,7 @@ int knd_attr_stm_new(struct kndAttrStm **result, struct kndClass *subj, struct k
 {
     void *page;
     int err;
-    assert(mempool->small_x4_page_size >= sizeof(struct kndAttrStm));
+    assert(KND_SMALL_X4_MEMPAGE_SIZE >= sizeof(struct kndAttrStm));
     err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL_X4, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndAttrStm));

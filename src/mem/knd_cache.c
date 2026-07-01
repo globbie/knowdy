@@ -12,7 +12,7 @@ int knd_cache_item_new(struct kndCacheItem **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
-    assert(mempool->tiny_page_size >= sizeof(struct kndCacheItem));
+    assert(KND_TINY_MEMPAGE_SIZE >= sizeof(struct kndCacheItem));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0,  sizeof(struct kndCacheItem));

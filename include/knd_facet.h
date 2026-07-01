@@ -131,10 +131,8 @@ int knd_facet_get(struct kndFacet *facet, void *key,
                   struct kndFacet **result, struct kndRepoSnapshot *snapshot,
                   struct kndTask *task);
 
-int knd_facet_map(struct kndFacet *facet, void *key,
-                  struct kndSetRange *range,
-                  filter_cb_t filter_cb, void *filter_ctx,
-                  map_cb_t map_cb, void *map_ctx,
+int knd_facet_map(struct kndFacet *facet, void *key, struct kndSetRange *range,
+                  filter_cb_t filter_cb, void *filter_ctx, map_cb_t map_cb, void *map_ctx,
                   struct kndRepoSnapshot *snapshot, struct kndTask *task);
 
 void knd_facet_str(struct kndFacet *facet, map_cb_t map_cb, struct kndTask *task, size_t depth);

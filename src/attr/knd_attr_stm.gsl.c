@@ -43,10 +43,19 @@
 static int attr_stm_list_export_GSL(struct kndAttrStm *parent_item,
                                     struct kndTask *task, size_t depth);
 
-static int inner_stm_export_GSL(struct kndAttrStm *stm,
-                                struct kndTask *task, size_t depth)
+static int inner_stm_export_GSL(struct kndAttrStm *stm, struct kndTask *task, size_t depth)
 {
+    struct kndOutput *out = task->out;
+    struct kndClassInnerAttrStm *inner_stm = stm->subtype;
+    struct kndClassEntry *entry = inner_stm->cls_entry;
     int err;
+
+    /* specific cls overriding template cls */
+
+    if (entry) {
+        OUT(" ", 1);
+        OUT(entry->name, entry->name_size);
+    }
 
     err = knd_attr_stms_export_GSL(stm->children, task, depth + 1);
     KND_TASK_ERR("failed to export attr stms GSL");
@@ -102,6 +111,7 @@ int knd_attr_stms_export_GSL(struct kndAttrStm *stms,
         default:
             break;
         }
+
         err = knd_attr_stm_export_GSL(stm, task, depth);
         KND_TASK_ERR("attr stm GSL export failed");
     }
@@ -118,6 +128,12 @@ int knd_attr_stm_export_GSL(struct kndAttrStm *stm, struct kndTask *task, size_t
     struct kndClassRefAttrStm *cref;
     size_t indent_size = task->ctx->format_indent;
     int err;
+
+    if (DEBUG_ATTR_STM_GSL_LEVEL_3) {
+        knd_log(">> export GSL {stm %.*s {val %.*s} {val-size %zu}} {is-list-item %d}",
+                stm->name_size, stm->name,
+                stm->val_size, stm->val, stm->val_size, stm->is_list_item);
+    }
 
     if (task->ctx->depth >= task->ctx->max_depth) {
         if (DEBUG_ATTR_STM_GSL_LEVEL_3) {
@@ -186,6 +202,15 @@ int knd_attr_stm_export_GSL(struct kndAttrStm *stm, struct kndTask *task, size_t
 
     if (stm->is_list_item) {
         OUT("}", 1);
-    } // TODO mult_t = SINGLE
+    } else {
+        switch (attr->mult_t) {
+        case KND_ATTR_SINGLE:
+            OUT("}", 1);
+            break;
+        default:
+            break;
+        }
+    }
+
     return knd_OK;
 }

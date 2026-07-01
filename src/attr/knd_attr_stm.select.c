@@ -389,6 +389,7 @@ static int cls_ref_query_plan(struct kndAttrStm *stm, struct kndFacet *facet,
 
     struct LocalContext ctx = {
         .task = task,
+        .snapshot = snapshot,
         .stm = stm,
         .ref_stm = cref
     };

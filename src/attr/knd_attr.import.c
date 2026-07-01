@@ -29,6 +29,7 @@
 #define DEBUG_ATTR_LEVEL_TMP 1
 
 struct LocalContext {
+    struct kndRepoSnapshot *snapshot;
     struct kndTask     *task;
     struct kndAttr     *attr;
 };
@@ -181,6 +182,7 @@ int knd_attr_import(struct kndAttr *attr, const char *rec, size_t *total_size,
     }
 
     struct LocalContext ctx = {
+        .snapshot = snapshot,
         .task = task,
         .attr = attr
     };

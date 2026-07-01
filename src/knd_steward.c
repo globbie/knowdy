@@ -513,14 +513,12 @@ static int steward_init(struct kndSteward *steward)
     steward->mem_task_cache_config.memtype = KND_ALLOC_LIST;
 
     err = knd_task_new(&task, KND_AGENT_SYSTEM, 0,
-                       &steward->mem_main_config, &steward->mem_cache_config,
-                       steward);
+                       &steward->mem_main_config, &steward->mem_cache_config, steward);
     KND_STEWARD_ERR("failed to init steward main task");
     steward->task = task;
 
     err = knd_task_new(&steward->shift_task, KND_AGENT_SYSTEM, 0,
-                       &steward->mem_main_config, &steward->mem_cache_config,
-                       steward);
+                       &steward->mem_main_config, &steward->mem_cache_config, steward);
     KND_STEWARD_ERR("failed to init steward sync task");
 
     err = knd_set_new(&steward->repo_idx, KND_SET_STORE_MEMONLY, task->mempool);
@@ -567,7 +565,14 @@ int knd_steward_new(struct kndSteward **result, const char *config, size_t confi
     if (err) return knd_NOMEM;
     err = knd_output_new(&steward->log, NULL, KND_TEMP_BUF_SIZE);
     if (err) return knd_NOMEM;
-    
+
+    /* apply mempool defaults before parsing config */
+    knd_memconf_apply_defaults(&steward->mem_main_config);
+    knd_memconf_apply_defaults(&steward->mem_cache_config);
+    knd_memconf_apply_defaults(&steward->mem_user_config);
+    knd_memconf_apply_defaults(&steward->mem_task_ctx_config);
+    knd_memconf_apply_defaults(&steward->mem_task_cache_config);
+
     err = steward_read_config(steward, config, config_size);
     if (err) goto error;
 
