@@ -52,12 +52,12 @@ int knd_attr_export_GSL(struct kndAttr *self, struct kndTask *task, size_t depth
     OUT(" ", 1);
     OUT(self->name, self->name_size);
 
-    err = knd_text_glosses_export_GSL(self->glosses, false, task, depth + 1);
+    err = knd_text_glosses_export_GSL(self->glosses, task, depth + 1);
     KND_TASK_ERR("failed to export attr gloss GSL");
 
     if (indent_size) {
         OUT("\n", 1);
-        err = knd_print_offset(out, (depth + 1) * indent_size);
+        err = knd_print_indent(out, (depth + 1) * indent_size);
         RET_ERR();
     }
 

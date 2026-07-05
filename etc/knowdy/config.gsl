@@ -58,4 +58,6 @@
           {  archive
              {type local-fs}
              {mode read-only}} ]
+      {locale [support { ru } { en } { ja } { en_UK } ]
+              [default { ru } ] }
 }

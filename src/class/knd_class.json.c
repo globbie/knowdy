@@ -174,13 +174,13 @@ static int export_class_ref(void *obj, const char *unused_var(elem_id), size_t u
     }
     if (indent_size) {
         OUT("\n", 1);
-        err = knd_print_offset(out, (depth) * indent_size);
+        err = knd_print_indent(out, (depth) * indent_size);
         RET_ERR();
     }
     OUT("{", 1);
     if (indent_size) {
         OUT("\n", 1);
-        err = knd_print_offset(out, (depth + 1) * indent_size);
+        err = knd_print_indent(out, (depth + 1) * indent_size);
         RET_ERR();
     }
     OUT("\"class\":", strlen("\"class\":"));
@@ -195,7 +195,7 @@ static int export_class_ref(void *obj, const char *unused_var(elem_id), size_t u
         OUT(",", 1);
         if (indent_size) {
             OUT("\n", 1);
-            err = knd_print_offset(out, (depth + 1) * indent_size);
+            err = knd_print_indent(out, (depth + 1) * indent_size);
             RET_ERR();
         }
         OUT("\"insts\":", strlen("\"insts\":"));
@@ -228,7 +228,7 @@ static int export_class_ref(void *obj, const char *unused_var(elem_id), size_t u
     
     if (indent_size) {
         OUT("\n", 1);
-        err = knd_print_offset(out, (depth) * indent_size);
+        err = knd_print_indent(out, (depth) * indent_size);
         RET_ERR();
     }
     OUT("}", 1);
@@ -344,14 +344,14 @@ static int present_subclass(struct kndClassRef *ref,
 
     if (indent_size) {
         OUT("\n", 1);
-        err = knd_print_offset(out, depth * indent_size);
+        err = knd_print_indent(out, depth * indent_size);
         RET_ERR();
     }
 
     OUT("{", 1);
     if (indent_size) {
         OUT("\n", 1);
-        err = knd_print_offset(out, (depth + 1) * indent_size);
+        err = knd_print_indent(out, (depth + 1) * indent_size);
         RET_ERR();
     }
     OUT("\"name\":", strlen("\"name\":"));
@@ -373,7 +373,7 @@ static int present_subclass(struct kndClassRef *ref,
 
     if (indent_size) {
         OUT("\n", 1);
-        err = knd_print_offset(out, depth * indent_size);
+        err = knd_print_indent(out, depth * indent_size);
         RET_ERR();
     }
     OUT("}", 1);
@@ -392,7 +392,7 @@ static int present_subclasses(struct kndClass *self,
     OUT(",", 1);
     if (indent_size) {
         OUT("\n", 1);
-        err = knd_print_offset(out, depth * indent_size);
+        err = knd_print_indent(out, depth * indent_size);
         RET_ERR();
     }
     OUT("\"num-subclasses\":", strlen("\"num-subclasses\":"));
@@ -409,7 +409,7 @@ static int present_subclasses(struct kndClass *self,
 
     if (indent_size) {
         OUT("\n", 1);
-        err = knd_print_offset(out, depth * indent_size);
+        err = knd_print_indent(out, depth * indent_size);
         RET_ERR();
     }
   
@@ -429,7 +429,7 @@ static int present_subclasses(struct kndClass *self,
     }
     if (indent_size) {
         OUT("\n", 1);
-        err = knd_print_offset(out, depth * indent_size);
+        err = knd_print_indent(out, depth * indent_size);
         RET_ERR();
     }
     OUT("]", 1);    
@@ -469,7 +469,7 @@ static int export_inverse_rels(struct kndClass *self, struct kndTask *task, size
     OUT(",", 1);
     if (indent_size) {
         OUT("\n", 1);
-        err = knd_print_offset(out, (depth) * indent_size);
+        err = knd_print_indent(out, (depth) * indent_size);
         RET_ERR();
     }
 
@@ -490,14 +490,14 @@ static int export_inverse_rels(struct kndClass *self, struct kndTask *task, size
         attr = attr_hub->attr;
         if (indent_size) {
             OUT("\n", 1);
-            err = knd_print_offset(out, (depth + 1) * indent_size);
+            err = knd_print_indent(out, (depth + 1) * indent_size);
             RET_ERR();
         }
 
         OUT("{", 1);
         if (indent_size) {
             OUT("\n", 1);
-            err = knd_print_offset(out, (depth + 2) * indent_size);
+            err = knd_print_indent(out, (depth + 2) * indent_size);
             RET_ERR();
         }
         OUT("\"class\":", strlen("\"class\":"));
@@ -511,7 +511,7 @@ static int export_inverse_rels(struct kndClass *self, struct kndTask *task, size
         OUT(",", 1);
         if (indent_size) {
             OUT("\n", 1);
-            err = knd_print_offset(out, (depth + 2) * indent_size);
+            err = knd_print_indent(out, (depth + 2) * indent_size);
             RET_ERR();
         }
         OUT("\"attr\":", strlen("\"attr\":"));
@@ -526,7 +526,7 @@ static int export_inverse_rels(struct kndClass *self, struct kndTask *task, size
             OUT(",", 1);
             if (indent_size) {
                 OUT("\n", 1);
-                err = knd_print_offset(out, (depth + 2) * indent_size);
+                err = knd_print_indent(out, (depth + 2) * indent_size);
                 RET_ERR();
             }
             OUT("\"total\":", strlen("\"total\":"));
@@ -542,7 +542,7 @@ static int export_inverse_rels(struct kndClass *self, struct kndTask *task, size
             OUT(",", 1);
             if (indent_size) {
                 OUT("\n", 1);
-                err = knd_print_offset(out, (depth + 2) * indent_size);
+                err = knd_print_indent(out, (depth + 2) * indent_size);
                 RET_ERR();
             }
             OUT("\"topics\":", strlen("\"topics\":"));
@@ -557,7 +557,7 @@ static int export_inverse_rels(struct kndClass *self, struct kndTask *task, size
 
             if (indent_size) {
                 OUT("\n", 1);
-                err = knd_print_offset(out, (depth + 2) * indent_size);
+                err = knd_print_indent(out, (depth + 2) * indent_size);
                 RET_ERR();
             }
             OUT("]", 1);
@@ -566,7 +566,7 @@ static int export_inverse_rels(struct kndClass *self, struct kndTask *task, size
 
         if (indent_size) {
             OUT("\n", 1);
-            err = knd_print_offset(out, (depth + 1) * indent_size);
+            err = knd_print_indent(out, (depth + 1) * indent_size);
             RET_ERR();
         }
         OUT("}", 1);
@@ -574,7 +574,7 @@ static int export_inverse_rels(struct kndClass *self, struct kndTask *task, size
     }
     if (indent_size) {
         OUT("\n", 1);
-        err = knd_print_offset(out, (depth) * indent_size);
+        err = knd_print_indent(out, (depth) * indent_size);
         RET_ERR();
     }
     OUT("]", 1);
@@ -597,7 +597,7 @@ static int export_baseclasses(struct kndClass *self,
     OUT(",", 1);
     if (indent_size) {
         OUT("\n", 1);
-        err = knd_print_offset(out, depth * indent_size);
+        err = knd_print_indent(out, depth * indent_size);
         RET_ERR();
     }
 
@@ -613,13 +613,13 @@ static int export_baseclasses(struct kndClass *self,
         }
         if (indent_size) {
             OUT("\n", 1);
-            err = knd_print_offset(out, (depth + 1) * indent_size);
+            err = knd_print_indent(out, (depth + 1) * indent_size);
             RET_ERR();
         }
         OUT("{", 1);
         if (indent_size) {
             OUT("\n", 1);
-            err = knd_print_offset(out, (depth + 2) * indent_size);
+            err = knd_print_indent(out, (depth + 2) * indent_size);
             RET_ERR();
         }
         OUT("\"name\":", strlen("\"name\":"));
@@ -641,7 +641,7 @@ static int export_baseclasses(struct kndClass *self,
 
         if (indent_size) {
             OUT("\n", 1);
-            err = knd_print_offset(out, (depth + 1) * indent_size);
+            err = knd_print_indent(out, (depth + 1) * indent_size);
             RET_ERR();
         }
         OUT("}", 1);
@@ -649,7 +649,7 @@ static int export_baseclasses(struct kndClass *self,
     }
     if (indent_size) {
         OUT("\n", 1);
-        err = knd_print_offset(out, depth * indent_size);
+        err = knd_print_indent(out, depth * indent_size);
         RET_ERR();
     }
     OUT("]", 1);
@@ -673,7 +673,7 @@ int knd_class_export_JSON(struct kndClass *self, struct kndTask *task,
     OUT("{", 1);
     if (indent_size) {
         OUT("\n", 1);
-        err = knd_print_offset(out, (depth + 1) * indent_size);
+        err = knd_print_indent(out, (depth + 1) * indent_size);
         RET_ERR();
     }
     OUT("\"name\":", strlen("\"name\":"));
@@ -768,7 +768,7 @@ int knd_class_export_JSON(struct kndClass *self, struct kndTask *task,
  final:
     if (indent_size) {
         OUT("\n", 1);
-        err = knd_print_offset(out, (depth) * indent_size);
+        err = knd_print_indent(out, (depth) * indent_size);
         RET_ERR();
     }
     OUT("}", 1);

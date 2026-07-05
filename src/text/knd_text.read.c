@@ -39,14 +39,11 @@ static gsl_err_t parse_synode(void *obj, const char *rec, size_t *total_size);
 static gsl_err_t set_text_locale(void *obj, const char *name, size_t name_size)
 {
     struct kndText *t = obj;
-    if (name_size >= KND_ID_SIZE) return make_gsl_err(gsl_LIMIT);
+    if (name_size > KND_ID_SIZE) return make_gsl_err(gsl_LIMIT);
 
     memcpy(t->locale_id, name, name_size);
     t->locale_id_size = name_size;
 
-    t->locale = t->locale_id;
-    t->locale_size = t->locale_id_size;
-    
     return make_gsl_err(gsl_OK);
 }
 
@@ -83,8 +80,9 @@ static gsl_err_t set_text_lang(void *obj, const char *val, size_t val_size)
 {
     struct LocalContext *ctx = obj;
     struct kndText *self = ctx->text;
-    self->locale_size = val_size;
-    self->locale = val;
+    if (val_size > KND_ID_SIZE) return make_gsl_err(gsl_FORMAT); 
+    memcpy(self->locale_id, val, val_size);
+    self->locale_id_size = val_size;
     return make_gsl_err(gsl_OK);
 }
 
@@ -99,10 +97,6 @@ static gsl_err_t set_text_seq(void *unused_var(obj), const char *val, size_t val
     }
     // TODO
 
-    /*if (DEBUG_TEXT_READ_LEVEL_3) {
-        knd_log(">> locale: %.*s text seq:%.*s", ctx->text->locale_size, ctx->text->locale,
-            ctx->text->seq->val_size, ctx->text->seq->val);
-            }*/
     return make_gsl_err(gsl_OK);
 }
 
@@ -817,7 +811,7 @@ int knd_gloss_parse(struct kndText *t, const char *rec, size_t *total_size, stru
 
     if (DEBUG_TEXT_READ_LEVEL_3) {
         knd_log(".. gloss translation: {locale %.*s}  {text-id %.*s}",
-                t->locale_size, t->locale, t->id_size, t->id);
+                t->locale->id_size, t->locale->id, t->id_size, t->id);
     }
     return knd_OK;
 }

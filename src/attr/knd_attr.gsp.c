@@ -55,7 +55,7 @@ static int export_glosses(struct kndAttr *attr, struct kndOutput *out)
     OUT("[g", strlen("[g"));
     FOREACH (t, attr->glosses) {
         OUT("{", 1);
-        OUT(t->locale, t->locale_size);
+        OUT(t->locale->id, t->locale->id_size);
         OUT("{t ", strlen("{t "));
         knd_uid_create(t->seq->numid, idbuf, &id_size);
         OUT(idbuf, id_size);

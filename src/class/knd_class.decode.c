@@ -309,6 +309,20 @@ int knd_class_decode(struct kndClass *c, struct kndRepoSnapshot *snapshot, struc
     return knd_OK;
 }
 
+static int match_locale(const char *locale_id, size_t locale_id_size,
+                        struct kndLocale **result, struct kndLocaleConfig *conf)
+{
+    struct kndLocale *locale;
+    for (size_t i = 0; i < conf->num_supported; i++) {
+        locale = conf->supported[i];
+        if (locale->id_size != locale_id_size) continue;
+        if (memcmp(locale->id, locale_id, locale_id_size)) continue; 
+        *result = locale;
+        return knd_OK;
+    }
+    return knd_NO_MATCH;
+}
+
 static int decode_glosses(struct kndClassEntry *entry, struct kndSet *str_idx,
                           struct kndTask *task)
 {
@@ -316,6 +330,9 @@ static int decode_glosses(struct kndClassEntry *entry, struct kndSet *str_idx,
     int err;
 
     FOREACH (t, entry->glosses) {
+        err = match_locale(t->locale_id, t->locale_id_size, &t->locale, &task->steward->locale_config);
+        KND_TASK_ERR("{locale %.*s} is not supported", t->locale_id_size, t->locale_id);
+
         err = knd_charseq_decode(str_idx, t->id, t->id_size, &t->seq, task);
         KND_TASK_ERR("failed to decode {cls %.*s {gloss %.*s}}",
                      entry->name_size, entry->name, t->id_size, t->id);

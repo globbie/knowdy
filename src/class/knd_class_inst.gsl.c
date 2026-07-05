@@ -30,7 +30,7 @@ static int export_class_inst(void *obj, const char *unused_var(elem_id),
 
     if (indent_size) {
         OUT("\n", 1);
-        err = knd_print_offset(out, (depth) * indent_size);
+        err = knd_print_indent(out, (depth) * indent_size);
         RET_ERR();
     }
     OUT("{", 1);
@@ -38,7 +38,7 @@ static int export_class_inst(void *obj, const char *unused_var(elem_id),
 
     if (indent_size) {
         OUT("\n", 1);
-        err = knd_print_offset(out, (depth + 1) * indent_size);
+        err = knd_print_indent(out, (depth + 1) * indent_size);
         RET_ERR();
     }
 
@@ -48,7 +48,7 @@ static int export_class_inst(void *obj, const char *unused_var(elem_id),
 
     if (indent_size) {
         OUT("\n", 1);
-        err = knd_print_offset(out, (depth) * indent_size);
+        err = knd_print_indent(out, (depth) * indent_size);
         RET_ERR();
     }
     OUT("}", 1);
@@ -70,7 +70,7 @@ static int export_inverse_rels(struct kndClassInst *self, struct kndTask *task, 
     OUT(",", 1);
     if (indent_size) {
         OUT("\n", 1);
-        err = knd_print_offset(out, (depth) * indent_size);
+        err = knd_print_indent(out, (depth) * indent_size);
         RET_ERR();
     }
 
@@ -90,7 +90,7 @@ static int export_inverse_rels(struct kndClassInst *self, struct kndTask *task, 
         attr = attr_hub->attr;
         if (indent_size) {
             OUT("\n", 1);
-            err = knd_print_offset(out, (depth + 1) * indent_size);
+            err = knd_print_indent(out, (depth + 1) * indent_size);
             RET_ERR();
         }
 
@@ -98,7 +98,7 @@ static int export_inverse_rels(struct kndClassInst *self, struct kndTask *task, 
         OUT(attr->name, attr->name_size);
         if (indent_size) {
             OUT("\n", 1);
-            err = knd_print_offset(out, (depth + 2) * indent_size);
+            err = knd_print_indent(out, (depth + 2) * indent_size);
             RET_ERR();
         }
         OUT("{class ", strlen("{class "));
@@ -108,7 +108,7 @@ static int export_inverse_rels(struct kndClassInst *self, struct kndTask *task, 
         if (attr_hub->topics) {
             if (indent_size) {
                 OUT("\n", 1);
-                err = knd_print_offset(out, (depth + 2) * indent_size);
+                err = knd_print_indent(out, (depth + 2) * indent_size);
                 RET_ERR();
             }
             OUT("{total ", strlen("{total "));
@@ -121,7 +121,7 @@ static int export_inverse_rels(struct kndClassInst *self, struct kndTask *task, 
             task->batch_size = 0;
             if (indent_size) {
                 OUT("\n", 1);
-                err = knd_print_offset(out, (depth + 2) * indent_size);
+                err = knd_print_indent(out, (depth + 2) * indent_size);
                 RET_ERR();
             }
             OUT("[topic ", strlen("[topic "));
@@ -130,7 +130,7 @@ static int export_inverse_rels(struct kndClassInst *self, struct kndTask *task, 
 
             if (indent_size) {
                 OUT("\n", 1);
-                err = knd_print_offset(out, (depth + 2) * indent_size);
+                err = knd_print_indent(out, (depth + 2) * indent_size);
                 RET_ERR();
             }
             OUT("]", 1);
@@ -139,7 +139,7 @@ static int export_inverse_rels(struct kndClassInst *self, struct kndTask *task, 
 
         if (indent_size) {
             OUT("\n", 1);
-            err = knd_print_offset(out, (depth + 1) * indent_size);
+            err = knd_print_indent(out, (depth + 1) * indent_size);
             RET_ERR();
         }
         OUT("}", 1);
@@ -147,7 +147,7 @@ static int export_inverse_rels(struct kndClassInst *self, struct kndTask *task, 
     }
     if (indent_size) {
         OUT("\n", 1);
-        err = knd_print_offset(out, (depth) * indent_size);
+        err = knd_print_indent(out, (depth) * indent_size);
         RET_ERR();
     }
     OUT("]", 1);
@@ -170,7 +170,7 @@ int knd_class_inst_export_GSL(struct kndClassInst *self, bool is_list_item,
     }
     if (indent_size) {
         OUT("\n", 1);
-        err = knd_print_offset(out, (depth) * indent_size);
+        err = knd_print_indent(out, (depth) * indent_size);
         RET_ERR();
     }
 

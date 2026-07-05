@@ -68,7 +68,7 @@ size_t knd_generate_random_id(char *buf, size_t chunk_size, size_t num_chunks, c
     return buf_size;
 }
 
-extern int knd_print_offset(struct kndOutput *out, size_t num_spaces)
+extern int knd_print_indent(struct kndOutput *out, size_t num_spaces)
 {
     char buf[KND_PATH_SIZE];
     memset(buf, ' ', num_spaces); 

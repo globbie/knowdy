@@ -44,32 +44,6 @@ static int proc_call_arg_export_JSON(struct kndProc *unused_var(self),
     return knd_OK;
 }
 
-static int export_gloss_JSON(struct kndText *tr,
-                             struct kndTask *task,
-                             struct kndOutput *out,
-                             bool separ_needed)
-{
-    int err;
-
-    while (tr) {
-        if (task->ctx->locale_size != tr->locale_size) continue;
-
-        if (memcmp(task->ctx->locale, tr->locale, tr->locale_size)) {
-            goto next_tr;
-        }
-        if (separ_needed) {
-            err = out->write(out, ",", 1);                                        RET_ERR();
-        }
-        err = out->write(out, "\"_gloss\":\"", strlen("\"_gloss\":\""));          RET_ERR();
-        err = out->write(out, tr->seq->val,  tr->seq->val_size);                            RET_ERR();
-        err = out->write(out, "\"", 1);                                           RET_ERR();
-        break;
-    next_tr:
-        tr = tr->next;
-    }
-    return knd_OK;
-}
-
 int knd_proc_export_JSON(struct kndProc *self, struct kndTask *task,
                          bool is_list_item, size_t depth)
 {
@@ -92,9 +66,9 @@ int knd_proc_export_JSON(struct kndProc *self, struct kndTask *task,
         in_list = true;
     }
 
-    if (self->tr) {
-        err = export_gloss_JSON(self->tr,  task, out, in_list);                   RET_ERR();
-    }
+    //if (self->tr) {
+    //    err = export_gloss_JSON(self->tr,  task, out, in_list);                   RET_ERR();
+    //}
 
     if (self->args) {
         if (in_list) {

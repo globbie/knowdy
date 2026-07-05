@@ -60,13 +60,12 @@ static int export_SVG_footer(struct kndOutput *out)
 }
 
 int knd_proc_export_SVG(struct kndProc *self,
-                        struct kndTask *task,
+                        struct kndTask *unused_var(task),
                         struct kndOutput *out)
 {
     char buf[KND_SHORT_NAME_SIZE];
     size_t buf_size = 0;
     struct kndProcArg *arg;
-    struct kndText *tr;
     size_t x_offset = 0;
     size_t y_offset = 0;
     int err;
@@ -77,6 +76,7 @@ int knd_proc_export_SVG(struct kndProc *self,
     y_offset += self->visual->text_line_height;
     */
 
+#if 0
     /* choose gloss */
     tr = self->tr;
     while (tr) {
@@ -96,13 +96,14 @@ int knd_proc_export_SVG(struct kndProc *self,
     next_tr:
         tr = tr->next;
     }
+#endif
 
     /* no gloss found - print id */
-    if (!tr) {
+    /*if (!tr) {
         err = out->write(out, "<text>", strlen("<text>"));                            RET_ERR();
         err = out->write(out, self->name, self->name_size);                           RET_ERR();
         err = out->write(out, "</text>", strlen("</text>"));                          RET_ERR();
-    }
+        }*/
 
     if (self->args) {
         x_offset = 0;

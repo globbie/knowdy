@@ -62,9 +62,9 @@ int knd_proc_export_GSL(struct kndProc *self,
     }
     err = out->write(out, self->name, self->name_size);                           RET_ERR();
 
-    if (task->ctx->format_offset) {
+    if (task->ctx->format_indent) {
         err = out->writec(out, '\n');                                             RET_ERR();
-        err = knd_print_offset(out, (depth + 1) * task->ctx->format_offset);      RET_ERR();
+        err = knd_print_indent(out, (depth + 1) * task->ctx->format_indent);      RET_ERR();
     }
 
     err = out->write(out, "{_id ", strlen("{_id "));                              RET_ERR();
@@ -75,12 +75,12 @@ int knd_proc_export_GSL(struct kndProc *self,
         goto final;
     }
 
-    if (task->ctx->format_offset) {
+    if (task->ctx->format_indent) {
         err = out->writec(out, ' ');                                              RET_ERR();
     }
 
     if (self->tr) {
-        err = knd_text_glosses_export_GSL(self->tr, true, task, depth);
+        err = knd_text_glosses_export_GSL(self->tr, task, depth);
         RET_ERR();
     }
 
@@ -103,10 +103,10 @@ int knd_proc_export_GSL(struct kndProc *self,
     }
 
     if (self->estimate.cost) {
-        if (task->ctx->format_offset) {
+        if (task->ctx->format_indent) {
             err = out->writec(out, '\n');                                         RET_ERR();
-            err = knd_print_offset(out,
-                                   (depth + 1) * task->ctx->format_offset);       RET_ERR();
+            err = knd_print_indent(out,
+                                   (depth + 1) * task->ctx->format_indent);       RET_ERR();
         }
         err = out->write(out, "{estim ", strlen("{estim "));                      RET_ERR();
         err = out->writef(out, "%zu", self->estimate.cost);                       RET_ERR();

@@ -82,51 +82,50 @@ static gsl_err_t parse_format(void *obj, const char *rec, size_t *total_size)
 
 static gsl_err_t set_locale(void *obj, const char *name, size_t name_size)
 {
-    struct kndTask *self = obj;
+    struct kndTask *task = obj;
+    struct kndTaskContext *ctx = task->ctx;
+    struct kndLocaleConfig *conf = &task->steward->locale_config; 
+    struct kndLocale *l;
 
     if (!name_size) return make_gsl_err(gsl_FORMAT);
-    if (name_size > sizeof(self->ctx->locale)) return make_gsl_err(gsl_FORMAT);
 
-    memcpy(self->ctx->locale, name, name_size);
-    self->ctx->locale_size = name_size;
+    for (size_t i = 0; i < conf->num_supported; i++) {
+        l = conf->supported[i];
+        if (l->id_size != name_size) continue;
+        if (memcmp(l->id, name, name_size)) continue;
 
-    knd_log(">> set {locale %.*s}", name_size, name);
+        ctx->locale[ctx->num_locale] = l;
+        ctx->num_locale++;
 
-    /* TODO check locale
-    for (size_t i = 0; i < sizeof knd_format_names / sizeof knd_format_names[0]; i++) {
-        const char *format_str = knd_format_names[i];
-        assert(format_str != NULL);
-
-        size_t format_str_size = strlen(format_str);
-        if (name_size != format_str_size) continue;
-
-        if (!memcmp(format_str, name, name_size)) {
-            self->ctx->format = (knd_format)i;
-            return make_gsl_err(gsl_OK);
-        }
+        if (DEBUG_QUERY_RUN_LEVEL_TMP) {
+            knd_log(">> query add {locale %.*s {numid %zu}}", l->id_size, l->id, l->numid);
+        }            
+        return make_gsl_err(gsl_OK);
     }
 
-    err = self->log->write(self->log, name, name_size);
-    if (err) return make_gsl_err_external(err);
-    err = self->log->write(self->log, " locale not supported",
-                           strlen(" locale not supported"));
-    if (err) return make_gsl_err_external(err);
-    */
+    KND_TASK_LOG("{locale %.*s} is not supported", name_size, name);
+    return make_gsl_err_external(knd_NO_MATCH);
+}
 
-    return make_gsl_err(gsl_OK);
+static gsl_err_t parse_locale_item(void *obj, const char *rec, size_t *total_size)
+{
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = set_locale,
+          .obj = obj
+        }
+    };
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
 static gsl_err_t parse_locale(void *obj, const char *rec, size_t *total_size)
 {
-    struct kndTask *self = obj;
-
-    struct gslTaskSpec specs[] = {
-        { .is_implied = true,
-          .run = set_locale,
-          .obj = self
-        }
+    struct gslTaskSpec item_spec = {
+        .is_list_item = true,
+        .parse = parse_locale_item,
+        .obj = obj
     };
-    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    return gsl_parse_array(&item_spec, rec, total_size);
 }
 
 /* 
@@ -205,7 +204,8 @@ gsl_err_t knd_query_run(void *obj, const char *rec, size_t *total_size)
     };
 
     struct gslTaskSpec specs[] = {
-        { .name = "locale",
+        { .type = GSL_GET_ARRAY_STATE,
+          .name = "locale",
           .name_size = strlen("locale"),
           .parse = parse_locale,
           .obj = task

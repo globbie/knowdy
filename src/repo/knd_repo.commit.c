@@ -112,26 +112,23 @@ static int check_class_conflicts(struct kndCommit *new_commit,
         entry = ref->obj;
         state = ref->state;
 
-        if (DEBUG_REPO_COMMIT_LEVEL_2)
+        if (DEBUG_REPO_COMMIT_LEVEL_2) {
             knd_log(".. checking \"%.*s\" class conflicts, state phase: %d",
                     entry->name_size, entry->name, state->phase);
+        }
 
         switch (state->phase) {
         case KND_SELECTED:
             // TODO: check instances
             break;
         case KND_CREATED:
-
             // TODO: check class name idx
             // check dedups
-
             // knd_log(".. any new states in class name idx?");
-
             /*state = atomic_load_explicit(&entry->dict_item->states, memory_order_acquire);
 
             for (; state; state = state->next) {
                 if (state->commit == new_commit) continue;
-
                 confirm = atomic_load_explicit(&state->commit->confirm, memory_order_acquire);
                 switch (confirm) {
                 case KND_VALID_STATE:
@@ -143,7 +140,6 @@ static int check_class_conflicts(struct kndCommit *new_commit,
                     break;
                 }
                 }*/
-            
             break;
         default:
             break;
@@ -158,8 +154,8 @@ static int check_commit_conflicts(struct kndCommit *commit, struct kndRepoSnapsh
     int err;
 
     if (DEBUG_REPO_COMMIT_LEVEL_TMP) {
-        knd_log(".. new commit #%zu (%p) to check any commit conflicts since state #%zu",
-                commit->numid, commit, commit->orig_state_id);
+        knd_log(".. new commit #%zu to check any commit conflicts since state #%zu",
+                commit->numid, commit->orig_state_id);
     }
 
     do {
@@ -181,9 +177,9 @@ static int check_commit_conflicts(struct kndCommit *commit, struct kndRepoSnapsh
     atomic_store_explicit(&commit->confirm, KND_VALID_STATE, memory_order_release);
     atomic_fetch_add_explicit(&snapshot->num_commits, 1, memory_order_relaxed);
 
-    if (DEBUG_REPO_COMMIT_LEVEL_TMP)
+    if (DEBUG_REPO_COMMIT_LEVEL_TMP) {
         knd_log("++ no conflicts found, commit %p #%zu confirmed!", commit, commit->numid);
-
+    }
     return knd_OK;
 }
 
@@ -262,8 +258,7 @@ static int update_indices(struct kndCommit *commit,
 }
 
 static int build_journal_filename(struct kndRepoSnapshot *snapshot,
-                                  char *filename, size_t *filename_size,
-                                  struct kndTask *task)
+                                  char *filename, size_t *filename_size, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     const char *path;
@@ -304,31 +299,35 @@ static int build_commit_WAL(struct kndCommit *commit, struct kndRepoSnapshot *sn
     
     commit->timestamp = time(NULL);
     if (DEBUG_REPO_COMMIT_LEVEL_TMP) {
-        knd_log(".. kndTask #%zu to build a WAL entry {snapshot #%zu} commit #%zu)",
+        knd_log(".. kndTask #%zu to build a WAL entry {snapshot %zu {commit %zu}}",
                 task->id, snapshot->numid, commit->numid);
     }
+
     err = build_journal_filename(snapshot, filename, &filename_size, task);
     KND_TASK_ERR("failed to build journal filename");
 
     if (stat(out->buf, &st)) {
-        if (DEBUG_REPO_COMMIT_LEVEL_TMP)
+        if (DEBUG_REPO_COMMIT_LEVEL_TMP) {
             knd_log(".. initializing the journal: \"%.*s\"", filename_size, filename);
-        err = knd_write_file((const char*)filename, "{WAL\n", strlen("{WAL\n"));
-        KND_TASK_ERR("failed writing to file %.*s", filename, filename_size);
+        }
+        //err = knd_write_file((const char*)filename, "{WAL\n", strlen("{WAL\n"));
+        //KND_TASK_ERR("failed writing to file %.*s", filename, filename_size);
         goto append_wal_rec;
     }
 
     planned_journal_size = st.st_size + out->buf_size;
     if (planned_journal_size > snapshot->max_journal_size) {
-        if (DEBUG_REPO_COMMIT_LEVEL_TMP)
+        if (DEBUG_REPO_COMMIT_LEVEL_TMP) {
             knd_log("NB: journal size limit reached!");
+        }
         /* switch to a new journal */
         snapshot->num_journals[task->id]++;
 
         err = build_journal_filename(snapshot, filename, &filename_size, task);
         KND_TASK_ERR("failed to build journal filename");
-        err = knd_write_file((const char*)filename, "{WAL\n", strlen("{WAL\n"));
-        KND_TASK_ERR("failed writing to file %.*s", filename, filename_size);
+
+        //err = knd_write_file((const char*)filename, "{WAL\n", strlen("{WAL\n"));
+        //KND_TASK_ERR("failed writing to file %.*s", filename, filename_size);
     }
 
  append_wal_rec:
@@ -365,7 +364,7 @@ int knd_confirm_commit(struct kndRepoSnapshot *snapshot, struct kndTask *task)
     assert(commit != NULL);
 
     if (DEBUG_REPO_COMMIT_LEVEL_TMP) {
-        knd_log(">> {repo %.*s} repo to confirm {commit #%zu}",
+        knd_log(">> {repo %.*s} to confirm {commit #%zu}",
                 repo->name_size, repo->name, commit->numid);
     }
     commit->repo = repo;

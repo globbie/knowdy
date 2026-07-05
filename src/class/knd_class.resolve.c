@@ -53,6 +53,32 @@ struct LocalContext {
 
 static int resolve_base(struct kndClass *self, struct kndRepoSnapshot *snapshot, struct kndTask *task);
 
+static int match_locale(const char *locale_id, size_t locale_id_size,
+                        struct kndLocale **result, struct kndLocaleConfig *conf)
+{
+    struct kndLocale *locale;
+    for (size_t i = 0; i < conf->num_supported; i++) {
+        locale = conf->supported[i];
+        if (locale->id_size != locale_id_size) continue;
+        if (memcmp(locale->id, locale_id, locale_id_size)) continue; 
+        *result = locale;
+        return knd_OK;
+    }
+    return knd_NO_MATCH;
+}
+
+static int resolve_glosses(struct kndClassEntry *entry, struct kndTask *task)
+{
+    struct kndText *t;
+    int err;
+
+    FOREACH (t, entry->glosses) {
+        err = match_locale(t->locale_id, t->locale_id_size, &t->locale, &task->steward->locale_config);
+        KND_TASK_ERR("{locale %.*s} is not supported", t->locale_id_size, t->locale_id);
+    }
+    return knd_OK;
+}
+
 static int inherit_attr(void *elem, void *ctx_obj, struct kndTask *task)
 {
     struct kndAttrRef *src_ref = elem;
@@ -317,6 +343,9 @@ int knd_class_resolve(struct kndClass *cls, struct kndRepoSnapshot *snapshot, st
                 cls->name_size, cls->name);
         return knd_FAIL;
     }
+
+    err = resolve_glosses(entry, task);
+    KND_TASK_ERR("failed to resolve glosses of {cls %.*s}", entry->name_size, entry->name);
 
     if (cls->num_attrs) {
         err = knd_resolve_primary_attrs(cls, snapshot, task);

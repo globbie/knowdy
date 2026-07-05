@@ -126,7 +126,7 @@ static gsl_err_t read_attr_stm_list(void *obj, const char *name, size_t name_siz
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t set_baseclass_id(void *obj, const char *id, size_t id_size)
+static gsl_err_t set_base_cls_id(void *obj, const char *id, size_t id_size)
 {
     struct LocalContext *ctx = obj;
     struct kndClassBasePred *bp = ctx->base_pred;
@@ -189,7 +189,7 @@ static gsl_err_t parse_baseclass_array_item(void *obj, const char *rec, size_t *
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = set_baseclass_id,
+          .run = set_base_cls_id,
           .obj = ctx
         },
         { .type = GSL_GET_ARRAY_STATE,

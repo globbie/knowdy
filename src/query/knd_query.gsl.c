@@ -77,7 +77,7 @@ static int export_attr_stms(struct kndQuery *query, struct kndTask *task, size_t
 
     if (indent_size) {
         OUT("\n", 1);
-        err = knd_print_offset(out, depth * indent_size);
+        err = knd_print_indent(out, depth * indent_size);
         RET_ERR();
     }
     OUT("[", 1);

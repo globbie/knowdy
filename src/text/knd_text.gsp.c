@@ -185,10 +185,10 @@ int knd_text_export_GSP(struct kndText *self, struct kndTask *task)
         OUT(idbuf, idbuf_size);
     }
 
-    if (self->locale_size) {
+    if (self->locale) {
         OUT("{", 1);
         OUT("_lang ", strlen("_lang "));
-        OUT(self->locale, self->locale_size);
+        OUT(self->locale->id, self->locale->id_size);
         OUT("}", 1);
     }
 
@@ -196,7 +196,7 @@ int knd_text_export_GSP(struct kndText *self, struct kndTask *task)
         OUT("[trn", strlen("[trn"));
         FOREACH (trn, self->trs) {
             OUT("{", 1);
-            OUT(trn->locale, trn->locale_size);
+            OUT(trn->locale->id, trn->locale->id_size);
             OUT("{t ", strlen("{t "));
 
             knd_uid_create(trn->seq->numid, idbuf, &idbuf_size);

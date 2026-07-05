@@ -66,7 +66,7 @@ static int inner_stm_export_JSON(struct kndAttrStm *stm,
             OUT(",", 1);
             if (indent_size) {
                 OUT("\n", 1);
-                err = knd_print_offset(out, (depth) * indent_size);
+                err = knd_print_indent(out, (depth) * indent_size);
                 RET_ERR();
             }
         }
@@ -109,7 +109,7 @@ static int ref_stm_export_JSON(struct kndAttrStm *stm,
     OUT("\"", 1);
 
     err = knd_text_glosses_export_JSON(entry->glosses, task, depth);
-    KND_TASK_ERR("failed to export gloss GSL");
+    KND_TASK_ERR("failed to export gloss JSON");
     return knd_OK;
 }
 
@@ -137,7 +137,7 @@ static int attr_stm_list_export_JSON(struct kndAttrStm *parent_stm,
 
     if (indent_size) {
         OUT("\n", 1);
-        err = knd_print_offset(out, depth * indent_size);
+        err = knd_print_indent(out, depth * indent_size);
         RET_ERR();
     }
     OUT("\"", 1);
@@ -155,13 +155,13 @@ static int attr_stm_list_export_JSON(struct kndAttrStm *parent_stm,
         }
         if (indent_size) {
             OUT("\n", 1);
-            err = knd_print_offset(out, (depth + 1) * indent_size);
+            err = knd_print_indent(out, (depth + 1) * indent_size);
             RET_ERR();
         }
         OUT("{", 1);
         if (indent_size) {
             OUT("\n", 1);
-            err = knd_print_offset(out, (depth + 2) * indent_size);
+            err = knd_print_indent(out, (depth + 2) * indent_size);
             RET_ERR();
         }
         switch (parent_stm->attr->type) {
@@ -194,7 +194,7 @@ static int attr_stm_list_export_JSON(struct kndAttrStm *parent_stm,
         }
         if (indent_size) {
             OUT("\n", 1);
-            err = knd_print_offset(out, (depth + 1) * indent_size);
+            err = knd_print_indent(out, (depth + 1) * indent_size);
             RET_ERR();
         }
         OUT("}", 1);
@@ -203,7 +203,7 @@ static int attr_stm_list_export_JSON(struct kndAttrStm *parent_stm,
 
     if (indent_size) {
         OUT("\n", 1);
-        err = knd_print_offset(out, depth * indent_size);
+        err = knd_print_indent(out, depth * indent_size);
         RET_ERR();
     }
     OUT("]", 1);
@@ -238,7 +238,7 @@ int knd_attr_stms_export_JSON(struct kndAttrStm *stms,
 
         if (indent_size) {
             OUT("\n", 1);
-            err = knd_print_offset(out, depth * indent_size);
+            err = knd_print_indent(out, depth * indent_size);
             RET_ERR();
         }
         OUT("\"", 1);
@@ -260,13 +260,13 @@ int knd_attr_stms_export_JSON(struct kndAttrStm *stms,
 
             if (indent_size) {
                 OUT("\n", 1);
-                err = knd_print_offset(out, (depth + 1) * indent_size);
+                err = knd_print_indent(out, (depth + 1) * indent_size);
                 RET_ERR();
             }
             OUT("{", 1);
             if (indent_size) {
                 OUT("\n", 1);
-                err = knd_print_offset(out, (depth + 2) * indent_size);
+                err = knd_print_indent(out, (depth + 2) * indent_size);
                 RET_ERR();
             }
             OUT("\"class\":", strlen("\"class\":"));
@@ -281,7 +281,7 @@ int knd_attr_stms_export_JSON(struct kndAttrStm *stms,
             KND_TASK_ERR("failed to export glosses JSON");
             if (indent_size) {
                 OUT("\n", 1);
-                err = knd_print_offset(out, (depth + 1) * indent_size);
+                err = knd_print_indent(out, (depth + 1) * indent_size);
                 RET_ERR();
             }
             OUT("}", 1);
@@ -294,7 +294,7 @@ int knd_attr_stms_export_JSON(struct kndAttrStm *stms,
             OUT("{", 1);
             if (indent_size) {
                 OUT("\n", 1);
-                err = knd_print_offset(out, (depth + 2) * indent_size);
+                err = knd_print_indent(out, (depth + 2) * indent_size);
                 RET_ERR();
             }
             /*if (!stm->class) {
@@ -310,7 +310,7 @@ int knd_attr_stms_export_JSON(struct kndAttrStm *stms,
                 }*/
             if (indent_size) {
                 OUT("\n", 1);
-                err = knd_print_offset(out, (depth + 2) * indent_size);
+                err = knd_print_indent(out, (depth + 2) * indent_size);
                 RET_ERR();
             }
             OUT("}", 1);
@@ -358,26 +358,26 @@ int knd_attr_stm_export_JSON(struct kndAttrStm *stm,
         OUT(entry->name, entry->name_size);
         OUT("\"", 1);
 
-        err = knd_text_glosses_export_GSL(entry->glosses, true, task, depth + 1);
-        KND_TASK_ERR("failed to export glosses GSL");
+        //err = knd_text_glosses_export_GSL(entry->glosses, task, depth + 1);
+        //KND_TASK_ERR("failed to export glosses GSL");
         break;
     case KND_ATTR_CLS_INNER:
         if (indent_size) {
             OUT("\n", 1);
-            err = knd_print_offset(out, (depth) * indent_size);
+            err = knd_print_indent(out, (depth) * indent_size);
             RET_ERR();
         }
         OUT("{", 1);
         if (indent_size) {
             OUT("\n", 1);
-            err = knd_print_offset(out, (depth + 1) * indent_size);
+            err = knd_print_indent(out, (depth + 1) * indent_size);
             RET_ERR();
         }
         err = inner_stm_export_JSON(stm, task, depth + 1);
         KND_TASK_ERR("failed to export inner stm JSON");
         if (indent_size) {
             OUT("\n", 1);
-            err = knd_print_offset(out, (depth) * indent_size);
+            err = knd_print_indent(out, (depth) * indent_size);
             RET_ERR();
         }
         OUT("}", 1);

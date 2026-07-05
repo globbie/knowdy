@@ -203,22 +203,13 @@ void knd_sentence_str(struct kndSentence *self, size_t depth)
 void knd_text_str(struct kndText *self, size_t depth)
 {
     struct kndState *state;
-    struct kndStateVal *val;
     struct kndPar *par;
     struct kndSentence *sent;
 
     state = atomic_load_explicit(&self->states, memory_order_relaxed);
     if (!state) {
-        if (self->seq) {
-            knd_log("%*stext: \"%.*s\" (lang:%.*s)", depth * KND_OFFSET_SIZE, "",
-                    self->seq->val_size, self->seq->val, self->locale_size, self->locale);
-            return;
-        }
 
         if (self->num_pars) {
-            knd_log("%*stext (lang:%.*s) [par",
-                    depth * KND_OFFSET_SIZE, "",
-                    self->locale_size, self->locale);
             FOREACH (par, self->pars) {
                 knd_log("%*s#%zu:", (depth + 1) * KND_OFFSET_SIZE, "", par->numid);
 
@@ -235,9 +226,6 @@ void knd_text_str(struct kndText *self, size_t depth)
         }
         return;
     }
-    val = state->val;
-    knd_log("%*stext: \"%.*s\" (lang:%.*s)", depth * KND_OFFSET_SIZE, "",
-            val->val_size, val->val, self->locale_size, self->locale);
 }
 
 int knd_text_export(struct kndText *self, knd_format format,

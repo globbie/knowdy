@@ -71,9 +71,9 @@ int knd_proc_arg_export_JSON(struct kndProcArg *self, struct kndTask *task, bool
     }
     err = out->write(out, self->name, self->name_size);                           RET_ERR();
 
-    if (task->ctx->format_offset) {
+    if (task->ctx->format_indent) {
         err = out->writec(out, '\n');                                             RET_ERR();
-        err = knd_print_offset(out, (depth + 1) * task->ctx->format_offset);      RET_ERR();
+        err = knd_print_indent(out, (depth + 1) * task->ctx->format_indent);      RET_ERR();
     }
 
     err = out->write(out, "{_id ", strlen("{_id "));                              RET_ERR();
@@ -84,7 +84,7 @@ int knd_proc_arg_export_JSON(struct kndProcArg *self, struct kndTask *task, bool
         goto final;
     }
 
-    if (task->ctx->format_offset) {
+    if (task->ctx->format_indent) {
         err = out->writec(out, ' ');                                              RET_ERR();
     }
 

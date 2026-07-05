@@ -160,17 +160,19 @@ int knd_text_export_GSL(struct kndText *self, struct kndTask *task, size_t unuse
         OUT(" ", 1);
         OUT(seq->val, seq->val_size);
     }
-    if (self->locale_size) {
+
+    if (self->locale) {
         OUT("{", 1);
         OUT("lang ", strlen("lang "));
-        OUT(self->locale, self->locale_size);
+        OUT(self->locale->id, self->locale->id_size);
         OUT("}", 1);
     }
+
     if (self->trs) {
         OUT("[trn", strlen("[trn"));
         FOREACH (trn, self->trs) {
             OUT("{", 1);
-            OUT(trn->locale, trn->locale_size);
+            OUT(trn->locale_id, trn->locale_id_size);
             OUT("{t ", strlen("{t "));
             OUT(trn->seq->val, trn->seq->val_size);
             OUT("}", 1);
@@ -294,13 +296,13 @@ static int present_gloss(struct kndText *g, struct kndTask *task, size_t depth)
     struct kndOutput *out = task->out;
     int err;
 
-    if (task->ctx->format_offset) {
+    if (task->ctx->format_indent) {
         OUT("\n", 1);
-        err = knd_print_offset(out, depth * task->ctx->format_offset);
+        err = knd_print_indent(out, depth * task->ctx->format_indent);
         RET_ERR();
     }
     OUT("{ ", strlen("{ "));
-    OUT(g->locale, g->locale_size);
+    OUT(g->locale->id, g->locale->id_size);
     OUT(" ", strlen(" "));
     OUT("{t ", strlen("{t "));
     err = out->write_escaped(out, g->seq->val,  g->seq->val_size);
@@ -315,45 +317,34 @@ static int present_gloss(struct kndText *g, struct kndTask *task, size_t depth)
     return knd_OK;
 }
 
-int knd_text_glosses_export_GSL(struct kndText *glosses, bool use_locale,
-                                struct kndTask *task, size_t depth)
+static int match_locale(struct kndLocale *locale, struct kndTaskContext *ctx)
+{
+    for (size_t i = 0; i < ctx->num_locale; i++) {
+        if (locale == ctx->locale[i]) return knd_OK;
+    }
+    return knd_NO_MATCH;
+}
+
+int knd_text_glosses_export_GSL(struct kndText *glosses, struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
-    const char *locale = task->ctx->locale;
-    size_t locale_size = task->ctx->locale_size;
+    struct kndTaskContext *ctx = task->ctx;
     struct kndText *g = NULL;
     int err;
 
     if (!glosses) return knd_OK;
 
-    if (use_locale) {
-        FOREACH (g, glosses) {
-            if (locale_size != g->locale_size) continue;
-            if (!memcmp(locale, g->locale, g->locale_size)) break;
-        }
-        if (!g) return knd_OK;
-
-        if (task->ctx->format_indent) {
-            OUT("\n", 1);
-            err = knd_print_offset(out, depth * task->ctx->format_indent);
-            RET_ERR();
-        }
-
-        OUT("{gloss ", strlen("{gloss "));
-        err = present_gloss(g, task, depth);
-        KND_TASK_ERR("failed to present gloss GSL");
-        OUT("}", 1);
-        return knd_OK;
-    }
-
     if (task->ctx->format_indent) {
         OUT("\n", 1);
-        err = knd_print_offset(out, depth * task->ctx->format_indent);
+        err = knd_print_indent(out, depth * task->ctx->format_indent);
         RET_ERR();
     }
 
     OUT("[gloss ", strlen("[gloss "));
     FOREACH (g, glosses) {
+        err = match_locale(g->locale, ctx);
+        if (err == knd_NO_MATCH) continue;
+
         err = present_gloss(g, task, depth);
         KND_TASK_ERR("failed to present gloss GSL");
     }

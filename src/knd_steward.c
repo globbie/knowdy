@@ -15,6 +15,7 @@
 #include "knd_repo.h"
 #include "knd_mempool.h"
 #include "knd_storage.h"
+#include "knd_text.h"
 #include "knd_output.h"
 #include "knd_utils.h"
 
@@ -343,6 +344,118 @@ static gsl_err_t parse_schema_path(void *obj, const char *rec, size_t *total_siz
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
 
+static gsl_err_t parse_locale_item(void *obj, const char *rec, size_t *total_size)
+{
+    struct kndSteward *steward = obj;
+    struct kndLocaleConfig *conf = &steward->locale_config;
+    struct kndLocale *l;
+    gsl_err_t parser_err;
+
+    l = malloc(sizeof(struct kndLocale));
+    if (!l) return make_gsl_err_external(knd_NOMEM);
+    memset(l, 0, sizeof(struct kndLocale));
+    
+    struct gslTaskSpec specs[] = {
+       {   .is_implied = true,
+           .buf = l->id,
+           .buf_size = &l->id_size,
+           .max_buf_size = KND_ID_SIZE
+       }
+    };
+
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) {
+        knd_log("-- locale config parse {error %d} {tag %.*s}", parser_err.code,
+                parser_err.val_size, parser_err.val);
+        return parser_err;
+    }
+
+    l->numid = conf->num_supported;
+    conf->supported[conf->num_supported] = l;
+    conf->num_supported++;
+
+    if (DEBUG_STEWARD_LEVEL_TMP) {
+        knd_log(">> {supported-locale %.*s {numid %zu}}", l->id_size, l->id, l->numid);
+    }
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_default_locale_item(void *obj, const char *rec, size_t *total_size)
+{
+    struct kndSteward *steward = obj;
+    struct kndLocaleConfig *conf = &steward->locale_config;
+    struct kndLocale *l;
+    gsl_err_t parser_err;
+
+    l = malloc(sizeof(struct kndLocale));
+    if (!l) return make_gsl_err_external(knd_NOMEM);
+    memset(l, 0, sizeof(struct kndLocale));
+    
+    struct gslTaskSpec specs[] = {
+       {   .is_implied = true,
+           .buf = l->id,
+           .buf_size = &l->id_size,
+           .max_buf_size = KND_ID_SIZE
+       }
+    };
+
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) {
+        knd_log("-- default locale config parse {error %d} {tag %.*s}", parser_err.code,
+                parser_err.val_size, parser_err.val);
+        return parser_err;
+    }
+
+    l->numid = conf->num_defaults;
+    conf->defaults[conf->num_defaults] = l;
+    conf->num_defaults++;
+
+    if (DEBUG_STEWARD_LEVEL_TMP) {
+        knd_log(">> {default-locale %.*s {numid %zu}}", l->id_size, l->id, l->numid);
+    }
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t parse_supported_locale(void *obj, const char *rec, size_t *total_size)
+{
+    struct gslTaskSpec item_spec = {
+        .is_list_item = true,
+        .parse = parse_locale_item,
+        .obj = obj
+    };
+    return gsl_parse_array(&item_spec, rec, total_size);
+}
+
+static gsl_err_t parse_default_locale(void *obj, const char *rec, size_t *total_size)
+{
+    struct gslTaskSpec item_spec = {
+        .is_list_item = true,
+        .parse = parse_default_locale_item,
+        .obj = obj
+    };
+    return gsl_parse_array(&item_spec, rec, total_size);
+}
+
+static gsl_err_t parse_locale(void *obj, const char *rec, size_t *total_size)
+{
+    struct gslTaskSpec specs[] = {
+        {   .type = GSL_GET_ARRAY_STATE,
+            .name = "support",
+            .name_size = strlen("support"),
+            .parse = parse_supported_locale,
+            .obj = obj
+        },
+        {   .type = GSL_GET_ARRAY_STATE,
+            .name = "default",
+            .name_size = strlen("default"),
+            .parse = parse_default_locale,
+            .obj = obj
+        }
+    };
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
 static gsl_err_t parse_steward_config(void *obj, const char *rec, size_t *total_size)
 {
     struct kndSteward *self = obj;
@@ -379,6 +492,11 @@ static gsl_err_t parse_steward_config(void *obj, const char *rec, size_t *total_
         {   .name = "memory",
             .name_size = strlen("memory"),
             .parse = knd_parse_mem_main_config,
+            .obj = obj,
+        },
+        {   .name = "locale",
+            .name_size = strlen("locale"),
+            .parse = parse_locale,
             .obj = obj,
         },
         {   .type = GSL_GET_ARRAY_STATE,

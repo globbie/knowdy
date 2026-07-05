@@ -43,9 +43,9 @@ static gsl_err_t parse_synode(void *obj, const char *rec, size_t *total_size);
 static gsl_err_t set_gloss_locale(void *obj, const char *name, size_t name_size)
 {
     struct kndText *self = obj;
-    if (name_size >= KND_SHORT_NAME_SIZE) return make_gsl_err(gsl_LIMIT);
-    self->locale = name;
-    self->locale_size = name_size;
+    if (name_size >= KND_ID_SIZE) return make_gsl_err(gsl_LIMIT);
+    self->locale_id_size = name_size;
+    memcpy(self->locale_id, name, name_size);
     return make_gsl_err(gsl_OK);
 }
 
@@ -128,8 +128,8 @@ static gsl_err_t parse_gloss_item(void *obj, const char *rec, size_t *total_size
         return parser_err;
     }
 
-    if (t->locale_size == 0 || t->seq == NULL) {
-        knd_log("-- locale failure size %zu", t->locale_size);
+    if (t->locale_id_size == 0 || t->seq == NULL) {
+        knd_log("-- locale failure size %zu", t->locale_id_size);
         return make_gsl_err(gsl_FORMAT);  // error: both attrs required
     }
 
@@ -160,9 +160,11 @@ gsl_err_t knd_parse_gloss_array(void *obj, const char *rec, size_t *total_size)
 static gsl_err_t set_text_lang(void *obj, const char *val, size_t val_size)    
 {
     struct LocalContext *ctx = obj;
-    struct kndText *self = ctx->text;
-    self->locale_size = val_size;
-    self->locale = val;
+    struct kndText *text = ctx->text;
+    if (val_size > KND_ID_SIZE) return make_gsl_err(gsl_FORMAT);
+
+    memcpy(text->locale_id, val, val_size);
+    text->locale_id_size = val_size;
     return make_gsl_err(gsl_OK);
 }
 

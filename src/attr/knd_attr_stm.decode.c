@@ -124,6 +124,7 @@ static int decode_cls_ref_attr_stm(struct kndClass *unused_var(base),
     return knd_OK;
 }
 
+#if 0
 static int decode_uint(struct kndAttrStm *stm, struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     struct kndCharSeq *seq;
@@ -170,6 +171,7 @@ static int decode_ureal(struct kndAttrStm *stm, struct kndRepoSnapshot *snapshot
     //stm->val_size = stm->val_id_size;
     return knd_OK;
 }
+#endif
 
 static int decode_str(struct kndAttrStm *stm, struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
@@ -209,14 +211,14 @@ static int decode_attr_stm(struct kndClass *base, struct kndAttrStm *stm,
                      stm->name_size, stm->name, stm->id_size, stm->id);
         break;
     case KND_ATTR_UINT:
-        err = decode_uint(stm, snapshot, task);
-        KND_TASK_ERR("failed to decode {%.*s {uint %.*s}}",
-                     stm->name_size, stm->name, stm->val_id_size, stm->val_id);
+        //err = decode_uint(stm, snapshot, task);
+        //KND_TASK_ERR("failed to decode {%.*s {uint %.*s}}",
+        //             stm->name_size, stm->name, stm->val_id_size, stm->val_id);
         break;
     case KND_ATTR_UREAL:
-        err = decode_ureal(stm, snapshot, task);
-        KND_TASK_ERR("failed to decode {%.*s {ureal %.*s}}",
-                     stm->name_size, stm->name, stm->val_id_size, stm->val_id);
+        //err = decode_ureal(stm, snapshot, task);
+        //KND_TASK_ERR("failed to decode {%.*s {ureal %.*s}}",
+        //             stm->name_size, stm->name, stm->val_id_size, stm->val_id);
         break;
     case KND_ATTR_STR:
         err = decode_str(stm, snapshot, task);

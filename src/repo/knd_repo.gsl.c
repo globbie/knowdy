@@ -569,7 +569,7 @@ static int present_idx_meta(struct kndSet *idx, const char *name, size_t name_si
 
     if (indent_size) {
         OUT("\n", 1);
-        err = knd_print_offset(out, (depth + 1) * indent_size);
+        err = knd_print_indent(out, (depth + 1) * indent_size);
         RET_ERR();
     }
 
@@ -577,7 +577,7 @@ static int present_idx_meta(struct kndSet *idx, const char *name, size_t name_si
     OUT(name, name_size);
 
     OUT("\n", 1);
-    err = knd_print_offset(out, (depth + 2) * indent_size);
+    err = knd_print_indent(out, (depth + 2) * indent_size);
     RET_ERR();
     
     OUT("[leaf", strlen("[leaf"));
@@ -586,7 +586,7 @@ static int present_idx_meta(struct kndSet *idx, const char *name, size_t name_si
         leaf = idx->store->leaves[i];
         if (indent_size) {
             OUT("\n", 1);
-            err = knd_print_offset(out, (depth + 3) * indent_size);
+            err = knd_print_indent(out, (depth + 3) * indent_size);
             RET_ERR();
         }
         err = knd_storage_leaf_export_GSL(leaf, out, indent_size, depth + 3, task);
@@ -612,7 +612,7 @@ int knd_repo_save_meta(struct kndRepoSnapshot *s, struct kndTask *main_task, str
 
     if (indent_size) {
         OUT("\n", 1);
-        err = knd_print_offset(out, (depth) * indent_size);
+        err = knd_print_indent(out, (depth) * indent_size);
         RET_ERR();
     }
 

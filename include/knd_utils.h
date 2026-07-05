@@ -14,7 +14,7 @@ void knd_num_to_str(size_t numval, char *buf, size_t *buf_size, size_t base);
 size_t knd_generate_random_id(char *buf, size_t chunk_size, size_t num_chunks, char separ);
 
 void knd_build_conc_abbr(const char *name, size_t name_size, char *buf, size_t *buf_size);
-int knd_print_offset(struct kndOutput *out, size_t num_spaces);
+int knd_print_indent(struct kndOutput *out, size_t num_spaces);
 
 static inline void knd_gsp_num_to_num(const char *val, size_t val_size, size_t *num) {
     knd_calc_num_id(val, val_size, num);

@@ -331,14 +331,14 @@ int knd_storage_leaf_export_GSL(struct kndStorageLeaf *leaf, struct kndOutput *o
 
     if (indent_size) {
         OUT("\n", 1);
-        err = knd_print_offset(out, (depth + 1) * indent_size);
+        err = knd_print_indent(out, (depth + 1) * indent_size);
         RET_ERR();
     }
     OUTF("{num-elems %zu}", leaf->num_elems);
 
     if (indent_size) {
         OUT("\n", 1);
-        err = knd_print_offset(out, (depth + 1) * indent_size);
+        err = knd_print_indent(out, (depth + 1) * indent_size);
         RET_ERR();
     }
     OUTF("{file-size %zu}", leaf->curr_size);

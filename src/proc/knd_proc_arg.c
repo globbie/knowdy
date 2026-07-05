@@ -48,47 +48,19 @@ void knd_proc_arg_str(struct kndProcArg *self, size_t depth)
     knd_log("%*s    }", depth * KND_OFFSET_SIZE, "");
 }
 
-
-static int export_gloss_JSON(struct kndText *tr,
-                             struct kndTask *task,
-                             struct kndOutput *out,
-                             bool separ_needed)
-{
-    int err;
-
-    while (tr) {
-        if (task->ctx->locale_size != tr->locale_size) continue;
-
-        if (memcmp(task->ctx->locale, tr->locale, tr->locale_size)) {
-            goto next_tr;
-        }
-        if (separ_needed) {
-            err = out->write(out, ",", 1);                                        RET_ERR();
-        }
-        err = out->write(out, "\"_gloss\":\"", strlen("\"_gloss\":\""));          RET_ERR();
-        err = out->write(out, tr->seq->val,  tr->seq->val_size);                            RET_ERR();
-        err = out->write(out, "\"", 1);                                           RET_ERR();
-        break;
-    next_tr:
-        tr = tr->next;
-    }
-    return knd_OK;
-}
-
-static int export_JSON(struct kndProcArg *self, struct kndTask *task, struct kndOutput *out)
+static int export_JSON(struct kndProcArg *self, struct kndTask *unused_var(task), struct kndOutput *out)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size;
-    bool in_list = false;
     int err;
 
     err = out->write(out, "{\"_name\":\"", strlen("{\"_name\":\""));              RET_ERR();
     err = out->write(out, self->name, self->name_size);                           RET_ERR();
     err = out->write(out, "\"", 1);                                               RET_ERR();
 
-    if (self->tr) {
-        err = export_gloss_JSON(self->tr,  task, out, in_list);                   RET_ERR();
-    }
+    //if (self->tr) {
+    //    err = export_gloss_JSON(self->tr,  task, out, in_list);                   RET_ERR();
+    //}
 
     if (self->classname_size) {
         err = out->write(out, ",\"class\":", strlen(",\"class\":"));        RET_ERR();
@@ -138,25 +110,9 @@ static int export_GSP(struct kndProcArg *self, struct kndOutput *out)
 {
     char buf[KND_NAME_SIZE];
     size_t buf_size;
-    struct kndText *tr;
     int err;
     err = out->writec(out, '{');                                                  RET_ERR();
     err = out->write(out, self->name, self->name_size);                           RET_ERR();
-
-    if (self->tr) {
-        err = out->write(out,
-                         "[_g", strlen("[_g"));                                   RET_ERR();
-    }
-    for (tr = self->tr; tr; tr = tr->next) {
-        err = out->write(out, "{", 1);                                            RET_ERR();
-        err = out->write(out, tr->locale,  tr->locale_size);                      RET_ERR();
-        err = out->write(out, "{t ", 3);                                          RET_ERR();
-        err = out->write(out, tr->seq->val,  tr->seq->val_size);                            RET_ERR();
-        err = out->write(out, "}}", 2);                                           RET_ERR();
-    }
-    if (self->tr) {
-        err = out->write(out, "]", 1);                                            RET_ERR();
-    }
 
     if (self->classname_size) {
         err = out->write(out, "{c ", strlen("{c "));                              RET_ERR();

@@ -76,8 +76,8 @@ static int attr_stm_list_export_GSL(struct kndAttrStm *stm,
     }
     if (indent_size) {
         OUT("\n", 1);
-        err = knd_print_offset(out, depth * indent_size);
-        KND_TASK_ERR("offset output failed");
+        err = knd_print_indent(out, depth * indent_size);
+        KND_TASK_ERR("indent output failed");
     }
 
     OUT("[", 1);
@@ -144,8 +144,8 @@ int knd_attr_stm_export_GSL(struct kndAttrStm *stm, struct kndTask *task, size_t
 
     if (indent_size) {
         OUT("\n", 1);
-        err = knd_print_offset(out, depth * indent_size);
-        KND_TASK_ERR("GSL offset output failed");
+        err = knd_print_indent(out, depth * indent_size);
+        KND_TASK_ERR("GSL indent output failed");
     }
 
     if (stm->is_list_item) {
@@ -179,7 +179,7 @@ int knd_attr_stm_export_GSL(struct kndAttrStm *stm, struct kndTask *task, size_t
 
         OUT(entry->name, entry->name_size);
 
-        err = knd_text_glosses_export_GSL(entry->glosses, true, task, depth + 1);
+        err = knd_text_glosses_export_GSL(entry->glosses, task, depth + 1);
         KND_TASK_ERR("failed to export glosses GSL");
         break;
     case KND_ATTR_CLS_INNER:

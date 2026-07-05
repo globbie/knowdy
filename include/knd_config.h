@@ -248,7 +248,8 @@ static_assert(KND_MAX_FACETS <= KND_RADIX_BASE, "Max facets must not exceed the 
 #define KND_ID_SIZE  (8 * sizeof(char))
 #define KND_ID_BATCH_SIZE 10
 #define KND_GUID_SIZE  (64 * sizeof(char))
-#define KND_LOCALE_SIZE 8
+
+#define KND_MAX_LOCALE 64
 
 #define KND_MAX_MIGRATIONS 256
 #define KND_MAX_SPECS 8

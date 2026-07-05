@@ -182,6 +182,7 @@ static int stm_export_JSON(struct kndStatement *stm, struct kndTask *task)
     return knd_OK;
 }
 
+#if 0
 static int export_gloss(struct kndText *glosses, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
@@ -226,12 +227,13 @@ static int export_translation(struct kndText *trs, struct kndTask *task)
     }
     return knd_NO_MATCH;
 }
+#endif
 
 int knd_synode_export_JSON(struct kndSyNode *syn, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     // struct kndSyNodeSpec *spec;
-    int err;
+    //int err;
 
     OUT("{", 1);
     OUT("\"id\":\"", strlen("\"id\":\""));
@@ -247,8 +249,8 @@ int knd_synode_export_JSON(struct kndSyNode *syn, struct kndTask *task)
     OUT(syn->role->name, syn->role->name_size);
     OUT("\"", 1);
 
-    err = export_gloss(syn->role->entry->glosses, task);
-    KND_TASK_ERR("failed to export a gloss");
+    //err = export_gloss(syn->role->entry->glosses, task);
+    //KND_TASK_ERR("failed to export a gloss");
 
     OUTF(",\"pos\":%zu", syn->linear_pos);
     if (syn->linear_len > 1) {
@@ -330,12 +332,12 @@ int knd_text_export_JSON(struct kndText *self, struct kndTask *task, size_t unus
     struct kndOutput *out = task->out;
     struct kndPar *par;
     struct kndSentence *sent;
-    struct kndCharSeq *seq = self->seq;
+    //struct kndCharSeq *seq = self->seq;
     bool separ_needed = false;
     int err;
 
     OUT("{", 1);
-    
+#if 0    
     err = export_translation(self->trs, task);
     switch (err) {
     case knd_NO_MATCH:
@@ -358,6 +360,7 @@ int knd_text_export_JSON(struct kndText *self, struct kndTask *task, size_t unus
         KND_TASK_LOG("failed to export a localized translation");
         return err;
     }
+#endif
 
     if (self->num_pars) {
         if (separ_needed) {
@@ -458,14 +461,14 @@ int knd_text_glosses_export_JSON(struct kndText *glosses,
     int err;
 
     FOREACH (g, glosses) {
-        if (task->ctx->locale_size != g->locale_size) continue;
-        if (memcmp(task->ctx->locale, g->locale, g->locale_size)) {
-            continue;
-        }
+        //if (task->ctx->locale_id_size != g->locale->id_size) continue;
+        //if (memcmp(task->ctx->locale->id, g->locale->id, g->locale->id_size)) {
+        //    continue;
+        //}
         OUT(",", 1);
         if (indent_size) {
             OUT("\n", 1);
-            err = knd_print_offset(out, depth * indent_size);
+            err = knd_print_indent(out, depth * indent_size);
             RET_ERR();
         }
         OUT("\"gloss\":", strlen("\"gloss\":"));
@@ -481,7 +484,7 @@ int knd_text_glosses_export_JSON(struct kndText *glosses,
             OUT(",", 1);
             if (indent_size) {
                 OUT("\n", 1);
-                err = knd_print_offset(out, depth * indent_size);
+                err = knd_print_indent(out, depth * indent_size);
                 RET_ERR();
             }
             OUT("\"abbr\":", strlen("\"abbr\":"));

@@ -86,6 +86,7 @@ struct kndTaskDestination
     size_t URI_size;
 
     //  auth
+
 };
 
 struct kndTaskContext {
@@ -110,11 +111,10 @@ struct kndTaskContext {
 
     int error;
 
-    char locale[KND_ID_SIZE];
-    size_t locale_size;
-
+    struct kndLocale *locale[KND_MAX_LOCALE];
+    size_t num_locale;
+    
     knd_format format;
-    size_t format_offset;
     size_t format_indent;
 
     struct kndText *tr;
@@ -129,14 +129,11 @@ struct kndTaskContext {
     bool use_numid;
     bool use_alias;
 
-    // TODO: subscription channel
-    // to push any commits
-
     struct kndTaskDestination *dest;
     struct kndRepo *repo;
 
     /* temp refs to commits */
-    struct kndStateRef  *class_state_refs;
+    //struct kndStateRef  *class_state_refs;
     struct kndStateRef  *inner_class_state_refs;
     struct kndStateRef  *class_inst_state_refs;
     size_t num_class_inst_state_refs;

@@ -23,7 +23,6 @@
 
 #include "knd_config.h"
 #include "knd_state.h"
-#include "knd_set.h"
 #include "knd_storage.h"
 #include "knd_shared_idx.h"
 
@@ -31,7 +30,9 @@ struct kndTask;
 struct kndSyNode;
 struct kndStatement;
 struct kndRepo;
+struct kndRepoSnapshot;
 struct kndAttrStm;
+struct kndSet;
 
 typedef enum knd_charseq_enc_t {
     KND_CHARSEQ_UTF8,
@@ -48,6 +49,22 @@ typedef enum knd_proposition_t {
     KND_RELATION_PROPOSITION,
     KND_PROCESS_PROPOSITION
 } knd_proposition_t;
+
+struct kndLocale
+{
+    char id[KND_ID_SIZE];
+    size_t id_size;
+    size_t numid;
+};
+
+struct kndLocaleConfig
+{
+    struct kndLocale *supported[KND_MAX_LOCALE];
+    size_t num_supported;
+
+    struct kndLocale *defaults[KND_MAX_LOCALE];
+    size_t num_defaults;
+};
 
 struct kndCharSeq
 {
@@ -262,8 +279,7 @@ struct kndText
 
     char locale_id[KND_ID_SIZE];
     size_t locale_id_size;
-    const char *locale;
-    size_t locale_size;
+    struct kndLocale *locale;
 
     struct kndAttrStm *attr_stm;
     struct kndCharSeq *seq;
@@ -309,7 +325,7 @@ int knd_text_export_query_report(struct kndTask *task);
 int knd_text_export_query_report_GSL(struct kndTask *task);
 
 int knd_text_export_GSL(struct kndText *glosses, struct kndTask *task, size_t depth);
-int knd_text_glosses_export_GSL(struct kndText *text, bool use_locale, struct kndTask *task, size_t depth);
+int knd_text_glosses_export_GSL(struct kndText *text, struct kndTask *task, size_t depth);
 int knd_text_glosses_export_JSON(struct kndText *glosses, struct kndTask *task, size_t depth);
 
 int knd_text_export_GSP(struct kndText *self, struct kndTask *task);

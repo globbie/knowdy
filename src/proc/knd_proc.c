@@ -47,7 +47,6 @@ static void proc_base_str(struct kndProcVar *self,
 
 void knd_proc_str(struct kndProc *self, size_t depth)
 {
-    struct kndText *tr;
     struct kndProcArg *arg;
     struct kndProcCall *call;
     struct kndProcVar *base;
@@ -56,11 +55,6 @@ void knd_proc_str(struct kndProc *self, size_t depth)
             depth * KND_OFFSET_SIZE, "",
             self->name_size, self->name,
             self->entry->id_size, self->entry->id);
-
-    for (tr = self->tr; tr; tr = tr->next) {
-        knd_log("%*s  {%.*s %.*s}", (depth + 1) * KND_OFFSET_SIZE, "",
-                tr->locale_size, tr->locale, tr->seq->val_size, tr->seq->val);
-    }
 
     for (base = self->bases; base; base = base->next) {
         proc_base_str(base, depth + 1);

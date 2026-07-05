@@ -5,6 +5,7 @@
 #include <knd_storage.h>
 #include <knd_memblock.h>
 #include <knd_mempool.h>
+#include <knd_text.h>
 
 struct kndUser;
 struct kndRepoSnapshot;
@@ -68,6 +69,7 @@ struct kndSteward
     struct kndTask *task;
     struct kndTask *shift_task;
 
+    struct kndLocaleConfig locale_config;
     struct kndUser *user;
 
     struct kndOutput *out;
