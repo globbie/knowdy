@@ -25,10 +25,11 @@ gsl_err_t knd_commit_run(void *obj, const char *unused_var(rec), size_t *unused_
 {
     struct kndTask *task = obj;
     //struct kndCommit *commit;
+
     //gsl_err_t parser_err;
     // int err;
 
-    task->type = KND_TASK_QUERY;
+    task->type = KND_TASK_COMMIT;
     //task->ctx->commit = commit;
 
     /*    struct gslTaskSpec specs[] = {
@@ -142,36 +143,15 @@ static int resolve_class_inst_commit(struct kndStateRef *state_refs, struct kndC
     return knd_OK;
 }
 
+#if 0
 int knd_commit_dedup(struct kndCommit *commit, struct kndRepoSnapshot *unused_var(snapshot),
                      struct kndTask *unused_var(task))
 {
-    // struct kndState *state;
-    struct kndClassEntry *entry;
-    struct kndStateRef *ref;
-
-    FOREACH (ref, commit->class_state_refs) {
-        if (ref->state->phase == KND_REMOVED) {
-            continue;
-        }
-        entry = ref->obj;
-
-        if (DEBUG_COMMIT_LEVEL_2) {
-            knd_log(".. dedup {cls %.*s}", entry->name_size, entry->name);
-        }
-
-        //err = knd_class_dedup(entry->class, task);
-        //KND_TASK_ERR("failed to dedup class \"%.*s\"", entry->name_size, entry->name);
-
-        /*state = ref->state;
-        state->commit = commit;
-        if (!state->children) continue;
-
-        err = dedup_class_inst_commit(state->children, commit, task);
-        KND_TASK_ERR("failed to dedup commit of class insts");
-        */
-    }
+    // TODO: each new concept (class, proc ..) should bring unique value:
+    // make sure no duplicate definitions exist in the schema
     return knd_OK;
 }
+#endif
 
 int knd_commit_resolve(struct kndCommit *commit, struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {

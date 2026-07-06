@@ -705,8 +705,8 @@ int knd_cls_entry_unmarshall(const char *unused_var(elem_id), size_t unused_var(
                              void **result, struct kndTask *task)
 {
     struct LocalContext *ctx = ctx_obj;
+    struct kndClassEntry *entry = ctx->entry;
     struct kndTaskCache *cache = &task->cache;
-    struct kndClassEntry *entry;
     gsl_err_t parser_err;
     int err;
 
@@ -715,12 +715,18 @@ int knd_cls_entry_unmarshall(const char *unused_var(elem_id), size_t unused_var(
                 ctx->id_size, ctx->id, rec_size, rec);
     }
 
-    /* NB: allocation from the _cache_ pool */
-    err = knd_class_entry_new(&entry, cache->mempool);
-    KND_TASK_ERR("failed to alloc a cls entry");
-    memcpy(entry->id, ctx->id, ctx->id_size);
-    entry->id_size = ctx->id_size;
-    ctx->entry = entry;
+    if (!entry) {
+        if (!ctx->id_size) {
+            err = knd_FORMAT;
+            KND_TASK_ERR("no cls entry id specified");
+        }
+        /* NB: allocation from the _cache_ pool */
+        err = knd_class_entry_new(&entry, cache->mempool);
+        KND_TASK_ERR("failed to alloc a cls entry");
+        memcpy(entry->id, ctx->id, ctx->id_size);
+        entry->id_size = ctx->id_size;
+        ctx->entry = entry;
+    }
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
@@ -763,7 +769,7 @@ int knd_cls_entry_unmarshall(const char *unused_var(elem_id), size_t unused_var(
         KND_TASK_ERR("failed to read cls entry name id {cls %.*s}", ctx->id_size, ctx->id);
     }
 
-    if (DEBUG_CLASS_READ_LEVEL_2) {
+    if (DEBUG_CLASS_READ_LEVEL_3) {
         knd_log("++ {cls-entry {name-id %.*s} {id %.*s}} parsed OK!",
                 entry->name_id_size, entry->name_id, entry->id_size, entry->id);
     }

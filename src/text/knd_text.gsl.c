@@ -317,11 +317,25 @@ static int present_gloss(struct kndText *g, struct kndTask *task, size_t depth)
     return knd_OK;
 }
 
-static int match_locale(struct kndLocale *locale, struct kndTaskContext *ctx)
+static int match_locale(struct kndLocale *locale, struct kndTask *task)
 {
-    for (size_t i = 0; i < ctx->num_locale; i++) {
-        if (locale == ctx->locale[i]) return knd_OK;
+    struct kndTaskContext *ctx = task->ctx;
+    struct kndLocaleConfig *conf = &task->steward->locale_config;
+
+    if (ctx->num_locale) {
+        for (size_t i = 0; i < ctx->num_locale; i++) {
+            if (locale == ctx->locale[i]) return knd_OK;
+        }
+        return knd_NO_MATCH;
     }
+
+    /* check defaults */
+    for (size_t i = 0; i < conf->num_defaults; i++) {
+        if (locale == conf->defaults[i]) {
+            return knd_OK;
+        }
+    }
+
     return knd_NO_MATCH;
 }
 
@@ -330,22 +344,31 @@ int knd_text_glosses_export_GSL(struct kndText *glosses, struct kndTask *task, s
     struct kndOutput *out = task->out;
     struct kndTaskContext *ctx = task->ctx;
     struct kndText *g = NULL;
+    bool localized_glosses_match = false;
     int err;
 
-    if (!glosses) return knd_OK;
+    FOREACH (g, glosses) {
+        err = match_locale(g->locale, task);
+        if (err == knd_OK) {
+            localized_glosses_match = true;
+            break;
+        }
+    }
 
-    if (task->ctx->format_indent) {
+    if (!localized_glosses_match) return knd_OK;
+
+    if (ctx->format_indent) {
         OUT("\n", 1);
-        err = knd_print_indent(out, depth * task->ctx->format_indent);
+        err = knd_print_indent(out, depth * ctx->format_indent);
         RET_ERR();
     }
 
     OUT("[gloss ", strlen("[gloss "));
     FOREACH (g, glosses) {
-        err = match_locale(g->locale, ctx);
+        err = match_locale(g->locale, task);
         if (err == knd_NO_MATCH) continue;
 
-        err = present_gloss(g, task, depth);
+        err = present_gloss(g, task, depth + 1);
         KND_TASK_ERR("failed to present gloss GSL");
     }
     OUT("]", 1);

@@ -116,6 +116,23 @@ static int expand_cls_entry(void *elem, void *ctx_obj, struct kndTask *task)
     }
 
     ctx->entry = entry;
+    ctx->id = entry->id;
+    ctx->id_size = entry->id_size;
+
+    /* read cs entry glosses */
+    err = knd_set_fetch(cls_idx, entry->id, entry->id_size, knd_cls_entry_unmarshall,
+                        ctx, (void**)&entry, task);
+    switch (err) {
+    case knd_OK:
+        err = knd_cls_entry_decode(entry, snapshot, task);
+        KND_TASK_ERR("failed to decode {cls-entry %.*s}", entry->id_size, entry->id);
+        break;
+    case knd_NO_MATCH:
+        break;
+    default:
+        KND_TASK_ERR("failed to fetch a cls entry {cls {id %.*s}}", entry->id_size, entry->id);
+    }
+
     err = knd_set_fetch(cls_idx, entry->id, entry->id_size, knd_cls_body_unmarshall, ctx, (void**)&cls, task);
     switch (err) {
     case knd_OK:
@@ -142,9 +159,6 @@ static int read_cls_cache(struct kndRepoSnapshot *snapshot, struct kndTask *task
 {
     struct kndSet *cls_cache_idx = snapshot->cache.cls_cache_idx;
     struct kndSetStore *store = cls_cache_idx->store;
-    //struct kndDict *name_idx = snapshot->cache.cls_name_idx;
-    //struct kndSet *str_idx = snapshot->cache.str_idx;
-    //struct kndSet *cls_idx = snapshot->cache.cls_idx;
     struct kndStorageLeaf *leaf;
     size_t total_cache_items = 0;
     int err;

@@ -357,3 +357,16 @@ int knd_charseq_register(struct kndRepoSnapshot *snapshot, const char *str, size
     return knd_NO_MATCH;
 }
 
+int knd_text_match_locale(const char *locale_id, size_t locale_id_size,
+                          struct kndLocale **result, struct kndLocaleConfig *conf)
+{
+    struct kndLocale *locale;
+    for (size_t i = 0; i < conf->num_supported; i++) {
+        locale = conf->supported[i];
+        if (locale->id_size != locale_id_size) continue;
+        if (memcmp(locale->id, locale_id, locale_id_size)) continue; 
+        *result = locale;
+        return knd_OK;
+    }
+    return knd_NO_MATCH;
+}

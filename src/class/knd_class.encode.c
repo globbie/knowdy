@@ -55,14 +55,14 @@ struct LocalContext {
     struct kndClassBasePred *class_var;
 };
 
-static int export_glosses(struct kndClass *self, struct kndOutput *out)
+static int export_glosses(struct kndClass *cls, struct kndOutput *out)
 {
     char idbuf[KND_ID_SIZE];
     size_t id_size = 0;
     struct kndText *t;
 
     OUT("[g", strlen("[g"));
-    FOREACH (t, self->entry->glosses) {
+    FOREACH (t, cls->entry->glosses) {
         OUT("{", 1);
         OUT(t->locale->id, t->locale->id_size);
         OUT("{t ", strlen("{t "));
@@ -81,10 +81,10 @@ static int export_glosses(struct kndClass *self, struct kndOutput *out)
     return knd_OK;
 }
 
-static int export_base_preds(struct kndClass *self, struct kndTask *task)
+static int export_base_preds(struct kndClass *cls, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
-    struct kndClassBasePred *bp = self->base_preds;
+    struct kndClassBasePred *bp = cls->base_preds;
     int err;
 
     assert (bp != NULL);
@@ -95,13 +95,13 @@ static int export_base_preds(struct kndClass *self, struct kndTask *task)
     }
 
     OUT("[is", strlen("[is"));
-    FOREACH (bp, self->base_preds) {
+    FOREACH (bp, cls->base_preds) {
         OUT("{", 1);
 
         if (bp->entry->id_size == 0) {
             knd_log("unresolved base class ref %.*s in {cls %.*s}?",
                     bp->entry->name_size, bp->entry->name,
-                    self->name_size, self->name);
+                    cls->name_size, cls->name);
             return knd_CONFLICT;
         }
 
@@ -116,20 +116,20 @@ static int export_base_preds(struct kndClass *self, struct kndTask *task)
     return knd_OK;
 }
 
-static int export_ancestors(struct kndClass *self, struct kndTask *task)
+static int export_ancestors(struct kndClass *cls, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndClassRef *ref;
     struct kndClassEntry *entry;
 
     /* ignore root concept */
-    if (self->num_ancestors == 1) {
-        if (!self->ancestors->entry->id_size) 
+    if (cls->num_ancestors == 1) {
+        if (!cls->ancestors->entry->id_size) 
             return knd_OK;
     }
 
     OUT("[anc", strlen("[anc"));
-    FOREACH (ref, self->ancestors) {
+    FOREACH (ref, cls->ancestors) {
         entry = ref->entry;
         OUT("{", 1);
         OUT(entry->id, entry->id_size);
@@ -139,13 +139,13 @@ static int export_ancestors(struct kndClass *self, struct kndTask *task)
     return knd_OK;
 }
 
-static int export_attrs(struct kndClass *self, struct kndTask *task)
+static int export_attrs(struct kndClass *cls, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndAttr *attr;
 
     OUT("[a", strlen("[a"));
-    FOREACH (attr, self->attrs) {
+    FOREACH (attr, cls->attrs) {
         OUT("{", 1);
         OUT(attr->id, attr->id_size);
         OUT("}", 1);
@@ -154,13 +154,13 @@ static int export_attrs(struct kndClass *self, struct kndTask *task)
     return knd_OK;
 }
 
-static int export_children(struct kndClass *self, struct kndTask *task)
+static int export_children(struct kndClass *cls, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndClassRef *ref;
 
     OUT("[c", strlen("[c"));
-    FOREACH (ref, self->children) {
+    FOREACH (ref, cls->children) {
         OUT("{", 1);
         OUT(ref->entry->id, ref->entry->id_size);
         OUT("}", 1);
@@ -180,32 +180,32 @@ static int export_class_ref(void *elem, void *unused_var(ctx), struct kndTask *t
     return knd_OK;
 }
 
-static int export_descendants(struct kndClass *self, struct kndTask *task)
+static int export_descendants(struct kndClass *cls, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     int err;
 
-    OUTF("{num-desc %zu}", self->descendants->num_elems);
+    OUTF("{num-desc %zu}", cls->descendants->num_elems);
 
-    if (self->num_descendants == self->num_children) return knd_OK;
-    if (self->num_descendants > KND_MAX_DESCENDANTS_IDX_SIZE) {
+    if (cls->num_descendants == cls->num_children) return knd_OK;
+    if (cls->num_descendants > KND_MAX_DESCENDANTS_IDX_SIZE) {
         return knd_OK;
     }
 
     OUT("[desc", strlen("[desc"));
-    err = knd_set_map(self->descendants, NULL, NULL, NULL, export_class_ref, NULL, task);
+    err = knd_set_map(cls->descendants, NULL, NULL, NULL, export_class_ref, NULL, task);
     KND_TASK_ERR("failed to export descendants");
     OUT("]", 1);
 
     return knd_OK;
 }
 
-static int export_class_body_commits(struct kndClass *self,
+static int export_class_body_commits(struct kndClass *cls,
                                      struct kndClassCommit *unused_var(class_commit),
                                      struct kndTask *task)
 {
     struct kndOutput *out = task->out;
-    struct kndState *state = self->states;
+    struct kndState *state = cls->states;
     struct kndAttr *attr;
     int err;
 
@@ -220,15 +220,15 @@ static int export_class_body_commits(struct kndClass *self,
         break;
     }
 
-    err = export_glosses(self, out);                                          RET_ERR();
+    err = export_glosses(cls, out);                                          RET_ERR();
 
-    if (self->base_preds) {
-        err = export_base_preds(self, task);
+    if (cls->base_preds) {
+        err = export_base_preds(cls, task);
         RET_ERR();
     }
 
-    if (self->attrs) {
-        FOREACH (attr, self->attrs) {
+    if (cls->attrs) {
+        FOREACH (attr, cls->attrs) {
             err = knd_attr_export(attr, KND_FORMAT_GSP, task);
             if (err) return err;
         }
@@ -236,18 +236,18 @@ static int export_class_body_commits(struct kndClass *self,
     return knd_OK;
 }
 
-int knd_class_export_commits_GSP(struct kndClass *self, struct kndClassCommit *class_commit,
+int knd_class_export_commits_GSP(struct kndClass *cls, struct kndClassCommit *class_commit,
                                  struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     struct kndCommit *commit = class_commit->commit;
-    struct kndState *state = self->states;
+    struct kndState *state = cls->states;
     int err;
     
     err = out->writec(out, '{');                                                  RET_ERR();
-    err = out->write(out, self->entry->id, self->entry->id_size);                 RET_ERR();
+    err = out->write(out, cls->entry->id, cls->entry->id_size);                 RET_ERR();
     err = out->write(out, "{_n ", strlen("{_n "));                                RET_ERR();
-    err = out->write(out, self->name, self->name_size);                           RET_ERR();
+    err = out->write(out, cls->name, cls->name_size);                           RET_ERR();
     err = out->writec(out, '}');                                                  RET_ERR();
 
     err = out->write(out, "{_st", strlen("{_st"));                                RET_ERR();
@@ -259,13 +259,13 @@ int knd_class_export_commits_GSP(struct kndClass *self, struct kndClassCommit *c
         //err = out->write(out, state->id, state->id_size);                         RET_ERR();
 
         /* any commits of the class body? */
-        err = export_class_body_commits(self, class_commit, task);                 RET_ERR();
+        err = export_class_body_commits(cls, class_commit, task);                 RET_ERR();
     }
 
-    /*    if (self->inst_states) {
-        state = self->inst_states;
+    /*    if (cls->inst_states) {
+        state = cls->inst_states;
         if (state->commit == commit) {
-            err = export_class_inst_commits(self, class_commit, task);             RET_ERR();
+            err = export_class_inst_commits(cls, class_commit, task);             RET_ERR();
         }
         }*/
 
@@ -274,12 +274,12 @@ int knd_class_export_commits_GSP(struct kndClass *self, struct kndClassCommit *c
     return knd_OK;
 }
 
-int knd_class_export_GSP(struct kndClass *self, struct kndTask *task)
+int knd_class_export_GSP(struct kndClass *cls, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     char idbuf[KND_ID_SIZE];
     size_t idbuf_size = 0;
-    struct kndClassEntry *entry = self->entry;
+    struct kndClassEntry *entry = cls->entry;
     int err;
 
     assert(entry->seq != NULL);
@@ -289,32 +289,34 @@ int knd_class_export_GSP(struct kndClass *self, struct kndTask *task)
     knd_uid_create(entry->seq->numid, idbuf, &idbuf_size);
     OUT(idbuf, idbuf_size);
 
-    err = export_glosses(self, out);
-    KND_TASK_ERR("failed to export glosses");
+    if (cls->entry->glosses) {
+        err = export_glosses(cls, out);
+        KND_TASK_ERR("failed to export glosses");
+    }
 
-    if (self->base_preds) {
-        err = export_base_preds(self, task);
+    if (cls->base_preds) {
+        err = export_base_preds(cls, task);
         KND_TASK_ERR("failed to export baseclass attr stms");
     }
 
-    if (self->attrs) {
-        err = export_attrs(self, task);
+    if (cls->attrs) {
+        err = export_attrs(cls, task);
         KND_TASK_ERR("failed to export attrs GSP");
     }
 
-    if (self->num_ancestors) {
-        err = export_ancestors(self, task);
+    if (cls->num_ancestors) {
+        err = export_ancestors(cls, task);
         KND_TASK_ERR("failed to export ancestors GSP");
     }
 
-    if (self->num_children) {
-        err = export_children(self, task);
+    if (cls->num_children) {
+        err = export_children(cls, task);
         KND_TASK_ERR("failed to export children GSP");
     }
 
     /* export descendants - check the max limit */
-    if (self->descendants) {
-        err = export_descendants(self, task);
+    if (cls->descendants) {
+        err = export_descendants(cls, task);
         KND_TASK_ERR("failed to export descendants GSP");
     }
 

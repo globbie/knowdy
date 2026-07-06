@@ -41,6 +41,20 @@
 #define DEBUG_ATTR_RESOLVE_LEVEL_5 0
 #define DEBUG_ATTR_RESOLVE_LEVEL_TMP 1
 
+static int resolve_glosses(struct kndAttr *attr, struct kndTask *task)
+{
+    struct kndText *t;
+    int err;
+
+    FOREACH (t, attr->glosses) {
+        err = knd_text_match_locale(t->locale_id, t->locale_id_size,
+                                    &t->locale, &task->steward->locale_config);
+        KND_TASK_ERR("{locale %.*s} is not supported", t->locale_id_size, t->locale_id);
+    }
+
+    return knd_OK;
+}
+
 static int check_attr_name_conflict(struct kndClass *self, struct kndAttr *attr_candidate,
                                     struct kndTask *task)
 {
@@ -134,6 +148,12 @@ int knd_attr_resolve(struct kndAttr *attr, struct kndRepoSnapshot *snapshot, str
         // TODO
         break;
     }
+
+    if (attr->glosses) {
+        err = resolve_glosses(attr, task);
+        KND_TASK_ERR("failed to resolve glosses of {attr %.*s}", attr->name_size, attr->name);
+    }
+
     return knd_OK;
 }
 

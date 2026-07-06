@@ -552,6 +552,7 @@ static int index_cls_entry_copy(struct kndClassEntry *orig_entry, struct kndClas
     entry->seq = orig_entry->seq;
     entry->name = orig_entry->name;
     entry->name_size = orig_entry->name_size;
+    entry->glosses = orig_entry->glosses;
 
     entry->cls = cls;
     cls->entry = entry;

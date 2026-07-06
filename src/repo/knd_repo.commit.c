@@ -183,80 +183,6 @@ static int check_commit_conflicts(struct kndCommit *commit, struct kndRepoSnapsh
     return knd_OK;
 }
 
-static int update_indices(struct kndCommit *commit,
-                          struct kndRepoSnapshot *snapshot, struct kndTask *task)
-{
-    struct kndStateRef *ref;
-    struct kndClassEntry *entry;
-    struct kndDict *name_idx = snapshot->cache.cls_name_idx;
-    struct kndRepo *repo = snapshot->repo;
-    int err;
-
-    if (DEBUG_REPO_COMMIT_LEVEL_2) {
-        knd_log(".. commit #%zu to update the indices of %.*s [task role:%d]",
-                commit->numid, repo->name_size, repo->name, task->role);
-    }
-
-    FOREACH (ref, commit->class_state_refs) {
-        entry = ref->obj;
-        if (DEBUG_REPO_COMMIT_LEVEL_2) {
-            knd_log(".. idx update of {cls %.*s {phase %d}}",
-                    entry->name_size, entry->name, ref->state->phase);
-        }
-        switch (ref->state->phase) {
-        case KND_CREATED:
-            if (DEBUG_REPO_COMMIT_LEVEL_3) {
-                knd_log(".. class name idx of {repo %.*s} to register {class %.*s}",
-                        repo->name_size, repo->name, entry->name_size, entry->name);
-            }
-            /* register new class */
-            err = knd_dict_set(name_idx, entry->name,  entry->name_size, (void*)entry, task);
-            KND_TASK_ERR("failed to register {cls %.*s}", entry->name_size, entry->name);
-            continue;
-        case KND_REMOVED:
-            entry->phase = KND_CLASS_REMOVED;
-            continue;
-        case KND_UPDATED:
-            entry->phase = KND_CLASS_UPDATED;
-
-            //err = knd_class_update_indices(repo, entry, ref->state, task);
-            //KND_TASK_ERR("failed to update indices of {cls %.*s}",
-            //             entry->name_size, entry->name);
-            continue;
-        default:
-            // KND_SELECTED
-            /*if (ref->state->children != NULL) {
-                err = knd_class_inst_update_indices(repo, entry, ref->state->children, task);
-                KND_TASK_ERR("failed to update inst indices of {cls %.*s}",
-                             entry->name_size, entry->name);
-                             }*/
-            break;
-        }
-    }
-
-    /*
-    name_idx = task->idxs->proc_name_idx;
-
-    FOREACH (ref, commit->proc_state_refs) {
-        proc_entry = ref->obj;
-        switch (ref->state->phase) {
-        case KND_REMOVED:
-            proc_entry->phase = KND_REMOVED;
-            err = knd_shared_dict_remove(name_idx, proc_entry->name, proc_entry->name_size);
-            RET_ERR();
-            continue;
-        case KND_UPDATED:
-            proc_entry->phase = KND_UPDATED;
-            continue;
-        default:
-            break;
-        }
-        err = knd_shared_dict_set(name_idx, proc_entry->name, proc_entry->name_size, (void*)proc_entry);
-        RET_ERR();
-        }*/
-    return knd_OK;
-}
-
 static int build_journal_filename(struct kndRepoSnapshot *snapshot,
                                   char *filename, size_t *filename_size, struct kndTask *task)
 {
@@ -350,7 +276,7 @@ static int build_commit_WAL(struct kndCommit *commit, struct kndRepoSnapshot *sn
         err = knd_append_file((const char*)filename, file_out->buf, file_out->buf_size);
         KND_TASK_ERR("WAL file append failed");
         atomic_store_explicit(&commit->confirm, KND_PERSISTENT_STATE, memory_order_relaxed);
-        }*/
+    }*/
     return knd_OK;
 }
 
@@ -367,18 +293,18 @@ int knd_confirm_commit(struct kndRepoSnapshot *snapshot, struct kndTask *task)
         knd_log(">> {repo %.*s} to confirm {commit #%zu}",
                 repo->name_size, repo->name, commit->numid);
     }
-    commit->repo = repo;
 
     err = knd_commit_resolve(commit, snapshot, task);
     KND_TASK_ERR("failed to resolve commit #%zu", commit->numid);
 
-    err = knd_commit_dedup(commit, snapshot, task);
-    KND_TASK_ERR("failed to dedup commit #%zu", commit->numid);
+    /* check existing concept definitions */
+    //err = knd_commit_dedup(commit, snapshot, task);
+    //KND_TASK_ERR("failed to dedup commit #%zu", commit->numid);
 
     switch (task->role) {
     case KND_AGENT_ARBITER:
-        err = update_indices(commit, snapshot, task);
-        KND_TASK_ERR("index update failed");
+        //err = update_indices(commit, snapshot, task);
+        //KND_TASK_ERR("index update failed");
 
         err = check_commit_conflicts(commit, snapshot, task);
         KND_TASK_ERR("commit conflicts detected, please get the latest repo updates");
@@ -431,8 +357,8 @@ int knd_apply_commit(void *elem, void *ctx, struct kndTask *task)
     err = knd_commit_resolve(commit, snapshot, task);
     KND_TASK_ERR("failed to resolve {commit #%zu}", commit->numid);
 
-    err = update_indices(commit, snapshot, task);
-    KND_TASK_ERR("index update failed");
+    //err = update_indices(commit, snapshot, task);
+    //KND_TASK_ERR("index update failed");
 
     do {
         head_commit = atomic_load_explicit(&snapshot->commits, memory_order_acquire);

@@ -376,3 +376,6 @@ int knd_charseq_unmarshall(const char *elem_id, size_t elem_id_size,
                            void *ctx, size_t *parsed_size, void **result,
                            struct kndTask *task);
 int knd_gloss_parse(struct kndText *t, const char *rec, size_t *total_size, struct kndTask *task);
+
+int knd_text_match_locale(const char *locale_id, size_t locale_id_size,
+                          struct kndLocale **result, struct kndLocaleConfig *conf);

@@ -701,6 +701,7 @@ int knd_repo_read_sources(struct kndRepo *repo, struct kndTask *task)
             knd_log(".. initial loading of data files");
         }
         task->type = KND_TASK_BULK_LOAD;
+
         err = read_GSL_file(repo, NULL, KND_PACKAGE_INDEX_NAME, strlen(KND_PACKAGE_INDEX_NAME),
                             KND_GSL_INIT_DATA, task);
         KND_TASK_ERR("init data import failed");

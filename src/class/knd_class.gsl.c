@@ -413,8 +413,10 @@ int knd_class_export_GSL(struct kndClass *cls, struct kndTask *task, bool is_lis
         OUT("}", 1);
     }
 
-    err = knd_text_glosses_export_GSL(cls->entry->glosses, task, depth + 1);
-    KND_TASK_ERR("failed to export cls glosses to GSL");
+    if (cls->entry->glosses) {
+        err = knd_text_glosses_export_GSL(cls->entry->glosses, task, depth + 1);
+        KND_TASK_ERR("failed to export cls glosses to GSL");
+    }
 
     if (cls->num_base_preds && !cls->base_preds->is_root) {
         err = export_base_preds(cls, task, depth + 1);

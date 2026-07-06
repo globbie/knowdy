@@ -141,7 +141,7 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
     int err;
 
     //task->user_ctx->repo = user->repo;
-    //task->user_ctx->acls = user->default_acls;
+    //task->user_ctx->policies = user->default_policies;
     //task->user_ctx->mempool = user->mempool_write;
 
     task->input = input;

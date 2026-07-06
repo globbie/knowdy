@@ -273,9 +273,15 @@ static gsl_err_t set_steward_role(void *obj, const char *name, size_t name_size)
 {
     struct kndSteward *self = obj;
 
+    /* KND_AGENT_READER by default */
+
     if (name_size == strlen("Arbiter") && !memcmp(name, "Arbiter", name_size)) {
         self->role = KND_AGENT_ARBITER;
     }
+    if (name_size == strlen("Writer") && !memcmp(name, "Writer", name_size)) {
+        self->role = KND_AGENT_WRITER;
+    }
+
     return make_gsl_err(gsl_OK);
 }
 
@@ -437,8 +443,27 @@ static gsl_err_t parse_default_locale(void *obj, const char *rec, size_t *total_
     return gsl_parse_array(&item_spec, rec, total_size);
 }
 
+static int match_locale(struct kndLocale *dl, struct kndLocaleConfig *conf, struct kndLocale **result)
+{
+    struct kndLocale *sl;
+
+    for (size_t i = 0; i < conf->num_supported; i++) {
+        sl = conf->supported[i];
+        if (dl->id_size != sl->id_size) continue;
+        if (memcmp(dl->id, sl->id, sl->id_size)) continue;
+        *result = sl;
+        return knd_OK;
+    }
+    return knd_NO_MATCH;
+}
+
 static gsl_err_t parse_locale(void *obj, const char *rec, size_t *total_size)
 {
+    struct kndSteward *s = obj;
+    struct kndLocale *dl, *sl;
+    gsl_err_t parser_err;
+    int err;
+
     struct gslTaskSpec specs[] = {
         {   .type = GSL_GET_ARRAY_STATE,
             .name = "support",
@@ -453,7 +478,29 @@ static gsl_err_t parse_locale(void *obj, const char *rec, size_t *total_size)
             .obj = obj
         }
     };
-    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) {
+        knd_log("-- config parse {error %d} {tag %.*s}", parser_err.code,
+                 parser_err.val_size, parser_err.val);
+        return parser_err;
+    }
+
+    /* resolve defaults */
+    if (s->locale_config.num_defaults) {
+        for (size_t i = 0; i < s->locale_config.num_defaults; i++) {
+            dl = s->locale_config.defaults[i];
+            err = match_locale(dl, &s->locale_config, &sl);
+            if (err == knd_NO_MATCH) {
+                knd_log("default locale is not supported");
+                return make_gsl_err_external(err);
+            }
+            s->locale_config.defaults[i] = sl;
+            free(dl);
+        }
+    }
+
+    return make_gsl_err(gsl_OK);
 }
 
 static gsl_err_t parse_steward_config(void *obj, const char *rec, size_t *total_size)
@@ -543,6 +590,7 @@ static gsl_err_t parse_steward_config(void *obj, const char *rec, size_t *total_
         knd_log("failed to fetch an active storage");
         return make_gsl_err(gsl_FAIL);
     }
+
     return make_gsl_err(gsl_OK);
 }
 

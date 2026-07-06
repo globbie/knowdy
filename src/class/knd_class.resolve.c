@@ -53,27 +53,13 @@ struct LocalContext {
 
 static int resolve_base(struct kndClass *self, struct kndRepoSnapshot *snapshot, struct kndTask *task);
 
-static int match_locale(const char *locale_id, size_t locale_id_size,
-                        struct kndLocale **result, struct kndLocaleConfig *conf)
-{
-    struct kndLocale *locale;
-    for (size_t i = 0; i < conf->num_supported; i++) {
-        locale = conf->supported[i];
-        if (locale->id_size != locale_id_size) continue;
-        if (memcmp(locale->id, locale_id, locale_id_size)) continue; 
-        *result = locale;
-        return knd_OK;
-    }
-    return knd_NO_MATCH;
-}
-
 static int resolve_glosses(struct kndClassEntry *entry, struct kndTask *task)
 {
     struct kndText *t;
     int err;
 
     FOREACH (t, entry->glosses) {
-        err = match_locale(t->locale_id, t->locale_id_size, &t->locale, &task->steward->locale_config);
+        err = knd_text_match_locale(t->locale_id, t->locale_id_size, &t->locale, &task->steward->locale_config);
         KND_TASK_ERR("{locale %.*s} is not supported", t->locale_id_size, t->locale_id);
     }
     return knd_OK;
