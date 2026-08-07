@@ -63,8 +63,9 @@ void knd_class_inst_str(struct kndClassInst *self, size_t depth)
     }
 }
 
+#if 0
 int knd_class_inst_export(struct kndClassInst *self, knd_format format,
-                          bool is_list_item, knd_state_phase phase,
+                          bool is_list_item, knd_state_phase_t phase,
                           struct kndTask *task)
 {
     switch (format) {
@@ -103,7 +104,7 @@ int knd_class_inst_commit_state(struct kndClass *self, struct kndStateRef *child
     /* inform our repo */
     err = knd_state_ref_new(&ref, mempool);                                 RET_ERR();
     ref->state = state;
-    ref->type = KND_STATE_CLASS;
+    ref->type = KND_STATE_CLS;
     ref->obj = self->entry;
 
     ref->next = commit->class_state_refs;
@@ -124,18 +125,19 @@ int knd_class_inst_export_commit(struct kndStateRef *state_refs, struct kndTask 
         if (!entry) continue;
 
         OUT("{", 1);
-        if (ref->state->phase == KND_CREATED) {
-            OUT("!", 1);
-        }
+        //if (ref->state->phase == KND_CREATED) {
+        //    OUT("!", 1);
+        //}
         OUT("inst ", strlen("inst "));
 
-        err = knd_class_inst_export(entry->inst, KND_FORMAT_GSL, true, ref->state->phase, task);
-        RET_ERR();
+        //err = knd_class_inst_export(entry->inst, KND_FORMAT_GSL, true, ref->state->phase, task);
+        //RET_ERR();
 
         OUT("}", 1);
     }
     return knd_OK;
 }
+#endif
 
 int knd_class_inst_ref_new(struct kndClassInstRef **result, struct kndMemPool *mempool)
 {

@@ -40,11 +40,11 @@ static int leaf_write_buf(const char *buf, size_t buf_size,
     int err;
     switch (task->mode) {
     case KND_TASK_TRACE_MODE:
-        //knd_log(".. write {chunk %.*s} to {filepath %.*s}", buf_size, buf,
-        //        leaf->filepath_size, leaf->filepath);
+        //knd_log(".. write {chunk %.*s} to {filename %.*s}", buf_size, buf,
+        //        leaf->filename_size, leaf->filename);
         break;
     default:
-        err = knd_append_file((const char*)leaf->filepath, buf, buf_size);
+        err = knd_append_file((const char*)leaf->filename, buf, buf_size);
         KND_TASK_ERR("buf to leaf write failure");
         leaf->curr_size += buf_size;
         break;

@@ -35,11 +35,11 @@ int knd_charseq_marshall(void *elem, void *unused_var(ctx), struct kndStorageLea
 
     switch (task->mode) {
     case KND_TASK_TRACE_MODE:
-        //knd_log(".. write charseq to {filepath %.*s}",
-        //        leaf->filepath_size, leaf->filepath);
+        //knd_log(".. write charseq to {filename %.*s}",
+        //        leaf->filename_size, leaf->filename);
         break;
     default:
-        err = knd_append_file((const char*)leaf->filepath, seq->val, seq->val_size);
+        err = knd_append_file((const char*)leaf->filename, seq->val, seq->val_size);
         KND_TASK_ERR("charseq write failure");
     }
 
@@ -69,11 +69,11 @@ int knd_charseq_mapping_marshall(void *elem, void *unused_var(ctx), struct kndSt
 
     switch (task->mode) {
     case KND_TASK_TRACE_MODE:
-        //knd_log(".. write charseq to {filepath %.*s}",
-        //        leaf->filepath_size, leaf->filepath);
+        //knd_log(".. write charseq to {filename %.*s}",
+        //        leaf->filename_size, leaf->filename);
         break;
     default:
-        err = knd_append_file((const char*)leaf->filepath, out->buf, out->buf_size);
+        err = knd_append_file((const char*)leaf->filename, out->buf, out->buf_size);
         KND_TASK_ERR("charseq write failure");
     }
     leaf->curr_size += out->buf_size;
@@ -93,7 +93,7 @@ static int export_declars(struct kndClassDeclar *decls, struct kndTask *task)
         OUT(decl->entry->name, decl->entry->name_size);
 
         FOREACH (entry, decl->insts) {
-            err = knd_class_inst_export_GSL(entry->inst, false, KND_CREATED, task, 0);
+            err = knd_class_inst_export_GSL(entry->inst, false, task, 0);
             KND_TASK_ERR("failed to export class inst GSL");
         }
         OUT("}", 1);
@@ -164,17 +164,9 @@ int knd_text_export_GSP(struct kndText *self, struct kndTask *task)
     struct kndOutput *out = task->out;
     struct kndPar *par;
     struct kndSentence *sent;
-    struct kndState *state;
     struct kndCharSeq *seq = self->seq;
     struct kndText *trn;
     int err;
-
-    state = atomic_load_explicit(&self->states, memory_order_relaxed);
-    if (seq && state) {
-        seq->val = state->val->val;
-        seq->val_size = state->val->val_size;
-        return knd_OK;
-    }
 
     if (seq) {
        if (DEBUG_TEXT_GSP_LEVEL_2)

@@ -196,10 +196,10 @@ static int export_inverse_rels(struct kndClassInst *self, struct kndTask *task, 
 #endif
 
 int knd_class_inst_export_JSON(struct kndClassInst *self, bool is_list_item,
-                               knd_state_phase phase, struct kndTask *task, size_t depth)
+                              struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
-    struct kndState *state = self->states;
+    //struct kndState *state = self->states;
     size_t curr_depth = 0;
     int err;
 
@@ -216,32 +216,6 @@ int knd_class_inst_export_JSON(struct kndClassInst *self, bool is_list_item,
     OUT(self->name, self->name_size);
     OUT("\"", 1);
 
-    if (state) {
-        err = out->write(out, ",\"_state\":", strlen(",\"_state\":"));            RET_ERR();
-        err = out->writef(out, "%zu", state->numid);                              RET_ERR();
-
-        switch (state->phase) {
-            case KND_REMOVED:
-                err = out->write(out,   ",\"_phase\":\"del\"",
-                                 strlen(",\"_phase\":\"del\""));                      RET_ERR();
-                // NB: no more details
-                err = out->write(out, "}", 1);
-                if (err) return err;
-                return knd_OK;
-
-            case KND_UPDATED:
-                err = out->write(out,   ",\"_phase\":\"upd\"",
-                                 strlen(",\"_phase\":\"upd\""));                      RET_ERR();
-                break;
-            case KND_CREATED:
-                err = out->write(out,   ",\"_phase\":\"new\"",
-                                 strlen(",\"_phase\":\"new\""));                      RET_ERR();
-                break;
-            default:
-                break;
-        }
-    }
-
     OUT(",\"class\":\"", strlen(",\"class\":\""));
     OUT(self->entry->is_a->name, self->entry->is_a->name_size);
     OUT("\"", 1);
@@ -251,18 +225,6 @@ int knd_class_inst_export_JSON(struct kndClassInst *self, bool is_list_item,
         err = knd_attr_stms_export_JSON(self->attr_stms, task, depth + 1);
         KND_TASK_ERR("failed to export JSON of class inst attr vars");
         task->ctx->depth = curr_depth;
-    }
-
-    switch (phase) {
-    case KND_SELECTED:
-        /* display inverse relations */
-        /*if (self->attr_hubs) {
-            err = export_inverse_rels(self, task, depth + 1);
-            KND_TASK_ERR("failed to export GSL inverse rels");
-            }*/
-        break;
-    default:
-        break;
     }
 
     OUT("}", 1);
@@ -284,12 +246,6 @@ int knd_class_inst_iterate_export_JSON(void *obj, const char *unused_var(inst_id
 
     if (DEBUG_INST_LEVEL_2) {
         knd_class_inst_str(inst, 0);
-    }
-
-    if (!task->show_removed_objs) {
-        state = inst->states;
-        if (state && state->phase == KND_REMOVED)
-            return knd_OK;
     }
 
     // TODO unfreeze

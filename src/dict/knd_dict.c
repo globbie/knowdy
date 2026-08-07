@@ -190,9 +190,10 @@ int knd_dict_map(struct kndDict *dict, map_cb_t cb, void *ctx, struct kndTask *t
 
 void knd_dict_del(struct kndDict *dict)
 {
-    struct kndDictEntry *entry;
-    struct kndDictItem *item, *curr_item;
+    //struct kndDictEntry *entry;
+    //struct kndDictItem *item, *curr_item;
 
+#if 0
     assert (dict->size == (sizeof(dict->hash_array) / sizeof(struct kndDictEntry*)));
 
     for (size_t i = 0; i < dict->size; i++) {
@@ -207,6 +208,7 @@ void knd_dict_del(struct kndDict *dict)
         }
         knd_dict_entry_free(entry, dict->mempool);
     }
+#endif
     free(dict->hash_array);
     free(dict);
 }

@@ -379,3 +379,4 @@ int knd_gloss_parse(struct kndText *t, const char *rec, size_t *total_size, stru
 
 int knd_text_match_locale(const char *locale_id, size_t locale_id_size,
                           struct kndLocale **result, struct kndLocaleConfig *conf);
+gsl_err_t knd_text_parse_locale(void *obj, const char *rec, size_t *total_size);

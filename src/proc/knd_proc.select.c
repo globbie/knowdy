@@ -115,8 +115,8 @@ static gsl_err_t remove_proc(void *obj, const char *name, size_t name_size)
         //                                                        memory_order_relaxed);
     }
 
-    err = knd_proc_commit_state(proc, KND_REMOVED, task);
-    if (err) return make_gsl_err_external(err);
+    //err = knd_proc_commit_state(proc, KND_REMOVED, task);
+    //if (err) return make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);
 }
@@ -160,7 +160,7 @@ gsl_err_t knd_proc_select(const char *rec, size_t *total_size, struct kndRepoSna
         .snapshot = snapshot
     };
     gsl_err_t parser_err;
-    int err;
+    //int err;
 
     if (DEBUG_PROC_SELECT_LEVEL_2) {
         knd_log(".. proc selection: \"%.*s\"", 16, rec);
@@ -197,8 +197,8 @@ gsl_err_t knd_proc_select(const char *rec, size_t *total_size, struct kndRepoSna
         return make_gsl_err(gsl_FAIL);
     }
 
-    knd_state_phase phase;
 
+#if 0 
     /* any commits happened? */
     switch (task->type) {
     case KND_TASK_COMMIT:
@@ -211,7 +211,7 @@ gsl_err_t knd_proc_select(const char *rec, size_t *total_size, struct kndRepoSna
     default:
         break;
     }
-
+#endif
     return make_gsl_err(gsl_OK);
 }
 

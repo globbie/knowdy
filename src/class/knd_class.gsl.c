@@ -51,72 +51,6 @@ struct LocalContext {
     struct kndText *text;
 };
 
-int knd_export_class_state_GSL(struct kndClass *self, struct kndTask *task)
-{
-    struct kndOutput *out = task->out;
-    struct kndState *state;
-    time_t timestamp = { 0 };
-    int err;
-
-    err = out->write(out, "{state ", strlen("{state "));                          RET_ERR();
-
-    state = atomic_load_explicit(&self->states, memory_order_relaxed);
-    if (state) {
-        err = out->writef(out, "%zu", state->commit->numid);                      RET_ERR();
-        timestamp = state->commit->timestamp;
-    } else {
-        err = out->writec(out, '0');                                              RET_ERR();
-        // TODO
-        // timestamp = self->repo->snapshot->timestamp;
-    }
-    
-    err = out->write(out, "{time ", strlen("{time "));                            RET_ERR();
-
-    err = out->writef(out, "%zu", timestamp);                                     RET_ERR();
-    err = out->writec(out, '}');                                                  RET_ERR();
-    err = out->writec(out, '}');                                                  RET_ERR();
-    return knd_OK;
-}
-
-#if 0
-static int export_conc_elem_GSL(void *elem, void *ctx, struct kndTask *task)
-{
-    struct kndClassEntry *entry = elem;
-    struct LocalContext *local_ctx = ctx; 
-    //struct kndRepo *repo = local_ctx->repo;
-    struct kndQueryView *view = task->ctx->query->view;
-    struct kndBatchLimits *batch = view->batch;
-    if (batch->size >= batch->max_items) return knd_RANGE;
-    struct kndOutput *out = task->out;
-    //struct kndClass *c;
-    struct kndState *state;
-    size_t curr_depth = 0;
-    int err;
-
-    //err = knd_class_acquire(entry, &c, repo, task);
-    //KND_TASK_ERR("failed to acquire {cls %.*s}", entry->name_size, entry->name);
-
-    //if (!view->show_removed_objs) {
-    //    state = c->states;
-    //    if (state && state->phase == KND_REMOVED) return knd_OK;
-    //}
-
-    curr_depth = task->depth;
-    task->depth = 0;
-    if (task->ctx->format_indent) {
-        err = out->writec(out, '\n');                                             RET_ERR();
-        err = knd_print_indent(out, task->ctx->format_indent);                         RET_ERR();
-    }
-
-    //err = knd_class_export_GSL(c, repo, task, true, 1);
-    //KND_TASK_ERR("failed to export GSL {cls %.*s}", entry->name_size, entry->name);
-
-    task->depth = curr_depth;
-    batch->size++;
-    return knd_OK;
-}
-#endif
-
 extern int knd_empty_set_export_GSL(struct kndClass *self,
                                     struct kndTask *task)
 {
@@ -206,7 +140,7 @@ static int present_subclasses(struct kndClass *self, size_t num_children,
 {
     struct kndOutput *out = task->out;
     struct kndClassRef *ref;
-    struct kndState *state;
+    //struct kndState *state;
     int err;
 
     err = out->write(out, "{children {total ",
@@ -230,8 +164,8 @@ static int present_subclasses(struct kndClass *self, size_t num_children,
 
     // TODO apply sort by?
     FOREACH (ref, self->children) {
-        state = self->states;
-        if (state && state->phase == KND_REMOVED) continue;
+        //state = self->states;
+        //if (state && state->phase == KND_REMOVED) continue;
 
         if (task->ctx->format_indent) {
             err = out->writec(out, '\n');                                         RET_ERR();
@@ -241,26 +175,6 @@ static int present_subclasses(struct kndClass *self, size_t num_children,
         err = present_subclass(ref, task, depth + 2);
         KND_TASK_ERR("failed to present a subclass GSL");       
     }
-
-    /*    if (orig_entry) {
-        err = knd_class_acquire(orig_entry, &orig_c, task);
-        KND_TASK_ERR("failed to acquire {class %.*s}", orig_entry->name_size, orig_entry->name);
-
-        FOREACH (ref, orig_c->children) {
-
-            err = knd_class_acquire(ref->entry, &c, task);
-            KND_TASK_ERR("failed to acquire class %.*s", ref->entry->name_size, ref->entry->name);
-
-            state = c->states;
-            if (state && state->phase == KND_REMOVED) continue;
-
-            if (task->ctx->format_indent) {
-                err = out->writec(out, '\n');                                     RET_ERR();
-                err = knd_print_indent(out, (depth + 1) * task->ctx->format_indent);   RET_ERR();
-            }
-            err = present_subclass(ref, task, depth + 1);                         RET_ERR();
-        }
-        } */
 
     err = out->writec(out, ']');                                                  RET_ERR();
     err = out->writec(out, '}');                                                  RET_ERR();
@@ -340,7 +254,7 @@ static int export_base_preds(struct kndClass *cls, struct kndTask *task, size_t 
 int knd_class_export_GSL(struct kndClass *cls, struct kndTask *task, bool is_list_item, size_t depth)
 {
     struct kndOutput *out = task->out;
-    struct kndState *state = cls->states;
+    //struct kndState *state = cls->states;
     size_t indent_size = task->ctx->format_indent;
     size_t num_children;
     int err;
@@ -382,6 +296,8 @@ int knd_class_export_GSL(struct kndClass *cls, struct kndTask *task, bool is_lis
         OUT(" ", 1);
     }
 
+    
+#if 0
     if (state) {
         if (indent_size) {
             err = out->writec(out, '\n');                                         RET_ERR();
@@ -412,6 +328,7 @@ int knd_class_export_GSL(struct kndClass *cls, struct kndTask *task, bool is_lis
         }
         OUT("}", 1);
     }
+#endif
 
     if (cls->entry->glosses) {
         err = knd_text_glosses_export_GSL(cls->entry->glosses, task, depth + 1);
@@ -429,16 +346,10 @@ int knd_class_export_GSL(struct kndClass *cls, struct kndTask *task, bool is_lis
     }
 
     num_children = cls->num_children;
-    if (cls->desc_states) {
-        state = cls->desc_states;
-        num_children = state->val? state->val->val_size : 0;
-    }
-
-    /*if (orig_entry) {
-        err = knd_class_acquire(orig_entry, &c, task);
-        KND_TASK_ERR("failed to acquire class %.*s", orig_entry->name_size, orig_entry->name);
-        num_children += c->num_children;
-    }*/
+    //if (cls->desc_states) {
+    //    state = cls->desc_states;
+    //    num_children = state->val? state->val->val_size : 0;
+    //}
     
     if (num_children) {
         if (indent_size) {

@@ -35,64 +35,21 @@ struct LocalContext {
     struct kndRepoSnapshot *snapshot;
 };
 
-static int cls_import(const char *rec, size_t *total_size,
-                      struct kndRepoSnapshot *snapshot, struct kndTask *task)
-{
-    struct kndClass *cls;
-    struct kndClassEntry *entry;
-    struct kndSet *cls_idx = task->idxs.cls_idx;
-    int err;
-
-    err = knd_class_import(rec, total_size, &cls, snapshot, task);
-    KND_TASK_ERR("failed to import a cls");
-
-    entry = cls->entry;
-    assert (entry != NULL);
-
-    /* assign a unique cls entry id */
-    entry->numid = ++task->idxs.cls_id_count;
-    knd_uid_create(entry->numid, entry->id, &entry->id_size);
-
-    err = knd_set_add(cls_idx, entry->id, entry->id_size, (void*)entry, task);
-    KND_TASK_ERR("failed to register {cls %.*s} in cls idx",
-                 entry->name_size, entry->name);
-
-    if (DEBUG_REPO_GSL_LEVEL_3) {
-        knd_log(">> registered {cls %.*s {id %.*s}}", entry->name_size, entry->name,
-                entry->id_size, entry->id);
-    }
-    return knd_OK;
-}
-
-static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_size)
+static gsl_err_t parse_cls_import(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndTask *task = ctx->task;
     struct kndRepoSnapshot *snapshot = ctx->snapshot;
     int err;
 
-#if 0
-    if (task->type != KND_TASK_BULK_LOAD) {
-        task->type = KND_TASK_COMMIT;
-        if (!commit) {
-            err = knd_commit_new(&commit, task->mempool);
-            if (err) return make_gsl_err_external(err);
-
-            //commit->orig_state_id = atomic_load_explicit(&task->snapshot->num_commits,
-            //                                             memory_order_relaxed);
-            task->ctx->commit = commit;
-        }
-    }
-#endif
-
-    err = cls_import(rec, total_size, snapshot, task);
+    err = knd_repo_cls_import(rec, total_size, snapshot, task);
     if (err) return make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);
 }
 
 #if 0
-static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_size)
+static gsl_err_t parse_cls_select(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
 
@@ -158,7 +115,7 @@ static gsl_err_t parse_schema(void *obj, const char *rec, size_t *total_size)
         { .type = GSL_SET_STATE,
           .name = "cls",
           .name_size = strlen("cls"),
-          .parse = parse_class_import,
+          .parse = parse_cls_import,
           .obj = ctx
         },
         { .type = GSL_SET_STATE,
@@ -333,10 +290,10 @@ static int read_GSL_file(struct kndRepo *repo, struct kndConcFolder *parent_fold
     const char *c;
     size_t folder_name_size;
     struct stat st;
-    const char *index_folder_name = "index";
-    size_t index_folder_name_size = strlen("index");
-    const char *file_ext = ".gsl";
-    size_t file_ext_size = strlen(".gsl");
+    const char *index_folder_name = KND_GSL_PACKAGE_INDEX_NAME;
+    size_t index_folder_name_size = strlen(KND_GSL_PACKAGE_INDEX_NAME);
+    const char *file_ext = KND_GSL_FILE_EXT_NAME;
+    size_t file_ext_size = strlen(KND_GSL_FILE_EXT_NAME);
     size_t file_size;
     size_t chunk_size = 0;
     int err;
@@ -537,7 +494,6 @@ static int write_meta_file(struct kndRepoSnapshot *s, const char *rec, size_t re
                           tmp_name, &tmp_name_size, task);
     KND_TASK_ERR("failed building a file path");
 
-
     err = knd_write_file((const char*)tmp_name, rec, rec_size);
     KND_TASK_ERR("failed writing to {file %.*s}", tmp_name_size, tmp_name);
 
@@ -676,7 +632,7 @@ int knd_repo_read_sources(struct kndRepo *repo, struct kndTask *task)
 
     task->type = KND_TASK_BULK_LOAD;
 
-    err = read_GSL_file(repo, NULL, KND_PACKAGE_INDEX_NAME, strlen(KND_PACKAGE_INDEX_NAME),
+    err = read_GSL_file(repo, NULL, KND_GSL_PACKAGE_INDEX_NAME, strlen(KND_GSL_PACKAGE_INDEX_NAME),
                         KND_GSL_SCHEMA, task);
     KND_TASK_ERR("system schema import failed");
 
@@ -702,7 +658,7 @@ int knd_repo_read_sources(struct kndRepo *repo, struct kndTask *task)
         }
         task->type = KND_TASK_BULK_LOAD;
 
-        err = read_GSL_file(repo, NULL, KND_PACKAGE_INDEX_NAME, strlen(KND_PACKAGE_INDEX_NAME),
+        err = read_GSL_file(repo, NULL, KND_GSL_PACKAGE_INDEX_NAME, strlen(KND_GSL_PACKAGE_INDEX_NAME),
                             KND_GSL_INIT_DATA, task);
         KND_TASK_ERR("init data import failed");
 

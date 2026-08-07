@@ -53,7 +53,6 @@ struct kndClassInstEntry
     char id[KND_ID_SIZE];
     size_t id_size;
     size_t numid;
-    knd_state_phase phase;
 
     const char *name;
     size_t name_size;
@@ -119,7 +118,7 @@ int knd_class_inst_ref_new(struct kndClassInstRef **result, struct kndMemPool *m
 int knd_class_inst_entry_new(struct kndClassInstEntry **result, struct kndMemPool *mempool);
 
 int knd_class_inst_export(struct kndClassInst *self, knd_format format, bool is_list_item,
-                          knd_state_phase phase, struct kndTask *task);
+                          struct kndTask *task);
 int knd_class_inst_set_export(struct kndClassInst *self, knd_format format, struct kndTask *task);
 
 int knd_class_inst_commit_state(struct kndClass *self, struct kndStateRef *children, size_t num_children,
@@ -143,7 +142,7 @@ int knd_class_inst_read(struct kndClassInst *self, const char *rec, size_t *tota
                          struct kndRepoSnapshot *snapshot, struct kndTask *task);
 
 // knd_class_inst.gsl.c
-int knd_class_inst_export_GSL(struct kndClassInst *self, bool is_list_item, knd_state_phase phase,
+int knd_class_inst_export_GSL(struct kndClassInst *self, bool is_list_item,
                               struct kndTask *task, size_t depth);
 
 // knd_class_inst.import.c
@@ -152,7 +151,7 @@ int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *
 gsl_err_t knd_class_inst_read_state(struct kndClassInst *self, const char *rec, size_t *total_size, struct kndTask *task);
 
 // knd_class_inst.json.c
-int knd_class_inst_export_JSON(struct kndClassInst *self, bool is_list_item, knd_state_phase phase,
+int knd_class_inst_export_JSON(struct kndClassInst *self, bool is_list_item,
                                struct kndTask *task, size_t depth);
 
 // knd_class_inst.select.c

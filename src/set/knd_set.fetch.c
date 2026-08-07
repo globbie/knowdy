@@ -533,13 +533,13 @@ int knd_set_fetch(struct kndSet *s, const char *key, size_t key_size,
     err = match_storage_leaf(s, key, key_size, &leaf);
     if (err == knd_NO_MATCH) return knd_NO_MATCH;
 
-    filename = leaf->filepath;
-    filename_size = leaf->filepath_size;
+    filename = leaf->filename;
+    filename_size = leaf->filename_size;
 
     if (DEBUG_SET_FETCH_LEVEL_2) {
         knd_log(".. fetching elem {key %.*s} from {leaf %zu}",
                 key_size, key, leaf->numid);
-        knd_log(".. open storage {leaf %.*s {filepath %.*s} {size %zu}}",
+        knd_log(".. open storage {leaf %.*s {filename %.*s} {size %zu}}",
                 leaf->name_size, leaf->name, filename_size, filename, leaf->curr_size);
     }
 

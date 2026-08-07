@@ -135,18 +135,20 @@ struct kndRepoSnapshot
     struct kndRepoIndices idxs;
 
     size_t start_from_commit_id;
-    struct kndCommit * _Atomic commits;
-    struct kndSet *commit_idx;
     atomic_size_t  num_commits;
+    struct kndSet *commit_idx;
     size_t         num_marshalled_commits;
-
     atomic_size_t  commit_id_count;
     size_t         max_commits;
 
-    /* array of integers => each task/writer can produce a number of WAL journals */
-    size_t num_journals[KND_MAX_TASKS];
-    size_t max_journals;
-    size_t max_journal_size;
+    size_t state_num;
+
+    size_t max_update_logs;
+    size_t num_update_logs;
+    size_t max_update_log_size;
+
+    size_t max_task_wals;
+    size_t max_task_wal_size;
 
     struct kndRepoSnapshot *prev;
     struct kndRepoSnapshot *next;
@@ -181,8 +183,6 @@ struct kndRepo
 };
 
 int knd_present_repo_state(struct kndRepo *self, struct kndTask *task);
-int knd_confirm_commit(struct kndRepoSnapshot *self, struct kndTask *task);
-
 gsl_err_t knd_parse_repo_select(void *obj, const char *rec, size_t *total_size);
 int knd_repo_read_sources(struct kndRepo *self, struct kndTask *task);
 
@@ -219,3 +219,13 @@ int knd_repo_transfer_commits(struct kndRepo *repo, struct kndTask *task);
 
 int knd_repo_new(struct kndRepo **self, const char *name, size_t name_size,
                  const char *schema_path, size_t schema_path_size);
+
+int knd_repo_cls_import(const char *rec, size_t *total_size,
+                        struct kndRepoSnapshot *snapshot, struct kndTask *task);
+
+int knd_repo_restore_logs(struct kndRepo *self, struct kndRepoSnapshot *snapshot,
+                          const char *path, size_t path_size, size_t agent_id,
+                          struct kndTask *task);
+
+int knd_repo_build_updates_path(struct kndRepoSnapshot *snapshot, size_t agent_id,
+                                char *result, size_t *result_size, struct kndTask *task);

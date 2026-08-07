@@ -205,9 +205,6 @@ int knd_import_proc_inst(struct kndProcEntry *self, const char *rec, size_t *tot
     struct kndMemPool *mempool = task->mempool;
     struct kndProcInst *inst;
     struct kndProcInstEntry *entry;
-    struct kndState *state;
-    struct kndStateRef *state_ref;
-    struct kndTaskContext *ctx = task->ctx;
     struct kndRepo *repo = self->repo;
     gsl_err_t parser_err;
     int err;
@@ -251,48 +248,11 @@ int knd_import_proc_inst(struct kndProcEntry *self, const char *rec, size_t *tot
         inst->name_size = inst->entry->id_size;
     }
 
-#if 0
-    switch (task->type) {
-    case KND_INNER_COMMIT_STATE:
-        for (declar = ctx->proc_declars; declar; declar = declar->next) {
-            if (declar->entry == self) break;
-        }
-        if (!declar) {
-            err = knd_proc_declar_new(&declar, mempool);
-            KND_TASK_ERR("failed to alloc proc declar");
-            declar->entry = self;
-            declar->next = task->ctx->proc_declars;
-            task->ctx->proc_declars = declar;
-        }
-        entry->next = declar->insts;
-        declar->insts = entry;
-        declar->num_insts++;
-        return knd_OK;
-    default:
-        break;
-    }
-#endif
-
-    err = knd_state_new(&state, mempool);
-    KND_TASK_ERR("state alloc failed");
-    state->phase = KND_CREATED;
-    state->numid = 1;
-    inst->states = state;
-    inst->num_states = 1;
-
-    err = knd_state_ref_new(&state_ref, mempool);
-    KND_TASK_ERR("state ref alloc for imported inst failed");
-    state_ref->state = state;
-    //state_ref->type = KND_STATE_PROC_INST;
-    state_ref->obj = (void*)entry;
-
-    state_ref->next = ctx->proc_inst_state_refs;
-    ctx->proc_inst_state_refs = state_ref;
-
-    if (DEBUG_PROC_INST_IMPORT_LEVEL_2)
+    if (DEBUG_PROC_INST_IMPORT_LEVEL_2) {
         knd_log("++ \"%.*s\" (%.*s) proc inst parse OK!",
-                inst->name_size, inst->name, inst->entry->id_size, inst->entry->id, self->name_size, self->name);
-
+                inst->name_size, inst->name, inst->entry->id_size, inst->entry->id,
+                self->name_size, self->name);
+    }
     //name_idx = repo->proc_inst_name_idx;
 
     // TODO  lookup prev inst ref
@@ -302,12 +262,6 @@ int knd_import_proc_inst(struct kndProcEntry *self, const char *rec, size_t *tot
     */
     // err = knd_register_proc_inst(self, entry, mempool);
 
-    if (!ctx->commit) {
-        err = knd_commit_new(&ctx->commit, task->mempool);
-        KND_TASK_ERR("commit alloc failed");
-        //ctx->commit->orig_state_id = atomic_load_explicit(&task->snapshot->num_commits, memory_order_relaxed);
-    }
-    state->commit = ctx->commit;
     return knd_OK;
 }
 

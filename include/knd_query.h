@@ -22,6 +22,7 @@
 
 #include "knd_class.h"
 #include "knd_attr_stm.h"
+#include "knd_state.h"
 #include "knd_utils.h"
 #include "knd_config.h"
 
@@ -50,15 +51,6 @@ struct kndBatchLimits
     size_t max_items;   
 };
 
-struct kndStateRange
-{
-    size_t eq;
-    size_t gt;
-    size_t lt;
-    size_t gte;
-    size_t lte;
-};
-
 struct kndQueryView
 {
     struct kndBatchLimits *batch;
@@ -75,8 +67,9 @@ struct kndQuery
 
     struct kndQueryView *view;
 
-    struct kndRepo    *repo;
+    struct kndRepoSnapshot *snapshot;
     struct kndClass   *cls;
+
     struct kndAttrStm *attr_stms;
     struct kndAttrStm *attr_stms_tail;
     size_t num_attr_stms;
@@ -97,7 +90,7 @@ struct kndQuery
 };
 
 extern int knd_query_new(struct kndQuery **self, struct kndMemPool *mempool);
-extern gsl_err_t knd_query_run(void *obj, const char *rec, size_t *total_size);
+extern gsl_err_t knd_query_process(void *obj, const char *rec, size_t *total_size);
 
 extern int knd_query_obj_export(struct kndQuery *self, struct kndTask *task);
 extern int knd_query_obj_export_GSL(struct kndQuery *query, struct kndTask *task, size_t depth);

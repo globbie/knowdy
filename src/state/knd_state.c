@@ -18,6 +18,7 @@ int knd_state_new(struct kndState **result, struct kndMemPool *mempool)
     return knd_OK;
 }
 
+#if 0
 int knd_state_ref_new(struct kndStateRef **result, struct kndMemPool *mempool)
 {
     void *page;
@@ -29,6 +30,7 @@ int knd_state_ref_new(struct kndStateRef **result, struct kndMemPool *mempool)
     *result = page;
     return knd_OK;
 }
+#endif
 
 int knd_state_val_new(struct kndStateVal **result, struct kndMemPool *mempool)
 {
@@ -38,6 +40,18 @@ int knd_state_val_new(struct kndStateVal **result, struct kndMemPool *mempool)
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndStateVal));
+    *result = page;
+    return knd_OK;
+}
+
+int knd_state_ledger_new(struct kndStateLedger **result, struct kndMemPool *mempool)
+{
+    void *page;
+    int err;
+    assert(KND_TINY_MEMPAGE_SIZE >= sizeof(struct kndStateLedger));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
+    if (err) return err;
+    memset(page, 0, sizeof(struct kndStateLedger));
     *result = page;
     return knd_OK;
 }

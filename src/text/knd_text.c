@@ -245,8 +245,8 @@ int knd_text_export(struct kndText *self, knd_format format,
     return knd_OK;
 }
 
-static int charseq_bulk_register(const char *str, size_t str_size,
-                                 struct kndCharSeq **result, struct kndTask *task)
+static int charseq_register(const char *str, size_t str_size,
+                            struct kndCharSeq **result, struct kndTask *task)
 {
     struct kndDict *str_dict = task->idxs.str_dict;
     struct kndSet *str_idx = task->idxs.str_idx;
@@ -256,8 +256,8 @@ static int charseq_bulk_register(const char *str, size_t str_size,
     assert (str_dict != NULL);
     assert (str_idx != NULL);
 
-    if (DEBUG_TEXT_LEVEL_2) {
-        knd_log(".. initial bulk register {seq %.*s}", str_size, str);
+    if (DEBUG_TEXT_LEVEL_TMP) {
+        knd_log(".. register {seq %.*s}", str_size, str);
     }
 
     err = knd_dict_get(str_dict, str, str_size, (void**)&seq, task);
@@ -275,7 +275,7 @@ static int charseq_bulk_register(const char *str, size_t str_size,
     KND_TASK_ERR("failed to alloc a charseq");
     seq->val = str;
     seq->val_size = str_size;
-    seq->numid = task->idxs.str_idx->num_elems + 1;
+    seq->numid = str_idx->num_elems + 1;
     knd_uid_create(seq->numid, seq->id, &seq->id_size);
 
     err = knd_set_add(str_idx, seq->id, seq->id_size, (void*)seq, task);
@@ -284,7 +284,7 @@ static int charseq_bulk_register(const char *str, size_t str_size,
     err = knd_dict_set(str_dict, str, str_size, (void*)seq, task);
     KND_TASK_ERR("failed to register a charseq {err %d}", err);
 
-    if (DEBUG_TEXT_LEVEL_3) {
+    if (DEBUG_TEXT_LEVEL_TMP) {
         knd_log(">> {seq %.*s {id %.*s}} registered", str_size, str, seq->id_size, seq->id);
     }
     *result = seq;
@@ -301,7 +301,7 @@ int knd_charseq_register(struct kndRepoSnapshot *snapshot, const char *str, size
 
     switch (task->type) {
     case KND_TASK_BULK_LOAD:
-        return charseq_bulk_register(str, str_size, result, task);
+        return charseq_register(str, str_size, result, task);
         break;
     default:
         break;
@@ -352,9 +352,8 @@ int knd_charseq_register(struct kndRepoSnapshot *snapshot, const char *str, size
         KND_TASK_ERR("failed to get an str dict entry {err %d}", err);  
     }
 
-    // TODO new charseq in import commit
-
-    return knd_NO_MATCH;
+    /* new charseq in import commit */
+    return charseq_register(str, str_size, result, task);
 }
 
 int knd_text_match_locale(const char *locale_id, size_t locale_id_size,

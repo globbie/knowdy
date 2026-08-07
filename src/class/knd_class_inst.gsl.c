@@ -156,17 +156,15 @@ static int export_inverse_rels(struct kndClassInst *self, struct kndTask *task, 
 #endif
 
 int knd_class_inst_export_GSL(struct kndClassInst *self, bool is_list_item,
-                              knd_state_phase phase, struct kndTask *task, size_t depth)
+                              struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     size_t indent_size = task->ctx->format_indent;
     size_t curr_depth;
-    bool use_locale = true;
     int err;
 
     if (DEBUG_CLASS_INST_GSL_LEVEL_1) {
-        knd_log(".. GSL export: %.*s {phase %d}",
-                self->name_size, self->name, phase);
+        knd_log(".. GSL export: %.*s", self->name_size, self->name);
     }
     if (indent_size) {
         OUT("\n", 1);
@@ -176,9 +174,9 @@ int knd_class_inst_export_GSL(struct kndClassInst *self, bool is_list_item,
 
     if (!is_list_item) {
         OUT("{", 1);
-        if (phase == KND_CREATED) {
-            OUT("!", 1);
-        }
+        //if (phase == KND_CREATED) {
+        //    OUT("!", 1);
+        //}
         OUT("inst ", strlen("inst "));
     }
 
@@ -193,18 +191,6 @@ int knd_class_inst_export_GSL(struct kndClassInst *self, bool is_list_item,
         OUT("{_as ", strlen("{_as "));
         OUT(self->alias, self->alias_size);
         OUT("}", 1);
-    }
-
-    if (self->tr) {
-        switch (phase) {
-        case KND_CREATED:
-            use_locale = false;
-            break;
-        default:
-            break;
-        }
-        //err = knd_text_glosses_export_GSL(self->entry->glosses, use_locale, task, depth + 1);
-        //KND_TASK_ERR("failed to export gloss GSL");
     }
     
     if (self->linear_pos) {
@@ -222,18 +208,6 @@ int knd_class_inst_export_GSL(struct kndClassInst *self, bool is_list_item,
         curr_depth = task->ctx->depth;
         err = knd_attr_stms_export_GSL(self->attr_stms, task, depth + 1);  RET_ERR();
         task->ctx->depth = curr_depth;
-    }
-
-    switch (phase) {
-    case KND_SELECTED:
-        /* display inverse relations */
-        /*if (self->attr_hubs) {
-            err = export_inverse_rels(self, task, depth + 1);
-            KND_TASK_ERR("failed to export GSL inverse rels");
-            }*/
-        break;
-    default:
-        break;
     }
 
     if (!is_list_item) {

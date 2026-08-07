@@ -106,11 +106,11 @@ int knd_attr_name_marshall(void *elem, void *unused_var(ctx),
 
     switch (task->mode) {
     case KND_TASK_TRACE_MODE:
-        //knd_log(".. write {attr %.*s} to {filepath %.*s}", attr->name_size, attr->name,
-        //        leaf->filepath_size, leaf->filepath);
+        //knd_log(".. write {attr %.*s} to {filename %.*s}", attr->name_size, attr->name,
+        //        leaf->filename_size, leaf->filename);
         break;
     default:
-        err = knd_append_file((const char*)leaf->filepath, out->buf, out->buf_size);
+        err = knd_append_file((const char*)leaf->filename, out->buf, out->buf_size);
         KND_TASK_ERR("attr name write failure");
         leaf->curr_size += out->buf_size;
         break;
@@ -199,7 +199,7 @@ int knd_attr_marshall(void *elem, void *unused_var(ctx), struct kndStorageLeaf *
     case KND_TASK_TRACE_MODE:
         break;
     default:
-        err = knd_append_file((const char*)leaf->filepath, out->buf, out->buf_size);
+        err = knd_append_file((const char*)leaf->filename, out->buf, out->buf_size);
         KND_TASK_ERR("attr GSP write failure");
         leaf->curr_size += out->buf_size;
     }

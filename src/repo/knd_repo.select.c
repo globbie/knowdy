@@ -25,12 +25,6 @@
 #define DEBUG_REPO_SELECT_LEVEL_5 0
 #define DEBUG_REPO_SELECT_LEVEL_TMP 1
 
-struct LocalContext {
-    struct kndTask *task;
-    struct kndQuery *query;
-    struct kndRepoSnapshot *snapshot;
-};
-
 static int find_repo(struct kndRepo **result, const char *name, size_t name_size, struct kndTask *task)
 {
     struct kndRepo *repo;
@@ -45,14 +39,14 @@ static int find_repo(struct kndRepo **result, const char *name, size_t name_size
     return knd_OK;
 }
 
-static gsl_err_t get_repo(void *obj, const char *name, size_t name_size)
+static gsl_err_t get_repo_snapshot(void *obj, const char *name, size_t name_size)
 {
-    struct LocalContext *ctx = obj;
-    struct kndTask *task = ctx->task;
-    struct kndQuery *query = ctx->query;
+    struct kndTask *task = obj;
     struct kndSteward *steward = task->steward;
     struct kndRepo *repo = NULL;
     int err;
+
+    assert (steward != NULL);
 
     /* default system repo */
     if (!name_size) return make_gsl_err(gsl_FAIL);
@@ -79,14 +73,21 @@ static gsl_err_t get_repo(void *obj, const char *name, size_t name_size)
     assert (repo != NULL);
     assert (repo->snapshot != NULL);
 
-    query->type = KND_QUERY_GET;
-    query->obj_type = KND_QUERY_OBJ_REPO;
-    query->repo = repo;
-    ctx->snapshot = repo->snapshot;
+    switch (task->type) {
+    case KND_TASK_QUERY:
+        task->ctx->query->snapshot = repo->snapshot;
+        break;
+    case KND_TASK_COMMIT:
+        task->ctx->commit->snapshot = repo->snapshot;
+        break;
+    default:
+        break;
+    }
 
     if (DEBUG_REPO_SELECT_LEVEL_3) {
-        knd_log(".. selected {repo %.*s}", repo->name_size, repo->name);
+        knd_log("got a snapshot of {repo %.*s}", repo->name_size, repo->name);
     }
+
     return make_gsl_err(gsl_OK);
 }
 
@@ -94,12 +95,12 @@ static gsl_err_t confirm_selection(void *obj,
                                    const char *unused_var(name),
                                    size_t unused_var(name_size))
 {
-    struct LocalContext *ctx = obj;
-    struct kndTask *task = ctx->task;
-    struct kndQuery *query = ctx->query;
+    struct kndTask *task = obj;
+    struct kndQuery *query = task->ctx->query;
 
     switch (task->type) {
     case KND_TASK_QUERY:
+        /* multiple results expected */
         query->type = KND_QUERY_SELECT;
         break;
     default:
@@ -108,42 +109,57 @@ static gsl_err_t confirm_selection(void *obj,
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_class_select(void *obj, const char *rec, size_t *total_size)
+static gsl_err_t parse_cls_select(void *obj, const char *rec, size_t *total_size)
 {
-    struct LocalContext *ctx = obj;
+    struct kndTask *task = obj;
+    struct kndCommit *commit;
+    struct kndQuery *query;
     int err;
 
-    err = knd_class_select(rec, total_size, ctx->snapshot, ctx->query, ctx->task);
-    if (err) return make_gsl_err_external(err);
+    switch (task->type) {
+    case KND_TASK_COMMIT:
+        commit = task->ctx->commit;
 
+        assert (commit != NULL);
+        assert (commit->snapshot != NULL);
+
+        err = knd_cls_commit_select(rec, total_size, commit, task);
+        if (err) return make_gsl_err_external(err);
+        break;
+    case KND_TASK_QUERY:
+        query = task->ctx->query;
+
+        assert (query != NULL);
+        assert (query->snapshot != NULL);
+
+        query->type = KND_QUERY_SELECT;
+        err = knd_cls_query_select(rec, total_size, query, task);
+        if (err) return make_gsl_err_external(err);
+        break;
+    default:
+        break;
+    }
     return make_gsl_err(gsl_OK);
 }
 
-static gsl_err_t parse_class_import(void *obj, const char *rec, size_t *total_size)
+static gsl_err_t parse_cls_import(void *obj, const char *rec, size_t *total_size)
 {
-    struct LocalContext *ctx = obj;
-    struct kndRepoSnapshot *snapshot = ctx->snapshot;
-    struct kndTask *task = ctx->task;
-    struct kndClass *cls;
+    struct kndTask *task = obj;
+    struct kndRepoSnapshot *snapshot = NULL;
     int err;
 
-    if (task->type != KND_TASK_BULK_LOAD) {
-        task->type = KND_TASK_COMMIT;
-        if (!task->ctx->commit) {
-            err = knd_commit_new(&task->ctx->commit, task->mempool);
-            if (err) return make_gsl_err_external(err);
-
-            //task->ctx->commit->orig_state_id =                        \
-            //    atomic_load_explicit(&task->snapshot->num_commits, memory_order_relaxed);
-        }
+    switch (task->role) {
+    case KND_AGENT_WRITER:
+        snapshot = task->ctx->commit->snapshot;
+        break;
+    default:
+        knd_log("import operations not allowed for task {role %d}", task->role);
+        return make_gsl_err(gsl_FORMAT);
     }
 
-    err = knd_class_import(rec, total_size, &cls, snapshot, task);
+    assert (snapshot != NULL);
+    err = knd_repo_cls_import(rec, total_size, snapshot, task);
     if (err) return make_gsl_err_external(err);
-
-    /* assign a unique class entry id */
-    cls->entry->numid = task->idxs.cls_id_count++;
-    knd_uid_create(cls->entry->numid, cls->entry->id, &cls->entry->id_size);
 
     return make_gsl_err(gsl_OK);
 }
@@ -154,18 +170,18 @@ gsl_err_t knd_parse_repo_select(void *obj, const char *rec, size_t *total_size)
 
     struct gslTaskSpec specs[] = {
         { .is_implied = true,
-          .run = get_repo,
+          .run = get_repo_snapshot,
           .obj = obj
         },
         { .type = GSL_SET_STATE,
           .name = "cls",
           .name_size = strlen("cls"),
-          .parse = parse_class_import,
+          .parse = parse_cls_import,
           .obj = obj
         },
         { .name = "cls",
           .name_size = strlen("cls"),
-          .parse = parse_class_select,
+          .parse = parse_cls_select,
           .obj = obj
         },
         { .is_default = true,

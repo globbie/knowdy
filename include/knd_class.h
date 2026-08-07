@@ -139,6 +139,9 @@ struct kndClassEntry
 
     struct kndCacheItem *cached; // LRU cache
 
+    struct kndObjStateUpdate *updates;
+    size_t num_updates;
+
     struct kndClassEntry *next;
     struct kndClassEntry *prev; 
 };
@@ -172,9 +175,9 @@ struct kndClass
     struct kndAttr *implied_attr;
     struct kndAttrRef *uniq;
 
-    struct kndState * _Atomic states;
-    size_t init_state;
-    size_t num_states;
+    //struct kndState * _Atomic states;
+    //size_t init_state;
+    //size_t num_states;
 
     /* immediate children */
     struct kndClassRef *children;
@@ -185,9 +188,9 @@ struct kndClass
     struct kndSet *descendants;
     size_t num_descendants;
 
-    struct kndState * _Atomic desc_states;
-    size_t init_desc_state;
-    size_t num_desc_states;
+    //struct kndState * _Atomic desc_states;
+    //size_t init_desc_state;
+    //size_t num_desc_states;
 
     struct kndSet  *inst_idx;
     struct kndDict *inst_name_idx;
@@ -298,7 +301,7 @@ int knd_inherit_attrs(struct kndClass *self, struct kndClass *base, struct kndTa
 
 int knd_compute_class_attr_num_value(struct kndClass *self, struct kndAttrStm *attr_stm);
 
-int knd_class_commit_state(struct kndClassEntry *self, knd_state_phase phase, struct kndTask *task);
+//int knd_class_commit_state(struct kndClassEntry *self, knd_state_phase_t phase, struct kndTask *task);
 
 gsl_err_t knd_read_class_inst_state(struct kndClass *self, struct kndClassCommit *commit,
                                     const char *rec, size_t *total_size);
@@ -343,9 +346,10 @@ int knd_class_ref_new(struct kndClassRef **result, struct kndMemPool *mempool);
 int knd_class_commit_new(struct kndMemPool *mempool, struct kndClassCommit **result);
 
 // knd_class.select.c
-int knd_class_select(const char *rec, size_t *total_size,
-                     struct kndRepoSnapshot *snapshot, struct kndQuery *query, struct kndTask *task);
+int knd_cls_query_select(const char *rec, size_t *total_size, struct kndQuery *query, struct kndTask *task);
 int knd_class_match_query(struct kndClass *self, struct kndAttrStm *query);
+
+int knd_cls_commit_select(const char *rec, size_t *total_size, struct kndCommit *commit, struct kndTask *task);
 
 // knd_class.states.c
 int knd_retrieve_class_updates(struct kndStateRef *ref, struct kndSet *set, struct kndTask *task);
@@ -433,3 +437,4 @@ int knd_facet_cls_hash(void *parent_key, void *curr_key, void *elem,
 void knd_facet_cls_key_str(void *val, size_t depth);
 int knd_cls_facet_key_encode(void *key, void *ctx, struct kndTask *task);
 
+int knd_cls_get_state(struct kndClass *cls, struct kndTask *task);

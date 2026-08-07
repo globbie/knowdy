@@ -16,26 +16,26 @@
             {max-tiny-pages        14000}
          }
          {cache
-            {max-large-pages       300}
-            {max-base-pages        5000}
-            {max-small-x4-pages    2000}
-            {max-small-x2-pages    2000}
-            {max-small-pages       6000}
-            {max-tiny-pages        20000}}
+            {max-large-pages       300 }
+            {max-base-pages        5000 }
+            {max-small-x4-pages    2000 }
+            {max-small-x2-pages    2000 }
+            {max-small-pages       6000 }
+            {max-tiny-pages        20000 }}
          {user
-            {max-large-pages       0}
+            {max-large-pages       0 }
             {max-base-pages        320000  }
             {max-small-x4-pages    400000  }
             {max-small-x2-pages    80000   }
             {max-small-pages       3500000 }
             {max-tiny-pages        1700000 }}
          {task-ctx
-            {max-large-pages       0}
-            {max-base-pages        1}
-            {max-small-x4-pages    1}
-            {max-small-x2-pages    1}
-            {max-small-pages       1}
-            {max-tiny-pages        1}}
+            {max-large-pages       0 }
+            {max-base-pages        10 }
+            {max-small-x4-pages    100 }
+            {max-small-x2-pages    100 }
+            {max-small-pages       100 }
+            {max-tiny-pages        1000 }}
          {task-cache
             {max-large-pages        10}
             {max-base-pages        1000}

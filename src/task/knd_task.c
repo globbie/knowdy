@@ -24,11 +24,6 @@
 #define DEBUG_TASK_LEVEL_3 0
 #define DEBUG_TASK_LEVEL_TMP 1
 
-struct LocalContext {
-    struct kndRepo *repo;
-    struct kndTask *task;
-};
-
 void knd_task_del(struct kndTask *self)
 {
     if (self->ctx) {
@@ -46,25 +41,79 @@ void knd_task_del(struct kndTask *self)
     free(self);
 }
 
-void knd_task_reset(struct kndTask *self)
+static int create_local_write_idxs(struct kndTask *task)
 {
-    self->type = KND_TASK_DEFAULT;
-    self->phase = KND_SELECTED;
+    int err;
 
-    self->depth = 0;
-    self->max_depth = 1;
+    err = knd_set_new(&task->idxs.cls_idx, KND_SET_STORE_MEMONLY, task->mempool);
+    KND_TASK_ERR("failed to create a cls idx");
 
-    if (self->ctx) {
-        memset(self->ctx, 0, sizeof(*self->ctx));
+    err = knd_dict_new(&task->idxs.cls_name_idx, KND_MEDIUM_DICT_SIZE, KND_DICT_MEMONLY, task->mempool);
+    KND_TASK_ERR("failed to create a cls name idx");
+
+    err = knd_dict_new(&task->idxs.attr_name_idx, KND_SMALL_DICT_SIZE, KND_DICT_MEMONLY, task->mempool);
+    KND_TASK_ERR("failed to create an attr name idx");
+
+    err = knd_set_new(&task->idxs.attr_idx, KND_SET_STORE_MEMONLY, task->mempool);
+    KND_TASK_ERR("failed to create an attr idx");
+    
+    err = knd_dict_new(&task->idxs.str_dict, KND_MEDIUM_DICT_SIZE, KND_DICT_MEMONLY, task->mempool);
+    KND_TASK_ERR("failed to create a str dict");
+
+    err = knd_set_new(&task->idxs.str_idx, KND_SET_STORE_MEMONLY, task->mempool);
+    KND_TASK_ERR("failed to create a str idx");
+
+    err = knd_dict_new(&task->idxs.proc_name_idx, KND_SMALL_DICT_SIZE, KND_DICT_MEMONLY, task->mempool);
+    KND_TASK_ERR("failed to create a proc name idx");
+
+    err = knd_set_new(&task->idxs.proc_idx, KND_SET_STORE_MEMONLY, task->mempool);
+    KND_TASK_ERR("failed to create a proc idx");
+
+    return knd_OK;
+}
+
+int knd_task_reset(struct kndTask *task)
+{
+    int err;
+
+    task->type = KND_TASK_DEFAULT;
+
+    task->depth = 0;
+    task->max_depth = 1;
+
+    if (task->ctx) {
+        memset(task->ctx, 0, sizeof(*task->ctx));
     }
-    self->user_ctx = self->default_user_ctx;
+    task->user_ctx = task->default_user_ctx;
 
-    self->out->reset(self->out);
-    self->log->reset(self->log);
+    task->out->reset(task->out);
+    task->log->reset(task->log);
 
     /* only operational mempool is reset,
        cache mempool remains */
-    knd_mempool_reset(self->mempool);
+    knd_mempool_reset(task->mempool);
+
+    switch (task->role) {
+    case KND_AGENT_SYSTEM:
+        // fall through
+    case KND_AGENT_WRITER:
+        /* free dict allocations */
+        knd_dict_del(task->idxs.cls_name_idx);
+        knd_dict_del(task->idxs.attr_name_idx);
+        knd_dict_del(task->idxs.str_dict);
+        knd_dict_del(task->idxs.proc_name_idx);
+
+        err = create_local_write_idxs(task);
+        if (err) {
+            knd_log("failed to create local idxs {log %.*s}",
+                    task->log->buf_size, task->log->buf);
+            return err;
+        }
+        break;
+    default:
+        break;
+    }
+    return knd_OK;
 }
 
 static int task_err_export_JSON(struct kndTask *task)
@@ -152,19 +201,19 @@ int knd_task_run(struct kndTask *task, const char *input, size_t input_size)
     if (DEBUG_TASK_LEVEL_2) {
         size_t chunk_size = KND_TEXT_CHUNK_SIZE;
         if (task->input_size < chunk_size) chunk_size = task->input_size;
-        knd_log("== INPUT {size %zu} %.*s ..",
+        knd_log("== INPUT {size %zu} %.*s",
                 task->input_size, chunk_size, task->input);
     }
 
     struct gslTaskSpec specs[] = {
         { .name = "query",
           .name_size = strlen("query"),
-          .parse = knd_query_run,
+          .parse = knd_query_process,
           .obj = task
         },
         { .name = "cmd",
           .name_size = strlen("cmd"),
-          .parse = knd_commit_run,
+          .parse = knd_commit_process,
           .obj = task
         }
     };
@@ -254,36 +303,6 @@ static int init_cache(struct kndTaskCache *c, struct kndMemConfig *memconf)
     return err;
 }
 
-static int create_local_write_idxs(struct kndTask *task)
-{
-    int err;
-
-    err = knd_set_new(&task->idxs.cls_idx, KND_SET_STORE_MEMONLY, task->mempool);
-    KND_TASK_ERR("failed to create a cls idx");
-
-    err = knd_dict_new(&task->idxs.cls_name_idx, KND_MEDIUM_DICT_SIZE, KND_DICT_MEMONLY, task->mempool);
-    KND_TASK_ERR("failed to create a cls name idx");
-
-    err = knd_dict_new(&task->idxs.attr_name_idx, KND_SMALL_DICT_SIZE, KND_DICT_MEMONLY, task->mempool);
-    KND_TASK_ERR("failed to create an attr name idx");
-
-    err = knd_set_new(&task->idxs.attr_idx, KND_SET_STORE_MEMONLY, task->mempool);
-    KND_TASK_ERR("failed to create an attr idx");
-    
-    err = knd_dict_new(&task->idxs.str_dict, KND_MEDIUM_DICT_SIZE, KND_DICT_MEMONLY, task->mempool);
-    KND_TASK_ERR("failed to create a str dict");
-
-    err = knd_set_new(&task->idxs.str_idx, KND_SET_STORE_MEMONLY, task->mempool);
-    KND_TASK_ERR("failed to create a str idx");
-
-    err = knd_dict_new(&task->idxs.proc_name_idx, KND_SMALL_DICT_SIZE, KND_DICT_MEMONLY, task->mempool);
-    KND_TASK_ERR("failed to create a proc name idx");
-
-    err = knd_set_new(&task->idxs.proc_idx, KND_SET_STORE_MEMONLY, task->mempool);
-    KND_TASK_ERR("failed to create a proc idx");
-
-    return knd_OK;
-}
 
 void knd_task_cleanup(struct kndTask *task)
 {
@@ -320,14 +339,29 @@ static int task_init(struct kndTask *task,
     if (err) goto error;
 
     err = init_cache(&task->cache, cache_memconf);
-    if (err) goto error;
+    if (err) {
+        knd_log("failed to init cache");
+        goto error;
+    }
 
     switch (task->role) {
     case KND_AGENT_SYSTEM:
         // fall through
     case KND_AGENT_WRITER:
         err = create_local_write_idxs(task);
-        if (err) goto error;
+        if (err) {
+            knd_log("failed to create local idxs {log %.*s}",
+                    task->log->buf_size, task->log->buf);
+            goto error;
+        }
+        break;
+    case KND_AGENT_ARBITER:
+        err = knd_state_ledger_new(&task->ledger, task->mempool);
+        if (err) {
+            knd_log("failed to create a state ledger {log %.*s}",
+                    task->log->buf_size, task->log->buf);
+            goto error;
+        }
         break;
     default:
         break;
@@ -341,6 +375,7 @@ static int task_init(struct kndTask *task,
     return knd_OK;
 
  error:
+    knd_log("{err %d}", err);
     return err;
 }
 

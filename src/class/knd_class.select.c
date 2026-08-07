@@ -30,6 +30,7 @@
 struct LocalContext {
     struct kndTask *task;
     struct kndQuery *query;
+    struct kndCommit *commit;
     struct kndRepoSnapshot *snapshot;
 
     struct kndClass *cls;
@@ -58,6 +59,20 @@ static gsl_err_t confirm_default_query(void *obj, const char *unused_var(val),
 
     query->type = KND_QUERY_SELECT;
     query->obj_type = KND_QUERY_OBJ_CLASS;
+
+    return make_gsl_err(gsl_OK);
+}
+
+static gsl_err_t confirm_default_commit(void *obj, const char *unused_var(val),
+                                        size_t unused_var(val_size))
+{
+    struct LocalContext *ctx = obj;
+    struct kndCommit *commit = ctx->commit;
+
+    knd_log("no changes requested in cls commit");
+
+    // TODO assign error status
+    commit->phase = KND_FAILED_STATE;
 
     return make_gsl_err(gsl_OK);
 }
@@ -265,6 +280,7 @@ static gsl_err_t select_by_base_cls(void *obj, const char *rec, size_t *total_si
     return make_gsl_err(gsl_OK);
 }
 
+#if 0
 static gsl_err_t present_class_state(void *obj, const char *unused_var(name),
                                      size_t unused_var(name_size))
 {
@@ -281,6 +297,7 @@ static gsl_err_t present_class_state(void *obj, const char *unused_var(name),
         if (err) return make_gsl_err_external(err);
         return make_gsl_err_external(knd_FAIL);
     }
+
     err = knd_class_export_state(ctx->cls, task->ctx->format, task);
     if (err) {
         knd_log("-- class state export failed");
@@ -288,6 +305,7 @@ static gsl_err_t present_class_state(void *obj, const char *unused_var(name),
     }
     return make_gsl_err(gsl_OK);
 }
+#endif
 
 static gsl_err_t select_class_state(void *obj, const char *rec, size_t *total_size)
 {
@@ -328,11 +346,11 @@ static gsl_err_t select_class_state(void *obj, const char *rec, size_t *total_si
           .name_size = strlen("gt"),
           .parse = gsl_parse_size_t,
           .obj = &ctx->state_filter.state_gt
-        },
+        }/*,
         { .is_default = true,
           .run = present_class_state,
           .obj = ctx
-        }
+          }*/
     };
     return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
 }
@@ -452,9 +470,9 @@ static gsl_err_t remove_class(void *obj, const char *unused_var(name), size_t na
 #endif
 }
 
-int knd_class_select(const char *rec, size_t *total_size,
-                     struct kndRepoSnapshot *snapshot, struct kndQuery *query, struct kndTask *task)
+int knd_cls_query_select(const char *rec, size_t *total_size, struct kndQuery *query, struct kndTask *task)
 {
+    struct kndRepoSnapshot *snapshot = query->snapshot;
     gsl_err_t parser_err;
     int err;
 
@@ -479,20 +497,9 @@ int knd_class_select(const char *rec, size_t *total_size,
           .parse = select_class_state,
           .obj = &ctx
         },
-        { .name = "del",
-          .name_size = strlen("del"),
-          .run = remove_class,
-          .obj = &ctx
-        },
         { .name = "attr",
           .name_size = strlen("attr"),
           .parse = select_cls_attrs,
-          .obj = &ctx
-        },
-        { .type = GSL_SET_STATE,
-          .name = "inst",
-          .name_size = strlen("inst"),
-          .parse = import_class_inst,
           .obj = &ctx
         },
         { .name = "inst",
@@ -526,4 +533,70 @@ int knd_class_select(const char *rec, size_t *total_size,
     }
 
     return knd_OK;
+}
+
+int knd_cls_commit_select(const char *rec, size_t *total_size, struct kndCommit *commit, struct kndTask *task)
+{
+    struct kndRepoSnapshot *snapshot = commit->snapshot;
+    gsl_err_t parser_err;
+    int err;
+
+    if (DEBUG_CLASS_SELECT_LEVEL_2) {
+        knd_log(".. parsing cls commit select rec: \"%.*s\" {task-type %d}",
+                32, rec, task->type);
+    }
+
+    struct LocalContext ctx = {
+        .task = task,
+        .commit = commit,
+        .snapshot = snapshot
+    };
+
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = get_cls_by_name,
+          .obj = &ctx
+        },
+        { .name = "del",
+          .name_size = strlen("del"),
+          .run = remove_class,
+          .obj = &ctx
+        },
+        { .name = "attr",
+          .name_size = strlen("attr"),
+          .parse = select_cls_attrs,
+          .obj = &ctx
+        },
+        { .type = GSL_SET_STATE,
+          .name = "inst",
+          .name_size = strlen("inst"),
+          .parse = import_class_inst,
+          .obj = &ctx
+        },
+        { .name = "inst",
+          .name_size = strlen("inst"),
+          .parse = select_class_inst,
+          .obj = &ctx
+        },
+        { .is_default = true,
+          .run = confirm_default_commit,
+          .obj = &ctx
+        }
+    };
+
+    parser_err = gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+    if (parser_err.code) {
+        err = gsl_err_to_knd_err_codes(parser_err);
+        switch (err) {
+        case knd_NO_MATCH:
+            KND_TASK_ERR("unrecognized {tag %.*s} in {cls}",
+                         parser_err.val_size, parser_err.val);
+            break;
+        default:
+            KND_TASK_ERR("{cls} parsing failed {err %d}", err);
+            break;
+        }
+    }
+
+    return knd_OK;    
 }

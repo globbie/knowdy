@@ -217,29 +217,27 @@ static gsl_err_t remove_inst(void *obj, const char *unused_var(name), size_t unu
         knd_log("-- remove operation: no class instance selected");
         return make_gsl_err(gsl_FAIL);
     }
-
-    struct kndState  *state;
-    struct kndStateRef  *state_ref;
     struct kndTask *task         = ctx->task;
     struct kndOutput *log        = task->log;
-    struct kndMemPool *mempool   = task->mempool;
     int err;
 
     if (DEBUG_INST_LEVEL_2)
         knd_log("== class inst to be deleted: \"%.*s\"",
                 self->name_size, self->name);
 
+#if 0
     err = knd_state_new(&state, mempool);
     if (err) return make_gsl_err_external(err);
     err = knd_state_ref_new(&state_ref, mempool);
     if (err) return make_gsl_err_external(err);
     state_ref->state = state;
 
-    state->phase = KND_REMOVED;
+    //state->phase = KND_REMOVED;
     state->next = self->states;
     self->states = state;
     self->num_states++;
     state->numid = self->num_states;
+#endif
 
     log->reset(log);
     err = log->write(log, self->name, self->name_size);
@@ -260,7 +258,7 @@ static gsl_err_t present_inst_selection(void *obj, const char *unused_var(val),
     struct kndTask *task = ctx->task;
     struct kndOutput *out = task->out;
     struct kndClass *c = ctx->class;
-    int err;
+    //int err;
 
     if (DEBUG_INST_LEVEL_2)
         knd_log(".. presenting inst selection of class \"%.*s\"", c->name_size, c->name);
@@ -299,8 +297,8 @@ static gsl_err_t present_inst_selection(void *obj, const char *unused_var(val),
 
     if (task->ctx->max_depth == 0) task->ctx->max_depth = 1;
 
-    err = knd_class_inst_export(ctx->inst, task->ctx->format, false, KND_SELECTED, task);
-    if (err) return make_gsl_err_external(err);
+    //err = knd_class_inst_export(ctx->inst, task->ctx->format, false, KND_SELECTED, task);
+    //if (err) return make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);
 }

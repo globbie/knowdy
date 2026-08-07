@@ -23,7 +23,6 @@
 #include "knd_output.h"
 
 int knd_proc_inst_export_JSON(struct kndProcInst *self, bool unused_var(is_list_item),
-                              knd_state_phase unused_var(phase),
                               struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;

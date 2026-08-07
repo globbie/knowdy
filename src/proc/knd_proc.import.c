@@ -16,6 +16,7 @@
 #include "knd_text.h"
 #include "knd_class.h"
 #include "knd_repo.h"
+#include "knd_state.h"
 #include "knd_user.h"
 
 #define DEBUG_PROC_IMPORT_LEVEL_0 0
@@ -448,10 +449,6 @@ gsl_err_t knd_proc_import(const char *rec, size_t *total_size, struct kndRepoSna
     if (DEBUG_PROC_IMPORT_LEVEL_2)
         knd_proc_str(proc, 0);
 
-    if (task->type == KND_TASK_COMMIT) {
-        err = knd_proc_commit_state(proc, KND_CREATED, task);
-        if (err) return make_gsl_err_external(err);
-    }
 
     return make_gsl_err(gsl_OK);
     // TODO free resources

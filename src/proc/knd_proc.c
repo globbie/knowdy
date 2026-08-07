@@ -198,14 +198,9 @@ int knd_get_proc(struct kndRepoSnapshot *unused_var(snapshot), const char *name,
         KND_TASK_ERR("no such proc: \"%.*s\"", name_size, name);
     }
 
-    if (entry->phase == KND_REMOVED) {
-        KND_TASK_LOG("\"%s\" proc was removed", name);
-        return knd_NO_MATCH;
-    }
-
     if (entry->proc) {
         proc = entry->proc;
-        entry->phase = KND_SELECTED;
+        //entry->phase = KND_SELECTED;
         *result = proc;
         return knd_OK;
     }
@@ -239,9 +234,10 @@ int knd_get_proc_entry(struct kndRepoSnapshot *unused_var(snapshot), const char 
     return knd_OK;
 }
 
+#if 0
 static int commit_state(struct kndProc *self,
                         struct kndStateRef *children,
-                        knd_state_phase phase,
+                        knd_state_phase_t phase,
                         struct kndState **result,
                         struct kndTask *task)
 {
@@ -268,7 +264,7 @@ static int commit_state(struct kndProc *self,
 }
 
 int knd_proc_commit_state(struct kndProc *self,
-                          knd_state_phase phase,
+                          knd_state_phase_t phase,
                           struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
@@ -306,6 +302,7 @@ int knd_proc_commit_state(struct kndProc *self,
     commit->proc_state_refs = state_ref;
     return knd_OK;
 }
+#endif
 
 int knd_proc_var_new(struct kndProcVar **result, struct kndMemPool *mempool)
 {

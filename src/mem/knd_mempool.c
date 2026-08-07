@@ -286,6 +286,7 @@ int knd_mempool_page(struct kndMemPool *self, knd_mempage_t page_type, void **re
         pages = self->base_pages;
         break;
     }
+
     if (*pages_used + 1 > num_pages) {
         return knd_NOMEM;
     }

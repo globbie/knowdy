@@ -32,12 +32,12 @@
 
 #include <gsl-parser.h>
 
-#define DEBUG_CLASS_SELECT_LEVEL_1 0
-#define DEBUG_CLASS_SELECT_LEVEL_2 0
-#define DEBUG_CLASS_SELECT_LEVEL_3 0
-#define DEBUG_CLASS_SELECT_LEVEL_4 0
-#define DEBUG_CLASS_SELECT_LEVEL_5 0
-#define DEBUG_CLASS_SELECT_LEVEL_TMP 1
+#define DEBUG_CLS_SELECT_LEVEL_1 0
+#define DEBUG_CLS_SELECT_LEVEL_2 0
+#define DEBUG_CLS_SELECT_LEVEL_3 0
+#define DEBUG_CLS_SELECT_LEVEL_4 0
+#define DEBUG_CLS_SELECT_LEVEL_5 0
+#define DEBUG_CLS_SELECT_LEVEL_TMP 1
 
 #if 0
 static int retrieve_inst_updates(struct kndStateRef *ref,
@@ -56,10 +56,10 @@ static int retrieve_inst_updates(struct kndStateRef *ref,
     }
 
     switch (ref->type) {
-        case KND_STATE_CLASS_INST:
+        case KND_STATE_CLS_INST:
             inst_entry = ref->obj;
 
-            if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
+            if (DEBUG_CLS_SELECT_LEVEL_TMP) {
                 knd_log("** inst id:%.*s", inst_entry->id_size, inst_entry->id);
             }
 
@@ -111,104 +111,9 @@ int knd_class_get_inst_updates(struct kndClass *self, size_t gt, size_t lt,
 
 #endif
 
-
-int knd_retrieve_class_updates(struct kndStateRef *ref, struct kndSet *set, struct kndTask *task)
+int knd_cls_get_state(struct kndClass *cls, struct kndTask *unused_var(task))
 {
-    struct kndState *state = ref->state;
-    struct kndClassEntry *entry;
-    struct kndStateRef *child_ref;
-    int err;
-
-    knd_log("++ class state: %zu  type:%d", state->numid, ref->type);
-
-    for (child_ref = state->children; child_ref; child_ref = child_ref->next) {
-        err = knd_retrieve_class_updates(child_ref, set, task);
-        RET_ERR();
-    }
-
-    switch (ref->type) {
-        case KND_STATE_CLASS:
-            entry = ref->obj;
-            if (!entry) {
-                knd_log("-- no class ref in state ref");
-                return knd_OK;
-            }
-
-            if (DEBUG_CLASS_SELECT_LEVEL_TMP) {
-                knd_log("** class:%.*s", entry->name_size, entry->name);
-            }
-
-            err = knd_set_add(set,
-                              entry->id,
-                              entry->id_size, (void*)entry, task);                   RET_ERR();
-
-            /* TODO: filter out the insts
-               that were created and removed _after_
-               the requested update _gt */
-
-            break;
-        default:
-            break;
-    }
-    return knd_OK;
-}
-
-#if 0
-extern int knd_class_get_updates(struct kndClass *self,
-                                 size_t gt, size_t lt,
-                                 size_t unused_var(eq),
-                                 struct kndSet *unused_var(set), struct kndTask *unused_var(task))
-{
-    struct kndState *state;
-    struct kndStateRef *ref;
-    int err;
-
-    if (DEBUG_CLASS_SELECT_LEVEL_2) {
-        knd_log("{cls %.*s} to extract updates",
-                self->name_size, self->name);
-    }
-
-    if (!lt) lt = self->states->numid + 1;
-
-    FOREACH (state, self->states) {
-        if (state->numid >= lt) continue;
-        if (state->numid <= gt) continue;
-
-        // TODO
-        if (!state->children) continue;
-        // for (ref = state->children; ref; ref = ref->next) {
-        //    err = knd_retrieve_class_updates(ref, set, task);                               RET_ERR();
-        //}
-    }
-
-    return knd_OK;
-}
-#endif
-
-extern int knd_class_get_desc_updates(struct kndClass *self,
-                                      size_t gt, size_t lt,
-                                      size_t unused_var(eq),
-                                      struct kndSet *set, struct kndTask *task)
-{
-    struct kndState *state;
-    struct kndStateRef *ref;
-    int err;
-
-    if (DEBUG_CLASS_SELECT_LEVEL_2) {
-        knd_log("{cls %.*s} to extract descendant updates..",
-                self->name_size, self->name);
-    }
-    if (!lt) lt = self->desc_states->numid + 1;
-    FOREACH (state, self->desc_states) {
-        if (state->numid >= lt) continue;
-        if (state->numid <= gt) continue;
-
-        // TODO
-        if (!state->children) continue;
-        FOREACH (ref, state->children) {
-            err = knd_retrieve_class_updates(ref, set, task);                               RET_ERR();
-        }
-    }
+    knd_log(".. get state of {cls %.*s}", cls->name_size, cls->name);
 
     return knd_OK;
 }

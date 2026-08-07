@@ -326,10 +326,9 @@ extern int knd_append_file(const char *filename, const void *buf, size_t buf_siz
 {
     int fd;
 
-    /* write textual content */
     fd = open(filename, O_WRONLY | O_CREAT | O_APPEND, 0644);
     if (fd < 0) {
-        knd_log("-- append to file \"%s\" failed :(", filename);
+        knd_log("append to {file %s} failed", filename);
         return knd_IO_FAIL;
     }
 
@@ -339,10 +338,7 @@ extern int knd_append_file(const char *filename, const void *buf, size_t buf_siz
     return written == -1 || (size_t)written != buf_size ? knd_IO_FAIL : knd_OK;
 }
 
-int knd_make_id_path(char *buf,
-                     const char *path,
-                     const char *id, 
-                     const char *filename)
+int knd_make_id_path(char *buf, const char *path, const char *id, const char *filename)
 {
     char *curr_buf = buf;
     size_t path_size = 0;

@@ -36,10 +36,21 @@
 #include "knd_memblock.h"
 #include "knd_user.h"
 #include "knd_task.h"
+#include "knd_state.h"
+#include "knd_commit.h"
 #include "knd_text.h"
 #include "knd_utils.h"
 
 #define MEM_TRACE 0
+#define KND_MAX_READERS 3
+#define KND_MAX_WRITERS 3
+#define KND_MAX_COLLECTORS 2
+
+typedef enum oper_t { KND_OPER_DEFAULT,
+                      KND_OPER_QUERY,
+                      KND_OPER_COMMIT,
+                      KND_OPER_UPDATE_STATE
+                    } oper_t;
 
 static const char *options_string = "c:h?";
 
@@ -87,49 +98,186 @@ static int present_mempools(struct kndTask *task)
     return knd_OK;
 }
 
-static int check_file_rec(struct kndTask *task, const char *rec, size_t rec_size,
-                          struct kndMemBlock **result) 
+static void check_oper_type(const char *req, oper_t *oper_type)
 {
-    char buf[1024];
-    size_t buf_size;
-    size_t prefix_size = strlen("{file ");
-    struct stat st;
-    struct kndMemBlock *memblock;
+    *oper_type = KND_OPER_DEFAULT;
+
+    if (!memcmp(req, "{cmd", strlen("{cmd"))) {
+        *oper_type = KND_OPER_COMMIT;
+        return;
+    }
+    if (!memcmp(req, "{query", strlen("{query"))) {
+        *oper_type = KND_OPER_QUERY;
+        return;
+    }
+    if (!memcmp(req, "{state", strlen("{state"))) {
+        *oper_type = KND_OPER_UPDATE_STATE;
+        return;
+    }
+}
+
+static int create_readers(struct kndSteward *steward, struct kndTask **readers, size_t *total_readers)
+{
+    struct kndTask *reader_task;
+    size_t num_readers = 0;
     int err;
 
-    if (memcmp(rec, "{file ", prefix_size)) {
-        return knd_OK;
-    }
-    rec += prefix_size;
-    buf_size = rec_size - prefix_size - 1; 
-    memcpy(buf, rec, buf_size);
-    buf[buf_size] = '\0';
-
-    knd_log(".. reading input file \"%.*s\"", buf_size, buf);
-
-    if (stat(buf, &st)) {
-        knd_log("-- no such file: \"%.*s\"", buf_size, buf);
-        return knd_FAIL;
-    }
-    if ((size_t)st.st_size >= 1024 * 1024) {
-        err = knd_LIMIT;
-        KND_TASK_ERR("max input file size limit reached");
+    for (size_t i = 0; i < KND_MAX_READERS; i++) {
+        err = knd_task_new(&reader_task, KND_AGENT_READER, i + 1,
+                           &steward->mem_task_ctx_config, &steward->mem_task_cache_config, steward);
+        if (err) {
+            knd_log("failed to create a reader {err %d}", err);
+            return err;
+        }
+        readers[num_readers] = reader_task;
+        num_readers++;
     }
 
-    err = knd_memblock_new(&memblock, 0, (size_t)st.st_size);
-    KND_TASK_ERR("failed to alloc a memblock");
+    *total_readers = num_readers;
+    return knd_OK;
+}
+
+static int create_writers(struct kndSteward *steward, struct kndTask **writers,
+                          size_t *writer_ids, size_t *total_writers)
+{
+    struct kndTask *writer_task;
+    size_t num_writers = 0;
+    int err;
+
+    for (size_t i = 0; i < KND_MAX_WRITERS; i++) {
+        err = knd_task_new(&writer_task, KND_AGENT_WRITER, i + 1,
+                           &steward->mem_task_ctx_config, &steward->mem_task_cache_config, steward);
+        if (err) {
+            knd_log("failed to create a writer {err %d}", err);
+            return err;
+        }
+        writers[num_writers] = writer_task;
+        writer_ids[num_writers] = writer_task->id;
+        num_writers++;
+    }
+    *total_writers = num_writers;
+    return knd_OK;
+}
+
+static int create_collectors(struct kndSteward *steward, struct kndTask **collectors, size_t *total_collectors)
+{
+    struct kndTask *collect_task;
+    size_t num_collectors = 0;
+    int err;
+
+    for (size_t i = 0; i < KND_MAX_COLLECTORS; i++) {
+        err = knd_task_new(&collect_task, KND_AGENT_COLLECTOR, i + 1,
+                           &steward->mem_task_ctx_config, &steward->mem_task_cache_config, steward);
+        if (err) {
+            knd_log("failed to create a collect {err %d}", err);
+            return err;
+        }
+        collectors[num_collectors] = collect_task;
+        num_collectors++;
+    }
+    *total_collectors = num_collectors;
+    return knd_OK;
+}
+
+static int update_state(struct kndRepoSnapshot *snapshot,
+                        struct kndTask **collectors, size_t num_collectors, 
+                        size_t *writer_ids, size_t num_writers,
+                        struct kndTask *arbiter_task)
+{
+    assert (num_writers > 0);
+    assert (num_writers >= num_collectors);
+    struct kndStateLedger *ledger;
+
+    /* distribute writers between collectors */
+    size_t batch_size = num_writers / num_collectors;
+    size_t remainder = num_writers - (batch_size * num_collectors);
+    size_t batch_from = 0;
+    size_t batch_to = batch_size + remainder;
+    int err;
+
+    knd_log("!! updating global state {num-writers %zu} {num-collectors %zu} ", num_writers, num_collectors);
+
+    err = knd_task_reset(arbiter_task);
+    if (err) {
+        knd_log("failed to reset the arbiter's task {err %d}", err);
+        return err;
+    }
+
+    ledger = arbiter_task->ledger;
+
+    /** step one: read available incoming commits 
+     *            NB: collectors can run in parallel
+     */
+    for (size_t i = 0; i < num_collectors; i++) {
+        writer_ids += batch_from;
+
+        // TODO specify state range
+        err = knd_commit_collect(snapshot, writer_ids, batch_to - batch_from, NULL, ledger, collectors[i]);
+        if (err) {
+            knd_log("commits collection failure {err %d}", err);
+            return err;
+        }
+
+        batch_from = batch_to;
+        batch_to += batch_size;
+    }
+
+    /** step two: index commits to discover intersections / conflicts
+     *            NB: lock free concurrency, atomic writes
+     */
+    for (size_t i = 0; i < num_collectors; i++) {
+        err = knd_state_index_commits(snapshot, ledger, collectors[i]);
+        if (err) {
+            knd_log("commits collection failure {err %d}", err);
+            return err;
+        }
+    }
     
-    err = knd_memblock_read_file(memblock, buf, (size_t)st.st_size, true, &task->input);
-    KND_TASK_ERR("failed to read memblock from {file %.*s}", buf_size, buf);
+    /**  step three: detect conflicting commits, sort them by rating + timestamp,
+     *             schedule non-conflicting commits for the WAL update
+     */
+    for (size_t i = 0; i < num_collectors; i++) {
+        err = knd_state_detect_conflicts(snapshot, ledger, collectors[i]);
+        if (err) {
+            knd_log("commits conflict detection failure {err %d}", err);
+            return err;
+        }
+    }
 
-    *result = memblock;
+    /** step four (final): remaining conflicting commits
+     *  must be resolved by the Arbiter
+     */
+
+
+    // TODO get facets
+    err = knd_state_resolve_conflicts(snapshot, ledger, arbiter_task);
+    if (err) {
+        knd_log("commits conflict resolution failure {err %d}", err);
+        return err;
+    }
+    
+    /* make sure collectors' WALs are updated */
+
+    // TODO
+
+    /* advance global state */
+
     return knd_OK;
 }
 
 static int knd_interact(struct kndSteward *steward)
 {
-    struct kndTask *reader_task;
-    //struct kndTask *writer_task;
+    struct kndTask *arbiter_task, *curr_task;
+    struct kndTask *readers[KND_MAX_READERS] = { 0 };
+    size_t num_readers;
+    size_t reader_count = 0;
+    struct kndTask *writers[KND_MAX_WRITERS] = { 0 };
+    size_t writer_ids[KND_MAX_WRITERS] = { 0 };
+    size_t num_writers;
+    size_t writer_count = 0;
+    struct kndTask *collectors[KND_MAX_COLLECTORS] = { 0 };
+    size_t num_collectors;
+
     char  *buf;
     size_t buf_size;
     struct kndMemBlock *memblock = NULL;
@@ -139,17 +287,23 @@ static int knd_interact(struct kndSteward *steward)
     const char *steward_role_name = knd_agent_role_names[steward->role];
     struct kndOutput *out = steward->out;
     struct kndOutput *log = steward->log;
-    //struct kndResourceReport report;
-    //struct kndRepoSnapshot *snapshot = steward->repo->snapshot;
+    enum oper_t oper_type = 0;
+    struct kndRepoSnapshot *snapshot = steward->repo->snapshot;
     int err;
 
-    //err = knd_task_new(&writer_task, KND_AGENT_WRITER, 1,
-    //                    &steward->mem_task_ctx_config, &steward->mem_task_cache_config, steward);
-    //KND_STEWARD_ERR("failed to create a writer task");
+    /* create workers */
+    err = knd_task_new(&arbiter_task, KND_AGENT_ARBITER, 42,
+                        &steward->mem_task_ctx_config, &steward->mem_task_cache_config, steward);
+    KND_STEWARD_ERR("failed to create a writer task");
 
-    err = knd_task_new(&reader_task, KND_AGENT_READER, 2,
-                       &steward->mem_task_ctx_config, &steward->mem_task_cache_config, steward);
-    KND_STEWARD_ERR("failed to create a reader task");
+    err = create_readers(steward, readers, &num_readers);
+    KND_STEWARD_ERR("failed to create readers");
+
+    err = create_writers(steward, writers, writer_ids, &num_writers);
+    KND_STEWARD_ERR("failed to create writers");
+
+    err = create_collectors(steward, collectors, &num_collectors);
+    KND_STEWARD_ERR("failed to create commit collectors");
 
     /* start serving requests */
 
@@ -168,100 +322,53 @@ static int knd_interact(struct kndSteward *steward)
         block = buf;
         block_size = buf_size;
 
-        /*if (block[0] == '[') {
-            knd_task_reset(reader_task);
-            err = knd_text_build_JSON(block, block_size, reader_task);
-            if (err) goto next_line;
-            knd_log("== JSON: %.*s", reader_task->output_size, reader_task->output);
-        }*/
+        check_oper_type(block, &oper_type);
 
-        err = check_file_rec(reader_task, buf, buf_size, &memblock);
-        if (err) goto next_line;
-        if (memblock) {
-            block = memblock->buf;
-            block_size = memblock->buf_size;
+        switch (oper_type) {
+        case KND_OPER_QUERY:
+            /* switch between tasks to simulate concurrent reads */
+            if (reader_count >= KND_MAX_READERS) {
+                reader_count = 0;
+            }
+            curr_task = readers[reader_count];
+            reader_count++;
+            break;
+        case KND_OPER_COMMIT:
+            /* switch between tasks to simulate concurrent writes */
+            if (writer_count >= KND_MAX_WRITERS) {
+                writer_count = 0;
+            }
+            curr_task = writers[writer_count];
+            writer_count++;
+            break;
+        case KND_OPER_UPDATE_STATE:
+            err = update_state(snapshot, collectors, num_collectors,\
+                               writer_ids, num_writers, arbiter_task);
+            if (err) {
+                knd_log("commits collection failure {err %d}", err);
+            }
+            goto final;
+        default:
+            knd_log("-- unsupported operation");
+            goto final;
         }
 
-        /* reader task is always the first to parse and validate the request */
-        reader_task->ctx->max_depth = 3;
+        err = knd_task_reset(curr_task);
+        if (err) {
+            knd_log("failed to reset a task {err %d}", err);
+            goto final;
+        }
 
-        err = knd_task_run(reader_task, block, block_size);
+        err = knd_task_run(curr_task, block, block_size);
         if (err != knd_OK) {
-            knd_log("-- task run failed: %.*s",
-                    reader_task->output_size, reader_task->output);
-            goto next_line;
+            knd_log("task run failure %.*s", curr_task->output_size, curr_task->output);
+        } else {
+            knd_log("=== REPLY ===\n%.*s",
+                    curr_task->output_size, curr_task->output);
         }
 
-        knd_log("=== REPLY ===\n\n%.*s", reader_task->output_size, reader_task->output);
-
-        /* writing tasks require another run,
-           possibly involving network communication */
-        switch (reader_task->ctx->phase) {
-        case KND_CONFIRM_COMMIT:
-            err = knd_memblock_new(&write_memblock, 0, reader_task->output_size);
-            if (err) goto next_line;
-
-            err = knd_memblock_copy(write_memblock, reader_task->output, reader_task->output_size);
-            if (err != knd_OK) {
-                knd_log("-- update block allocation failed");
-                goto next_line;
-            }
-
-#if 0
-            knd_task_reset(writer_task);
-            err = knd_task_run(writer_task, write_memblock->buf, write_memblock->buf_size);
-            if (err != knd_OK) {
-                knd_log("-- update confirm failed: %.*s",
-                        writer_task->output_size, writer_task->output);
-                goto next_line;
-            }
-            knd_log("== Arbiter's output:\n%.*s",
-                    writer_task->output_size, writer_task->output);
-
-            /* check system resource utilization */
-            knd_task_monitor(writer_task, steward->active_storage, &report);
-            if (report.mem_threshold_alert) {
-
-                knd_log("!! mem utilization threshold reached");
-
-                /* build an on-disk snapshot up to the latest commit number */
-                err = knd_steward_snapshot_create(steward);
-                KND_STEWARD_ERR("failed to build an on-disk snapshot");
-
-                /* suspend all writing tasks */
-
-                err = knd_steward_snapshot_activate(steward, &snapshot);
-                KND_STEWARD_ERR("steward cleanup failed");
-
-                /* re-initialize all writing tasks */
-                knd_task_reset(writer_task);                
-            }
-#endif
-            break;
-        default:
-            break;
-        }
-
-        /* finalize reader task */
-        switch (reader_task->type) {
-        case KND_TASK_QUERY:
-            // fall through
-        case KND_TASK_COMMIT:
-            err = knd_task_cache_update(reader_task);
-            // add error handling
-            break;
-        default:
-            break;
-        }
-
-    next_line:
-
-        if (MEM_TRACE) {
-            present_mempools(reader_task);
-        }
-        knd_task_reset(reader_task);
-
-        /* readline allocates a new buffer every time */
+    final:
+        /* readline allocates a new buffer every time, need to clean up */
         free(buf);
         memblock = NULL;
         write_memblock = NULL;

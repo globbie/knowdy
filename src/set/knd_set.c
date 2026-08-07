@@ -98,6 +98,8 @@ static int save_elem(struct kndSet *s, struct kndSetDir *parent_dir,
     int dir_pos;
     int err;
 
+    assert (parent_dir != NULL);
+
     if (DEBUG_SET_LEVEL_2) {
         knd_log("== set dir to save {id-remainder %.*s}", id_size, id);
     }
@@ -178,6 +180,7 @@ int knd_set_add(struct kndSet *s, const char *key, size_t key_size, void *elem, 
     assert(key_size != 0);
     assert(key != NULL);
     assert(elem != NULL);
+    assert (s->dir != NULL);
 
     err = save_elem(s, s->dir, elem, key, key_size, task);
     KND_TASK_ERR("failed to add an elem to a set {key %.*s {err %d}}", key_size, key, err);

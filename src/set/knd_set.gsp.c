@@ -158,8 +158,8 @@ final:
     case KND_TASK_TRACE_MODE:
         break;
     default:
-        err = knd_append_file(leaf->filepath, out->buf, out->buf_size);
-        KND_TASK_ERR("failed to append write to {file %.*s}", leaf->filepath_size, leaf->filepath);
+        err = knd_append_file(leaf->filename, out->buf, out->buf_size);
+        KND_TASK_ERR("failed to append write to {file %.*s}", leaf->filename_size, leaf->filename);
         leaf->curr_size += out->buf_size;
         break;
     }
@@ -287,8 +287,8 @@ static int build_subdirs_footer(struct kndSetDir *dir, struct kndSetDirBlock *bl
     case KND_TASK_TRACE_MODE:
         break;
     default:
-        err = knd_append_file(leaf->filepath, out->buf, out->buf_size);
-        KND_TASK_ERR("failed to append write to {file %.*s}", leaf->filepath_size, leaf->filepath);
+        err = knd_append_file(leaf->filename, out->buf, out->buf_size);
+        KND_TASK_ERR("failed to append write to {file %.*s}", leaf->filename_size, leaf->filename);
         leaf->curr_size += out->buf_size;
         break;
     }
@@ -375,7 +375,7 @@ int knd_set_leaf_marshall(struct kndSet *s, struct kndSetRange *range,
     int err;
 
     if (DEBUG_SET_GSP_LEVEL_2) {
-        knd_log("\n>> marshalling {leaf %.*s}", leaf->filepath_size, leaf->filepath);
+        knd_log("\n>> marshalling {leaf %.*s}", leaf->filename_size, leaf->filename);
     }
 
     /* GSP header */
@@ -383,9 +383,9 @@ int knd_set_leaf_marshall(struct kndSet *s, struct kndSetRange *range,
     case KND_TASK_TRACE_MODE:
         break;
     default:
-        err = knd_append_file(leaf->filepath, "GSP", strlen("GSP"));
+        err = knd_append_file(leaf->filename, "GSP", strlen("GSP"));
         KND_TASK_ERR("failed to append write to {file %.*s}",
-                     leaf->filepath_size, leaf->filepath);
+                     leaf->filename_size, leaf->filename);
         leaf->curr_size = strlen("GSP");
         break;
     }
@@ -440,7 +440,7 @@ int knd_set_marshall(struct kndSet *s, struct kndSetRange *range,
         }
 
         err = knd_storage_leaf_new(&leaf, leaf_count, path, path_size,
-                                   min_leaf_size, max_leaf_size, store,
+                                   min_leaf_size, max_leaf_size,
                                    KND_STORAGE_MODE_READ_WRITE);
         KND_TASK_ERR("failed to alloc a storage leaf");
 

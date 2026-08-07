@@ -73,55 +73,55 @@ struct kndMemPool
 
     /* 2048 bytes */
     char *large_pages;
-    //size_t large_page_size;
     size_t num_large_pages;
     size_t large_pages_used;
     struct kndMemPageHeader *large_page_list;
+
     struct kndMemPageHeader * _Atomic shared_large_page_list;
     atomic_size_t shared_large_pages_used;
 
     /* 1024 bytes */
     char *base_pages;
-    //size_t base_page_size;
     size_t num_base_pages;
     size_t base_pages_used;
     struct kndMemPageHeader *base_page_list;
+
     struct kndMemPageHeader * _Atomic shared_base_page_list;
     atomic_size_t shared_base_pages_used;
 
     /* 512 bytes */
     char *small_x4_pages;
-    //size_t small_x4_page_size;
     size_t num_small_x4_pages;
     size_t small_x4_pages_used;
     struct kndMemPageHeader *small_x4_page_list;
+
     struct kndMemPageHeader * _Atomic shared_small_x4_page_list;
     atomic_size_t shared_small_x4_pages_used;
 
     /* 256 bytes */
     char *small_x2_pages;
-    //size_t small_x2_page_size;
     size_t num_small_x2_pages;
     size_t small_x2_pages_used;
     struct kndMemPageHeader *small_x2_page_list;
+
     struct kndMemPageHeader * _Atomic shared_small_x2_page_list;
     atomic_size_t shared_small_x2_pages_used;
 
     /* 128 bytes */
     char *small_pages;
-    //size_t small_page_size;
     size_t num_small_pages;
     size_t small_pages_used;
     struct kndMemPageHeader *small_page_list;
+
     struct kndMemPageHeader * _Atomic shared_small_page_list;
     atomic_size_t shared_small_pages_used;
 
     /* 64 bytes */
     char *tiny_pages;
-    //size_t tiny_page_size;
     size_t num_tiny_pages;
     size_t tiny_pages_used;
     struct kndMemPageHeader *tiny_page_list;
+
     struct kndMemPageHeader * _Atomic shared_tiny_page_list;
     atomic_size_t shared_tiny_pages_used;
 

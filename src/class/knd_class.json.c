@@ -49,10 +49,11 @@ struct LocalContext {
     struct kndClassBasePred *base_pred;
 };
 
+#if 0
 int knd_export_class_state_JSON(struct kndClass *self, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
-    struct kndState *state = self->states;
+    //struct kndState *state = self->states;
     size_t latest_state_numid = self->init_state + self->num_states;
     size_t total;
     int err;
@@ -127,30 +128,7 @@ int knd_export_class_state_JSON(struct kndClass *self, struct kndTask *task)
 
     return knd_OK;
 }
-
-/*
-int knd_export_class_inst_state_JSON(struct kndClass *self, struct kndTask *task)
-{
-    struct kndOutput *out = task->out;
-    size_t latest_state_id = 0;
-    int err;
-
-    if (self->inst_states)
-        latest_state_id = self->inst_states->numid;
-
-    err = out->write(out, "\"_state\":",
-                     strlen("\"_state\":"));                                      RET_ERR();
-    err = out->writef(out, "%zu", latest_state_id);                               RET_ERR();
-
-    if (self->inst_idx) {
-        err = out->write(out, ",\"_tot\":", strlen(",\"_tot\":"));                  RET_ERR();
-        err = out->writef(out, "%zu", self->inst_idx->num_elems);      RET_ERR();
-    } else {
-        err = out->write(out, ",\"_tot\":0", strlen(",\"_tot\":0"));                  RET_ERR();
-    }
-    return knd_OK;
-}
-*/
+#endif
 
 #if 0
 static int export_class_ref(void *obj, const char *unused_var(elem_id), size_t unused_var(elem_id_size),
@@ -661,7 +639,7 @@ int knd_class_export_JSON(struct kndClass *self, struct kndTask *task,
 {
     struct kndClassEntry *entry = self->entry;
     struct kndOutput *out = task->out;
-    struct kndState *state = self->states;
+    //struct kndState *state = self->states;
     size_t indent_size = task->ctx->format_indent;
     int err;
 
@@ -687,6 +665,7 @@ int knd_class_export_JSON(struct kndClass *self, struct kndTask *task,
     err = knd_text_glosses_export_JSON(self->entry->glosses, task, depth + 1);
     KND_TASK_ERR("failed to export gloss JSON");
 
+#if 0
     if (state) {
         err = out->write(out, ",\"_state\":", strlen(",\"_state\":"));            RET_ERR();
         err = out->writef(out, "%zu", state->numid);                              RET_ERR();
@@ -717,6 +696,7 @@ int knd_class_export_JSON(struct kndClass *self, struct kndTask *task,
             break;
         }
     }
+#endif
 
     if (task->depth > task->ctx->max_depth) {
         err = export_concise_JSON(self, task);                                    RET_ERR();

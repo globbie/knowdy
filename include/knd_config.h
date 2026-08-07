@@ -199,16 +199,23 @@ static const char *const knd_format_names[] = {
 #define KND_INDENT_SIZE 4
 #define KND_UINT_SIZE 4
 
-#define KND_IDLE_TIMEOUT 10 /* in seconds */
-
 #define KND_BASE_REPO_DIR_NAME "base"
 #define KND_SNAPSHOT_DIR_NAME  "snapshot"
+#define KND_UPDATES_DIR_NAME   "updates"
+#define KND_AGENT_DIR_NAME     "agent"
 #define KND_USERSPACE_DIR_NAME "users"
 
-#define KND_GSP_FILE_HEADER_NAME "GSP"
-#define KND_GSP_FILE_EXT_NAME ".gsp"
-#define KND_GSP_FILE_TMP_EXT_NAME ".temp"
-#define KND_PACKAGE_INDEX_NAME "index"
+#define KND_GSL_PACKAGE_INDEX_NAME "index"
+#define KND_WAL_STATE_INDEX_NAME "state"
+
+#define KND_GSL_FILE_EXT_NAME     ".gsl"
+#define KND_GSP_FILE_EXT_NAME     ".gsp"
+#define KND_GSP_FILE_TMP_EXT_NAME ".tmp"
+#define KND_IDX_FILE_EXT_NAME ".idx"
+#define KND_WAL_FILE_EXT_NAME ".wal"
+#define KND_LOG_FILE_EXT_NAME ".log"
+
+#define KND_GSP_FILE_HEADER_NAME  "GSP"
 
 /* debugging output levels */
 #define KND_DEBUG_LEVEL_1 1
@@ -217,12 +224,13 @@ static const char *const knd_format_names[] = {
 #define KND_DEBUG_LEVEL_4 0
 #define KND_DEBUG_LEVEL_5 0
 
-#define MAX_DEQUE_ATTEMPTS 100
-#define TASK_TIMEOUT_USECS 100
 #define KND_MAX_TASKS 64
 
-#define KND_MAX_JOURNALS 64
-#define KND_MAX_JOURNAL_SIZE 10 * 1024 * 1024
+#define KND_MAX_WALS 64
+#define KND_MAX_WAL_SIZE 10 * 1024 * 1024
+#define KND_MAX_WAL_THRESHOLD 1024 * 1024 * 100
+#define KND_MIN_WAL_THRESHOLD 1024 * 1024 * 10
+#define KND_WAL_THRESHOLD_RATIO 0.9
 
 /* default values, overriden by config  */
 #define KND_MAX_SNAPSHOTS 32

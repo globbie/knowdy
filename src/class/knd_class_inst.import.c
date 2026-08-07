@@ -275,8 +275,6 @@ int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *
     struct kndClass *c;
     struct kndClassInst *inst;
     struct kndClassInstEntry *inst_entry;
-    struct kndState *state;
-    struct kndStateRef *state_ref;
     struct kndTaskContext *ctx = task->ctx;
     struct kndClassDeclar *declar = NULL;
     int err;
@@ -355,26 +353,9 @@ int knd_import_class_inst(struct kndClassEntry *entry, const char *rec, size_t *
         break;
     }
 
-    err = knd_state_new(&state, mempool);
-    KND_TASK_ERR("state alloc failed");
-    state->phase = KND_CREATED;
-    state->numid = 1;
-    inst->states = state;
-    inst->num_states = 1;
-
-    err = knd_state_ref_new(&state_ref, mempool);
-    KND_TASK_ERR("failed to alloc a state ref");
-    state_ref->state = state;
-    state_ref->type = KND_STATE_CLASS_INST;
-    state_ref->obj = (void*)inst_entry;
-
-    state_ref->next = ctx->class_inst_state_refs;
-    ctx->class_inst_state_refs = state_ref;
-    ctx->num_class_inst_state_refs++;
-
-    if (DEBUG_INST_IMPORT_LEVEL_2)
-        knd_log("++ {class %.*s {inst %.*s {numid %zu}}} initial import  OK {num-inst-states %zu}",
-                entry->name_size, entry->name, inst->name_size, inst->name, inst->entry->numid,
-                ctx->num_class_inst_state_refs);
+    if (DEBUG_INST_IMPORT_LEVEL_2) {
+        knd_log("++ {class %.*s {inst %.*s {numid %zu}}} initial import  OK",
+                entry->name_size, entry->name, inst->name_size, inst->name, inst->entry->numid);
+    }
     return knd_OK;
 }

@@ -168,9 +168,9 @@ struct kndAttr
 
     struct kndFacet *facet;
 
-    struct kndState *states;
-    size_t init_state;
-    size_t num_states;
+    //struct kndState *states;
+    //size_t init_state;
+    //size_t num_states;
 
     struct kndAttr *next;
 };

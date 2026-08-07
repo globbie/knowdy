@@ -72,11 +72,6 @@ struct kndProcInstEntry
     const char *name;
     size_t name_size;
 
-    //char *block;
-    //size_t block_size;
-    //size_t offset;
-
-    knd_state_phase phase;
     struct kndProcEntry *is_a;
     struct kndProcInst *inst;
 
@@ -97,9 +92,6 @@ struct kndProcInst
     struct kndProc *is_a;
 
     struct kndProcVar *procvar;
-
-    // proc_phase_t phase;
-    //proc_timeline_t timeline;
 
     /* natural language expression if available */
     struct kndTextRepr *repr;
@@ -124,8 +116,6 @@ struct kndProcEntry
     struct kndRepo *repo;
 
     struct kndProcEntry *orig;
-
-    knd_state_phase phase;
 
     size_t global_offset;
     size_t block_size;
@@ -234,9 +224,9 @@ int knd_proc_inst_entry_new(struct kndProcInstEntry **result, struct kndMemPool 
 void knd_proc_str(struct kndProc *self, size_t depth);
 void knd_proc_inst_str(struct kndProcInst *self, size_t depth);
 
-int knd_proc_inst_export_GSL(struct kndProcInst *self, bool is_list_item, knd_state_phase phase,
+int knd_proc_inst_export_GSL(struct kndProcInst *self, bool is_list_item,
                              struct kndTask *task, size_t depth);
-int knd_proc_inst_export_JSON(struct kndProcInst *self, bool is_list_item, knd_state_phase phase,
+int knd_proc_inst_export_JSON(struct kndProcInst *self, bool is_list_item,
                               struct kndTask *task, size_t depth);
 
 int knd_import_proc_inst(struct kndProcEntry *self, const char *rec, size_t *total_size, struct kndTask *task);
@@ -328,8 +318,6 @@ static inline void knd_proc_declare_call(struct kndProc *self, struct kndProcCal
     self->calls = call;
     self->num_calls++;
 }
-
-int knd_proc_commit_state(struct kndProc *self, knd_state_phase phase, struct kndTask *task);
 
 static inline void kndProc_declare_tr(struct kndProc *self, struct kndText *tr)
 {

@@ -50,10 +50,10 @@ static int write_subfacets_footer(size_t *subfacet_block_sizes, size_t cell_size
 
     switch (task->mode) {
     case KND_TASK_TRACE_MODE:
-        knd_log(".. write subfacets footer to {filepath %.*s}", leaf->filepath_size, leaf->filepath);
+        knd_log(".. write subfacets footer to {filename %.*s}", leaf->filename_size, leaf->filename);
         break;
     default:
-        err = knd_append_file((const char*)leaf->filepath, out->buf, out->buf_size);
+        err = knd_append_file((const char*)leaf->filename, out->buf, out->buf_size);
         KND_TASK_ERR("facet elems footer write failure");
     }
     
@@ -81,11 +81,11 @@ static int write_elems_footer(size_t *elem_block_sizes, size_t num_elems, size_t
 
     switch (task->mode) {
     case KND_TASK_TRACE_MODE:
-        knd_log(".. write facet elems footer to {filepath %.*s}",
-                leaf->filepath_size, leaf->filepath);
+        knd_log(".. write facet elems footer to {filename %.*s}",
+                leaf->filename_size, leaf->filename);
         break;
     default:
-        err = knd_append_file((const char*)leaf->filepath, out->buf, out->buf_size);
+        err = knd_append_file((const char*)leaf->filename, out->buf, out->buf_size);
         KND_TASK_ERR("facet elems footer write failure");
     }
 
@@ -161,11 +161,11 @@ static int write_facet_footer(struct kndFacet *facet,
 
     switch (task->mode) {
     case KND_TASK_TRACE_MODE:
-        knd_log(".. write facet footer to {filepath %.*s}",
-                leaf->filepath_size, leaf->filepath);
+        knd_log(".. write facet footer to {filename %.*s}",
+                leaf->filename_size, leaf->filename);
         break;
     default:
-        err = knd_append_file((const char*)leaf->filepath, out->buf, out->buf_size);
+        err = knd_append_file((const char*)leaf->filename, out->buf, out->buf_size);
         KND_TASK_ERR("facet elems footer write failure");
     }
 

@@ -323,8 +323,8 @@ static gsl_err_t run_present_user(void *obj, const char *unused_var(val), size_t
 
     user_inst = task->user_ctx->inst;
 
-    err = knd_class_inst_export(user_inst, task->ctx->format, false, KND_SELECTED, task);
-    if (err) return make_gsl_err_external(err);
+    //err = knd_class_inst_export(user_inst, task->ctx->format, false, task);
+    //if (err) return make_gsl_err_external(err);
 
     err = user_footer_export(task);
     if (err) return make_gsl_err_external(err);
@@ -334,8 +334,7 @@ static gsl_err_t run_present_user(void *obj, const char *unused_var(val), size_t
 
 gsl_err_t knd_parse_select_user(void *obj, const char *rec, size_t *total_size)
 {
-    struct LocalContext *ctx = obj;
-    struct kndTask *task = ctx->task;
+    struct kndTask *task = obj;
 
     gsl_err_t parser_err;
 
@@ -438,11 +437,11 @@ gsl_err_t knd_create_user(void *obj, const char *rec, size_t *total_size)
     if (err) {
         return *total_size = 0, make_gsl_err_external(err);
     }
-    err = knd_class_inst_commit_state(self->class, task->ctx->class_inst_state_refs,
+    /*    err = knd_class_inst_commit_state(self->class, task->ctx->class_inst_state_refs,
                                       task->ctx->num_class_inst_state_refs, task);
     if (err) {
         return make_gsl_err_external(err);
-    }
+        }*/
     return make_gsl_err(gsl_OK);
 }
 

@@ -21,31 +21,61 @@
 #define DEBUG_COMMIT_LEVEL_3 0
 #define DEBUG_COMMIT_LEVEL_TMP 1
 
-gsl_err_t knd_commit_run(void *obj, const char *unused_var(rec), size_t *unused_var(total_size))
+int knd_commit_confirm(struct kndCommit *commit, struct kndTask *task)
+{
+    struct kndRepoSnapshot *snapshot = commit->snapshot;
+    struct kndRepo *repo = snapshot->repo;
+    int err;
+
+    assert(commit != NULL);
+
+    if (DEBUG_COMMIT_LEVEL_TMP) {
+        knd_log(">> {repo %.*s} to confirm {commit #%zu}",
+                repo->name_size, repo->name, commit->numid);
+    }
+
+    err = knd_commit_resolve(commit, snapshot, task);
+    KND_TASK_ERR("failed to resolve commit #%zu", commit->numid);
+
+    /* check any doublets in concept definitions */
+    err = knd_commit_dedup(commit, snapshot, task);
+    KND_TASK_ERR("failed to dedup commit #%zu", commit->numid);
+
+    /* if conflicts with current state are found, describe these in reply */
+    //err = knd_commit_check_conflicts(commit, snapshot, task);
+    //KND_TASK_ERR("commit conflicts detected, please get the latest repo updates");
+
+    commit->numid = task->num_commits++;
+
+    /* append a persistent WAL record (task local) */
+    err = knd_commit_update_task_wal(commit, snapshot, task->id, task);
+    KND_TASK_ERR("failed to update task wal with {commit %zu}", commit->numid);
+
+    return knd_OK;
+}
+
+gsl_err_t knd_commit_process(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
-    //struct kndCommit *commit;
+    struct kndCommit *commit;
+    gsl_err_t parser_err;
+    int err;
 
-    //gsl_err_t parser_err;
-    // int err;
+    if (DEBUG_COMMIT_LEVEL_TMP) {
+        knd_log(">> new commit by {task #%zu}", task->id);
+    }
+
+    err = knd_commit_new(&commit, task->mempool);
+    if (err) return make_gsl_err_external(err);
 
     task->type = KND_TASK_COMMIT;
-    //task->ctx->commit = commit;
+    task->ctx->commit = commit;
 
-    /*    struct gslTaskSpec specs[] = {
-        { .name = "locale",
+    struct gslTaskSpec specs[] = {
+        { .type = GSL_GET_ARRAY_STATE,
+          .name = "locale",
           .name_size = strlen("locale"),
-          .parse = parse_locale,
-          .obj = task
-        },
-        { .name = "format",
-          .name_size = strlen("format"),
-          .parse = parse_format,
-          .obj = task
-        },
-        { .name = "user",
-          .name_size = strlen("user"),
-          .parse = knd_parse_select_user,
+          .parse = knd_text_parse_locale,
           .obj = task
         },
         { .name = "repo",
@@ -66,37 +96,9 @@ gsl_err_t knd_commit_run(void *obj, const char *unused_var(rec), size_t *unused_
         return parser_err;
     }
 
-    switch (query->type) {
-    case KND_QUERY_GET:
-        err = knd_query_obj_export(query, task);
-        if (err) {
-            KND_TASK_LOG("failed to present a requested object");
-            return make_gsl_err_external(err);
-        }
-        break;
-    case KND_QUERY_SELECT:
-        err = query_plan(query, task);
-        if (err) {
-            KND_TASK_LOG("failed to plan a query");
-            return make_gsl_err_external(err);
-        }
+    err = knd_commit_confirm(commit, task);
+    if (err) return make_gsl_err_external(err);
 
-        if (query->complexity < query->max_complexity) {
-            err = knd_query_match_export(query, task);
-            if (err) {
-                KND_TASK_LOG("failed to present the matching results of a query");
-                return make_gsl_err_external(err);
-            }
-            return make_gsl_err(gsl_OK);
-        }
-
-        // TODO: signal the need for a long-running task
-
-        break;
-    default:
-        break;
-    }
-    */   
     return make_gsl_err(gsl_OK);
 }
 
@@ -109,86 +111,17 @@ int knd_commit_new(struct kndCommit **result, struct kndMemPool *mempool)
     if (err) return err;
     memset(page, 0, sizeof(struct kndCommit));
     *result = page;
-    (*result)->numid = 1;
     return knd_OK;
 }
 
-static int resolve_class_inst_commit(struct kndStateRef *state_refs, struct kndCommit *commit,
-                                     struct kndRepoSnapshot *snapshot, struct kndTask *task)
+int knd_commit_ref_new(struct kndCommitRef **result, struct kndMemPool *mempool)
 {
-    struct kndState *state;
-    struct kndClassInstEntry *entry;
-    struct kndStateRef *ref;
+    void *page;
     int err;
-
-    FOREACH (ref, state_refs) {
-        entry = ref->obj;
-        state = ref->state;
-        state->commit = commit;
-
-        switch (state->phase) {
-        case KND_CREATED:
-            if (!entry->inst->is_resolved) {
-                err = knd_class_inst_resolve(entry->inst, snapshot, task);
-                KND_TASK_ERR("failed to resolve {cls-inst %.*s}",
-                             entry->name_size, entry->name);
-            }
-            break;
-        default:
-            // TODO: resolve inst attrs
-            // state->children
-            break;
-        }
-    }
-    return knd_OK;
-}
-
-#if 0
-int knd_commit_dedup(struct kndCommit *commit, struct kndRepoSnapshot *unused_var(snapshot),
-                     struct kndTask *unused_var(task))
-{
-    // TODO: each new concept (class, proc ..) should bring unique value:
-    // make sure no duplicate definitions exist in the schema
-    return knd_OK;
-}
-#endif
-
-int knd_commit_resolve(struct kndCommit *commit, struct kndRepoSnapshot *snapshot, struct kndTask *task)
-{
-    struct kndState *state;
-    struct kndProcEntry *proc_entry;
-    struct kndStateRef *ref;
-    int err;
-
-    if (DEBUG_COMMIT_LEVEL_TMP) {
-        knd_log(".. resolving {commit #%zu}", commit->numid);
-    }
-
-    FOREACH (ref, commit->class_state_refs) {
-        if (ref->state->phase == KND_REMOVED) {
-            continue;
-        }
-        state = ref->state;
-        state->commit = commit;
-        if (!state->children) continue;
-
-        err = resolve_class_inst_commit(state->children, commit, snapshot, task);
-        KND_TASK_ERR("failed to resolve commit of class insts");
-    }
-
-    /* PROCS */
-    FOREACH (ref, commit->proc_state_refs) {
-        if (ref->state->phase == KND_REMOVED) {
-            // knd_log(".. proc to be removed");
-            continue;
-        }
-        proc_entry = ref->obj;
-
-        /* proc resolving */
-        if (!proc_entry->proc->is_resolved) {
-            err = knd_proc_resolve(proc_entry->proc, snapshot, task);
-            KND_TASK_ERR("failed to resolve proc commit");
-        }
-    }
+    assert(KND_TINY_MEMPAGE_SIZE >= sizeof(struct kndCommitRef));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
+    if (err) return err;
+    memset(page, 0, sizeof(struct kndCommitRef));
+    *result = page;
     return knd_OK;
 }

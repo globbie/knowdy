@@ -13,6 +13,7 @@ struct kndRepoSnapshot;
 typedef enum knd_agent_role_type {
     KND_AGENT_READER,
     KND_AGENT_WRITER,
+    KND_AGENT_COLLECTOR,
     KND_AGENT_ARBITER,
     KND_AGENT_SYSTEM,
     KND_AGENT_AUX
@@ -21,7 +22,9 @@ typedef enum knd_agent_role_type {
 static const char* const knd_agent_role_names[] = {
     [KND_AGENT_READER] = "READER",
     [KND_AGENT_WRITER] = "WRITER",
+    [KND_AGENT_COLLECTOR] = "COLLECTOR",
     [KND_AGENT_ARBITER] = "ARBITER",
+    [KND_AGENT_SYSTEM] = "SYSTEM",
     [KND_AGENT_AUX] = "AUX"
 };
 

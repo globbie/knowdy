@@ -636,8 +636,8 @@ int knd_set_read_leaf(struct kndSet *s, struct kndStorageLeaf *leaf, struct kndS
 {
     struct stat st;
     struct kndSetDir *dir = s->dir;
-    const char *filename = leaf->filepath;
-    size_t filename_size = leaf->filepath_size;
+    const char *filename = leaf->filename;
+    size_t filename_size = leaf->filename_size;
     struct kndSetDirBlock *block;
     // TODO: check header
     size_t offset = strlen("GSP");
@@ -647,7 +647,7 @@ int knd_set_read_leaf(struct kndSet *s, struct kndStorageLeaf *leaf, struct kndS
     assert (filename_size != 0);
 
     if (DEBUG_SET_READ_LEVEL_2) {
-        knd_log(".. open storage {leaf %.*s {filepath %.*s} {size %zu}}",
+        knd_log(".. open storage {leaf %.*s {filename %.*s} {size %zu}}",
                 leaf->name_size, leaf->name, filename_size, filename, leaf->curr_size);
     }
 

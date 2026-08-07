@@ -97,7 +97,7 @@ struct kndStorageLeaf
     knd_storage_mode mode;
     size_t numid;
 
-    struct kndStorage *store;
+    //struct kndStorage *store;
 
     size_t min_size;
     size_t max_size;
@@ -116,20 +116,46 @@ struct kndStorageLeaf
     char name[KND_SHORT_NAME_SIZE + 1];
     size_t name_size;
 
-    char filepath[KND_PATH_SIZE + 1];
-    size_t filepath_size;
+    char filename[KND_PATH_SIZE + 1];
+    size_t filename_size;
 
     char file_hash[KND_HASH_SIZE];
     size_t file_hash_size;
+
+    struct kndStorageLeaf *next;
 };
+
+struct kndStorageWal
+{
+    knd_storage_mode mode;
+    size_t numid;
+
+    char name[KND_SHORT_NAME_SIZE + 1];
+    size_t name_size;
+
+    char path[KND_PATH_SIZE + 1];
+    size_t path_size;
+
+    size_t min_size;
+    size_t max_size;
+
+    struct kndStorageLeaf *leaves;
+    struct kndStorageLeaf *leaf_tail;
+    size_t num_leaves;
+};
+
 
 int knd_storage_new(struct kndStorage **result);
 int knd_storage_leaf_new(struct kndStorageLeaf **result, size_t numid, const char *path, size_t path_size,
-                         size_t min_size, size_t max_size, struct kndStorage *store, knd_storage_mode mode);
+                         size_t min_size, size_t max_size, knd_storage_mode mode);
+int knd_storage_wal_new(struct kndStorageWal **result, const char *path, size_t path_size,
+                        size_t max_size, knd_storage_mode mode);
+
 void knd_storage_leaf_del(struct kndStorageLeaf *leaf);
 
 int knd_storage_leaf_export_GSL(struct kndStorageLeaf *leaf, struct kndOutput *out,
-                                size_t indent_size, size_t depth,
-                                struct kndTask *task);
+                                size_t indent_size, size_t depth, struct kndTask *task);
 
 gsl_err_t knd_storage_parse_conf(void *obj, const char *rec, size_t *total_size);
+int knd_storage_build_wal_leaf_filename(const char *path, size_t path_size, size_t wal_id,
+                                        char *filename, size_t *filename_size, struct kndTask *task);

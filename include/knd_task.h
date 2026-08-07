@@ -119,32 +119,15 @@ struct kndTaskContext {
 
     struct kndText *tr;
 
-    //size_t batch_max;
-    //size_t batch_from;
-    //size_t batch_size;
-    //size_t start_from;
-
     size_t depth;
     size_t max_depth;
     bool use_numid;
     bool use_alias;
 
-    struct kndTaskDestination *dest;
     struct kndRepo *repo;
 
-    /* temp refs to commits */
-    //struct kndStateRef  *class_state_refs;
-    struct kndStateRef  *inner_class_state_refs;
-    struct kndStateRef  *class_inst_state_refs;
-    size_t num_class_inst_state_refs;
-
-    struct kndStateRef  *proc_state_refs;
-    struct kndStateRef  *proc_inst_state_refs;
-
-    struct kndCommit *commit;
-    bool commit_confirmed;
-
     struct kndQuery *query;
+    struct kndCommit *commit;
 
     /* inner statement declarations */
     struct kndClassDeclar *declars;
@@ -152,6 +135,7 @@ struct kndTaskContext {
 
     /* text search query & results */
     //struct kndStatement *query;
+    struct kndTaskDestination *dest;
     struct kndTextSearchReport *reports;
 
     struct kndTaskContext *next;
@@ -178,7 +162,6 @@ struct kndTaskCache {
 struct kndTaskIndices
 {
     struct kndDict *repo_name_idx;
-
     struct kndDict *cls_name_idx;
     struct kndSet *cls_idx;
 
@@ -206,6 +189,8 @@ struct kndTaskIndices
 
     struct kndSet  *str_idx;
     struct kndDict *str_dict;
+
+    struct kndSet *commit_idx;
 };
 
 struct kndTask
@@ -213,7 +198,7 @@ struct kndTask
     knd_agent_role_type role;
     knd_task_type type;
     size_t id;
-    knd_state_phase phase;
+    //knd_state_phase_t phase;
     knd_task_mode_t mode;
 
     struct kndSteward *steward;
@@ -230,15 +215,6 @@ struct kndTask
 
     const char *report;
     size_t report_size;
-
-    const char *path;
-    size_t path_size;
-
-    const char *filename;
-    size_t filename_size;
-    char filepath[KND_PATH_SIZE];
-    size_t filepath_size;
-    int fd;
 
     size_t depth;
     size_t max_depth;
@@ -262,21 +238,26 @@ struct kndTask
     size_t num_blocks;
     size_t total_block_size;
 
+    /* each writer has its own WAL */
+    struct kndStorageWal *wal;
+
+    struct kndStateLedger *ledger;
+
+    size_t num_commits;
+
     size_t trace_level;
 };
 
 int knd_task_new(struct kndTask **result, knd_agent_role_type role, size_t task_id,
                  struct kndMemConfig *main_memconf, struct kndMemConfig *cache_memconf,
                  struct kndSteward *steward);
-
 void knd_task_del(struct kndTask *task);
 
-void knd_task_reset(struct kndTask *task);
+int knd_task_reset(struct kndTask *task);
 void knd_task_cleanup(struct kndTask *task);
 void knd_task_monitor(struct kndTask *task, struct kndStorage *store, struct kndResourceReport *report);
 
 int knd_task_err_export(struct kndTask *task);
-
 int knd_task_run(struct kndTask *task, const char *input, size_t input_size);
 
 // knd_task.cache.c

@@ -61,7 +61,8 @@ static int register_cls_entry(struct kndClass *c, struct kndRepoSnapshot *snapsh
     err = knd_get_cls_entry_by_name(snapshot, c->name, c->name_size, &entry, task);
     switch (err) {
     case knd_OK:
-        return knd_CONFLICT;
+        err = knd_CONFLICT;
+        KND_TASK_ERR("{cls %.*s} already exists", c->name_size, c->name);
     case knd_NO_MATCH:
         break;
     default:
@@ -102,7 +103,7 @@ static gsl_err_t set_cls_name(void *obj, const char *name, size_t name_size)
     err = register_cls_entry(c, snapshot, task);
     if (err) return make_gsl_err_external(err);
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_3) {
+    if (DEBUG_CLASS_IMPORT_LEVEL_TMP) {
         knd_log(">> registered {cls %.*s}", name_size, name);
     }
     return make_gsl_err(gsl_OK);
@@ -421,7 +422,7 @@ int knd_class_import(const char *rec, size_t *total_size, struct kndClass **resu
     gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_2) {
+    if (DEBUG_CLASS_IMPORT_LEVEL_TMP) {
         knd_log(">> import {cls %.*s}", 128, rec);
     }
 
@@ -492,22 +493,9 @@ int knd_class_import(const char *rec, size_t *total_size, struct kndClass **resu
 
     cls->phase = KND_CLASS_IMPORTED;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_3) {
+    if (DEBUG_CLASS_IMPORT_LEVEL_TMP) {
         knd_log("++  {cls %.*s} import completed!", cls->name_size, cls->name);
     }
-
-#if 0
-    switch (task->type) {
-    case KND_TASK_RESTORE:
-        // fall through
-    case KND_TASK_COMMIT:
-        err = knd_class_commit_state(cl->entry, KND_CREATED, task);
-        KND_TASK_ERR("failed to commit a task state");
-        break;
-    default:
-        break;
-    }
-#endif
 
     *result = cls;
     return knd_OK;

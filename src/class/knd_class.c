@@ -184,6 +184,7 @@ int knd_get_class_inst(struct kndClass *self, const char *name, size_t name_size
     return knd_OK;
 }
 
+#if 0
 static int commit_state(struct kndStateRef *children, knd_state_phase phase,
                         struct kndState **result, struct kndTask *task)
 {
@@ -224,7 +225,9 @@ static int commit_state(struct kndStateRef *children, knd_state_phase phase,
     *result = state;
     return knd_OK;
 }
+#endif
 
+#if 0
 int knd_class_commit_state(struct kndClassEntry *self, knd_state_phase phase, struct kndTask *task)
 {
     struct kndMemPool *mempool = task->mempool;
@@ -257,6 +260,7 @@ int knd_class_commit_state(struct kndClassEntry *self, knd_state_phase phase, st
     commit->num_class_state_refs++;
     return knd_OK;
 }
+#endif
 
 int knd_empty_set_export(struct kndClass *self, knd_format format, struct kndTask *task)
 {
@@ -287,6 +291,7 @@ int knd_class_export(struct kndClass *self, knd_format format,
     return knd_FAIL;
 }
 
+#if 0
 int knd_class_export_state(struct kndClass *self, knd_format format, struct kndTask *task)
 {
     switch (format) {
@@ -298,6 +303,7 @@ int knd_class_export_state(struct kndClass *self, knd_format format, struct kndT
     }
     return knd_FAIL;
 }
+#endif
 
 int knd_class_is_direct_child(struct kndClass *base, struct kndClass *cls, size_t *numid)
 {
@@ -610,9 +616,9 @@ static int update_cls_entry_cache(struct kndClassEntry *entry,
     return knd_OK;
 }
 
-static int query_get_cls_entry_by_name(struct kndRepoSnapshot *snapshot,
-                                       const char *name, size_t name_size,
-                                       struct kndClassEntry **result, struct kndTask *task)
+static int get_cls_entry_by_name(struct kndRepoSnapshot *snapshot,
+                                 const char *name, size_t name_size,
+                                 struct kndClassEntry **result, struct kndTask *task)
 {
     struct kndDict *name_idx;
     struct kndClassEntry *entry;
@@ -620,20 +626,19 @@ static int query_get_cls_entry_by_name(struct kndRepoSnapshot *snapshot,
     int err;
 
     if (DEBUG_CLASS_LEVEL_2) {
-        knd_log(".. query to get a {cls %.*s} {agent-role %d}", name_size, name, task->role);
+        knd_log(">> get a {cls %.*s} by name, {agent-role %d}", name_size, name, task->role);
     }
 
-    /* lookup task local write idx */
     switch (task->role) {
     case KND_AGENT_SYSTEM:
         // fall through
     case KND_AGENT_WRITER:
+        /* lookup task local operational idx */
         name_idx = task->idxs.cls_name_idx;
         assert (name_idx != NULL);
 
         err = knd_dict_get(name_idx, name, name_size, (void**)&entry, task);
-        if (entry) {
-            assert (entry->name_size != 0);
+        if (!err) {
             *result = entry;
             return knd_OK;
         }
@@ -646,11 +651,6 @@ static int query_get_cls_entry_by_name(struct kndRepoSnapshot *snapshot,
     name_idx = task->cache.cls_name_idx;
     err = knd_dict_get(name_idx, name, name_size, (void**)&entry, task);
     if (!err) {
-        assert (entry != NULL);
-        assert (entry->name_size != 0);
-
-        knd_log("++ task local name_idx match {cls-entry %.*s}", entry->name_size, entry->name);
-
         *result = entry;
         return knd_OK;
     }
@@ -686,10 +686,15 @@ int knd_get_cls_entry_by_name(struct kndRepoSnapshot *snapshot,
     case KND_TASK_BULK_LOAD:
         return init_load_get_cls_entry_by_name(snapshot, name, name_size, result, task);
     case KND_TASK_QUERY:
-        err = query_get_cls_entry_by_name(snapshot, name, name_size, result, task);
+        err = get_cls_entry_by_name(snapshot, name, name_size, result, task);
+        KND_TASK_ERR("no entry of {cls %.*s}", name_size, name);
+        return knd_OK;
+    case KND_TASK_COMMIT:
+        err = get_cls_entry_by_name(snapshot, name, name_size, result, task);
         KND_TASK_ERR("no entry of {cls %.*s}", name_size, name);
         return knd_OK;
     default:
+
         break;
     }
     return knd_NO_MATCH;
@@ -793,12 +798,12 @@ int knd_class_acquire(struct kndClassEntry *entry, struct kndClass **result,
 
     if (cls) {
         /* check cls status, it may be deleted */
-        if (cls->num_states) {
+        /*if (cls->num_states) {
             if (cls->states->phase == KND_REMOVED) {
                 err = knd_NO_MATCH;
                 KND_TASK_ERR("{cls %.*s} was removed", entry->name_size, entry->name);
             }
-        }
+            }*/
         *result = cls;
         return knd_OK;
     }

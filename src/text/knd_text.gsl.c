@@ -21,6 +21,51 @@
 #define DEBUG_TEXT_EXPORT_LEVEL_3 0
 #define DEBUG_TEXT_EXPORT_LEVEL_TMP 1
 
+static gsl_err_t set_locale(void *obj, const char *name, size_t name_size)
+{
+    struct kndTask *task = obj;
+    struct kndTaskContext *ctx = task->ctx;
+    struct kndLocaleConfig *conf = &task->steward->locale_config; 
+    struct kndLocale *l;
+
+    if (!name_size) return make_gsl_err(gsl_FORMAT);
+
+    for (size_t i = 0; i < conf->num_supported; i++) {
+        l = conf->supported[i];
+        if (l->id_size != name_size) continue;
+        if (memcmp(l->id, name, name_size)) continue;
+
+        ctx->locale[ctx->num_locale] = l;
+        ctx->num_locale++;
+
+        return make_gsl_err(gsl_OK);
+    }
+
+    KND_TASK_LOG("{locale %.*s} is not supported", name_size, name);
+    return make_gsl_err_external(knd_NO_MATCH);
+}
+
+static gsl_err_t parse_locale_item(void *obj, const char *rec, size_t *total_size)
+{
+    struct gslTaskSpec specs[] = {
+        { .is_implied = true,
+          .run = set_locale,
+          .obj = obj
+        }
+    };
+    return gsl_parse_task(rec, total_size, specs, sizeof specs / sizeof specs[0]);
+}
+
+gsl_err_t knd_text_parse_locale(void *obj, const char *rec, size_t *total_size)
+{
+    struct gslTaskSpec item_spec = {
+        .is_list_item = true,
+        .parse = parse_locale_item,
+        .obj = obj
+    };
+    return gsl_parse_array(&item_spec, rec, total_size);
+}
+
 static int export_class_declars(struct kndClassDeclar *declars, struct kndTask *task)
 {
     struct kndOutput *out = task->out;
@@ -32,7 +77,7 @@ static int export_class_declars(struct kndClassDeclar *declars, struct kndTask *
         OUT(decl->entry->name, decl->entry->name_size);
 
         FOREACH (entry, decl->insts) {
-            err = knd_class_inst_export_GSL(entry->inst, false, KND_CREATED, task, 0);
+            err = knd_class_inst_export_GSL(entry->inst, false, task, 0);
             KND_TASK_ERR("failed to export class inst GSL");
         }
         OUT("}", 1);
@@ -143,12 +188,11 @@ int knd_text_export_GSL(struct kndText *self, struct kndTask *task, size_t unuse
 {
     struct kndOutput *out = task->out;
     struct kndPar *par;
-    // struct kndSentence *sent;
-    struct kndState *state;
-    struct kndCharSeq *seq = self->seq;
+    //struct kndCharSeq *seq = self->seq;
     struct kndText *trn;
     int err;
 
+#if 0
     state = atomic_load_explicit(&self->states, memory_order_relaxed);
     if (seq && state) {
         seq->val = state->val->val;
@@ -160,6 +204,7 @@ int knd_text_export_GSL(struct kndText *self, struct kndTask *task, size_t unuse
         OUT(" ", 1);
         OUT(seq->val, seq->val_size);
     }
+#endif
 
     if (self->locale) {
         OUT("{", 1);

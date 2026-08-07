@@ -25,7 +25,7 @@
 #include "knd_output.h"
 
 int knd_proc_inst_export_GSL(struct kndProcInst *self, bool is_list_item,
-                             knd_state_phase phase, struct kndTask *task, size_t depth)
+                             struct kndTask *task, size_t depth)
 {
     struct kndOutput *out = task->out;
     struct kndProcArgVar *var;
@@ -34,10 +34,6 @@ int knd_proc_inst_export_GSL(struct kndProcInst *self, bool is_list_item,
     if (!is_list_item) {
         err = out->writec(out, '{');
         RET_ERR();
-        if (phase == KND_CREATED) {
-            err = out->writec(out, '!');
-            RET_ERR();
-        }
         OUT("inst ", strlen("inst "));
     }
 

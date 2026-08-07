@@ -23,6 +23,57 @@ struct LocalContext {
     struct kndProc *base;
 };
 
+int knd_repo_index_proc_arg(struct kndRepoSnapshot *unused_var(snapshot), struct kndProc *proc,
+                            struct kndProcArg *arg, struct kndTask *task)
+{
+    struct kndMemPool *mempool   = task->mempool;
+    struct kndSet *arg_idx       = task->idxs.proc_arg_idx;
+    struct kndDict *arg_name_idx = task->idxs.proc_arg_name_idx;
+    struct kndProcArgRef *ref, *arg_ref, *next_arg_ref;
+    int err;
+
+    /* generate unique attr id */
+    arg->numid = ++task->idxs.proc_arg_id_count;
+    arg->numid++;
+    knd_uid_create(arg->numid, arg->id, &arg->id_size);
+
+    err = knd_proc_arg_ref_new(&arg_ref, mempool);
+    if (err) {
+        return err;
+    }
+    arg_ref->arg = arg;
+    arg_ref->proc = proc;
+
+    switch (task->type) {
+    case KND_TASK_RESTORE:
+        // fall through
+    case KND_TASK_BULK_LOAD:
+
+        // TODO
+        err = knd_proc_get_arg(proc, arg->name, arg->name_size, &ref, task);
+
+        err = knd_dict_get(arg_name_idx, arg->name, arg->name_size, (void**)&next_arg_ref, task);
+        
+        arg_ref->next = next_arg_ref;
+
+        err = knd_dict_set(arg_name_idx, arg->name, arg->name_size, (void*)arg_ref, task);
+        KND_TASK_ERR("failed to globally register {arg %.*s}", arg->name_size, arg->name);
+
+        err = knd_set_add(arg_idx, arg->id, arg->id_size, (void*)arg_ref, task);
+        KND_TASK_ERR("failed to globally register numid of {arg %.*s}", arg->name_size, arg->name);
+
+        return knd_OK;
+    default:
+        break;
+    }
+
+    /* local task name idx */
+    //err = knd_dict_set(task->idxs->proc_arg_name_idx, arg->name, arg->name_size, (void*)arg_ref);
+    //KND_TASK_ERR("failed to register arg name %.*s", arg->name_size, arg->name);
+
+    return knd_OK;
+}
+
 static int inherit_arg(void *elem, void *ctx_obj, struct kndTask *task)
 {
     struct kndProcArgRef *src_ref = elem;

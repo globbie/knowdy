@@ -139,8 +139,8 @@ struct kndQuantAttrStm
 
 struct kndQuantState
 {
-    knd_state_phase phase;
-    
+    //knd_state_phase_t phase;
+
     char val[KND_VAL_SIZE];
     size_t val_size;
 

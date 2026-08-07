@@ -200,16 +200,17 @@ static int export_descendants(struct kndClass *cls, struct kndTask *task)
     return knd_OK;
 }
 
+#if 0
 static int export_class_body_commits(struct kndClass *cls,
                                      struct kndClassCommit *unused_var(class_commit),
                                      struct kndTask *task)
 {
     struct kndOutput *out = task->out;
-    struct kndState *state = cls->states;
+    //struct kndState *state = cls->states;
     struct kndAttr *attr;
     int err;
 
-    switch (state->phase) {
+    /*switch (state->phase) {
     case KND_CREATED:
         err = out->write(out, "{_new}", strlen("{_new}"));                        RET_ERR();
         break;
@@ -218,7 +219,7 @@ static int export_class_body_commits(struct kndClass *cls,
         break;
     default:
         break;
-    }
+        }*/
 
     err = export_glosses(cls, out);                                          RET_ERR();
 
@@ -235,44 +236,7 @@ static int export_class_body_commits(struct kndClass *cls,
     }    
     return knd_OK;
 }
-
-int knd_class_export_commits_GSP(struct kndClass *cls, struct kndClassCommit *class_commit,
-                                 struct kndTask *task)
-{
-    struct kndOutput *out = task->out;
-    struct kndCommit *commit = class_commit->commit;
-    struct kndState *state = cls->states;
-    int err;
-    
-    err = out->writec(out, '{');                                                  RET_ERR();
-    err = out->write(out, cls->entry->id, cls->entry->id_size);                 RET_ERR();
-    err = out->write(out, "{_n ", strlen("{_n "));                                RET_ERR();
-    err = out->write(out, cls->name, cls->name_size);                           RET_ERR();
-    err = out->writec(out, '}');                                                  RET_ERR();
-
-    err = out->write(out, "{_st", strlen("{_st"));                                RET_ERR();
-
-    if (state && state->commit == commit) {
-        err = out->writec(out, ' ');                                              RET_ERR();
-
-        // TODO
-        //err = out->write(out, state->id, state->id_size);                         RET_ERR();
-
-        /* any commits of the class body? */
-        err = export_class_body_commits(cls, class_commit, task);                 RET_ERR();
-    }
-
-    /*    if (cls->inst_states) {
-        state = cls->inst_states;
-        if (state->commit == commit) {
-            err = export_class_inst_commits(cls, class_commit, task);             RET_ERR();
-        }
-        }*/
-
-    err = out->writec(out, '}');                                                  RET_ERR();
-    err = out->writec(out, '}');                                                  RET_ERR();
-    return knd_OK;
-}
+#endif
 
 int knd_class_export_GSP(struct kndClass *cls, struct kndTask *task)
 {
@@ -350,11 +314,11 @@ int knd_cls_name_marshall(void *elem, void *unused_var(ctx), struct kndStorageLe
 
     switch (task->mode) {
     case KND_TASK_TRACE_MODE:
-        //knd_log(".. write {cls %.*s} to {filepath %.*s}", entry->name_size, entry->name,
-        //        leaf->filepath_size, leaf->filepath);
+        //knd_log(".. write {cls %.*s} to {filename %.*s}", entry->name_size, entry->name,
+        //        leaf->filename_size, leaf->filename);
         break;
     default:
-        err = knd_append_file((const char*)leaf->filepath, out->buf, out->buf_size);
+        err = knd_append_file((const char*)leaf->filename, out->buf, out->buf_size);
         KND_TASK_ERR("cls name write failure");
         leaf->curr_size += out->buf_size;
         break;
@@ -382,11 +346,11 @@ int knd_cls_entry_ref_marshall(void *elem, void *unused_var(ctx), struct kndStor
 
     switch (task->mode) {
     case KND_TASK_TRACE_MODE:
-        //knd_log(".. write {cls %.*s} to {filepath %.*s}", entry->name_size, entry->name,
-        //        leaf->filepath_size, leaf->filepath);
+        //knd_log(".. write {cls %.*s} to {filename %.*s}", entry->name_size, entry->name,
+        //        leaf->filename_size, leaf->filename);
         break;
     default:
-        err = knd_append_file((const char*)leaf->filepath, out->buf, out->buf_size);
+        err = knd_append_file((const char*)leaf->filename, out->buf, out->buf_size);
         KND_TASK_ERR("cls name write failure");
         leaf->curr_size += out->buf_size;
         break;
@@ -421,11 +385,11 @@ int knd_class_marshall(void *elem, void *ctx, struct kndStorageLeaf *leaf,
 
     switch (task->mode) {
     case KND_TASK_TRACE_MODE:
-        //knd_log(".. write cls GSP to {filepath %.*s}",
-        //        leaf->filepath_size, leaf->filepath);
+        //knd_log(".. write cls GSP to {filename %.*s}",
+        //        leaf->filename_size, leaf->filename);
         break;
     default:
-        err = knd_append_file((const char*)leaf->filepath, out->buf, out->buf_size);
+        err = knd_append_file((const char*)leaf->filename, out->buf, out->buf_size);
         KND_TASK_ERR("cls GSP write failure");
         leaf->curr_size += out->buf_size;
     }

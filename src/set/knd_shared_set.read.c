@@ -464,8 +464,8 @@ int knd_shared_set_leaf_open(struct kndSharedSet *self, struct kndStorageLeaf *l
     size_t idbuf_size = 0;
     struct stat st;
     struct kndSharedSetDir *dir;
-    const char *filename = leaf->filepath;
-    size_t filename_size = leaf->filepath_size;
+    const char *filename = leaf->filename;
+    size_t filename_size = leaf->filename_size;
     // TODO: check header
     size_t offset = strlen("GSP");
     int fd;
@@ -474,7 +474,7 @@ int knd_shared_set_leaf_open(struct kndSharedSet *self, struct kndStorageLeaf *l
     assert (filename_size != 0);
 
     if (DEBUG_SHARED_SET_READ_LEVEL_2) {
-        knd_log(".. open storage {leaf %.*s {filepath %.*s} {size %zu}}",
+        knd_log(".. open storage {leaf %.*s {filename %.*s} {size %zu}}",
                 leaf->name_size, leaf->name, filename_size, filename,
                 leaf->curr_size);
     }
@@ -522,8 +522,8 @@ static int read_file_chunk(struct kndStorageLeaf *leaf, size_t offset, size_t bu
                            struct kndTask *task)
 {
     struct kndOutput *file_out = task->file_out;
-    const char *filename = leaf->filepath;
-    size_t filename_size = leaf->filepath_size;
+    const char *filename = leaf->filename;
+    size_t filename_size = leaf->filename_size;
     int fd;
     char *buf;
     ssize_t num_bytes;
@@ -643,7 +643,7 @@ int knd_shared_set_leaf_read_elem(struct kndStorageLeaf *leaf, struct kndSharedS
 
     if (DEBUG_SHARED_SET_READ_LEVEL_2) {
         knd_log(".. unmarshall {elem %.*s} from {file %.*s}",
-                id_size, id, leaf->filepath_size, leaf->filepath);
+                id_size, id, leaf->filename_size, leaf->filename);
     }
 
     err = read_elem(leaf, dir, id, id_size, cb, ctx, result, task);
