@@ -72,7 +72,7 @@ static gsl_err_t confirm_default_commit(void *obj, const char *unused_var(val),
     knd_log("no changes requested in cls commit");
 
     // TODO assign error status
-    commit->phase = KND_FAILED_STATE;
+    commit->phase = KND_CONTRADICTORY_STATE;
 
     return make_gsl_err(gsl_OK);
 }
@@ -416,7 +416,7 @@ static gsl_err_t import_class_inst(void *obj, const char *rec, size_t *total_siz
         if (!commit) {
             err = knd_commit_new(&commit, mempool);
             if (err) return make_gsl_err_external(err);
-            commit->orig_state_id = atomic_load_explicit(&snapshot->num_commits, memory_order_relaxed);
+            //commit->orig_state_id = atomic_load_explicit(&snapshot->num_commits, memory_order_relaxed);
             task->ctx->commit = commit;
         }
         break;
@@ -531,7 +531,6 @@ int knd_cls_query_select(const char *rec, size_t *total_size, struct kndQuery *q
             break;
         }
     }
-
     return knd_OK;
 }
 

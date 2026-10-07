@@ -121,14 +121,19 @@ set(SOURCES src/attr/knd_attr.c src/attr/knd_attr.import.c src/attr/knd_attr.res
         src/query/knd_query.c src/query/knd_query.run.c src/query/knd_query.gsl.c
         src/rel/knd_rel.c src/rel/knd_rel.import.c src/rel/knd_rel.resolve.c
         src/rel/knd_rel_pred.resolve.c
-        src/repo/knd_repo.c src/repo/knd_repo.gsl.c src/repo/knd_repo.gsp.c src/repo/knd_repo.select.c
+        src/repo/knd_repo.c src/repo/knd_repo.gsl.c src/repo/knd_repo.gsp.c
+        src/repo/knd_repo.import.c src/repo/knd_repo.select.c
         src/repo/knd_repo.commit.c src/repo/knd_repo.read.c src/repo/knd_repo.cache.c
         src/set/knd_set.c src/set/knd_set.gsp.c src/set/knd_set.read.c src/set/knd_set.fetch.c
         src/set/knd_shared_set.c
         src/set/knd_shared_set.read.c src/set/knd_set_idx.c
         src/knd_steward.c
-        src/state/knd_state.c src/storage/knd_storage.c src/storage/knd_storage.gsl.c
-        src/state/knd_commit.c
+        src/state/knd_state.c src/state/knd_state.read.c
+        src/state/knd_state.update.c src/state/knd_state.conflict.c src/state/knd_state.wal.c 
+        src/storage/knd_storage.c src/storage/knd_storage.gsl.c src/storage/knd_storage.read.c
+        src/state/knd_commit.c src/state/knd_commit.resolve.c
+        src/state/knd_commit.gsl.c src/state/knd_commit.json.c
+        src/state/knd_commit.wal.c src/state/knd_commit.read.c src/state/knd_commit.index.c 
         src/task/knd_task.c src/task/knd_task.cache.c src/task/knd_task.select.c
         src/text/knd_text.c src/text/knd_text.import.c src/text/knd_text.resolve.c
         src/text/knd_text.read.c src/text/knd_text.decode.c

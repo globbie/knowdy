@@ -121,21 +121,6 @@ static int read_elems_rec_size(struct kndSetDirBlock *block, const char *rec, si
     return knd_OK;
 }
 
-/*
-        if (use_keys) {
-            numval = knd_unpack_int(c + 1, cell_size);  // skip over subdir's id
-            elem->id[elem->id_size] = *c;
-            elem->id_size++;
-
-            elem_id_val = obj_id_base[*c];
-
-            if (DEBUG_SET_READ_LEVEL_TMP) {
-                knd_log("%zu of %zu: {elem %.*s} {numval %zu} {rec %.*s}",
-                        i, num_elems, elem->id_size, elem->id, numval, numval, e);
-            }
-        } else {
-*/
-
 static int elems_linear_scan(struct kndSetDir *dir, struct kndSetDirBlock *block,
                              char *rec, size_t rec_size, size_t num_elems, size_t cell_size,
                              knd_set_elem_unmarshall_cb_t cb, void *cb_ctx, struct kndTask *task)

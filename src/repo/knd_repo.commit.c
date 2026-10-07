@@ -106,7 +106,6 @@ static gsl_err_t parse_commit(void *obj, const char *rec, size_t *total_size)
         return make_gsl_err_external(err);
     }
     memset(commit, 0, sizeof(struct kndCommit));
-    //commit->is_restored = true;
 
     task->mempool = NULL;
     knd_task_reset(task);
@@ -268,38 +267,5 @@ int knd_repo_transfer_commits(struct kndRepo *repo, struct kndTask *unused_var(t
     }
 
     // TODO
-    return knd_OK;
-}
-
-int knd_repo_build_updates_path(struct kndRepoSnapshot *snapshot, size_t agent_id,
-                                char *result, size_t *result_size, struct kndTask *task)
-{
-    struct kndOutput *out = task->out;
-    const char *path;
-    size_t path_size;
-    int err;
-
-    out->reset(out);
-    OUT(snapshot->path, snapshot->path_size);
-    OUT(KND_UPDATES_DIR_NAME, strlen(KND_UPDATES_DIR_NAME));
-    OUT("/", 1);    
-    OUT(KND_AGENT_DIR_NAME, strlen(KND_AGENT_DIR_NAME));
-    OUTF("%zu", agent_id);
-    OUT("/", 1);
-
-    if (out->buf_size >= KND_PATH_SIZE) {
-        err = knd_LIMIT;
-        KND_TASK_ERR("WAL dir path too long");
-    }
-    path = out->buf;
-    path_size = out->buf_size;
-
-    memcpy(result, path, path_size);
-    *result_size = path_size;
-    result[path_size] = '\0';
-
-    if (DEBUG_REPO_COMMIT_LEVEL_3) {
-        knd_log("{agent-WAL-path %.*s}", path_size, path);
-    }
     return knd_OK;
 }

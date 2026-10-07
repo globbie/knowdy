@@ -91,7 +91,7 @@ struct kndDiscourseContext
 
 struct kndTextLoc
 {
-    knd_state_t type;
+    //knd_state_t type;
 
     struct kndClassInst *src;
     struct kndAttr *attr;

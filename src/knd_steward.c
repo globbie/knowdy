@@ -670,21 +670,11 @@ static int steward_init(struct kndSteward *steward)
     err = knd_mkpath(steward->path, steward->path_size, 0755, false);
     KND_STEWARD_ERR("failed to make {steward-path %.*s}", steward->path_size, steward->path);
 
-    /* system wide mempool types */
-    steward->mem_main_config.memtype = KND_ALLOC_INCR;
-    steward->mem_cache_config.memtype = KND_ALLOC_INCR;
-
-    /* task local settings */
-    steward->mem_task_ctx_config.memtype = KND_ALLOC_INCR;
-    steward->mem_task_cache_config.memtype = KND_ALLOC_LIST;
-
-    err = knd_task_new(&task, KND_AGENT_SYSTEM, 0,
-                       &steward->mem_main_config, &steward->mem_cache_config, steward);
+    err = knd_task_new(&task, KND_AGENT_SYSTEM, 0, steward);
     KND_STEWARD_ERR("failed to init steward main task");
     steward->task = task;
 
-    err = knd_task_new(&steward->shift_task, KND_AGENT_SYSTEM, 0,
-                       &steward->mem_main_config, &steward->mem_cache_config, steward);
+    err = knd_task_new(&steward->shift_task, KND_AGENT_SYSTEM, 0, steward);
     KND_STEWARD_ERR("failed to init steward sync task");
 
     err = knd_set_new(&steward->repo_idx, KND_SET_STORE_MEMONLY, task->mempool);
@@ -738,6 +728,19 @@ int knd_steward_new(struct kndSteward **result, const char *config, size_t confi
     knd_memconf_apply_defaults(&steward->mem_user_config);
     knd_memconf_apply_defaults(&steward->mem_task_ctx_config);
     knd_memconf_apply_defaults(&steward->mem_task_cache_config);
+    knd_memconf_apply_defaults(&steward->mem_collect_config);
+    knd_memconf_apply_defaults(&steward->mem_arbiter_config);
+
+    /* system wide mempool types */
+    steward->mem_main_config.memtype = KND_ALLOC_INCR;
+    steward->mem_cache_config.memtype = KND_ALLOC_INCR;
+
+    /* writer */
+    steward->mem_task_ctx_config.memtype = KND_ALLOC_INCR;
+    steward->mem_task_cache_config.memtype = KND_ALLOC_LIST;
+
+    /* arbiter */
+    steward->mem_arbiter_config.memtype = KND_ALLOC_SHARED;
 
     err = steward_read_config(steward, config, config_size);
     if (err) goto error;

@@ -121,9 +121,9 @@ int knd_class_inst_export(struct kndClassInst *self, knd_format format, bool is_
                           struct kndTask *task);
 int knd_class_inst_set_export(struct kndClassInst *self, knd_format format, struct kndTask *task);
 
-int knd_class_inst_commit_state(struct kndClass *self, struct kndStateRef *children, size_t num_children,
-                                struct kndTask *task);
-int knd_class_inst_export_commit(struct kndStateRef *state_refs, struct kndTask *task);
+//int knd_class_inst_commit_state(struct kndClass *self, struct kndStateRef *children, size_t num_children,
+//                                struct kndTask *task);
+//int knd_class_inst_export_commit(struct kndStateRef *state_refs, struct kndTask *task);
 //int knd_class_inst_update_indices(struct kndRepoSnapshot *repo, struct kndClassEntry *baseclass,
 //                                  struct kndStateRef *state_refs, struct kndTask *task);
 

@@ -250,19 +250,20 @@ int knd_attr_register(struct kndAttr *attr, struct kndClass *cls, struct kndTask
         KND_TASK_ERR("failed to locally register numid of {attr %.*s}", name_size, name);
 
         return knd_OK;
+    case KND_TASK_COMMIT:
+        /* local task name idx */
+        err = knd_dict_set(task->idxs.attr_name_idx, name, name_size, (void*)attr_ref, task);
+        KND_TASK_ERR("failed to register {attr %.*s}", name_size, name);
+        
+        if (DEBUG_ATTR_LEVEL_2) {
+            knd_log("++ commit import: new primary {attr %.*s {id %.*s}}",
+                    name_size, name, attr->id_size, attr->id);
+        }
+        return knd_OK;
     default:
         break;
     }
-
-    /* local task name idx */
-    err = knd_dict_set(task->idxs.attr_name_idx, name, name_size, (void*)attr_ref, task);
-    KND_TASK_ERR("failed to register {attr %.*s}", name_size, name);
-
-    if (DEBUG_ATTR_LEVEL_2) {
-        knd_log("++ commit import: new primary {attr %.*s {id %.*s}}",
-                name_size, name, attr->id_size, attr->id);
-    }
-    return knd_OK;
+    return knd_FAIL;
 }
 
 int knd_attr_export(struct kndAttr *self, knd_format format, struct kndTask *task)

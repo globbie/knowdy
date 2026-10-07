@@ -103,7 +103,7 @@ static gsl_err_t set_cls_name(void *obj, const char *name, size_t name_size)
     err = register_cls_entry(c, snapshot, task);
     if (err) return make_gsl_err_external(err);
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_TMP) {
+    if (DEBUG_CLASS_IMPORT_LEVEL_3) {
         knd_log(">> registered {cls %.*s}", name_size, name);
     }
     return make_gsl_err(gsl_OK);
@@ -422,7 +422,7 @@ int knd_class_import(const char *rec, size_t *total_size, struct kndClass **resu
     gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_TMP) {
+    if (DEBUG_CLASS_IMPORT_LEVEL_2) {
         knd_log(">> import {cls %.*s}", 128, rec);
     }
 
@@ -493,7 +493,7 @@ int knd_class_import(const char *rec, size_t *total_size, struct kndClass **resu
 
     cls->phase = KND_CLASS_IMPORTED;
 
-    if (DEBUG_CLASS_IMPORT_LEVEL_TMP) {
+    if (DEBUG_CLASS_IMPORT_LEVEL_3) {
         knd_log("++  {cls %.*s} import completed!", cls->name_size, cls->name);
     }
 

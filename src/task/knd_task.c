@@ -41,6 +41,17 @@ void knd_task_del(struct kndTask *self)
     free(self);
 }
 
+static int alloc_collector_commit_idx(struct kndTask *task, size_t max_commits)
+{
+    int err;
+
+    task->collector_commits = calloc(max_commits, sizeof(struct kndCommit*));
+    if (!task->collector_commits) return knd_NOMEM;
+    task->max_collector_commits = max_commits;
+
+    return knd_OK;
+}
+
 static int create_local_write_idxs(struct kndTask *task)
 {
     int err;
@@ -325,38 +336,80 @@ void knd_task_monitor(struct kndTask *task, struct kndStorage *store,
     }
 }
 
-static int task_init(struct kndTask *task,
-                     struct kndMemConfig *main_memconf, struct kndMemConfig *cache_memconf)
+static int task_init(struct kndTask *task, struct kndSteward *steward)
 {
     int err;
 
-    err = knd_mempool_create(&task->mempool, main_memconf, 1);
-    if (err) {
-        knd_log("failed to init a task mempool for writing");
-    }
-
-    err = task_context_new(&task->ctx);
-    if (err) goto error;
-
-    err = init_cache(&task->cache, cache_memconf);
-    if (err) {
-        knd_log("failed to init cache");
-        goto error;
-    }
-
     switch (task->role) {
     case KND_AGENT_SYSTEM:
-        // fall through
-    case KND_AGENT_WRITER:
-        err = create_local_write_idxs(task);
+        err = knd_mempool_create(&task->mempool, &steward->mem_main_config, 1);
         if (err) {
-            knd_log("failed to create local idxs {log %.*s}",
-                    task->log->buf_size, task->log->buf);
+            knd_log("failed to init a system task mempool for writing");
+        }
+        err = init_cache(&task->cache, &steward->mem_cache_config);
+        if (err) {
+            knd_log("failed to init system cache");
             goto error;
         }
         break;
+    case KND_AGENT_READER:
+        err = knd_mempool_create(&task->mempool, &steward->mem_task_ctx_config, 1);
+        if (err) {
+            knd_log("failed to init a task mempool for reading");
+        }
+        err = init_cache(&task->cache, &steward->mem_task_cache_config);
+        if (err) {
+            knd_log("failed to init reader cache");
+            goto error;
+        }
+        err = task_context_new(&task->ctx);
+        if (err) goto error;
+
+        /* default user context */
+        err = knd_user_context_new(&task->default_user_ctx);
+        if (err) goto error;
+        task->user_ctx = task->default_user_ctx;
+        break;
+    case KND_AGENT_WRITER:
+        err = knd_mempool_create(&task->mempool, &steward->mem_task_ctx_config, 1);
+        if (err) {
+            knd_log("failed to init a task mempool for writing");
+        }
+        err = create_local_write_idxs(task);
+        if (err) {
+            knd_log("failed to create writer idxs {log %.*s}",
+                    task->log->buf_size, task->log->buf);
+            goto error;
+        }
+        err = task_context_new(&task->ctx);
+        if (err) goto error;
+        /* default user context */
+        err = knd_user_context_new(&task->default_user_ctx);
+        if (err) goto error;
+        task->user_ctx = task->default_user_ctx;
+        break;
+    case KND_AGENT_COLLECTOR:
+        err = knd_mempool_create(&task->mempool, &steward->mem_collect_config, 1);
+        if (err) {
+            knd_log("failed to init collector's mempool");
+        }            
+        err = alloc_collector_commit_idx(task, KND_MAX_COLLECTOR_COMMITS);
+        if (err) {
+            knd_log("failed to alloc commit idx {log %.*s}",
+                    task->log->buf_size, task->log->buf);
+            goto error;
+        }        
+        break;
     case KND_AGENT_ARBITER:
-        err = knd_state_ledger_new(&task->ledger, task->mempool);
+        err = knd_mempool_create(&task->ledger_shared_mem, &steward->mem_arbiter_config, 1);
+        if (err) {
+            knd_log("failed to init arbiter's shared mempool");
+        }
+        err = knd_mempool_create(&task->mempool, &steward->mem_task_ctx_config, 1);
+        if (err) {
+            knd_log("failed to init arbiter's local mempool");
+        }
+        err = knd_state_ledger_new(&task->ledger, KND_MAX_LEDGER_COMMITS, task->ledger_shared_mem, task->mempool);
         if (err) {
             knd_log("failed to create a state ledger {log %.*s}",
                     task->log->buf_size, task->log->buf);
@@ -366,11 +419,6 @@ static int task_init(struct kndTask *task,
     default:
         break;
     }
-    
-    /* default user context */
-    err = knd_user_context_new(&task->default_user_ctx);
-    if (err) goto error;
-    task->user_ctx = task->default_user_ctx;
 
     return knd_OK;
 
@@ -379,9 +427,7 @@ static int task_init(struct kndTask *task,
     return err;
 }
 
-int knd_task_new(struct kndTask **result, knd_agent_role_type role, size_t task_id,
-                 struct kndMemConfig *main_memconf, struct kndMemConfig *cache_memconf,
-                 struct kndSteward *steward)
+int knd_task_new(struct kndTask **result, knd_agent_role_type role, size_t task_id, struct kndSteward *steward)
 {
     struct kndTask *task;
     int err;
@@ -411,7 +457,7 @@ int knd_task_new(struct kndTask **result, knd_agent_role_type role, size_t task_
     err = knd_output_new(&task->file_out, NULL, KND_FILE_BUF_SIZE);
     if (err) goto error;
 
-    err = task_init(task, main_memconf, cache_memconf);
+    err = task_init(task, steward);
     if (err) goto error;
 
     task->steward = steward;

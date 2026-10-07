@@ -62,6 +62,8 @@ struct kndSteward
     struct kndMemConfig mem_user_config;
     struct kndMemConfig mem_task_ctx_config;
     struct kndMemConfig mem_task_cache_config;
+    struct kndMemConfig mem_collect_config;
+    struct kndMemConfig mem_arbiter_config;
 
     struct kndStorage *storages;
     struct kndStorage *storage_tail;

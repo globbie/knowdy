@@ -43,46 +43,57 @@
 #define DEBUG_COMMIT_GSL_LEVEL_5 0
 #define DEBUG_COMMIT_GSL_LEVEL_TMP 1
 
-int knd_commit_export_GSL(struct kndCommit *commit, size_t *total_size, struct kndTask *task)
+static int cls_update_export_GSL(struct kndStateUpdate *update, struct kndOutput *out,
+                                 struct kndTask *task)
 {
-    struct kndOutput *out = task->file_out;
-    struct kndRepo *repo = commit->snapshot->repo;
-    struct kndStateRef *ref;
-    struct kndState *state;
-    struct kndClassEntry *entry;
-    struct kndClassInst *user_inst;
+    struct kndClassEntry *entry = update->obj;
+    int err;
+    OUT("{cls ", strlen("{cls "));
+    OUT(entry->name, entry->name_size);
+    OUT("}", 1);
+
+    return knd_OK;
+}
+
+static int state_update_export_GSL(struct kndStateUpdate *update, struct kndOutput *out,
+                                   struct kndTask *task)
+{
     int err;
 
-    out->reset(out);
-    task->ctx->max_depth = KND_MAX_DEPTH;
-    OUT("{task", strlen("{task"));
+    OUT("{upd ", strlen("{upd "));
 
-    switch (task->user_ctx->type) {
-    case KND_USER_AUTHENTICATED:
-        user_inst = task->user_ctx->inst;
-        OUT("{user ", strlen("{user "));
-        OUT(user_inst->name, user_inst->name_size);
+    switch (update->obj_type) {
+    case KND_STATE_CLS:
+        err = cls_update_export_GSL(update, out, task);
+        KND_TASK_ERR("failed to export cls update GSL");
         break;
     default:
         break;
     }
+    OUT("}", 1);
+
+    return knd_OK;
+}
+
+int knd_commit_export_GSL(struct kndCommit *commit, struct kndOutput *out, size_t *total_size, struct kndTask *task)
+{
+    struct kndRepo *repo = commit->snapshot->repo;
+    struct kndStateRef *ref;
+    struct kndState *state;
+    struct kndStateUpdate *update;
+    int err;
+
+    out->reset(out);
+    task->ctx->max_depth = KND_MAX_DEPTH;
+    OUT("{commit", strlen("{commit"));
 
     OUT("{repo ", strlen("{repo "));
     OUT(repo->name, repo->name_size);
 
-#if 0
-    FOREACH (ref, commit->class_state_refs) {
-        entry = ref->obj;
-        if (!entry) continue;
-
-        err = out->writec(out, '{');                                              RET_ERR();
-
-        OUT("cls ", strlen("cls "));
-        OUT(entry->name, entry->name_size);
-
-        OUT("}", 1);
-    }    
-#endif
+    FOREACH (update, commit->updates) {
+        err = state_update_export_GSL(update, out, task);
+        KND_TASK_ERR("failed to export state update GSL");
+    }
 
     OUT("}", 1);
     if (task->user_ctx) {

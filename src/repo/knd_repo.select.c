@@ -44,6 +44,9 @@ static gsl_err_t get_repo_snapshot(void *obj, const char *name, size_t name_size
     struct kndTask *task = obj;
     struct kndSteward *steward = task->steward;
     struct kndRepo *repo = NULL;
+    struct kndStorageWal *wal;
+    struct kndCommit *commit;
+    struct kndQuery *query;
     int err;
 
     assert (steward != NULL);
@@ -75,17 +78,25 @@ static gsl_err_t get_repo_snapshot(void *obj, const char *name, size_t name_size
 
     switch (task->type) {
     case KND_TASK_QUERY:
-        task->ctx->query->snapshot = repo->snapshot;
+        query = task->ctx->query;
+        query->snapshot = repo->snapshot;
         break;
     case KND_TASK_COMMIT:
-        task->ctx->commit->snapshot = repo->snapshot;
+        commit = task->ctx->commit;
+
+        err = knd_wal_fetch(repo->snapshot, task->id, KND_STORAGE_MODE_READ_WRITE, &wal, task);
+        if (err) return make_gsl_err_external(err);
+
+        commit->snapshot = repo->snapshot;
+        commit->wal = wal;
+
+        if (DEBUG_REPO_SELECT_LEVEL_3) {
+            knd_log("got a snapshot of {repo %.*s {wal %.*s}}",
+                    repo->name_size, repo->name, wal->path_size, wal->path);
+        }
         break;
     default:
         break;
-    }
-
-    if (DEBUG_REPO_SELECT_LEVEL_3) {
-        knd_log("got a snapshot of {repo %.*s}", repo->name_size, repo->name);
     }
 
     return make_gsl_err(gsl_OK);
@@ -151,16 +162,15 @@ static gsl_err_t parse_cls_import(void *obj, const char *rec, size_t *total_size
     switch (task->role) {
     case KND_AGENT_WRITER:
         snapshot = task->ctx->commit->snapshot;
+        assert (snapshot != NULL);
+
+        err = knd_repo_cls_import(rec, total_size, snapshot, task);
+        if (err) return make_gsl_err_external(err);
         break;
     default:
         knd_log("import operations not allowed for task {role %d}", task->role);
         return make_gsl_err(gsl_FORMAT);
     }
-
-    assert (snapshot != NULL);
-    err = knd_repo_cls_import(rec, total_size, snapshot, task);
-    if (err) return make_gsl_err_external(err);
-
     return make_gsl_err(gsl_OK);
 }
 

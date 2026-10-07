@@ -21,19 +21,26 @@
 #define DEBUG_COMMIT_LEVEL_3 0
 #define DEBUG_COMMIT_LEVEL_TMP 1
 
-int knd_commit_confirm(struct kndCommit *commit, struct kndTask *task)
+int knd_commit_submit(struct kndCommit *commit, struct kndTask *task)
 {
     struct kndRepoSnapshot *snapshot = commit->snapshot;
     struct kndRepo *repo = snapshot->repo;
+    struct kndStorageWal *wal = commit->wal;
     int err;
 
     assert(commit != NULL);
+    assert(wal != NULL);
 
-    if (DEBUG_COMMIT_LEVEL_TMP) {
-        knd_log(">> {repo %.*s} to confirm {commit #%zu}",
+    if (DEBUG_COMMIT_LEVEL_2) {
+        knd_log(">> {repo %.*s} to submit {commit #%zu}",
                 repo->name_size, repo->name, commit->numid);
     }
-
+    
+    if (!commit->num_updates) {
+        err = knd_FORMAT;
+        KND_TASK_ERR("no updates present in commit #%zu", commit->numid);
+    }
+    
     err = knd_commit_resolve(commit, snapshot, task);
     KND_TASK_ERR("failed to resolve commit #%zu", commit->numid);
 
@@ -45,12 +52,14 @@ int knd_commit_confirm(struct kndCommit *commit, struct kndTask *task)
     //err = knd_commit_check_conflicts(commit, snapshot, task);
     //KND_TASK_ERR("commit conflicts detected, please get the latest repo updates");
 
-    commit->numid = task->num_commits++;
+    /* start counting commits from 1 to exclude a default zero value */
+    commit->numid = wal->num_commits + 1;
 
     /* append a persistent WAL record (task local) */
-    err = knd_commit_update_task_wal(commit, snapshot, task->id, task);
+    err = knd_commit_update_wal(commit, wal, snapshot, task->id, task);
     KND_TASK_ERR("failed to update task wal with {commit %zu}", commit->numid);
 
+    wal->num_commits++;
     return knd_OK;
 }
 
@@ -58,14 +67,18 @@ gsl_err_t knd_commit_process(void *obj, const char *rec, size_t *total_size)
 {
     struct kndTask *task = obj;
     struct kndCommit *commit;
+    clockid_t clk_id = CLOCK_MONOTONIC;
     gsl_err_t parser_err;
     int err;
 
-    if (DEBUG_COMMIT_LEVEL_TMP) {
-        knd_log(">> new commit by {task #%zu}", task->id);
+    if (DEBUG_COMMIT_LEVEL_2) {
+        knd_log(">> new commit by {agent #%zu}", task->id);
     }
 
     err = knd_commit_new(&commit, task->mempool);
+    if (err) return make_gsl_err_external(err);
+
+    err = clock_gettime(clk_id, &commit->start_ts);
     if (err) return make_gsl_err_external(err);
 
     task->type = KND_TASK_COMMIT;
@@ -96,7 +109,7 @@ gsl_err_t knd_commit_process(void *obj, const char *rec, size_t *total_size)
         return parser_err;
     }
 
-    err = knd_commit_confirm(commit, task);
+    err = knd_commit_submit(commit, task);
     if (err) return make_gsl_err_external(err);
 
     return make_gsl_err(gsl_OK);
@@ -106,8 +119,8 @@ int knd_commit_new(struct kndCommit **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
-    assert(KND_SMALL_MEMPAGE_SIZE >= sizeof(struct kndCommit));
-    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL, &page);
+    assert(KND_SMALL_X2_MEMPAGE_SIZE >= sizeof(struct kndCommit));
+    err = knd_mempool_page(mempool, KND_MEMPAGE_SMALL_X2, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndCommit));
     *result = page;

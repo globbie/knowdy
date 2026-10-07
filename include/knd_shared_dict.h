@@ -13,6 +13,13 @@ typedef enum knd_shared_dict_item_phase { KND_SHARED_DICT_VALID,
                                           KND_SHARED_DICT_PENDING,
                                           KND_SHARED_DICT_REMOVED } knd_shared_dict_item_phase;
 
+typedef enum knd_dict_cardinal_t { KND_DICT_UNIQUE_VALUES,
+                                   KND_DICT_MULTIPLE_VALUES } knd_dict_cardinal_t;
+
+typedef enum knd_dict_store_t { KND_DICT_STORE_DEFAULT,
+                                KND_DICT_STORE_MEMONLY,
+                                KND_DICT_STORE_PERSIST } knd_dict_store_t;
+
 struct kndSharedDictItem
 {
     knd_shared_dict_item_phase phase;
@@ -25,6 +32,9 @@ struct kndSharedDictItem
 
 struct kndSharedDict
 {
+    knd_dict_cardinal_t cardinal_t;
+    knd_dict_store_t store_t;
+
     struct kndSharedDictItem* _Atomic *hash_array;
     size_t size;
     atomic_size_t num_items;
@@ -33,16 +43,15 @@ struct kndSharedDict
 
     /* for marshalled elems */
     struct kndSet *idx;
-
-    bool allow_key_overwrite;
 };
 
-int knd_shared_dict_new(struct kndSharedDict **dict, size_t init_size,
-                        struct kndMemPool *mempool, bool allow_key_overwrite);
+int knd_shared_dict_new(struct kndSharedDict **result, size_t init_size,
+                        knd_dict_cardinal_t cardinal_t, knd_dict_store_t store_t,
+                        struct kndMemPool *mempool);
 void knd_shared_dict_del(struct kndSharedDict *self);
 
-void* knd_shared_dict_get(struct kndSharedDict *self, const char *key, size_t key_size);
-int knd_shared_dict_set(struct kndSharedDict *self, const char *key, size_t key_size, void *data);
+int knd_shared_dict_get(struct kndSharedDict *dict, const char *key, size_t key_size, void **result);
+int knd_shared_dict_set(struct kndSharedDict *dict, const char *key, size_t key_size, void *data, void **result);
 int knd_shared_dict_remove(struct kndSharedDict *self, const char *key, size_t key_size);
 int knd_shared_dict_map(struct kndSharedDict *self, map_cb_t cb, void *obj, struct kndTask *task);
 

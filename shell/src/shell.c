@@ -123,8 +123,7 @@ static int create_readers(struct kndSteward *steward, struct kndTask **readers, 
     int err;
 
     for (size_t i = 0; i < KND_MAX_READERS; i++) {
-        err = knd_task_new(&reader_task, KND_AGENT_READER, i + 1,
-                           &steward->mem_task_ctx_config, &steward->mem_task_cache_config, steward);
+        err = knd_task_new(&reader_task, KND_AGENT_READER, i + 1, steward);
         if (err) {
             knd_log("failed to create a reader {err %d}", err);
             return err;
@@ -145,12 +144,12 @@ static int create_writers(struct kndSteward *steward, struct kndTask **writers,
     int err;
 
     for (size_t i = 0; i < KND_MAX_WRITERS; i++) {
-        err = knd_task_new(&writer_task, KND_AGENT_WRITER, i + 1,
-                           &steward->mem_task_ctx_config, &steward->mem_task_cache_config, steward);
+        err = knd_task_new(&writer_task, KND_AGENT_WRITER, i + 1, steward);
         if (err) {
             knd_log("failed to create a writer {err %d}", err);
             return err;
         }
+
         writers[num_writers] = writer_task;
         writer_ids[num_writers] = writer_task->id;
         num_writers++;
@@ -166,8 +165,7 @@ static int create_collectors(struct kndSteward *steward, struct kndTask **collec
     int err;
 
     for (size_t i = 0; i < KND_MAX_COLLECTORS; i++) {
-        err = knd_task_new(&collect_task, KND_AGENT_COLLECTOR, i + 1,
-                           &steward->mem_task_ctx_config, &steward->mem_task_cache_config, steward);
+        err = knd_task_new(&collect_task, KND_AGENT_COLLECTOR, i + 1, steward);
         if (err) {
             knd_log("failed to create a collect {err %d}", err);
             return err;
@@ -179,7 +177,7 @@ static int create_collectors(struct kndSteward *steward, struct kndTask **collec
     return knd_OK;
 }
 
-static int update_state(struct kndRepoSnapshot *snapshot,
+static int change_state(struct kndRepoSnapshot *snapshot,
                         struct kndTask **collectors, size_t num_collectors, 
                         size_t *writer_ids, size_t num_writers,
                         struct kndTask *arbiter_task)
@@ -187,6 +185,7 @@ static int update_state(struct kndRepoSnapshot *snapshot,
     assert (num_writers > 0);
     assert (num_writers >= num_collectors);
     struct kndStateLedger *ledger;
+    struct kndTask *collector;
 
     /* distribute writers between collectors */
     size_t batch_size = num_writers / num_collectors;
@@ -195,7 +194,7 @@ static int update_state(struct kndRepoSnapshot *snapshot,
     size_t batch_to = batch_size + remainder;
     int err;
 
-    knd_log("!! updating global state {num-writers %zu} {num-collectors %zu} ", num_writers, num_collectors);
+    knd_log("!! changing global state {num-writers %zu} {num-collectors %zu} ", num_writers, num_collectors);
 
     err = knd_task_reset(arbiter_task);
     if (err) {
@@ -212,7 +211,10 @@ static int update_state(struct kndRepoSnapshot *snapshot,
         writer_ids += batch_from;
 
         // TODO specify state range
-        err = knd_commit_collect(snapshot, writer_ids, batch_to - batch_from, NULL, ledger, collectors[i]);
+
+        collector = collectors[i];
+        err = knd_collect_commits(snapshot, collector->id, writer_ids, batch_to - batch_from,
+                                  NULL, ledger, collector);
         if (err) {
             knd_log("commits collection failure {err %d}", err);
             return err;
@@ -226,15 +228,16 @@ static int update_state(struct kndRepoSnapshot *snapshot,
      *            NB: lock free concurrency, atomic writes
      */
     for (size_t i = 0; i < num_collectors; i++) {
-        err = knd_state_index_commits(snapshot, ledger, collectors[i]);
+        err = knd_state_index_commits(snapshot, i, ledger, collectors[i]);
         if (err) {
             knd_log("commits collection failure {err %d}", err);
             return err;
         }
     }
     
-    /**  step three: detect conflicting commits, sort them by rating + timestamp,
-     *             schedule non-conflicting commits for the WAL update
+    /**  step three: 1. detect conflicting commits
+     *               2. pass non-conflicting commits for the WAL update (no arbiter needed)
+     *               NB: collectors can run in parallel
      */
     for (size_t i = 0; i < num_collectors; i++) {
         err = knd_state_detect_conflicts(snapshot, ledger, collectors[i]);
@@ -244,23 +247,39 @@ static int update_state(struct kndRepoSnapshot *snapshot,
         }
     }
 
-    /** step four (final): remaining conflicting commits
+    /* TODO: find a concurrent solution for joining */
+    for (size_t i = 0; i < num_collectors; i++) {
+        err = knd_state_join_conflicts(snapshot, ledger, collectors[i]);
+        if (err) {
+            knd_log("commits conflict join failure {err %d}", err);
+            return err;
+        }
+    }
+
+    /** step four: any conflicting commits
      *  must be resolved by the Arbiter
      */
-
-
-    // TODO get facets
     err = knd_state_resolve_conflicts(snapshot, ledger, arbiter_task);
     if (err) {
         knd_log("commits conflict resolution failure {err %d}", err);
         return err;
     }
-    
+
     /* make sure collectors' WALs are updated */
+    for (size_t i = 0; i < num_collectors; i++) {
+        err = knd_state_update_collector_wal(snapshot, ledger, collectors[i]);
+        if (err) {
+            knd_log("collector WAL update failure {err %d}", err);
+            return err;
+        }
+    }
 
-    // TODO
-
-    /* advance global state */
+    /* Arbiter: advance global state */
+    err = knd_state_advance(snapshot, ledger, arbiter_task);
+    if (err) {
+        knd_log("failed to advance global state {err %d}", err);
+        return err;
+    }
 
     return knd_OK;
 }
@@ -292,8 +311,7 @@ static int knd_interact(struct kndSteward *steward)
     int err;
 
     /* create workers */
-    err = knd_task_new(&arbiter_task, KND_AGENT_ARBITER, 42,
-                        &steward->mem_task_ctx_config, &steward->mem_task_cache_config, steward);
+    err = knd_task_new(&arbiter_task, KND_AGENT_ARBITER, 42, steward);
     KND_STEWARD_ERR("failed to create a writer task");
 
     err = create_readers(steward, readers, &num_readers);
@@ -342,7 +360,7 @@ static int knd_interact(struct kndSteward *steward)
             writer_count++;
             break;
         case KND_OPER_UPDATE_STATE:
-            err = update_state(snapshot, collectors, num_collectors,\
+            err = change_state(snapshot, collectors, num_collectors,\
                                writer_ids, num_writers, arbiter_task);
             if (err) {
                 knd_log("commits collection failure {err %d}", err);

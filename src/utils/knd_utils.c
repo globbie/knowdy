@@ -200,6 +200,8 @@ unsigned long knd_unpack_u16(const unsigned char *buf)
 
 void knd_pack_int(unsigned char *buf, size_t numval, size_t byte_size)
 {
+    assert (KND_PACK_INT_BUF_SIZE >= 4);
+
     switch (byte_size) {
     case 4:
         knd_pack_u32(buf, numval);

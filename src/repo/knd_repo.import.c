@@ -30,6 +30,25 @@
 #define DEBUG_REPO_IMPORT_LEVEL_3 0
 #define DEBUG_REPO_IMPORT_LEVEL_TMP 1
 
+static int add_cls_state_update(struct kndClassEntry *entry, struct kndTask *task)
+{
+    struct kndCommit *commit = task->ctx->commit;
+    struct kndStateUpdate *update;
+    int err;
+
+    err = knd_state_update_new(&update, task->mempool);
+    KND_TASK_ERR("failed to alloc a state update");
+
+    update->oper_type = KND_CREATED;
+    update->obj_type = KND_STATE_CLS;
+    update->obj = entry;
+    update->commit = commit;
+
+    knd_commit_append_update(commit, update);
+
+    return knd_OK;
+}
+
 int knd_repo_cls_import(const char *rec, size_t *total_size,
                         struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
@@ -55,5 +74,15 @@ int knd_repo_cls_import(const char *rec, size_t *total_size,
         knd_log(">> registered {cls %.*s {id %.*s}}", entry->name_size, entry->name,
                 entry->id_size, entry->id);
     }
+
+    switch (task->type) {
+    case KND_TASK_COMMIT:
+        err = add_cls_state_update(entry, task);
+        KND_TASK_ERR("failed to add a state update");
+        break;
+    default:
+        break;
+    }
+
     return knd_OK;
 }

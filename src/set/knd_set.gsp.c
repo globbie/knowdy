@@ -441,7 +441,7 @@ int knd_set_marshall(struct kndSet *s, struct kndSetRange *range,
 
         err = knd_storage_leaf_new(&leaf, leaf_count, path, path_size,
                                    min_leaf_size, max_leaf_size,
-                                   KND_STORAGE_MODE_READ_WRITE);
+                                   KND_LEAF_GSP, KND_STORAGE_MODE_READ_WRITE);
         KND_TASK_ERR("failed to alloc a storage leaf");
 
         err = knd_set_leaf_marshall(s, range, leaf, cb, cb_ctx, task);

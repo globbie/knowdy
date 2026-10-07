@@ -147,8 +147,9 @@ struct kndRepoSnapshot
     size_t num_update_logs;
     size_t max_update_log_size;
 
-    size_t max_task_wals;
-    size_t max_task_wal_size;
+    size_t max_wal_leaves;
+    size_t max_wal_leaf_size;
+    size_t max_wal_commits;
 
     struct kndRepoSnapshot *prev;
     struct kndRepoSnapshot *next;

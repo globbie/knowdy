@@ -256,7 +256,7 @@ static int charseq_register(const char *str, size_t str_size,
     assert (str_dict != NULL);
     assert (str_idx != NULL);
 
-    if (DEBUG_TEXT_LEVEL_TMP) {
+    if (DEBUG_TEXT_LEVEL_2) {
         knd_log(".. register {seq %.*s}", str_size, str);
     }
 
@@ -284,7 +284,7 @@ static int charseq_register(const char *str, size_t str_size,
     err = knd_dict_set(str_dict, str, str_size, (void*)seq, task);
     KND_TASK_ERR("failed to register a charseq {err %d}", err);
 
-    if (DEBUG_TEXT_LEVEL_TMP) {
+    if (DEBUG_TEXT_LEVEL_3) {
         knd_log(">> {seq %.*s {id %.*s}} registered", str_size, str, seq->id_size, seq->id);
     }
     *result = seq;

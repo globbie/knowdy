@@ -30,7 +30,7 @@ static int build_leaf_filename(struct kndStorageLeaf *leaf,
     OUT(path, path_size);
     OUT("/", 1);
     OUT(pref, pref_size);
-    OUT(KND_GSP_FILE_TMP_EXT_NAME, strlen(KND_GSP_FILE_TMP_EXT_NAME));
+    OUT(KND_FILE_TMP_EXT_NAME, strlen(KND_FILE_TMP_EXT_NAME));
 
     if (out->buf_size >= KND_PATH_SIZE) {
         err = knd_LIMIT;

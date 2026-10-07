@@ -52,6 +52,7 @@ typedef enum knd_task_type {
     KND_TASK_DEFAULT,
     KND_TASK_QUERY,
     KND_TASK_COMMIT,
+    KND_TASK_COLLECT,
     KND_TASK_UPDATE_CACHE,
     KND_TASK_INNER,
     KND_TASK_INNER_COMMIT,
@@ -198,7 +199,6 @@ struct kndTask
     knd_agent_role_type role;
     knd_task_type type;
     size_t id;
-    //knd_state_phase_t phase;
     knd_task_mode_t mode;
 
     struct kndSteward *steward;
@@ -238,19 +238,23 @@ struct kndTask
     size_t num_blocks;
     size_t total_block_size;
 
-    /* each writer has its own WAL */
-    struct kndStorageWal *wal;
+    /* each writer has its own set of repo WALs */
+    struct kndStorageWal *repo_wals;
+    size_t num_repo_wals;
 
+    /* collector */
+    struct kndCommit **collector_commits;
+    size_t max_collector_commits;
+    size_t num_collector_commits;
+
+    /* global state ledger */
     struct kndStateLedger *ledger;
-
-    size_t num_commits;
+    struct kndMemPool *ledger_shared_mem;
 
     size_t trace_level;
 };
 
-int knd_task_new(struct kndTask **result, knd_agent_role_type role, size_t task_id,
-                 struct kndMemConfig *main_memconf, struct kndMemConfig *cache_memconf,
-                 struct kndSteward *steward);
+int knd_task_new(struct kndTask **result, knd_agent_role_type role, size_t task_id, struct kndSteward *steward);
 void knd_task_del(struct kndTask *task);
 
 int knd_task_reset(struct kndTask *task);

@@ -61,7 +61,7 @@ static int build_path(char *path, size_t *path_size,
     return knd_OK;
 }
 
-int knd_repo_restore(struct kndRepo *self, struct kndRepoSnapshot *snapshot, struct kndTask *task)
+int knd_repo_restore(struct kndRepo *repo, struct kndRepoSnapshot *snapshot, struct kndTask *task)
 {
     char path[KND_PATH_SIZE + 1];
     size_t path_size;
@@ -69,18 +69,8 @@ int knd_repo_restore(struct kndRepo *self, struct kndRepoSnapshot *snapshot, str
     struct stat st;
 
     if (DEBUG_REPO_LEVEL_TMP) {
-        const char *owner_name = "/";
-        size_t owner_name_size = 1;
-        switch (task->user_ctx->type) {
-        case KND_USER_AUTHENTICATED:
-            owner_name = task->user_ctx->inst->name;
-            owner_name_size =  task->user_ctx->inst->name_size;
-            break;
-        default:
-            break;
-        }
-        knd_log(".. restoring the latest {snapshot #%zu of {repo %.*s {owner %.*s}}",
-                snapshot->numid, self->name_size, self->name, owner_name_size, owner_name);
+        knd_log(".. restoring the latest {snapshot #%zu of {repo %.*s}}",
+                snapshot->numid, repo->name_size, repo->name);
     }
 
     // restore recent commits
@@ -105,19 +95,19 @@ int knd_repo_restore(struct kndRepo *self, struct kndRepoSnapshot *snapshot, str
         path_size = out->buf_size;
         path[path_size] = '\0';
 
-        //err = knd_repo_restore_journals(self, snapshot, path, path_size, i, task);
+        //err = knd_repo_restore_journals(repo, snapshot, path, path_size, i, task);
         //KND_TASK_ERR("failed to restore journals in \"%.*s\"", path_size, path);
     }
 
     if (snapshot->commit_idx->num_elems == 0) {
         knd_log("-- no commits to restore in repo \"%.*s\"",
-                self->name_size, self->name);
+                repo->name_size, repo->name);
         return knd_OK;
     }
 
     if (DEBUG_REPO_LEVEL_3) {
         knd_log("== total commits to restore in {repo %.*s}: %zu",
-                self->name_size, self->name, snapshot->commit_idx->num_elems);
+                repo->name_size, repo->name, snapshot->commit_idx->num_elems);
     }
 
     /* all commits are indexed,
@@ -133,7 +123,7 @@ int knd_repo_restore(struct kndRepo *self, struct kndRepoSnapshot *snapshot, str
 
     if (DEBUG_REPO_LEVEL_TMP) {
         knd_log("== {repo %.*s} {total-commits %zu}",
-                self->name_size, self->name, snapshot->num_commits);
+                repo->name_size, repo->name, snapshot->num_commits);
     }
     return knd_OK;
 }
@@ -204,7 +194,7 @@ static gsl_err_t add_leaf(void *obj, const char *val, size_t val_size)
     }
 
     err = knd_storage_leaf_new(&leaf, numval, ctx->path, ctx->path_size,
-                               0, 0, KND_STORAGE_MODE_READ_ONLY);
+                               0, 0, KND_LEAF_GSP, KND_STORAGE_MODE_READ_ONLY);
     if (err) {
         KND_TASK_LOG("failed to alloc a storage leaf");
         return make_gsl_err_external(err);
@@ -782,6 +772,7 @@ static int read_repo_state(struct kndRepo *repo, struct kndStorage *store, struc
     if (stat(filename, &st)) {
         knd_log("NB: state.gsl is not present in {repo %.*s}, assuming a fresh start",
                 filename_size, filename);
+
         return knd_OK;
     }
 
@@ -812,23 +803,10 @@ int knd_repo_read(struct kndRepo *repo, struct kndTask *task)
     struct kndStorage *store = task->steward->active_storage;
     int err;
 
-    assert(task->user_ctx != NULL);
-
     if (DEBUG_REPO_LEVEL_2) {
-        const char *owner_name = "/";
-        size_t owner_name_size = 1;
-        switch (task->user_ctx->type) {
-        case KND_USER_AUTHENTICATED:
-            owner_name = task->user_ctx->inst->name;
-            owner_name_size =  task->user_ctx->inst->name_size;
-            break;
-        default:
-            break;
-        }
         const char *agent_role_name = knd_agent_role_names[task->role];
-        knd_log(">> open {repo %.*s {owner %.*s}  {open-mode %s}",
-                repo->name_size, repo->name, owner_name_size, owner_name,
-                agent_role_name);
+        knd_log(">> open {repo %.*s {open-mode %s}",
+                repo->name_size, repo->name, agent_role_name);
     }
 
     err = knd_repo_snapshot_new(&snapshot, 0, 0, repo, task->role, store, task);

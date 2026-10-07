@@ -140,7 +140,7 @@ struct kndClassEntry
     struct kndCacheItem *cached; // LRU cache
 
     struct kndObjStateUpdate *updates;
-    size_t num_updates;
+    //size_t num_updates;
 
     struct kndClassEntry *next;
     struct kndClassEntry *prev; 
@@ -175,10 +175,6 @@ struct kndClass
     struct kndAttr *implied_attr;
     struct kndAttrRef *uniq;
 
-    //struct kndState * _Atomic states;
-    //size_t init_state;
-    //size_t num_states;
-
     /* immediate children */
     struct kndClassRef *children;
     size_t num_children;
@@ -187,10 +183,6 @@ struct kndClass
     size_t num_ancestors;
     struct kndSet *descendants;
     size_t num_descendants;
-
-    //struct kndState * _Atomic desc_states;
-    //size_t init_desc_state;
-    //size_t num_desc_states;
 
     struct kndSet  *inst_idx;
     struct kndDict *inst_name_idx;
@@ -352,7 +344,7 @@ int knd_class_match_query(struct kndClass *self, struct kndAttrStm *query);
 int knd_cls_commit_select(const char *rec, size_t *total_size, struct kndCommit *commit, struct kndTask *task);
 
 // knd_class.states.c
-int knd_retrieve_class_updates(struct kndStateRef *ref, struct kndSet *set, struct kndTask *task);
+//int knd_retrieve_class_updates(struct kndStateRef *ref, struct kndSet *set, struct kndTask *task);
 int knd_class_get_updates(struct kndClass *self, size_t gt, size_t lt,
                           size_t unused_var(eq), struct kndSet *set, struct kndTask *task);
 int knd_class_get_desc_updates(struct kndClass *self, size_t gt, size_t lt,

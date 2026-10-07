@@ -28,22 +28,9 @@ int knd_commit_resolve(struct kndCommit *commit, struct kndRepoSnapshot *snapsho
     struct kndStateRef *ref;
     int err;
 
-    if (DEBUG_COMMIT_RESOLVE_LEVEL_TMP) {
-        knd_log(".. resolving {commit #%zu}", commit->numid);
+    if (DEBUG_COMMIT_RESOLVE_LEVEL_2) {
+        knd_log("resolving new commit");
     }
-
-    /*FOREACH (ref, commit->class_state_refs) {
-        if (ref->state->phase == KND_REMOVED) {
-            continue;
-        }
-        state = ref->state;
-        state->commit = commit;
-        if (!state->children) continue;
-
-        err = resolve_class_inst_commit(state->children, commit, snapshot, task);
-        KND_TASK_ERR("failed to resolve commit of class insts");
-        }
-    */
 
     return knd_OK;
 }
@@ -56,9 +43,8 @@ int knd_commit_dedup(struct kndCommit *commit, struct kndRepoSnapshot *snapshot,
     // TODO: each new concept (class, proc ..) must be unique,
     // make sure no duplicate definitions exist in the schema
 
-    if (DEBUG_COMMIT_RESOLVE_LEVEL_TMP) {
-        knd_log(".. deduplication of {repo %.*s {commit #%zu}}",
-                commit->numid, repo->name_size, repo->name);
+    if (DEBUG_COMMIT_RESOLVE_LEVEL_2) {
+        knd_log(".. commit deduplication");
     }
 
     return knd_OK;

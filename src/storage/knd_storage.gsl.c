@@ -233,7 +233,7 @@ static gsl_err_t set_storage_type(void *obj, const char *name, size_t name_size)
         if (name_size != str_size) continue;
 
         if (!memcmp(str, name, name_size)) {
-            s->type = (knd_storage_type)i;
+            s->type = (knd_storage_t)i;
             return make_gsl_err(gsl_OK);
         }
     }
@@ -316,6 +316,8 @@ int knd_storage_leaf_export_GSL(struct kndStorageLeaf *leaf, struct kndOutput *o
     OUT("{ ", strlen("{ "));
     OUT(leaf->name, leaf->name_size);
     OUT(" ", 1);
+
+    OUTF("{phase %d}", leaf->phase);
         
     if (leaf->range_from_addr_size) {
         OUT("{from-addr ", strlen("{from-addr "));
@@ -334,14 +336,20 @@ int knd_storage_leaf_export_GSL(struct kndStorageLeaf *leaf, struct kndOutput *o
         err = knd_print_indent(out, (depth + 1) * indent_size);
         RET_ERR();
     }
-    OUTF("{num-elems %zu}", leaf->num_elems);
+
+    if (leaf->num_elems) {
+        OUTF("{num-elems %zu}", leaf->num_elems);
+    }
 
     if (indent_size) {
         OUT("\n", 1);
         err = knd_print_indent(out, (depth + 1) * indent_size);
         RET_ERR();
     }
-    OUTF("{file-size %zu}", leaf->curr_size);
+
+    if (leaf->curr_size) {
+        OUTF("{file-size %zu}", leaf->curr_size);
+    }
 
     OUT("}", 1);
     return knd_OK;

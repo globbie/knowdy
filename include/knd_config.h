@@ -201,6 +201,7 @@ static const char *const knd_format_names[] = {
 
 #define KND_BASE_REPO_DIR_NAME "base"
 #define KND_SNAPSHOT_DIR_NAME  "snapshot"
+#define KND_SUBMIT_DIR_NAME    "submit"
 #define KND_UPDATES_DIR_NAME   "updates"
 #define KND_AGENT_DIR_NAME     "agent"
 #define KND_USERSPACE_DIR_NAME "users"
@@ -210,10 +211,10 @@ static const char *const knd_format_names[] = {
 
 #define KND_GSL_FILE_EXT_NAME     ".gsl"
 #define KND_GSP_FILE_EXT_NAME     ".gsp"
-#define KND_GSP_FILE_TMP_EXT_NAME ".tmp"
 #define KND_IDX_FILE_EXT_NAME ".idx"
 #define KND_WAL_FILE_EXT_NAME ".wal"
 #define KND_LOG_FILE_EXT_NAME ".log"
+#define KND_FILE_TMP_EXT_NAME ".tmp"
 
 #define KND_GSP_FILE_HEADER_NAME  "GSP"
 
@@ -226,11 +227,12 @@ static const char *const knd_format_names[] = {
 
 #define KND_MAX_TASKS 64
 
-#define KND_MAX_WALS 64
-#define KND_MAX_WAL_SIZE 10 * 1024 * 1024
-#define KND_MAX_WAL_THRESHOLD 1024 * 1024 * 100
-#define KND_MIN_WAL_THRESHOLD 1024 * 1024 * 10
-#define KND_WAL_THRESHOLD_RATIO 0.9
+#define KND_MAX_WAL_LEAVES 64
+#define KND_MAX_WAL_LEAF_SIZE 1024 //10 * 1024 * 1024
+#define KND_MAX_WAL_COMMITS 1024 * 1024
+
+#define KND_MAX_COLLECTOR_COMMITS 1024 * 10
+#define KND_MAX_LEDGER_COMMITS 1024 * 1024
 
 /* default values, overriden by config  */
 #define KND_MAX_SNAPSHOTS 32
@@ -392,6 +394,7 @@ static_assert(KND_MAX_FACETS <= KND_RADIX_BASE, "Max facets must not exceed the 
 #define KND_LABEL_SIZE 8
 #define KND_PATH_SIZE 1024
 #define KND_USER_PATH_PREFIX_SIZE 2
+#define KND_PACK_INT_BUF_SIZE 8
 
 #define KND_NAME_SIZE 1024 - 8 // to fit into a struct with explicit name size
 #define KND_SHORT_NAME_SIZE 48

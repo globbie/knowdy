@@ -38,7 +38,6 @@ void knd_repo_del(struct kndRepo *self)
     free(self);
 }
 
-
 int knd_conc_folder_new(struct kndConcFolder **result, struct kndMemPool *mempool)
 {
     void *page;
@@ -113,10 +112,13 @@ int knd_repo_snapshot_new(struct kndRepoSnapshot **result, size_t numid, size_t 
     err = knd_snapshot_build_path(s, task);
     KND_TASK_ERR("failed to build a default snapshot path");
 
+    /* wal settings */
+    s->max_wal_leaves = KND_MAX_WAL_LEAVES;
+    s->max_wal_leaf_size = KND_MAX_WAL_LEAF_SIZE;
+    s->max_wal_commits = KND_MAX_WAL_COMMITS;
+
     err = knd_set_new(&s->commit_idx, KND_SET_STORE_MEMONLY, mempool);
     if (err) return err;
-    s->max_task_wals = KND_MAX_WALS;
-    s->max_task_wal_size = KND_MAX_WAL_SIZE;
 
     err = knd_set_new(&s->cache.str_idx, KND_SET_STORE_PERSIST, mempool);
     if (err) return err;

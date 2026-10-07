@@ -25,32 +25,34 @@
 #include "knd_config.h"
 
 struct kndState;
-struct kndClass;
-struct kndStateRef;
 struct kndMemPool;
 struct kndOutput;
 struct kndRepoSnapshot;
 struct kndTask;
-struct kndFacet;
+struct kndCommitRef;
 
-typedef enum knd_state_oper_t { KND_DEFAULT,
-                                 KND_SELECTED,
-                                 KND_CREATED,
-                                 KND_UPDATED,
-                                 KND_REMOVED,
-                                 KND_RESTORED } knd_state_oper_t;
+typedef enum knd_oper_t { KND_DEFAULT,
+                          KND_CREATED,
+                          KND_UPDATED,
+                          KND_REMOVED,
+                          KND_RESTORED } knd_oper_t;
 
-typedef enum knd_state_obj_t { KND_STATE_DEFAULT,
-                           KND_STATE_CLS,
-                           KND_STATE_CLS_VAR,
-                           KND_STATE_ATTR,
-                           KND_STATE_ATTR_STM,
-                           KND_STATE_CLS_DESC,
-                           KND_STATE_CLS_INST,
-                           KND_STATE_CLS_INST_INNER,
-                           KND_STATE_PROC,
-                           KND_STATE_PROC_INST
-} knd_state_t;
+typedef enum knd_obj_t { KND_STATE_DEFAULT,
+                         KND_STATE_CLS,
+                         KND_STATE_CLS_VAR,
+                         KND_STATE_ATTR,
+                         KND_STATE_ATTR_STM,
+                         KND_STATE_CLS_DESC,
+                         KND_STATE_CLS_INST,
+                         KND_STATE_CLS_INST_INNER,
+                         KND_STATE_PROC,
+                         KND_STATE_PROC_INST
+} knd_obj_t;
+
+typedef enum knd_conflict_phase_t { KND_NO_CONFLICT,
+                                    KND_CONFLICT_DETECTED,
+                                    KND_CONFLICT_RESOLVED
+} knd_conflict_phase_t;
 
 struct kndStateRange
 {
@@ -72,40 +74,31 @@ struct kndStateVal
 
 struct kndStateConflict
 {
-    knd_state_t type;
-    void *affected_obj;
+    knd_conflict_phase_t phase;
+    knd_obj_t obj_type;
+    void *obj;
 
     struct kndCommitRef* _Atomic commits;
     atomic_size_t num_commits;
 };
 
-struct kndStateOperation
+struct kndStateConflictRef
 {
-    knd_state_oper_t type;
-    struct kndCommit *commit;
+    struct kndStateConflict *conflict;
+    struct kndStateConflictRef *next;
+};
 
+struct kndStateUpdate
+{
+    knd_oper_t oper_type;
+    enum knd_obj_t obj_type;
+    void *obj;
+
+    struct kndCommit *commit;
     struct kndStateVal *source;
     struct kndStateVal *target;
 
-    struct kndConflict *conflict;
-
-    struct kndStateOperation *next;
-};
-
-/**
- *  a number of changes (operations)
- *  applied to a single object
- *  within a single state progress
- */
-struct kndStateUpdate
-{
-    size_t numid;
-
-    struct kndState *state;
-
-    struct kndStateOperation *opers;
-    size_t num_opers;
-
+    struct kndStateConflict *conflict;
     struct kndStateUpdate *next;
 };
 
@@ -122,8 +115,9 @@ struct kndState
 
 struct kndStateLedger
 {
-    size_t max_commits;
+    struct kndCommit **commits;
     size_t num_commits;
+    size_t max_commits;
 
     /** key: cls name
      *  value: state conflict 
@@ -140,11 +134,12 @@ struct kndStateLedger
 };
 
 int knd_state_update_new(struct kndStateUpdate **result, struct kndMemPool *mempool);
-int knd_state_ref_new(struct kndStateRef **result, struct kndMemPool *mempool);
+
 int knd_state_val_new(struct kndStateVal **result, struct kndMemPool *mempool);
 int knd_state_conflict_new(struct kndStateConflict **result, struct kndMemPool *mempool);
+int knd_state_conflict_ref_new(struct kndStateConflictRef **result, struct kndMemPool *mempool);
 
-int knd_state_index_commits(struct kndRepoSnapshot *snapshot,
+int knd_state_index_commits(struct kndRepoSnapshot *snapshot, size_t collector_id,
                             struct kndStateLedger *ledger, struct kndTask *task);
 
 int knd_state_reject_commits(struct kndStateConflict *conflict,
@@ -152,9 +147,22 @@ int knd_state_reject_commits(struct kndStateConflict *conflict,
 int knd_state_resolve_conflicts(struct kndRepoSnapshot *snapshot,
                                 struct kndStateLedger *ledger, struct kndTask *task);
 
-int knd_state_ledger_new(struct kndStateLedger **result, struct kndMemPool *mempool);
+int knd_state_ledger_new(struct kndStateLedger **result, size_t max_commits,
+                         struct kndMemPool *shared_idx_mempool, struct kndMemPool *mempool);
 
 int knd_state_read(struct kndRepoSnapshot *snapshot, struct kndStateRange *range, struct kndTask *task);
 
 int knd_state_detect_conflicts(struct kndRepoSnapshot *snapshot, struct kndStateLedger *ledger,
                                struct kndTask *task);
+
+int knd_state_join_conflicts(struct kndRepoSnapshot *snapshot, struct kndStateLedger *ledger,
+                             struct kndTask *task);
+
+int knd_state_ledger_fetch_conflict(struct kndStateLedger *ledger,
+                                    struct kndCommit *commit, struct kndStateUpdate *update,
+                                    struct kndStateConflict **result, struct kndTask *task);
+
+int knd_state_update_collector_wal(struct kndRepoSnapshot *snapshot, struct kndStateLedger *ledger,
+                                   struct kndTask *task);
+int knd_state_advance(struct kndRepoSnapshot *snapshot, struct kndStateLedger *ledger,
+                      struct kndTask *task);
