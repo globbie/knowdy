@@ -58,9 +58,11 @@ int knd_commit_index(struct kndCommit *commit, struct kndStateLedger *ledger, st
     return knd_OK;
 }
 
-int knd_state_index_commits(struct kndRepoSnapshot *snapshot, size_t collector_id,
+int knd_state_index_commits(struct kndRepoSnapshot *unused_var(snapshot), size_t collector_id,
                             struct kndStateLedger *ledger, struct kndTask *task)
 {
+    struct kndStorageWal *wal;
+    struct kndStorageLeaf *leaf;    
     struct kndCommit *commit;
     int err;
 
@@ -68,11 +70,20 @@ int knd_state_index_commits(struct kndRepoSnapshot *snapshot, size_t collector_i
         knd_log(".. indexing commits of {collector #%zu}", collector_id);
     }
 
-    for (size_t i = 0; i < task->num_collector_commits; i++) {
-        commit = task->collector_commits[i];
+    FOREACH (wal, task->repo_wals) {
+        FOREACH (leaf, wal->leaves) {
+            FOREACH (commit, leaf->commits) {
 
-        err = knd_commit_index(commit, ledger, task);
-        KND_TASK_ERR("failed to index a commit");
+                // TODO
+                // if commit's original state is lower than confirmed global state
+                // we need to check any conflicts with approved updates,
+                // assign KND_REJECTED_STATE if any conflicts are detected at this stage
+                
+                /* transfer commit's modifications to a common ledger for conflict resolution */
+                err = knd_commit_index(commit, ledger, task);
+                KND_TASK_ERR("failed to index a commit");
+            }
+        }
     }
    
     return knd_OK;

@@ -238,14 +238,8 @@ struct kndTask
     size_t num_blocks;
     size_t total_block_size;
 
-    /* each writer has its own set of repo WALs */
     struct kndStorageWal *repo_wals;
     size_t num_repo_wals;
-
-    /* collector */
-    struct kndCommit **collector_commits;
-    size_t max_collector_commits;
-    size_t num_collector_commits;
 
     /* global state ledger */
     struct kndStateLedger *ledger;

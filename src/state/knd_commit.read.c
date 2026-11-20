@@ -34,7 +34,6 @@ struct LocalContext {
 static gsl_err_t cls_update_parse(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
-    struct kndCommit *commit = ctx->commit;
     struct kndTask *task = ctx->task;
     struct kndStateUpdate *update = ctx->update;
     struct kndMemBlock *memblock;
@@ -130,8 +129,6 @@ static gsl_err_t commit_update_parse(void *obj, const char *rec, size_t *total_s
 
 static gsl_err_t commit_repo_parse(void *obj, const char *rec, size_t *total_size)
 {
-    struct LocalContext *ctx = obj;
-    struct kndCommit *commit = ctx->commit;
     char buf[KND_NAME_SIZE];
     size_t buf_size = 0;
 
@@ -197,11 +194,13 @@ int knd_commit_parse(struct kndCommit *commit, const char *rec, size_t rec_size,
     return knd_OK;
 }
 
+/* cb func */
 int knd_commit_register(size_t rec_numid, const char *rec, size_t rec_size,
                         void *obj_ctx, size_t *result_size, void **result, struct kndTask *task)
 {
     struct LocalContext *ctx = obj_ctx;
     struct kndCommit *commit;
+    struct kndStorageLeaf *leaf = ctx->leaf;
     int err;
 
     if (DEBUG_COMMIT_READ_LEVEL_2) {
@@ -210,19 +209,25 @@ int knd_commit_register(size_t rec_numid, const char *rec, size_t rec_size,
 
     err = knd_commit_new(&commit, task->mempool);
     KND_TASK_ERR("failed to alloc a commit");
+    commit->wal = ctx->wal;
+    commit->leaf = leaf;
 
     err = knd_commit_parse(commit, rec, rec_size, task);
     KND_TASK_ERR("failed to parse commit");
 
-    if (task->max_collector_commits < task->num_collector_commits + 1) {
+    if ((leaf->num_commits + 1) > KND_MAX_COLLECTOR_COMMITS) {
         err = knd_LIMIT;
-        KND_TASK_ERR("collector limit reached {max-commits %zu}", task->max_collector_commits);
+        KND_TASK_ERR("collector limit reached {max-commits %zu}", KND_MAX_COLLECTOR_COMMITS);
     }
 
-    commit->numid = task->num_collector_commits;
+    commit->numid = leaf->num_commits + 1;
 
-    task->collector_commits[task->num_collector_commits] = commit;
-    task->num_collector_commits++;
+    commit->next = leaf->commits;
+    leaf->commits = commit;
+    leaf->num_commits++;
+
+    *result = commit;
+    *result_size = rec_size;
     return knd_OK;
 }
 
@@ -266,7 +271,7 @@ static int collect_commits(struct kndRepoSnapshot *snapshot, size_t collector_id
     }
 
     FOREACH (leaf, wal->leaves) {
-        // TODO check if this leaf is within range
+        // TODO:  check if this leaf is within range
 
         err = collect_wal_leaf(collector_id, wal, leaf, rec_id_size, max_rec_size, ledger, range, task);
         KND_TASK_ERR("failed to read a WAL leaf with commits");

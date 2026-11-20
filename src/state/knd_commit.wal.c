@@ -247,5 +247,6 @@ int knd_commit_update_wal(struct kndCommit *commit,
     err = update_wal_leaf_idx(wal, leaf, commit, out->buf_size, task);
     KND_TASK_ERR("WAL leaf idx append failed");
 
+    commit->leaf = leaf;
     return knd_OK;
 }

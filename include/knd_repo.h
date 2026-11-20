@@ -89,10 +89,15 @@ struct kndRepoCache
     size_t str_idx_path_size;
 };
 
+/* operational indices
+ * for current state updates 
+*/
 struct kndRepoIndices
 {
     struct kndSharedDict *cls_name_idx;
     struct kndSharedSet *cls_idx;
+    atomic_size_t   cls_id_count;
+    atomic_size_t   num_cls;
 
     struct kndSharedDict *attr_name_idx;
     struct kndSharedSet  *attr_idx;
@@ -150,6 +155,7 @@ struct kndRepoSnapshot
     size_t max_wal_leaves;
     size_t max_wal_leaf_size;
     size_t max_wal_commits;
+    size_t max_state_commits;
 
     struct kndRepoSnapshot *prev;
     struct kndRepoSnapshot *next;

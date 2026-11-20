@@ -670,12 +670,13 @@ static int steward_init(struct kndSteward *steward)
     err = knd_mkpath(steward->path, steward->path_size, 0755, false);
     KND_STEWARD_ERR("failed to make {steward-path %.*s}", steward->path_size, steward->path);
 
-    err = knd_task_new(&task, KND_AGENT_SYSTEM, 0, steward);
-    KND_STEWARD_ERR("failed to init steward main task");
-    steward->task = task;
-
     err = knd_task_new(&steward->shift_task, KND_AGENT_SYSTEM, 0, steward);
     KND_STEWARD_ERR("failed to init steward sync task");
+
+    err = knd_task_new(&steward->task, KND_AGENT_SYSTEM, 0, steward);
+    KND_STEWARD_ERR("failed to init steward main task");
+
+    task = steward->task;
 
     err = knd_set_new(&steward->repo_idx, KND_SET_STORE_MEMONLY, task->mempool);
     KND_STEWARD_ERR("failed to create a set idx");
@@ -774,7 +775,7 @@ void knd_steward_del(struct kndSteward *self)
     free(self);
 }
 
-int knd_steward_snapshot_create(struct kndSteward *steward)
+int knd_steward_sys_snapshot_create(struct kndSteward *steward)
 {
     struct kndOutput *out = steward->out;
     struct kndOutput *log = steward->log;
@@ -800,7 +801,7 @@ int knd_steward_snapshot_create(struct kndSteward *steward)
     return knd_OK;
 }
 
-int knd_steward_snapshot_activate(struct kndSteward *steward, struct kndRepoSnapshot **result)
+int knd_steward_sys_snapshot_activate(struct kndSteward *steward, struct kndRepoSnapshot **result)
 {
     struct kndOutput *out = steward->out;
     struct kndOutput *log = steward->log;

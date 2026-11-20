@@ -655,7 +655,9 @@ static int get_cls_entry_by_name(struct kndRepoSnapshot *snapshot,
         return knd_OK;
     }
 
-    /* lookup global read-only cache */
+    /* TODO: lookup global updates */
+
+    /* lookup global baseline idx (read-only) */
     name_idx = snapshot->cache.cls_name_idx;
     assert (name_idx != NULL);
 
@@ -704,6 +706,7 @@ int knd_get_cls_entry_by_id(struct kndRepoSnapshot *snapshot, const char *id, si
                             struct kndClassEntry **result, struct kndTask *task)
 {
     struct kndSet *cls_idx = task->cache.cls_idx;
+    struct kndSharedSet *glb_cls_idx;
     struct kndSetElem *elem;
     struct kndClassEntry *entry;
     int err;
@@ -734,6 +737,20 @@ int knd_get_cls_entry_by_id(struct kndRepoSnapshot *snapshot, const char *id, si
         break;
     }
 
+    /* global operational idxs */
+    glb_cls_idx = snapshot->idxs.cls_idx; 
+    err = knd_shared_set_get(glb_cls_idx, id, id_size, (void**)&elem);
+    switch (err) {
+    case knd_OK:
+        entry = elem->val;
+        *result = entry;
+        return knd_OK;
+    case knd_NO_MATCH:
+        break;
+    default:
+        break;
+    }
+
     /* global read-only cache */
     cls_idx = snapshot->cache.cls_idx;
     err = knd_set_get(cls_idx, id, id_size, (void**)&elem, task);
@@ -742,8 +759,8 @@ int knd_get_cls_entry_by_id(struct kndRepoSnapshot *snapshot, const char *id, si
         entry = elem->val;
 
         if (DEBUG_CLASS_LEVEL_3) {
-            knd_log("++ global cache {cls-entry %.*s {id %.*s} {body %p}}",
-                    entry->name_size, entry->name, id_size, id, entry->cls);
+            knd_log("++ global cache {cls-entry %.*s {id %.*s}}",
+                    entry->name_size, entry->name, id_size, id);
         }
 
         *result = entry;
@@ -809,6 +826,7 @@ int knd_class_acquire(struct kndClassEntry *entry, struct kndClass **result,
     }
 
     // TODO try operational idxs
+
 
     struct LocalContext ctx = {
         .task = task,

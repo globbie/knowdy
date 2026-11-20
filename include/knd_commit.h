@@ -37,6 +37,7 @@ struct kndCommit
 
     struct kndRepoSnapshot *snapshot;
     struct kndStorageWal *wal;
+    struct kndStorageLeaf *leaf;
     struct kndState *state;
 
     struct kndStateUpdate *updates;

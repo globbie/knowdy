@@ -267,6 +267,7 @@ int knd_shared_set_new(struct kndSharedSet **result, struct kndMemPool *mempool)
     struct kndSharedSet *set;
     struct kndSharedSetElemIdx *idx;
     int err;
+
     set = calloc(1, sizeof(struct kndSharedSet));
     set->mempool = mempool;
 

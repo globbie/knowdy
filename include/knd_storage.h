@@ -26,6 +26,7 @@ struct kndOutput;
 struct kndTask;
 struct kndSetRange;
 struct kndStateRange;
+struct kndCommit;
 
 typedef enum knd_storage_t {
     KND_STORAGE_DEFAULT,
@@ -121,6 +122,10 @@ struct kndStorageLeaf
     size_t max_size;
     size_t curr_size;
 
+    struct kndCommit *commits;
+    struct kndCommit *commit_tail;
+    size_t num_commits;
+
     size_t num_elems;
 
     char range_from_addr[KND_PATH_SIZE + 1];
@@ -185,6 +190,9 @@ int knd_storage_leaf_export_GSL(struct kndStorageLeaf *leaf, struct kndOutput *o
 
 gsl_err_t knd_storage_parse_conf(void *obj, const char *rec, size_t *total_size);
 
+int knd_storage_path_exists(const char *path, size_t path_size,
+                            knd_storage_mode mode, struct kndTask *task);
+
 int knd_storage_build_filepath(const char *path, size_t path_size,
                                const char *filename, size_t filename_size,
                                const char *ext, size_t ext_size,
@@ -201,6 +209,7 @@ int knd_wal_state_read(struct kndStorageWal *wal,
 int knd_wal_leaf_read(struct kndStorageLeaf *leaf,
                       size_t rec_id_size, size_t max_rec_size, struct kndSetRange *range,
                       knd_leaf_rec_unmarshall_cb_t cb, void *cb_ctx, struct kndTask *task);
+
 
 static inline void knd_wal_append_leaf(struct kndStorageWal *wal, struct kndStorageLeaf *leaf)
 {

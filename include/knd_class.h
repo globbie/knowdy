@@ -135,15 +135,10 @@ struct kndClassEntry
 
     struct kndClass *cls;
 
-    struct kndUsageMetrics metrics;
-
     struct kndCacheItem *cached; // LRU cache
 
     struct kndObjStateUpdate *updates;
-    //size_t num_updates;
-
-    struct kndClassEntry *next;
-    struct kndClassEntry *prev; 
+    size_t num_updates;
 };
 
 struct kndClass

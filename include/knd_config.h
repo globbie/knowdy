@@ -202,15 +202,16 @@ static const char *const knd_format_names[] = {
 #define KND_BASE_REPO_DIR_NAME "base"
 #define KND_SNAPSHOT_DIR_NAME  "snapshot"
 #define KND_SUBMIT_DIR_NAME    "submit"
-#define KND_UPDATES_DIR_NAME   "updates"
-#define KND_AGENT_DIR_NAME     "agent"
+#define KND_STATE_DIR_NAME     "state"
+#define KND_WRITER_DIR_NAME    "writer"
+#define KND_COLLECTOR_DIR_NAME "collector"
 #define KND_USERSPACE_DIR_NAME "users"
 
 #define KND_GSL_PACKAGE_INDEX_NAME "index"
-#define KND_WAL_STATE_INDEX_NAME "state"
+#define KND_WAL_STATE_INDEX_NAME   "state"
 
-#define KND_GSL_FILE_EXT_NAME     ".gsl"
-#define KND_GSP_FILE_EXT_NAME     ".gsp"
+#define KND_GSL_FILE_EXT_NAME ".gsl"
+#define KND_GSP_FILE_EXT_NAME ".gsp"
 #define KND_IDX_FILE_EXT_NAME ".idx"
 #define KND_WAL_FILE_EXT_NAME ".wal"
 #define KND_LOG_FILE_EXT_NAME ".log"
@@ -231,8 +232,9 @@ static const char *const knd_format_names[] = {
 #define KND_MAX_WAL_LEAF_SIZE 1024 //10 * 1024 * 1024
 #define KND_MAX_WAL_COMMITS 1024 * 1024
 
-#define KND_MAX_COLLECTOR_COMMITS 1024 * 10
+#define KND_MAX_STATE_COMMITS 1024 * 1024 * 100
 #define KND_MAX_LEDGER_COMMITS 1024 * 1024
+#define KND_MAX_COLLECTOR_COMMITS 1024 * 10
 
 /* default values, overriden by config  */
 #define KND_MAX_SNAPSHOTS 32

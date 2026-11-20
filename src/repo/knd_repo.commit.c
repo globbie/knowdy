@@ -35,6 +35,8 @@ struct LocalContext {
     struct kndRepo *repo;
 };
 
+#if 0
+
 static gsl_err_t save_task_body(void *obj, const char *rec, size_t *total_size)
 {
     struct kndCommit *commit = obj;
@@ -221,7 +223,6 @@ int knd_repo_restore_logs(struct kndRepo *self, struct kndRepoSnapshot *snapshot
     int err;
 
 
-#if 0
     for (size_t i = 0; i < snapshot->max_WALs; i++) {
         out->reset(out);
         OUT(path, path_size);
@@ -252,9 +253,9 @@ int knd_repo_restore_logs(struct kndRepo *self, struct kndRepoSnapshot *snapshot
 
         //append_memblock(snapshot, memblock);
     }
-#endif
     return knd_OK;
 }
+#endif
 
 int knd_repo_transfer_commits(struct kndRepo *repo, struct kndTask *unused_var(task))
 {
@@ -267,5 +268,10 @@ int knd_repo_transfer_commits(struct kndRepo *repo, struct kndTask *unused_var(t
     }
 
     // TODO
+
+    // read persistent commit logs from snapshot last state to the latest confirmed state
+
+    // update shared idxs
+    
     return knd_OK;
 }

@@ -139,7 +139,6 @@ int knd_state_ledger_fetch_conflict(struct kndStateLedger *ledger,
     return knd_OK;
 }
 
-
 /* Collector */
 static int detect_conflicts(struct kndCommit *commit, struct kndTask *task)
 {
@@ -165,47 +164,52 @@ static int detect_conflicts(struct kndCommit *commit, struct kndTask *task)
 
 
 /* Collector */
-int knd_state_detect_conflicts(struct kndRepoSnapshot *snapshot, struct kndStateLedger *ledger,
-                               struct kndTask *task)
+int knd_state_detect_conflicts(struct kndRepoSnapshot *snapshot, struct kndStateLedger *ledger, struct kndTask *task)
 {
+    struct kndStorageWal *wal;
+    struct kndStorageLeaf *leaf;    
     struct kndCommit *commit;
     int err;
 
-    for (size_t i = 0; i < task->num_collector_commits; i++) {
-        commit = task->collector_commits[i];
-
-        err = detect_conflicts(commit, task);
-        KND_TASK_ERR("failed to detect conflicts");
+    FOREACH (wal, task->repo_wals) {
+        FOREACH (leaf, wal->leaves) {
+            FOREACH (commit, leaf->commits) {
+                err = detect_conflicts(commit, task);
+                KND_TASK_ERR("failed to detect conflicts");
+            }
+        }
     }
-
     return knd_OK;
 }
 
 /* Arbiter  TODO: find concurrent solution */
-int knd_state_join_conflicts(struct kndRepoSnapshot *snapshot, struct kndStateLedger *ledger,
+int knd_state_join_conflicts(struct kndRepoSnapshot *unused_var(snapshot),
+                             struct kndStateLedger *ledger,
                              struct kndTask *task)
 {
+    struct kndStorageWal *wal;
+    struct kndStorageLeaf *leaf;    
     struct kndCommit *commit;
-    int err;
 
-    for (size_t i = 0; i < task->num_collector_commits; i++) {
-        commit = task->collector_commits[i];
-
-        if (commit->phase != KND_CONFLICT_STATE) continue;
-
-        ledger->commits[ledger->num_commits] = commit;
-        ledger->num_commits++;
+    FOREACH (wal, task->repo_wals) {
+        FOREACH (leaf, wal->leaves) {
+            FOREACH (commit, leaf->commits) {
+                if (commit->phase != KND_CONFLICT_STATE) continue;
+                
+                ledger->commits[ledger->num_commits] = commit;
+                ledger->num_commits++;
+            }
+        }
     }
  
     return knd_OK;
 }
 
 /* Arbiter */
-static int resolve_conflicts(struct kndCommit *commit, struct kndTask *task)
+static int resolve_conflicts(struct kndCommit *commit, struct kndTask *unused_var(task))
 {
     struct kndStateConflict *conflict;
     struct kndStateConflictRef *ref;
-    int err;
 
     FOREACH (ref, commit->conflicts) {
         conflict = ref->conflict;
@@ -230,7 +234,7 @@ int knd_state_resolve_conflicts(struct kndRepoSnapshot *snapshot,
                                 struct kndStateLedger *ledger, struct kndTask *task)
 {
     struct kndRepo *repo = snapshot->repo;
-    struct kndCommit *commit, *commits;
+    struct kndCommit *commit;
     int err;
 
     if (DEBUG_STATE_CONFLICT_LEVEL_TMP) {

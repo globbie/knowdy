@@ -149,13 +149,14 @@ struct kndSet
 };
 
 int knd_set_new(struct kndSet **result, knd_set_store_t store_t, struct kndMemPool *mempool);
-
 int knd_set_store_new(struct kndSetStore **result, struct kndMemPool *mempool);
 int knd_set_elem_new(struct kndSetElem **result, struct kndMemPool *mempool);
 int knd_set_range_new(struct kndSetRange **result, struct kndMemPool *mempool);
 int knd_set_dir_new(struct kndSetDir **result, const char *parent_id, size_t parent_id_size,
                     const char *curr_id, struct kndMemPool *mempool);
 int knd_set_dir_block_new(struct kndSetDirBlock **result, struct kndMemPool *mempool);
+
+void knd_set_del(struct kndSet *set);
 
 int knd_set_add(struct kndSet *self, const char *key, size_t key_size, void *elem, struct kndTask *task);
 int knd_set_get(struct kndSet *set, const char *key, size_t key_size,

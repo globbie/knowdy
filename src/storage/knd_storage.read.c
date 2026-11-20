@@ -173,7 +173,7 @@ static int check_wal_leaf(struct kndStorageWal *wal, struct kndStorageLeaf *leaf
     err = check_wal_commits(leaf, buf, buf_size, commit_id_size, max_commit_size, num_commits, task);
     KND_TASK_ERR("failed to check wal commits {file %.*s}", buf_size, buf);
 
-    leaf->num_elems = num_commits;
+    leaf->num_commits = num_commits;
     wal->num_commits += num_commits;
 
     return knd_OK;
@@ -231,7 +231,7 @@ static gsl_err_t parse_wal_leaf(void *obj, const char *rec, size_t *total_size)
 {
     struct LocalContext *ctx = obj;
     struct kndStorageLeaf *leaf;
-    size_t num_elems = 0;
+    size_t num_commits = 0;
     char range_from[KND_ID_SIZE];
     size_t range_from_size = 0;
     char range_to[KND_ID_SIZE];
@@ -264,7 +264,7 @@ static gsl_err_t parse_wal_leaf(void *obj, const char *rec, size_t *total_size)
         {   .name = "num-commits",
             .name_size = strlen("num-commits"),
             .parse = gsl_parse_size_t,
-            .obj = &num_elems
+            .obj = &num_commits
         },
         {   .name = "file-size",
             .name_size = strlen("file-size"),
@@ -280,7 +280,8 @@ static gsl_err_t parse_wal_leaf(void *obj, const char *rec, size_t *total_size)
     leaf = ctx->wal->leaves;
     assert (leaf != NULL);
 
-    leaf->num_elems = num_elems;
+    leaf->num_commits = num_commits;
+
     // TODO other params
 
     return make_gsl_err(gsl_OK);

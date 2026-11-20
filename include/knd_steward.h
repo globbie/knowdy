@@ -102,5 +102,5 @@ int knd_steward_report_task(struct kndSteward *steward,
 int knd_steward_cancel_task(struct kndSteward *steward,
                           const char *task_id, size_t task_id_size);
 
-int knd_steward_snapshot_create(struct kndSteward *steward);
-int knd_steward_snapshot_activate(struct kndSteward *steward, struct kndRepoSnapshot **result);
+int knd_steward_sys_snapshot_create(struct kndSteward *steward);
+int knd_steward_sys_snapshot_activate(struct kndSteward *steward, struct kndRepoSnapshot **result);

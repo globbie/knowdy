@@ -133,6 +133,7 @@ int knd_mempool_present(struct kndMemPool *self, struct kndOutput *out)
 static int get_shared_page(struct kndMemPool *self, knd_mempage_t page_type, void **result)
 {
     struct kndMemPageHeader *page_list, *next_page;
+
     switch (page_type) {
     case KND_MEMPAGE_LARGE:
         do {
@@ -190,6 +191,7 @@ static int get_shared_page(struct kndMemPool *self, knd_mempage_t page_type, voi
         atomic_fetch_add_explicit(&self->shared_base_pages_used, 1, memory_order_relaxed);
         break;
     }
+
     *result = page_list;
     return knd_OK;
 }

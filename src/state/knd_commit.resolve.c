@@ -21,15 +21,12 @@
 #define DEBUG_COMMIT_RESOLVE_LEVEL_3 0
 #define DEBUG_COMMIT_RESOLVE_LEVEL_TMP 1
 
-int knd_commit_resolve(struct kndCommit *commit, struct kndRepoSnapshot *snapshot, struct kndTask *task)
+int knd_commit_resolve(struct kndCommit *commit, struct kndRepoSnapshot *unused_var(snapshot),
+                       struct kndTask *unused_var(task))
 {
-    struct kndState *state;
-    struct kndProcEntry *proc_entry;
-    struct kndStateRef *ref;
-    int err;
 
     if (DEBUG_COMMIT_RESOLVE_LEVEL_2) {
-        knd_log("resolving new commit");
+        knd_log("resolving new {commit %zu}", commit->numid);
     }
 
     return knd_OK;
@@ -44,7 +41,8 @@ int knd_commit_dedup(struct kndCommit *commit, struct kndRepoSnapshot *snapshot,
     // make sure no duplicate definitions exist in the schema
 
     if (DEBUG_COMMIT_RESOLVE_LEVEL_2) {
-        knd_log(".. commit deduplication");
+        knd_log("{repo %.*s {commit %zu}} deduplication",
+                repo->name_size, repo->name, commit->numid);
     }
 
     return knd_OK;

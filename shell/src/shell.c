@@ -194,7 +194,8 @@ static int change_state(struct kndRepoSnapshot *snapshot,
     size_t batch_to = batch_size + remainder;
     int err;
 
-    knd_log("!! changing global state {num-writers %zu} {num-collectors %zu} ", num_writers, num_collectors);
+    knd_log("!! changing global state {num-writers %zu} {num-collectors %zu} ",
+            num_writers, num_collectors);
 
     err = knd_task_reset(arbiter_task);
     if (err) {
@@ -234,7 +235,7 @@ static int change_state(struct kndRepoSnapshot *snapshot,
             return err;
         }
     }
-    
+
     /**  step three: 1. detect conflicting commits
      *               2. pass non-conflicting commits for the WAL update (no arbiter needed)
      *               NB: collectors can run in parallel
@@ -265,11 +266,11 @@ static int change_state(struct kndRepoSnapshot *snapshot,
         return err;
     }
 
-    /* make sure collectors' WALs are updated */
+    /* make sure commit logs are updated */
     for (size_t i = 0; i < num_collectors; i++) {
-        err = knd_state_update_collector_wal(snapshot, ledger, collectors[i]);
+        err = knd_collector_update_state_logs(ledger, collectors[i]);
         if (err) {
-            knd_log("collector WAL update failure {err %d}", err);
+            knd_log("collector state log update failure {err %d}", err);
             return err;
         }
     }
@@ -416,10 +417,10 @@ static int knd_start(const char *config, size_t config_size)
     if (report.mem_threshold_alert) {
         knd_log("!! init stage: mem utilization threshold reached");
 
-        err = knd_steward_snapshot_create(steward);
+        err = knd_steward_sys_snapshot_create(steward);
         if (err) goto error;
 
-        err = knd_steward_snapshot_activate(steward, &snapshot);
+        err = knd_steward_sys_snapshot_activate(steward, &snapshot);
         if (err) goto error;
     }
 

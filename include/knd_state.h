@@ -162,7 +162,6 @@ int knd_state_ledger_fetch_conflict(struct kndStateLedger *ledger,
                                     struct kndCommit *commit, struct kndStateUpdate *update,
                                     struct kndStateConflict **result, struct kndTask *task);
 
-int knd_state_update_collector_wal(struct kndRepoSnapshot *snapshot, struct kndStateLedger *ledger,
-                                   struct kndTask *task);
+int knd_collector_update_state_logs(struct kndStateLedger *ledger, struct kndTask *task);
 int knd_state_advance(struct kndRepoSnapshot *snapshot, struct kndStateLedger *ledger,
                       struct kndTask *task);

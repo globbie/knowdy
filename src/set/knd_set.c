@@ -424,11 +424,18 @@ int knd_set_range_new(struct kndSetRange **result, struct kndMemPool *mempool)
 {
     void *page;
     int err;
+
     assert(KND_TINY_MEMPAGE_SIZE >= sizeof(struct kndSetRange));
     err = knd_mempool_page(mempool, KND_MEMPAGE_TINY, &page);
     if (err) return err;
     memset(page, 0, sizeof(struct kndSetRange));
     *result = page;
+
     return knd_OK;
 }
 
+void knd_set_del(struct kndSet *unused_var(set))
+{
+    // TODO
+    return;
+}

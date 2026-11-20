@@ -41,42 +41,55 @@ void knd_task_del(struct kndTask *self)
     free(self);
 }
 
-static int alloc_collector_commit_idx(struct kndTask *task, size_t max_commits)
-{
-    int err;
-
-    task->collector_commits = calloc(max_commits, sizeof(struct kndCommit*));
-    if (!task->collector_commits) return knd_NOMEM;
-    task->max_collector_commits = max_commits;
-
-    return knd_OK;
-}
-
 static int create_local_write_idxs(struct kndTask *task)
 {
     int err;
 
-    err = knd_set_new(&task->idxs.cls_idx, KND_SET_STORE_MEMONLY, task->mempool);
-    KND_TASK_ERR("failed to create a cls idx");
-
+    if (task->idxs.cls_name_idx) {
+        knd_dict_del(task->idxs.cls_name_idx);
+    }
     err = knd_dict_new(&task->idxs.cls_name_idx, KND_MEDIUM_DICT_SIZE, KND_DICT_MEMONLY, task->mempool);
     KND_TASK_ERR("failed to create a cls name idx");
 
+    if (task->idxs.attr_name_idx) {
+        knd_dict_del(task->idxs.attr_name_idx);
+    }
     err = knd_dict_new(&task->idxs.attr_name_idx, KND_SMALL_DICT_SIZE, KND_DICT_MEMONLY, task->mempool);
     KND_TASK_ERR("failed to create an attr name idx");
 
+    if (task->idxs.cls_idx) {
+        knd_set_del(task->idxs.cls_idx);
+    }
+    err = knd_set_new(&task->idxs.cls_idx, KND_SET_STORE_MEMONLY, task->mempool);
+    KND_TASK_ERR("failed to create a cls idx");
+
+    if (task->idxs.attr_idx) {
+        knd_set_del(task->idxs.attr_idx);
+    }
     err = knd_set_new(&task->idxs.attr_idx, KND_SET_STORE_MEMONLY, task->mempool);
     KND_TASK_ERR("failed to create an attr idx");
-    
+
+    if (task->idxs.str_dict) {
+        knd_dict_del(task->idxs.str_dict);
+    }
     err = knd_dict_new(&task->idxs.str_dict, KND_MEDIUM_DICT_SIZE, KND_DICT_MEMONLY, task->mempool);
     KND_TASK_ERR("failed to create a str dict");
 
-    err = knd_set_new(&task->idxs.str_idx, KND_SET_STORE_MEMONLY, task->mempool);
-    KND_TASK_ERR("failed to create a str idx");
-
+    if (task->idxs.proc_name_idx) {
+        knd_dict_del(task->idxs.proc_name_idx);
+    }
     err = knd_dict_new(&task->idxs.proc_name_idx, KND_SMALL_DICT_SIZE, KND_DICT_MEMONLY, task->mempool);
     KND_TASK_ERR("failed to create a proc name idx");
 
+    if (task->idxs.str_idx) {
+        knd_set_del(task->idxs.str_idx);
+    }
+    err = knd_set_new(&task->idxs.str_idx, KND_SET_STORE_MEMONLY, task->mempool);
+    KND_TASK_ERR("failed to create a str idx");
+
+    if (task->idxs.proc_idx) {
+        knd_set_del(task->idxs.proc_idx);
+    }
     err = knd_set_new(&task->idxs.proc_idx, KND_SET_STORE_MEMONLY, task->mempool);
     KND_TASK_ERR("failed to create a proc idx");
 
@@ -108,12 +121,6 @@ int knd_task_reset(struct kndTask *task)
     case KND_AGENT_SYSTEM:
         // fall through
     case KND_AGENT_WRITER:
-        /* free dict allocations */
-        knd_dict_del(task->idxs.cls_name_idx);
-        knd_dict_del(task->idxs.attr_name_idx);
-        knd_dict_del(task->idxs.str_dict);
-        knd_dict_del(task->idxs.proc_name_idx);
-
         err = create_local_write_idxs(task);
         if (err) {
             knd_log("failed to create local idxs {log %.*s}",
@@ -314,15 +321,12 @@ static int init_cache(struct kndTaskCache *c, struct kndMemConfig *memconf)
     return err;
 }
 
-
 void knd_task_cleanup(struct kndTask *task)
 {
     knd_mempool_reset(task->mempool);
-
 }
 
-void knd_task_monitor(struct kndTask *task, struct kndStorage *store,
-                      struct kndResourceReport *report)
+void knd_task_monitor(struct kndTask *task, struct kndStorage *store, struct kndResourceReport *report)
 {
     struct kndMemPool *mempool = task->mempool;
     struct kndMemPoolReport memrep = { 0 };
@@ -351,6 +355,7 @@ static int task_init(struct kndTask *task, struct kndSteward *steward)
             knd_log("failed to init system cache");
             goto error;
         }
+
         break;
     case KND_AGENT_READER:
         err = knd_mempool_create(&task->mempool, &steward->mem_task_ctx_config, 1);
@@ -393,12 +398,6 @@ static int task_init(struct kndTask *task, struct kndSteward *steward)
         if (err) {
             knd_log("failed to init collector's mempool");
         }            
-        err = alloc_collector_commit_idx(task, KND_MAX_COLLECTOR_COMMITS);
-        if (err) {
-            knd_log("failed to alloc commit idx {log %.*s}",
-                    task->log->buf_size, task->log->buf);
-            goto error;
-        }        
         break;
     case KND_AGENT_ARBITER:
         err = knd_mempool_create(&task->ledger_shared_mem, &steward->mem_arbiter_config, 1);

@@ -15,10 +15,10 @@
 #define DEBUG_STATE_READ_LEVEL_5 0
 #define DEBUG_STATE_READ_LEVEL_TMP 1
 
-int knd_state_read(struct kndRepoSnapshot *snapshot, struct kndStateRange *range, struct kndTask *task)
+int knd_state_read(struct kndRepoSnapshot *snapshot, struct kndStateRange *unused_var(range),
+                   struct kndTask *unused_var(task))
 {
     struct kndRepo *repo = snapshot->repo;
-    size_t writer_id;
 
     if (DEBUG_STATE_READ_LEVEL_TMP) {
         knd_log(">> reading the state of {repo %.*s}",

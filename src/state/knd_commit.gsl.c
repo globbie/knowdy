@@ -44,10 +44,10 @@
 #define DEBUG_COMMIT_GSL_LEVEL_TMP 1
 
 static int cls_update_export_GSL(struct kndStateUpdate *update, struct kndOutput *out,
-                                 struct kndTask *task)
+                                 struct kndTask *unused_var(task))
 {
     struct kndClassEntry *entry = update->obj;
-    int err;
+
     OUT("{cls ", strlen("{cls "));
     OUT(entry->name, entry->name_size);
     OUT("}", 1);
@@ -78,8 +78,6 @@ static int state_update_export_GSL(struct kndStateUpdate *update, struct kndOutp
 int knd_commit_export_GSL(struct kndCommit *commit, struct kndOutput *out, size_t *total_size, struct kndTask *task)
 {
     struct kndRepo *repo = commit->snapshot->repo;
-    struct kndStateRef *ref;
-    struct kndState *state;
     struct kndStateUpdate *update;
     int err;
 

@@ -50,8 +50,8 @@ int knd_storage_build_filepath(const char *path, size_t path_size,
     return knd_OK;
 }
 
-static int check_path_exists(const char *path, size_t path_size,
-                             knd_storage_mode mode, struct kndTask *task)
+int knd_storage_path_exists(const char *path, size_t path_size,
+                            knd_storage_mode mode, struct kndTask *task)
 {
     struct stat st;
     int err;
@@ -75,10 +75,10 @@ static int check_path_exists(const char *path, size_t path_size,
     return knd_OK;
 }
 
-static int check_wal_path(struct kndRepoSnapshot *snapshot,
-                          const char *agent_name, size_t agent_name_size,
-                          knd_storage_mode mode, char *path, size_t *path_size,
-                          struct kndTask *task)
+static int check_submit_wal_path(struct kndRepoSnapshot *snapshot,
+                                 const char *agent_name, size_t agent_name_size,
+                                 knd_storage_mode mode, char *path, size_t *path_size,
+                                 struct kndTask *task)
 {
     struct kndOutput *out = task->out;
     int err;
@@ -94,11 +94,10 @@ static int check_wal_path(struct kndRepoSnapshot *snapshot,
         err = knd_LIMIT;
         KND_TASK_ERR("GSP path too long");
     }
-    err = check_path_exists(out->buf, out->buf_size, mode, task);
+    err = knd_storage_path_exists(out->buf, out->buf_size, mode, task);
     KND_TASK_ERR("failed to ensure {path %.*s}");
 
-    /* agent local wal dir */
-    OUT(KND_AGENT_DIR_NAME, strlen(KND_AGENT_DIR_NAME));
+    OUT(KND_WRITER_DIR_NAME, strlen(KND_WRITER_DIR_NAME));
     OUT(agent_name, agent_name_size);
     OUT("/", 1);
 
@@ -107,7 +106,7 @@ static int check_wal_path(struct kndRepoSnapshot *snapshot,
         KND_TASK_ERR("GSP path too long");
     }
 
-    err = check_path_exists(out->buf, out->buf_size, mode, task);
+    err = knd_storage_path_exists(out->buf, out->buf_size, mode, task);
     KND_TASK_ERR("failed to ensure {path %.*s}");
 
     memcpy(path, out->buf, out->buf_size);
@@ -140,7 +139,7 @@ int knd_wal_fetch(struct kndRepoSnapshot *snapshot, size_t agent_id,
 
     knd_uid_create(agent_id, name, &name_size);
 
-    err = check_wal_path(snapshot, name, name_size, mode, path, &path_size, task);
+    err = check_submit_wal_path(snapshot, name, name_size, mode, path, &path_size, task);
     KND_TASK_ERR("failed to check WAL paths");
 
     err = knd_storage_wal_new(&wal, agent_id, name, name_size, path, path_size,
@@ -289,8 +288,7 @@ int knd_storage_leaf_new(struct kndStorageLeaf **result, size_t numid,
 int knd_storage_wal_new(struct kndStorageWal **result,
                         size_t agent_id, const char *name, size_t name_size,
                         const char *path, size_t path_size,
-                        struct kndRepoSnapshot *snapshot,
-                        knd_storage_mode mode)
+                        struct kndRepoSnapshot *snapshot, knd_storage_mode mode)
 {
     struct kndStorageWal *wal;
     char *b;

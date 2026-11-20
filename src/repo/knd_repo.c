@@ -93,6 +93,44 @@ int knd_snapshot_build_path(struct kndRepoSnapshot *s, struct kndTask *task)
     return knd_OK;
 }
 
+static int build_baseline_indices(struct kndRepoSnapshot *s, struct kndMemPool *mempool)
+{
+    int err;
+
+    err = knd_set_new(&s->cache.str_idx, KND_SET_STORE_PERSIST, mempool);
+    if (err) return err;
+    err = knd_dict_new(&s->cache.str_dict, KND_MEDIUM_DICT_SIZE, KND_DICT_PERSIST, mempool);
+    if (err) return err;
+
+    err = knd_set_new(&s->cache.cls_idx, KND_SET_STORE_PERSIST, mempool);
+    if (err) return err;
+    err = knd_set_new(&s->cache.cls_cache_idx, KND_SET_STORE_PERSIST, mempool);
+    if (err) return err;
+    err = knd_dict_new(&s->cache.cls_name_idx, KND_MEDIUM_DICT_SIZE, KND_DICT_PERSIST, mempool);
+    if (err) return err;
+
+    err = knd_set_new(&s->cache.attr_idx, KND_SET_STORE_PERSIST, mempool);
+    if (err) return err;
+    err = knd_dict_new(&s->cache.attr_name_idx, KND_MEDIUM_DICT_SIZE, KND_DICT_PERSIST, mempool);
+    if (err) return err;
+
+    return knd_OK;
+}
+
+static int build_state_update_indices(struct kndRepoSnapshot *s, struct kndMemPool *mempool)
+{
+    int err;
+
+    err = knd_shared_set_new(&s->idxs.cls_idx, mempool);
+    if (err) return err;
+
+    err = knd_shared_dict_new(&s->idxs.cls_name_idx, KND_LARGE_DICT_SIZE,
+                              KND_DICT_UNIQUE_VALUES, KND_DICT_STORE_MEMONLY, mempool);
+    if (err) return err;
+
+    return knd_OK;
+}
+
 int knd_repo_snapshot_new(struct kndRepoSnapshot **result, size_t numid, size_t latest_commit_id,
                           struct kndRepo *repo, knd_agent_role_type role,
                           struct kndStorage *store, struct kndTask *task)
@@ -116,27 +154,17 @@ int knd_repo_snapshot_new(struct kndRepoSnapshot **result, size_t numid, size_t 
     s->max_wal_leaves = KND_MAX_WAL_LEAVES;
     s->max_wal_leaf_size = KND_MAX_WAL_LEAF_SIZE;
     s->max_wal_commits = KND_MAX_WAL_COMMITS;
+    s->max_state_commits = KND_MAX_STATE_COMMITS;
 
     err = knd_set_new(&s->commit_idx, KND_SET_STORE_MEMONLY, mempool);
     if (err) return err;
 
-    err = knd_set_new(&s->cache.str_idx, KND_SET_STORE_PERSIST, mempool);
-    if (err) return err;
-    err = knd_dict_new(&s->cache.str_dict, KND_MEDIUM_DICT_SIZE, KND_DICT_PERSIST, mempool);
+    err = build_baseline_indices(s, mempool);
     if (err) return err;
 
-    err = knd_set_new(&s->cache.cls_idx, KND_SET_STORE_PERSIST, mempool);
+    err = build_state_update_indices(s, mempool);
     if (err) return err;
-    err = knd_set_new(&s->cache.cls_cache_idx, KND_SET_STORE_PERSIST, mempool);
-    if (err) return err;
-    err = knd_dict_new(&s->cache.cls_name_idx, KND_MEDIUM_DICT_SIZE, KND_DICT_PERSIST, mempool);
-    if (err) return err;
-
-    err = knd_set_new(&s->cache.attr_idx, KND_SET_STORE_PERSIST, mempool);
-    if (err) return err;
-    err = knd_dict_new(&s->cache.attr_name_idx, KND_MEDIUM_DICT_SIZE, KND_DICT_PERSIST, mempool);
-    if (err) return err;
-
+    
     *result = s;
     return knd_OK;
 }
